@@ -15,13 +15,25 @@ use stele_reductions::parallel::eq_table;
 pub use stele_reductions::stele_field::{Field, Serialize, CM31, M31, QM31};
 use stele_reductions::zk::claims::bench::{mask_table, Masked, Table};
 
+#[cfg(any(test, feature = "cuda"))]
+mod batch;
+#[cfg(test)]
+mod batch_cases;
 #[cfg(test)]
 mod field_cases;
 #[cfg(feature = "cuda")]
 pub mod gpu;
 #[cfg(feature = "cuda")]
+pub mod gpu_lookup;
+#[cfg(feature = "cuda")]
 pub mod gpu_source;
+#[cfg(test)]
+mod host_probe;
 pub mod inventory;
+#[cfg(any(test, feature = "cuda"))]
+pub mod lookup;
+#[cfg(test)]
+mod lookup_cases;
 pub mod source;
 
 /// The challenge field.

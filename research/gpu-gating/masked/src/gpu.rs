@@ -21,8 +21,19 @@ use stele_reductions::stele_field::Field;
 use stele_reductions::zk::claims::bench::mask_weight;
 
 // E16-36: the source-preparation kernels share the module (and the field code).
-const KERNELS: &str = concat!(include_str!("kernels.cu"), "\n", include_str!("source.cu"));
+const KERNELS: &str = concat!(
+    include_str!("kernels.cu"),
+    "\n",
+    include_str!("source.cu"),
+    "\n",
+    include_str!("lookup.cu"),
+    "\n",
+    include_str!("batch.cu")
+);
 const THREADS: u32 = 256;
+
+#[path = "gpu_batch.rs"]
+pub mod batch;
 
 #[cfg(test)]
 #[path = "gpu_field_tests.rs"]
@@ -36,8 +47,15 @@ pub type Tables = Vec<(Vec<K>, Vec<K>)>;
 pub enum Error {
     Driver(DriverError),
     Compile(String),
+    Lookup(crate::lookup::Error),
     /// A value read back from the device is not canonical.
     Value,
+}
+
+impl From<crate::lookup::Error> for Error {
+    fn from(e: crate::lookup::Error) -> Self {
+        Self::Lookup(e)
+    }
 }
 
 impl From<DriverError> for Error {
@@ -254,24 +272,34 @@ impl Device {
                 v: f.mask.as_ref().map(|(_, v)| *v),
             });
         }
-        let nodes = shape.degree + 1;
+        let masked = self.summand(factors, shape.terms.clone(), shape.degree + 1, len)?;
+        self.sync()?;
+        Ok((masked, upload, start.elapsed()))
+    }
+
+    fn summand(
+        &self,
+        factors: Vec<Factor>,
+        terms: Vec<(K, Vec<u32>)>,
+        nodes: usize,
+        len: usize,
+    ) -> Result<DeviceMasked<'_>, Error> {
         let blocks = self.grid(len / 2).grid_dim.0 as usize;
-        let coef: Vec<K> = shape.terms.iter().map(|(c, _)| *c).collect();
-        let masked = DeviceMasked {
+        let coef: Vec<K> = terms.iter().map(|(c, _)| *c).collect();
+        let count = factors.len();
+        Ok(DeviceMasked {
             dev: self,
             factors,
-            terms: shape.terms.clone(),
+            terms,
             nodes,
             len,
             bound: 0,
-            xs: self.stream.alloc_zeros::<u64>(shape.factors.len())?,
-            rs: self.stream.alloc_zeros::<u64>(shape.factors.len())?,
+            xs: self.stream.alloc_zeros::<u64>(count)?,
+            rs: self.stream.alloc_zeros::<u64>(count)?,
             coef: self.qm31s(&coef)?,
             partials: self.stream.alloc_zeros::<u32>(blocks * nodes * 4)?,
             out: self.stream.alloc_zeros::<u32>(nodes * 4)?,
-        };
-        self.sync()?;
-        Ok((masked, upload, start.elapsed()))
+        })
     }
 
     /// The uploaded part of a source; a column or layer is the table's own buffer.

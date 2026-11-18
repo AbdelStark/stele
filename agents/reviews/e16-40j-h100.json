@@ -1,0 +1,84 @@
+{
+  "source": "ffdf611cb3a38dfcc5a1bdae478d708ad5e5be94",
+  "archive_sha256": "1da7e3e406e6d36acbba04e2db715c88eda9661c82cc094b9c49f5d8da0ba526",
+  "capture_sha256": "c9f550c589134e2cdd8a51a98d413028c03bedf30d3199212340586d52e04cb5",
+  "manifest_sha256": "d6d028b466c9986e2db7edc27bc0d4f0a9302a39c2c9e11b2f010ccd64b556ea",
+  "job": "6684",
+  "host": {
+    "hostname": "h100-nvl-1-1-cc",
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "job": "6684",
+    "cuda_visible_devices": "0"
+  },
+  "device": "name, uuid, driver_version, memory.total [MiB]\nNVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 570.211.01, 95830 MiB\n",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.90.0\nLLVM version: 20.1.8\n",
+  "binary_sha256": {
+    "source_material": "429952b84fca387d799c5f57e6dea2dbeb7703e3dc24d1748fb2f4ec4fdf003a",
+    "parity": "ff10f55d414c19fa575c13fcc7c8840a117d5b0cce53f733460fa466375df041",
+    "stele_masked_gpu_bench": "f3195223f84c0a1482f91705ec2584823e43f6375ff42bab6183cb98b8c283c8"
+  },
+  "tests": {
+    "host-field": {
+      "stdout": "\nrunning 1 test\ntest field_cases::matches_reference_cuda_field_helpers_on_host ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.52s\n\n",
+      "stderr": ""
+    },
+    "host-inverse": {
+      "stdout": "\nrunning 1 test\ntest lookup_cases::matches_reference_lookup_inverse_on_host ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.56s\n\n",
+      "stderr": ""
+    },
+    "host-tree": {
+      "stdout": "\nrunning 1 test\ntest lookup_cases::matches_reference_lookup_kernels_on_host ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.51s\n\n",
+      "stderr": ""
+    },
+    "device-inverse": {
+      "stdout": "\nrunning 1 test\ntest gpu_lookup::tests::matches_reference_lookup_inverse_on_h100 ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 6.60s\n\n",
+      "stderr": "lookup_inverse_device_cases=1000000 seed=275146342401 device=NVIDIA H100 NVL\n"
+    },
+    "device-tree": {
+      "stdout": "\nrunning 1 test\ntest gpu_lookup::tests::matches_reference_lookup_trees_on_h100 ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 6.92s\n\n",
+      "stderr": "lookup_device_cases=1000 raw_leaf_cases=1000 raw_level_cases=1000 raw_top_cases=1000 near_miss_cases=1000 zero_denominator_cases=1 seed=275146342401 device=NVIDIA H100 NVL\n"
+    },
+    "host-batch": {
+      "stdout": "\nrunning 1 test\ntest batch_cases::matches_reference_batch_kernels_on_host ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 5.40s\n\n",
+      "stderr": ""
+    },
+    "host-batch-shape": {
+      "stdout": "\nrunning 1 test\ntest batch_cases::accepts_batch_staging_and_rejects_outside_data_face ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.01s\n\n",
+      "stderr": ""
+    },
+    "host-batch-near": {
+      "stdout": "\nrunning 1 test\ntest batch_cases::rejects_batch_claim_near_miss_by_ordinary_round_sum ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.01s\n\n",
+      "stderr": ""
+    },
+    "device-batch": {
+      "stdout": "\nrunning 1 test\ntest gpu::batch::tests::matches_reference_batch_on_h100 ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 34.58s\n\n",
+      "stderr": "batch_device_cases=1000 source_cases=1000 raw_weight_cases=1000 raw_face_cases=1000 dense_cases=1000 raw_dense_cases=1000 near_miss_cases=1 seed=275414777857 device=NVIDIA H100 NVL\n"
+    },
+    "masked-rounds": {
+      "stdout": "\nrunning 1 test\ntest matches_reference_masked_rounds_on_device ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 43.97s\n\n",
+      "stderr": "bit-equal: relation 2^8 (case 1), 8 rounds\nbit-equal: gkr 2^8 (case 2), 8 rounds\nbit-equal: relation 2^12 (case 1), 12 rounds\nbit-equal: gkr 2^12 (case 2), 12 rounds\nbit-equal: relation 2^16 (case 1), 16 rounds\nbit-equal: gkr 2^16 (case 2), 16 rounds\nbit-equal: relation 2^20 (case 1), 20 rounds\nbit-equal: gkr 2^20 (case 2), 20 rounds\n"
+    },
+    "source-material": {
+      "stdout": "\nrunning 1 test\ntest matches_reference_complete_source_material_on_device ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 13.64s\n\n",
+      "stderr": "complete_source_device_cases=1000\n"
+    }
+  },
+  "scope": "Research component qualification at the pinned source; no full-proof GPU or performance claim."
+}
