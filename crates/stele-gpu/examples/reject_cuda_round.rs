@@ -40,6 +40,7 @@ struct Changed<'d, const ROUND: bool> {
     shared_id: Cell<Option<u64>>,
     standalone_id: Cell<Option<u64>>,
     standalone_visits: Cell<usize>,
+    standalone_rebuild_queried: Cell<bool>,
     shared_start: Cell<Option<(usize, usize, usize)>>,
     injected: Cell<bool>,
 }
@@ -52,6 +53,7 @@ impl<'d, const ROUND: bool> Changed<'d, ROUND> {
             shared_id: Cell::new(None),
             standalone_id: Cell::new(None),
             standalone_visits: Cell::new(0),
+            standalone_rebuild_queried: Cell::new(false),
             shared_start: Cell::new(None),
             injected: Cell::new(false),
         }
@@ -252,6 +254,9 @@ impl<'d> HidingBackend for Changed<'d, false> {
         tree: &Self::Columns<'_>,
         index: usize,
     ) -> Result<SourceColumn, Error> {
+        if self.standalone_id.get() == Some(g.id) && self.standalone_visits.get() == 2 {
+            self.standalone_rebuild_queried.set(true);
+        }
         let mut col = self.device.selected_column(g, tree, index)?;
         let standalone = self.target == Change::StandaloneSibling
             && self.standalone_id.get() == Some(g.id)
@@ -400,6 +405,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Change::StandaloneRoot
                 if material.standalone_visits.get() == 2
+                    && !material.standalone_rebuild_queried.get()
                     && counts.finals == 4
                     && counts.rounds == counts.folds => {}
             Change::StandaloneSibling
