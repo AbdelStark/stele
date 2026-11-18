@@ -42,6 +42,8 @@ class ScaffoldTests(unittest.TestCase):
             self.assertTrue(cli['dependencies']['stele-gpu']['optional'])
             gpu = tomllib.loads((root / 'crates/stele-gpu/Cargo.toml').read_text())
             self.assertTrue(gpu['dependencies']['cudarc']['optional'])
+            self.assertEqual(set(gpu['dev-dependencies']), {'stele-prover'})
+            self.assertNotIn('stele-prover', gpu['dependencies'])
             source = root / 'crates/stele-field/src/lib.rs'
             source.write_text(source.read_text() + '\n// preserved implementation\n')
             before = source.read_bytes()
