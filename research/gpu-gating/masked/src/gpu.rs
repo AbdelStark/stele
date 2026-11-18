@@ -43,6 +43,10 @@ mod gkr_build;
 pub use gkr_build::{ConstructionWork, MemorySample};
 
 #[cfg(test)]
+#[path = "gpu_bound_tests.rs"]
+mod bound_tests;
+
+#[cfg(test)]
 #[path = "gpu_boundary_tests.rs"]
 mod boundary_tests;
 
