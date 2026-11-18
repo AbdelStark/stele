@@ -4168,7 +4168,7 @@ mod tests {
             for _ in 0..wanted {
                 reference
                     .find(|&&w| w & 0x7fff_ffff != 0x7fff_ffff)
-                    .unwrap();
+                    .expect("enough accepted words in the reference stream");
             }
             assert_eq!(
                 &bytes[position..],
