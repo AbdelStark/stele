@@ -296,7 +296,7 @@ mod tests {
                     factors: vec![0],
                 }],
             };
-            let plan = Plan::new(&input).unwrap();
+            let plan = Plan::new(&input).expect("valid periodic public table");
             let table = &plan.factors[0].values;
             assert_eq!(storage(table, plan.len), plan.len / 2);
             assert_eq!(table.spans[0].end as usize, valid);
