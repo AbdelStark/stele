@@ -5175,6 +5175,25 @@ tasks:
   - compare every result of the projection with an independent multilinear evaluation over mixed coordinates, Boolean and extension points, padding, scalars and permutations
   - measure the same stories42M T32 relation-factors lap and total prover time on the same host and threads; preserve pinned proof bytes and negative controls
 
+- id: E16-44
+  epic: E16
+  title: Count dev-zk lookup multiplicities with one canonical key per point
+  lane: Z
+  depends:
+  - E12-14
+  rfc:
+  - RFC-0026 A3 and A9
+  - RFC-0008 A7
+  skill: performance-engineer
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-source-visits
+  branch: task/E16-44-multiplicity
+  acceptance:
+  - reuse validated references and canonical tuple keys while preserving fixed, permuted and selected reads, missing rows, duplicate canonical entries and padding
+  - count dense singleton ranges directly, checking the actual public table and preserving signed shifts and field values
+  - compare complete column vectors on original T32 work, record matched CPU timings and three quiet-start Mac proofs with expected-model and wrong-model checks
+
 - id: E16-40a
   epic: E16
   title: Separate development-ZK GPU-candidate CPU stage costs and shape inventory
