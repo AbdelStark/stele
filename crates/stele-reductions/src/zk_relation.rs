@@ -642,7 +642,9 @@ mod tests {
         let p = i64::from(M31::MODULUS);
         // The final data entry has the same field value as 1.
         let data = [-2, 0, 3, 1 + p];
-        values.set(&relation, id, data.to_vec()).unwrap();
+        values
+            .set(&relation, id, data.to_vec())
+            .expect("column fixture");
         let member = |vars, shift, selected: bool| CountMember {
             vars: 2,
             tuple: vec![(Ref { column: id, vars }, shift)],
@@ -734,7 +736,7 @@ mod tests {
                 }
             }
             assert_eq!(
-                columns(&layout, &relation, &values).unwrap(),
+                columns(&layout, &relation, &values).expect("lookup multiplicities"),
                 [
                     data.map(M31::from_i64).to_vec(),
                     expected.into_iter().map(M31::from_i64).collect()
