@@ -5654,3 +5654,18 @@ tasks:
   - compare every actual certificate and opening column and Merkle sibling against the CPU proof from the same original hiding message and salt seed
   - charge both uploads and preparations, selected response downloads and release before returning; preflight all device buffers including concurrent holds under the A1 budget
   - verify the ordinary stories42M T32 proof with the pinned expected model and wrong-model control; publish only aggregated timings and public evidence
+- id: E16-40x
+  epic: E16
+  title: Capture complete CPU proof bytes on 50 seeded synthetic inference models
+  lane: V
+  depends: [E16-40a]
+  rfc: [RFC-0014 §5, RFC-0013 A5 and A6]
+  skill: benchmark-runner
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40x-small-model-reference
+  acceptance:
+  - Generate 50 distinct small model artifacts and greedy requests from pinned seeds with the existing family-1 generator; use synthetic public model and proof randomness only
+  - Drive the normal balanced development-ZK proving library, verify the complete public bundle and proof with a separately built CLI under the expected model, and save byte digests for later GPU comparison
+  - Replay a case for determinism, reject a mismatched model pin, and give this CPU corpus zero GPU parity credit
