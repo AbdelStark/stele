@@ -1,0 +1,123 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "f55893928c7890b45f03417020b2bb99474746a4",
+  "controls": {
+    "failed": 0,
+    "passed": 1,
+    "total": 1
+  },
+  "device": "Intel(R) Xeon(R) Platinum 8480CL on h100-sxm-8-0",
+  "driver": "not-applicable",
+  "generated_tokens": 8,
+  "kernel_counters": {
+    "checked_positions": 9,
+    "commit_peak_rss_bytes": 36194340864,
+    "model_commitment_bytes": 638,
+    "prove_peak_rss_bytes": 88545095680,
+    "public_bytes": 243863,
+    "verify_peak_rss_bytes": 16820580352
+  },
+  "kind": "inference",
+  "model_config": {
+    "binary_sha256": "cecd3190691a40fa7aafa2397809c3aff866209b008a65bc70c30fae20f1f427",
+    "command": "stele commit-model --zk / prove-dev --zk / verify-dev --expect-model",
+    "controls": {
+      "pin": "model differs from --expect-model"
+    },
+    "cpu_affinity": [
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      174,
+      175,
+      176,
+      177,
+      178,
+      179,
+      180,
+      181
+    ],
+    "host_context": "Paired conventional CLI CPU and CUDA runs, 16 pinned CPU threads. Three per backend at distinct indices of one fresh model commitment. Every proof independently verified and changed model rejected.",
+    "index": 5,
+    "job": 6926,
+    "mode": "cpu",
+    "model": {
+      "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+      "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
+      "fidelity": "agents/reviews/e16-11-stories42m/fidelity.json",
+      "model_sha256": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+      "name": "llama2.c stories42M (MIT), converted by research/cqis-model-contract/stories42m.py",
+      "preparation_sha256": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+      "scales_sha256": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8",
+      "shape": {
+        "context": 1024,
+        "d": 512,
+        "head_width": 64,
+        "heads": 8,
+        "hidden": 1376,
+        "kv_heads": 8,
+        "layers": 8,
+        "vocabulary": 32000
+      },
+      "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
+    },
+    "profile_byte": 4,
+    "proof_index": 5,
+    "proof_sha256": "a30282692a9e3bec05a9d4e13bdbd15923692c85ffbabf00615fccb17b90ce95",
+    "proofs": 8,
+    "public_receipt_sha256": {
+      "pin.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pin.out": "64bd2e209d2a635ee81e9a51d1f98ea4d19b3cdbb19d0fad48361ca4a6ee458e",
+      "pin.time": "f85b36c11fd808a473d71a9ad9ebd11736c743952d52615c95378db6d55882f8",
+      "prove.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prove.out": "e091c8d1023350c8c0cadc3e9888bcf332700fc2dad0ac3f0c4c31c3323df8fd",
+      "prove.time": "5e4f5cf5ec494c07d313e38b1fc95f020aff36adade51b1c0a954758b5373504",
+      "result.json": "d99eff6dbbb09ef3fc8a7ceaee170ef80f3df6493b6b32d40eb13c21097b487c",
+      "verify.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verify.out": "6459ab8e24da70033e82ecb838b74f45be04a762ac024dec5084d517b87e2ef5",
+      "verify.time": "d4d400b61f6fc569b86ead87141af2e5d4e270f402db93043146e494b40917c8"
+    },
+    "public_sha256": "1f509b5ccfd20d8fb26a801cceb3b5c0771170a114db722c75029fbf68a6ab03",
+    "raw_ledger_sha256": "f53c25cc879d5cd4ce8a9fdfce83d8e383da6fcdb3f275f7a002b87e2d91d149",
+    "source": "f55893928c7890b45f03417020b2bb99474746a4",
+    "source_parents": [
+      "50d6cf49b8d5824efcfe978f86766ad336652eaf",
+      "02afacd991a501f5908432f32f9a50450a9b0b40"
+    ],
+    "source_tree": "b59d69e2942b18a7569feabc648603c2703cb645",
+    "statement": {
+      "T": "32",
+      "checked": "23..32",
+      "cqis_id": "551b6f3e0a5518bf66dabd6c31dc9bbdf603684013f99322e7bdd78178ef3b14",
+      "model": "22ec47efa2647f9f3761754b3362e89d96f64257a8da72ee0f38deec8664415c",
+      "next": "2654",
+      "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,29892"
+    },
+    "threads": 16,
+    "verifier_sha256": "b16646342de292f1d4733b9ccb80cff4d857ea550cb522581453249a1feb77dc"
+  },
+  "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile byte 4 (balanced policy-2 hiding sources, RFC-0013 A8; RFC-0026 A9), development tier; zero knowledge is conditional and computational (seed-derived masks). The weights and the 1-D records (RFC-0013 A7) are committed once by commit-model as one published commitment for P = 8 proofs (A6), recorded as stage model_commitment_once and not part of the prove time. Prover time is the prove-dev --zk process wall time of proof index 5: Artifact decode, executor capture, plain check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; another proof against the same commitment also verifies. The control is verify-dev of a proof pinned to another model digest. Repeats, if any, are in model_config.host_context. Soundness ledger (verify-dev, E12-26): eps_interactive <= 731241032/p^4; worst round LU+ZD check 5, 2^-95.4, grinding 0 bits. CPU only, no GPU. Peak RSS is the GNU time -v maximum resident set size. Not a cost-model fit input.",
+  "plan_digest": "6de1b0930ff148855c524a08c666673b1b925db48ad985990cfcd8dc673269c5",
+  "profile": "development",
+  "prompt_tokens": 24,
+  "proof_size_bytes": 21411006,
+  "prover_time_ns": 469250000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "model_commitment_once": 53660000000,
+    "prove_dev_wall": 469250000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 58600000000
+  },
+  "witness_recompute_ns": 0,
+  "workload": "dev/stories42m-t32"
+}
