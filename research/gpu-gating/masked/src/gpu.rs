@@ -615,6 +615,20 @@ impl DeviceMasked<'_> {
             .map(|f| Ok((read(&f.x)?, f.r.as_ref().map_or(Ok(Vec::new()), read)?)))
             .collect()
     }
+
+    /// Download only the singleton for each input after the final fold.
+    pub fn final_values(&self) -> Result<Vec<K>, Error> {
+        if self.len != 1 {
+            return Err(Error::Shape("incomplete folds"));
+        }
+        self.factors
+            .iter()
+            .map(|factor| match &factor.x {
+                Buf::Ext(table) => element(&self.dev.stream.clone_dtoh(&table.slice(..4))?),
+                Buf::Base(table) => base(self.dev.stream.clone_dtoh(&table.slice(..1))?[0]),
+            })
+            .collect()
+    }
 }
 
 fn fold_one(

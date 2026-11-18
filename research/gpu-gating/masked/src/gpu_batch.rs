@@ -35,8 +35,19 @@ pub fn prepare<'a>(
     claims: &[Claim<K>],
     gammas: &[K],
 ) -> Result<(DeviceMasked<'a>, K, Timing), Error> {
+    prepare_message(dev, source.source(), source.message(), claims, gammas)
+}
+
+/// The same preparation from the source descriptor and its original message.
+pub fn prepare_message<'a>(
+    dev: &'a Device,
+    source: &stele_reductions::stele_pcs::Source<K>,
+    message: &[crate::M31],
+    claims: &[Claim<K>],
+    gammas: &[K],
+) -> Result<(DeviceMasked<'a>, K, Timing), Error> {
     let start = Instant::now();
-    let p = Prepared::new(source.source(), source.message(), claims, gammas).ok_or(Error::Value)?;
+    let p = Prepared::new(source, message, claims, gammas).ok_or(Error::Value)?;
     let stage = start.elapsed();
     let (summand, mut timing) = build(dev, &p)?;
     timing.stage = stage;
