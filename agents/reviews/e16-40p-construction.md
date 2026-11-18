@@ -1,0 +1,75 @@
+# E16-40p borrowed GKR construction review
+
+Development research, lane V. Reviewed diff:
+`4dbbfd474ba692345e8213c735e401709586ad5c...47e5c70ac8fd580fc826136bda613c77c9711345`.
+Task claim `ca1e2d5e`, tests-first commit `dde025aa`, implementation `47e5c70a`.
+The initial test failed because the construction types and method did not exist.
+
+## Spec — owning lane P
+
+Reviewer `gkr_construction_spec_review`: PASS, no blocking findings or scope creep;
+owning lane P approves this interface.
+
+Construction borrows production columns, layers, selectors, table rows and
+challenge vectors. Allocations contain descriptors, terms or small mask blocks;
+no full factor, selector, tuple, owner or equality arrays are materialized.
+Comparison with `lookup::factors` and `combined` confirms factor order, equality
+placement, selector halves, mask coordinates, shifts, table padding and degree.
+Compact terms come directly from `compact_terms`.
+
+Tests cover heterogeneous members, multiple tuple coordinates, permutations,
+selectors, padding, first/interior/simple/compact leaves, first-and-leaf cases,
+and Balanced/Narrow lifetimes. They compare every factor and mask before folding,
+every round, folded tables and compact finals. Ordinary and observed proofs,
+encoded bytes, transcript continuation and disclosure agree. Validation, callback
+errors and wrong-model rejection remain covered. Changed finals reject with
+`ClaimMismatch`; malformed finals produce `ProofShape`; a changed construction
+scale fails the reference comparison.
+
+No challenges, bindings, commitments, virtual columns, bounds, verifier code,
+protocol behavior or ledger formulas change. Observation follows existing public
+aborts and final checks. Private witness references remain callback-scoped; no
+logging or inventory path is added. RFC-0014 A1's distinction between host
+preparation and device-memory evidence is respected. No performance claim or
+device consumer appears, consistent with Workflow 12.
+
+The reviewer independently ran the GKR benchmark tests without `std`: all passed.
+Full workspace, Clippy and ladder suites were outside this focused review.
+
+## Standards — lane B
+
+Reviewer `gkr_construction_standards_review`: PASS, no documented-standard
+breaches or actionable heuristic smells.
+
+Module, exports and call site remain behind off-by-default `bench`; `alloc`/`core`
+preserve the crate's `no_std` boundary. Construction exposes immutable,
+step-scoped borrows and owned descriptor/mask copies. Private witness material is
+documented; nothing is logged or added to public inventory. Callback output cannot
+supply proof values. Construction and callback errors propagate. Actual production
+helpers supply ordinary and compact terms.
+
+Tests compare factors, masks, terms, rounds and compact finals, including a
+one-value near miss. Existing proof-byte, transcript, disclosure and callback-error
+checks remain. No dependency, CUDA, protocol, challenge or binding changes appear.
+Descriptor work is explicitly host preparation; no performance claim requires a
+new ledger. The E16-40o to E16-40p lane-V stack complies with Workflow 12, and no
+device consumer lands in this interface change.
+
+The adapter mirrors production factor dispatch, creating some maintenance
+duplication. Shared term builders and independent parity tests address that risk
+without expanding this change into a core refactor. This review was read-only;
+the reviewer did not repeat tests.
+
+## Validation and merge boundary
+
+Author checks passed at `47e5c70a`: reductions all-target/all-feature Clippy with
+warnings denied; focused GKR/lookup/batch tests with `bench,std`; GKR tests with
+`bench` without `std`; default `no_std` reductions/verifier check; CUDA research
+all-target Clippy; formatting and diff checks. All eight factor forms are exercised.
+The external validation logs are `stele-validation/e16-40p-*.log`.
+
+Full workspace/native/ladder and current-main/intended-merge-tree validation remain
+required in stack order. PR #401 is the one branch awaiting mandatory CI; no
+cumulative full suite was queued. The device consumer waits for this interface
+to merge. Neither review grants GPU execution, integrated-proof parity, complete
+device-memory qualification, measured acceleration or ADR-127 GO credit.
