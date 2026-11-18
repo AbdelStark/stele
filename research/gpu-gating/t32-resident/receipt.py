@@ -105,12 +105,8 @@ def summarize(log):
     if [r["id"] for r in batch_rows["batch"]] != [1265,1266,1267] or [r["rounds"] for r in batch_rows["finals"]] != [28,28,13]:
         raise ValueError("wrong ordinary T32 source or round schedule")
     report={"gkr":gkr,**batch_report}
-    packing=Path(__file__).resolve().parent.parent/"t32-stages/packing.py"
-    if packing.exists():
-        report["batch_packing"]=runpy.run_path(str(packing))["summarize"](batch_rows["batch"])
-    for field in ("runs","run_checks","host_pack_bytes","device_build_bytes"):
-        if all(field in row for row in batch_rows["batch"]):
-            report["batch_prepare"][field]=sum(row[field] for row in batch_rows["batch"])
+    # The stage parser already validates and includes the packed schedule and
+    # maxima. Per-batch host/device peaks are maxima across sequential visits.
     for kind in ("top","rebuild"):
         visits={}
         for name in ("t32_cpu_lookup","t32_selected","t32_normalize_release"):
