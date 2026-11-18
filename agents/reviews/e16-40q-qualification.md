@@ -36,8 +36,8 @@ The matching remote package and run directory are in
 `~/stele-codex/e16-40q-qualification`.
 
 The [H100 receipt](e16-40q-h100.json) records the six exact tests, binary hashes,
-resource measurements and evidence digests. Mandatory gates on current main's
-intended merge tree still precede merge.
+resource measurements and evidence digests. Both [actual evidence reviews](e16-40q-h100-review.md)
+accept the result. Mandatory gates on current main's intended merge tree still precede merge.
 
 ## Terminal auditor readiness
 

@@ -36,8 +36,10 @@ indices; checks ordinary authentication and one-word `RootMismatch`; checks
 root-only behavior and transfer accounting; and refuses absent CUDA. The existing
 1000-case complete-material device test remains required after this refactor.
 
-Local host tests, default/CUDA Clippy and device compilation are implementation
-checks. Actual H100 parity, fresh evidence review and mandatory merge gates are
-pending; neither GPU qualification nor a speedup is claimed. A later performance
-campaign must compare the same requested outputs from full-material and resident
-preparation on the same host, including cold setup, uploads, downloads and salts.
+On Lucid job 6773, all eight requested openings per source matched the CPU
+reference across 1,000 seeded cases. The existing 1,000 complete-material cases
+also passed. The [actual H100 receipt](../../agents/reviews/e16-40q-h100.json)
+records the six selected tests, their resource usage and pinned binary hashes.
+Mandatory merge gates still precede integration. A performance comparison must
+use the same requested outputs and host, including cold setup, uploads, downloads
+and salts.
