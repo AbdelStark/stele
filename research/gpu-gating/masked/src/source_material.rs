@@ -4,12 +4,34 @@ use crate::M31;
 use stele_reductions::stele_hash::mask::{MaskStream, SOURCE_SALT};
 use stele_reductions::stele_hash::merkle::Digest;
 
-pub(super) fn digest(words: &[u32]) -> Digest {
+pub(crate) fn digest(words: &[u32]) -> Digest {
     let mut out = [0; 32];
     for (bytes, word) in out.chunks_mut(4).zip(words) {
         bytes.copy_from_slice(&word.to_le_bytes());
     }
     out
+}
+
+/// RFC-0010 A9: serialize only a requested canonical column, including its salt.
+#[cfg(any(test, feature = "cuda"))]
+pub(crate) fn payload(shape: &Shape, index: u64, encoded: &[u32]) -> Option<Vec<u8>> {
+    let desc = shape.source()?.descriptor();
+    if index >= desc.count
+        || encoded.len() != shape.rows()
+        || encoded.iter().any(|x| M31::from_canonical(*x).is_none())
+    {
+        return None;
+    }
+    let width = usize::try_from(desc.width).ok()?;
+    let mut bytes = Vec::new();
+    bytes.try_reserve_exact(width).ok()?;
+    bytes.resize(width, 0);
+    MaskStream::new(&shape.seed, SOURCE_SALT, shape.id)
+        .fill_at(index.checked_mul(32)?, &mut bytes[..32]);
+    for (out, word) in bytes[32..].chunks_exact_mut(4).zip(encoded) {
+        out.copy_from_slice(&word.to_le_bytes());
+    }
+    Some(bytes)
 }
 
 /// Salted columns and every Merkle level, leaves first and root last.
@@ -120,9 +142,16 @@ mod tests {
         let words: Vec<_> = message.iter().map(|v| v.as_u32()).collect();
         let encoded = encode_rows(&words, shape.rows(), shape.log_n(), u32::from(BLOWUP));
         let reference = PreparedSource::<crate::QM31>::hiding_with(
-            shape.id, shape.ell, shape.m, BLOWUP, &message, &shape.seed,
-            &mut HashUsage::default(), Policy::Two,
-        ).unwrap();
+            shape.id,
+            shape.ell,
+            shape.m,
+            BLOWUP,
+            &message,
+            &shape.seed,
+            &mut HashUsage::default(),
+            Policy::Two,
+        )
+        .unwrap();
         let last = reference.source().descriptor().count - 1;
         for index in [last, 0, last / 2, 1, last, 0] {
             let at = index as usize * shape.rows();

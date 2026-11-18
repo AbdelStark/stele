@@ -1,12 +1,16 @@
 //! RFC-0014 §4/A1: hiding-source preparation on the device (feature `cuda`): `M'` uploaded,
 //! transposed to symbol-major, Circle-encoded in place, leaves `salt || column` and
-//! the Merkle tree hashed on the device. The E16-40b material path also retains and
-//! downloads the encoding and every node for complete response comparison.
+//! the Merkle tree hashed on the device. Retained material supports either complete
+//! download (E16-40b) or selected response downloads (E16-40q).
 use crate::gpu::{Device, Error};
 use crate::source::{prefix, salt_block, twiddles, Material, Shape, BLOWUP};
 use crate::{Field, M31};
 use cudarc::driver::{CudaSlice, LaunchConfig, PushKernelArg};
 use std::time::{Duration, Instant};
+
+#[path = "gpu_source_resident.rs"]
+mod resident;
+pub use resident::Resident;
 
 /// Wall times of one device preparation.
 pub struct Timing {
@@ -16,7 +20,7 @@ pub struct Timing {
     pub encode: Duration,
     /// Leaf digests and the tree.
     pub merkle: Duration,
-    /// Complete encoded symbols and retained non-root nodes to the host.
+    /// Encoded symbols and non-root nodes downloaded to the host.
     pub download: Duration,
     /// Canonical payload assembly, including CPU salt generation.
     pub assemble: Duration,
@@ -41,16 +45,27 @@ pub fn prepare_material(
     shape: &Shape,
     message: &[M31],
 ) -> Result<(Material, Timing), Error> {
-    let (_, time, material) = run(dev, shape, message, true)?;
-    Ok((material.ok_or(Error::Value)?, time))
+    let (resident, mut time) = prepare_resident(dev, shape, message)?;
+    let material = resident.material(&mut time)?;
+    Ok((material, time))
 }
 
-fn run(
-    dev: &Device,
-    shape: &Shape,
+/// Keep encoding and every Merkle level on the device; download only the root.
+pub fn prepare_resident<'a>(
+    dev: &'a Device,
+    shape: &'a Shape,
+    message: &[M31],
+) -> Result<(Resident<'a>, Timing), Error> {
+    let (_, time, resident) = run(dev, shape, message, true)?;
+    Ok((resident.ok_or(Error::Value)?, time))
+}
+
+fn run<'a>(
+    dev: &'a Device,
+    shape: &'a Shape,
     message: &[M31],
     keep: bool,
-) -> Result<([u8; 32], Timing, Option<Material>), Error> {
+) -> Result<([u8; 32], Timing, Option<Resident<'a>>), Error> {
     let source = shape.source().ok_or(Error::Value)?;
     let desc = source.descriptor();
     let (rows, log_n) = (shape.rows(), shape.log_n());
@@ -237,27 +252,15 @@ fn run(
     for (o, w) in root.chunks_mut(4).zip(&root_words) {
         o.copy_from_slice(&w.to_le_bytes());
     }
-    let mut download = Duration::ZERO;
-    let mut assemble = Duration::ZERO;
     let material = if keep {
-        let start = Instant::now();
-        let encoded = dev.stream().clone_dtoh(&x)?;
-        let mut nodes = Vec::new();
-        nodes
-            .try_reserve_exact(node_words)
-            .map_err(|_| Error::Value)?;
-        for level in &retained {
-            nodes.extend(dev.stream().clone_dtoh(level)?);
-        }
-        nodes.extend(root_words);
-        download = start.elapsed();
-        let start = Instant::now();
-        let material = Material::new(shape, &encoded, nodes).ok_or(Error::Value)?;
-        assemble = start.elapsed();
-        if material.root() != root {
-            return Err(Error::Value);
-        }
-        Some(material)
+        retained.push(digests);
+        Some(Resident {
+            dev,
+            shape,
+            encoded: x,
+            levels: retained,
+            root,
+        })
     } else {
         None
     };
@@ -267,10 +270,10 @@ fn run(
             upload,
             encode,
             merkle,
-            download,
-            assemble,
+            download: Duration::ZERO,
+            assemble: Duration::ZERO,
             upload_bytes,
-            download_bytes: if keep { encoded_bytes + node_bytes } else { 32 },
+            download_bytes: 32,
             retained_bytes: if keep { encoded_bytes + node_bytes } else { 0 },
             buffer_peak_bytes,
         },
