@@ -5529,3 +5529,20 @@ tasks:
   - report preparation and response transfer bytes, retained device buffers, download and host salt assembly work; do not equate tracked buffers with the complete RFC-0014 A1 peak
   - retire the source response path's dependency on complete host material in the research harness; no new kernel, dependency, core source interface, certificate, proof, binding or protocol change, and no speedup or ADR-127 GO claim
   - obtain owning lane E and independent standards review, recorded actual H100 parity and mandatory gates in stack order; this independent lane-V successor to E16-40p uses only merged source interfaces and does not consume its GKR construction interface
+
+- id: E16-40r
+  epic: E16
+  title: Construct genuine GKR factors from borrowed inputs on H100
+  lane: V
+  depends: [E16-40p]
+  rfc: [RFC-0008 A7, RFC-0014 §1 and §5 and A1]
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40r-gkr-device-construction
+  acceptance:
+  - build the GKR factor and mask tables on device from the production construction descriptors; retain production terms, degree, ordering, original columns and child-layer semantics without uploading CPU-expanded output tables
+  - validate every source and destination bound before kernel access; compare initial values, each round and fold, compact finals and routing to genuine CPU steps across 1000 seeded statements on H100; reject malformed geometry and absent CUDA
+  - record uploaded descriptor and input bytes separately from resident state; retain the ordinary CPU proof verifier, all bindings and the core backend decision under ADR-127
+  - obtain independent review and the native and parity gates; large-model whole-stage performance and complete pipeline memory require separate measurements
