@@ -833,7 +833,7 @@ def field_sources(root):
     adapter_closed = (interface == [('pub', 'struct', 'BatchExecution'), ('pub', 'fn', 'new'),
                                     ('pub', 'fn', 'with_gkr'), ('pub', 'fn', 'with_relations'),
                                     ('pub(super)', 'fn', 'begin_sources'), ('pub(super)', 'fn', 'relations'), ('pub(super)', 'fn', 'gkr'),
-                                    ('pub(super)', 'fn', 'prove'), ('pub', 'fn', 'with_lookup'), ('pub', 'fn', 'with_sources'),
+                                    ('pub(super)', 'fn', 'prove'), ('pub', 'fn', 'with_shared'), ('pub', 'fn', 'with_lookup'), ('pub', 'fn', 'with_sources'),
                                     ('pub(super)', 'fn', 'prove_original')]
                       and re.findall(r'\bmasked\s*::\s*(prove\w*)\s*\(', body) == ['prove'])
     # A5 delegates only field material. The reductions adapter checks the rebuilt root,
@@ -841,18 +841,21 @@ def field_sources(root):
     path = crate / 'src/zk_source_backend.rs'
     source_adapter = re.sub(r'//[^\n]*', '', path.read_text()) if path.is_file() else ''
     source_api = re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', source_adapter)
+    source_visibility = {
+        'Factory', 'Sources', 'Selected', 'Ready', 'prepare', 'source', 'open_mask',
+    }
     adapter_closed = (adapter_closed and source_api == [('pub(super)', 'use', 'lookup')] + [
-        ('pub(super)', kind, name) for kind, name in (
-            ('trait', 'Factory'), ('trait', 'Sources'), ('struct', 'Selected'), ('type', 'Session'),
+        ('pub(in crate::zk)' if name in source_visibility else 'pub(super)', kind, name)
+        for kind, name in (('trait', 'Factory'), ('trait', 'Sources'), ('struct', 'Selected'), ('type', 'Session'),
             ('enum', 'Ready'), ('type', 'Certified'), ('fn', 'prepare'), ('fn', 'source'), ('fn', 'face'),
-            ('fn', 'finish'), ('fn', 'open'), ('fn', 'host_certificates'))]
+            ('fn', 'finish'), ('fn', 'open_mask'), ('fn', 'open'), ('fn', 'host_certificates'))]
         and 'if root != entry.root {' in source_adapter and 'let certificate = certify(&p);' in source_adapter)
     path = crate / 'src/zk_lookup_backend.rs'
     tree_adapter = re.sub(r'//[^\n]*', '', path.read_text()) if path.is_file() else ''
     tree_api = re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', tree_adapter)
     adapter_closed = (adapter_closed and tree_api == [
         ('pub(in crate::zk::claims)', 'trait', 'TreeFactory'),
-        ('pub(in crate::zk::claims)', 'trait', 'Trees')]
+        ('pub(in crate::zk)', 'trait', 'Trees')]
         and tree_adapter.count('prove_fields::<_, B>(') == 1
         and not re.search(r'\bmasked\s*::\s*prove',tree_adapter))
     gkr_adapter = crate / 'src/zk_gkr_backend.rs'

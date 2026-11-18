@@ -51,6 +51,35 @@ class DeviceLedger(unittest.TestCase):
             with self.subTest(before=before), self.assertRaises(ValueError):
                 device_counters(capture.replace(before, after), self.verified, 4, '580')
 
+    def test_reconciles_standalone_source_and_shared_batches(self):
+        u32 = lambda n: n.to_bytes(4, "little")
+        blob = lambda b: u32(len(b)) + b
+        def source(i, log_rows):
+            r, c = 1 << log_rows, 1024
+            return (b'stele/v0.1/field-source' + bytes([3, 4]) + i.to_bytes(8, 'little')
+                    + bytes([log_rows]) + b'stele/circle-m31/v1' + bytes([10, 2])
+                    + r.to_bytes(8, 'little') + c.to_bytes(8, 'little') + bytes([0, 2]) + bytes(32))
+        def dense(n):
+            return bytes(16) + u32(n) + (u32(3) + bytes(48)) * n + u32(2) + bytes(48)
+        original = source(0, 4)
+        standalone = source(1, 4)
+        proof = (b'stele-dev-zk-v1' + bytes(64) + u32(1) + blob(original) + u32(1) + blob(b'c')
+                 + u32(0) * 3 + blob(standalone) + blob(b'c') + dense(13) + blob(b'o') + blob(b'o'))
+        report = '\n'.join(f'PCS\t{label}\trow exponent 4, policy Two, q_c/q_o 222/92, k_t 0, k_q 16, 1 opening(s);'
+                           for label in ['shared mask source', 'shared batch mask source'])
+        expected = source_work(proof, report, standalone=True)
+        self.assertEqual((expected['originals'], expected['original_h2d_bytes'], expected['visits'], expected['responses']),
+                         (2, 2*16*1024*4, 4, 628))
+        good = dict(expected, observed_peak_bytes=300)
+        self.assertEqual(check_source_work(good, proof, report, 400, standalone=True), expected)
+        for key in ('original_h2d_bytes', 'visits', 'hashes', 'responses'):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                check_source_work(dict(good, **{key:good[key]-1}), proof, report, 400, standalone=True)
+        for changed in [proof[:-1], proof+b'x', proof.replace(standalone, original),
+                        proof.replace(dense(13), dense(12)), proof.replace(standalone, source(1, 5))]:
+            with self.assertRaises(ValueError):
+                source_work(changed, report, standalone=True)
+
     def test_requires_each_original_visit_and_selected_response(self):
         # One original plus the shared source. The verifier derives the query schedule.
         def context(source_id):

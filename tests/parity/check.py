@@ -13,7 +13,7 @@ import tempfile
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(ROOT / "bench"))
-from hiding_source_counts import check_source_work
+from hiding_source_counts import proof_inventory, check_source_work
 from lookup_tree_counts import FIELDS as LOOKUP_FIELDS, check_lookup_work
 
 REFERENCE_SHA256 = "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd"
@@ -52,61 +52,6 @@ def hiding_sources(work):
     print("cuda_hiding_source_matches=1000 selected_columns=4000", flush=True)
 
 
-def proof_schedule(proof):
-    """Read only authenticated byte-4 round lengths (RFC-0026 A9, QM31 wire width 16)."""
-    magic = b"stele-dev-zk-v1"
-    if not proof.startswith(magic):
-        raise ValueError("wrong proof header")
-    cursor = len(magic) + 64  # CQIS id and statement digest
-
-    def take(n):
-        nonlocal cursor
-        start = cursor
-        cursor += n
-        if cursor > len(proof):
-            raise ValueError("truncated proof inventory")
-        return start
-
-    def count():
-        start = take(4)
-        return int.from_bytes(proof[start:start + 4], "little")
-
-    def sumcheck():
-        take(16)  # mask sum
-        n = count()
-        values = 0
-        for _ in range(n):
-            width = count()
-            take(16 * width)
-            values += width
-        finals = count()
-        take(16 * finals + 16)  # original finals and mask final
-        return n, values, finals
-
-    for _ in range(2):  # original sources and certificates
-        for _ in range(count()):
-            take(count())
-    relations = count()
-    rel_rounds = rel_nodes = rel_finals = 0
-    for _ in range(relations):
-        n, values, finals = sumcheck()
-        rel_rounds += n
-        rel_nodes += values
-        rel_finals += finals
-    steps = count()
-    rounds = evaluations = 0
-    for _ in range(steps):
-        n, width, _ = sumcheck()
-        rounds += n
-        evaluations += width
-    batches = count()
-    batch_rounds = 0
-    for _ in range(batches):
-        batch_rounds += sumcheck()[0]
-        take(count())  # source opening
-    return (relations, rel_rounds, rel_nodes, rel_finals), (steps, rounds, evaluations), (batches, batch_rounds)
-
-
 def relation_counts(text, schedule):
     steps, planned, rounds, folds, finals, upload, download, values, masks, budget, peak = map(int, text.split())
     count, nrounds, nodes, fields = schedule
@@ -129,7 +74,7 @@ def gkr_counts(text, expected):
 
 def hardware_counts(text, batches, source_originals=None):
     originals, selected, planned, rounds, folds, finals, downloaded = map(int, text.split())
-    if (selected != batches - 1 or originals != (selected if source_originals is None else source_originals) or finals != selected or selected <= 0
+    if (selected != batches or originals != (selected if source_originals is None else source_originals) or finals != selected or selected <= 0
             or planned != rounds or planned != folds or planned <= 0 or downloaded != 48 * rounds + 32 * finals):
         raise ValueError("device calls disagree with the authenticated ordinary batches")
     return selected, rounds
@@ -180,13 +125,19 @@ def rejection_controls(work):
             raise ValueError("changed CUDA round did not reach the checked masked prover")
         print(expected, flush=True)
 
-    for stage in ("source-root", "source-sibling", "lookup-denominator"):
+    for stage in ("source-root", "source-sibling", "lookup-denominator", "standalone-root", "standalone-sibling"):
         result = run([work / "reject-round", case, commitment, secret, stage], capture_output=True, text=True)
         cause = "DenominatorZero" if stage == "lookup-denominator" else "RootMismatch"
         expected = f"rejected_cuda_{stage}={cause} injected=1 reservation_restored=1"
         if result.stdout.splitlines()[-1:] != [expected] or secret.read_bytes() != before:
             raise ValueError("changed CUDA source material did not reject and roll back")
         print(expected, flush=True)
+
+    result = run([work / "reject-round", case, commitment, secret, "shared"], capture_output=True, text=True)
+    marker = "rejected_cuda_shared=RoundSumMismatch target_rounds=1 target_folds=0 reservation_restored=1"
+    if result.stdout.splitlines()[-1:] != [marker] or secret.read_bytes() != before:
+        raise ValueError("changed shared round or reservation rollback differed")
+    print(marker, flush=True)
 
 
 def compare(work, pins):
@@ -208,25 +159,25 @@ def compare(work, pins):
         expected, report = verify(work / "verifier", cpu, identity, i == 0)
         if verify(work / "verifier", gpu, identity, i == 0) != (expected, report):
             raise ValueError("different verifier inventories")
-        rel_schedule, (steps, gkr_rounds, evaluations), (selected, batch_rounds) = proof_schedule((cpu / "proof.bin").read_bytes())
-        if expected != (rel_schedule[0], steps, selected + 1):
+        rel_schedule, (steps, gkr_rounds, evaluations), (selected, batch_rounds), _, shared_rounds = proof_inventory((cpu / "proof.bin").read_bytes())
+        if expected != (rel_schedule[0], steps, selected):
             raise ValueError("decoded schedule and independent verifier disagree")
         dense, gkr, relations, source, lookup = (gpu / "device.txt").read_text().splitlines()
-        keys = ("originals", "visits", "responses", "hashes", "h2d_bytes", "d2h_bytes",
+        keys = ("originals", "original_h2d_bytes", "visits", "responses", "hashes", "h2d_bytes", "d2h_bytes",
                 "host_salt_bytes", "observed_peak_bytes", "total_bytes")
         fields = dict(zip(keys, map(int, source.split()), strict=True))
         lookup_fields = dict(zip(LOOKUP_FIELDS, map(int, lookup.split()), strict=True))
         lookup_counts = check_lookup_work(lookup_fields, report, fields["total_bytes"] * 2 // 5)
         if int(gkr.split()[7]) != 0:
             raise ValueError("host child layers were uploaded during retained lookup execution")
-        work_counts = check_source_work(fields, (cpu / "proof.bin").read_bytes(), report, fields["total_bytes"] * 2 // 5)
+        work_counts = check_source_work(fields, (cpu / "proof.bin").read_bytes(), report, fields["total_bytes"] * 2 // 5, standalone=True)
         batches, rounds = hardware_counts(dense, expected[2], work_counts["originals"])
         if rounds != batch_rounds:
             raise ValueError("device batch rounds differ from the reference proof")
         gkr_counts(gkr, (steps, gkr_rounds, evaluations))
         nrel, rel_rounds = relation_counts(relations, rel_schedule)
         print(json.dumps(dict(case=i, model=identity, proof_sha256=row["proof_sha256"],
-                              selected_batches=batches, device_rounds=rounds, gkr_steps=steps, gkr_rounds=gkr_rounds, relations=nrel, relation_rounds=rel_rounds, source_work=work_counts, lookup_work=lookup_counts)), flush=True)
+                              selected_batches=batches, device_rounds=rounds, shared_rounds=shared_rounds, original_h2d_bytes=fields["original_h2d_bytes"], gkr_steps=steps, gkr_rounds=gkr_rounds, relations=nrel, relation_rounds=rel_rounds, source_work=work_counts, lookup_work=lookup_counts)), flush=True)
         if i != "replay":
             total_visits += work_counts["visits"]
             total_responses += work_counts["responses"]

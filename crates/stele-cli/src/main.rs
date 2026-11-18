@@ -416,7 +416,7 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
             statement,
             length,
             window,
-            zk::BatchExecution::with_lookup(&session),
+            zk::BatchExecution::with_shared(&session),
         );
         if result.is_ok() {
             let c = session.counts();
@@ -432,8 +432,8 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
                 c.relation_steps,c.relation_expected_rounds,c.relation_rounds,c.relation_folds,c.relation_finals,
                 c.relation_uploaded_bytes,c.relation_downloaded_bytes,c.relation_value_bytes,c.relation_mask_bytes,
                 c.relation_planned_peak_bytes,c.relation_observed_peak_bytes);
-            eprintln!("cuda_sources originals={} visits={} responses={} hashes={} h2d_bytes={} d2h_bytes={} host_salt_bytes={} observed_peak_bytes={}",
-                c.originals, c.source_visits, c.source_responses, c.source_hashes, c.source_uploaded_bytes,
+            eprintln!("cuda_sources originals={} original_h2d_bytes={} visits={} responses={} hashes={} h2d_bytes={} d2h_bytes={} host_salt_bytes={} observed_peak_bytes={}",
+                c.originals, c.original_uploaded_bytes, c.source_visits, c.source_responses, c.source_hashes, c.source_uploaded_bytes,
                 c.source_downloaded_bytes, 32 * c.source_responses, c.source_observed_peak_bytes);
             eprintln!("cuda_lookup tops={} rebuilds={} child_views={} child_released={} h2d_bytes={} d2h_bytes={} planned_peak_bytes={} observed_peak_bytes={}",
                 c.lookup_tops,c.lookup_rebuilds,c.lookup_child_views,c.lookup_child_released,
