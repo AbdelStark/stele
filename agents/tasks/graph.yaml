@@ -4510,7 +4510,7 @@ tasks:
   rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
   skill: cuda-kernel-author
   crate: stele-kernels
-  status: in_progress
+  status: done
   agent: codex-integration
   branch: task/E20-11-dense-field-backend
   acceptance:
