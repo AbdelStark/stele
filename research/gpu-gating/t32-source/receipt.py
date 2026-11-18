@@ -41,11 +41,16 @@ def summarize(log):
             raise ValueError("unexpected source geometry")
         count = 4 * cols
         depth = count.bit_length() - 1
+        # Every inverse/forward level, the eight-word key, the salt block and two prefixes.
+        metadata = 4 * ((cols - 1) + (count - 1) + 8 + 16) + 2 * 43
+        message = rows * cols * 4
+        encoded = count * rows * 4
+        nodes = (2 * count - 1) * 32
         wire = queries * (32 + rows * 4 + depth * 32)
         if (queries != (92 if row["opening"] else 222) or row["response_bytes"] != wire
-                or row["d2h"] != 32 + wire - queries * 32 or row["h2d"] <= rows * cols * 4):
+                or row["d2h"] != 32 + wire - queries * 32 or row["h2d"] != metadata + message):
             raise ValueError("source transfer does not cover actual queries")
-        if not (row["retained"] == count * rows * 4 + (2 * count - 1) * 32
+        if not (row["retained"] == encoded + nodes and row["peak"] == metadata + encoded + max(message, nodes)
                 and row["retained"] <= row["peak"] <= row["device_total"] * 2 // 5
                 and 0 < row["used_high"] <= row["reserved_high"]
                 and row["reserved_high"] + row["outside_pool"] <= row["device_total"] * 2 // 5):
