@@ -29,7 +29,7 @@ def install(root):
         raise ValueError("original batch prefix missing")
     body = body.replace(anchor, anchor + "\n    host_sample::batch(id, prepared, claims, &gammas);")
     with claims.open("a") as out:
-        out.write('\n#[path="host_sample.rs"]\npub mod host_sample;\nfn sample_batch<' + body + "\n}\n")
+        out.write('\n#[path="host_sample.rs"]\npub mod host_sample;\n#[allow(clippy::ptr_arg, reason="Any must borrow the original sized Vec without copying private weights")]\nfn sample_batch<' + body + "\n}\n")
     replace(claims, "let (batch, point) = prove_batch(\n            plan.masks[index].0,",
             "let (batch, point) = sample_batch(\n            plan.masks[index].0,")
     shutil.copyfile(here / "observer.rs", claims.parent / "host_sample.rs")

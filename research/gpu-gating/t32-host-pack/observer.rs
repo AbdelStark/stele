@@ -13,8 +13,8 @@ pub static OBSERVER: OnceLock<Sample> = OnceLock::new();
 pub(super) fn batch<K: ChallengeField>(
     id: u64,
     source: &PreparedSource<'_, K>,
-    claims: &Vec<Claim<K>>,
-    gammas: &Vec<K>,
+    claims: &dyn Any,
+    gammas: &dyn Any,
 ) {
     let start = Instant::now();
     let descriptor = source.source().bytes();
@@ -24,10 +24,10 @@ pub(super) fn batch<K: ChallengeField>(
         id,
         &descriptor,
         source.message(),
-        (claims as &dyn Any)
+        claims
             .downcast_ref::<Vec<Claim<QM31>>>()
             .expect("QM31 claims"),
-        (gammas as &dyn Any)
+        gammas
             .downcast_ref::<Vec<QM31>>()
             .expect("QM31 coefficients"),
     );
