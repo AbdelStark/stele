@@ -2408,3 +2408,16 @@ child factors. A failed provider or denominator check aborts under the
 existing proof-index transaction. Qualification reruns byte-identical proofs,
 ordinary independent verification, wrong-model rejection and backend-error
 rollback. All development profile, parser and verifier rules remain unchanged.
+
+### A24 — Select the balanced shared batch and standalone mask source
+
+Status: Proposed (development tier under RFC-0027 §2). Task E20-21.
+
+An explicitly selected balanced prover can perform RFC-0014 A7 after the
+ordered relation, lookup and ordinary-batch work. Its additional source is
+the same A4 two-block mask-polynomial source already encoded in the shared
+batch proof. Keep byte 4, plan authority, all expected-source checks and the
+model reservation transaction. Every selected proof reports actual source
+visits and batch operations, including the final shared batch. E20-22 compares
+complete pinned CPU/device proofs and the ordinary independently verified
+T32 run with these counts enabled.

@@ -274,3 +274,17 @@ provenance, public geometry, actual draws and exactly which four child
 projections each nonleaf reads. A backend implementation performs arithmetic
 and owns its buffers. The caller handles the checked denominator and every
 transcript and verifier obligation. The existing crate edges suffice.
+
+### A15 — Reuse the field interfaces for the final shared batch
+
+Status: Proposed (development tier under RFC-0027 §2). Task E20-21.
+
+The checked reduction may compose A10's degree-two dense operations with
+A13's source operations for RFC-0014 A7. Its shared weight and data face use
+the existing shared original in the proof-local registry. The standalone
+mask source is imported once with its own ID and the original A4 two-block
+message. The reduction passes the mask-polynomial purpose to the A16 host
+constructor and derives the two openings, their order and all functionals.
+This composition uses the existing field-only crate interfaces. The scalar
+reference, default feature graph and independent verifier remain as specified
+in A10–A14.
