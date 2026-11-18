@@ -1,0 +1,146 @@
+{
+  "result": {
+    "status": "passed",
+    "source": "6034113f67ace10258b48c90e973db291a0a4d99",
+    "pins_sha256": "f441c73f4790ff0eb3e818e79b2a64e68fa961d594347b0af71959d9b2564a9d",
+    "completed": [
+      "host",
+      "invalid",
+      "material",
+      "threads",
+      "device",
+      "complete"
+    ],
+    "binary_sha256": {
+      "source_resident": "bfb5dac5d185bf6a35f64ebac1ca6edf2b1e7b454250a079c0d62de7051dcf87",
+      "source_material": "6931b90a5fef7175c727cad85cc4c3e93b165574ac1488fe16359bafb1cb41bc",
+      "stele_masked_gpu_bench": "f1877da10e6fa478f49b165bb93fe63f02b36838607a7ba9945f9a84d2bcde48"
+    },
+    "resident_cases": 1000,
+    "resident_queries": 8000,
+    "complete_source_cases": 1000
+  },
+  "host": {
+    "hostname": "h100-nvl-1-1-cc",
+    "job": "6773",
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "cuda_visible_devices": "0"
+  },
+  "resources": {
+    "gpu": {
+      "wall_ns": 40000000,
+      "max_rss_bytes": 21331968
+    },
+    "extract": {
+      "wall_ns": 5470000000,
+      "max_rss_bytes": 2981888
+    },
+    "toolchain": {
+      "wall_ns": 60000000,
+      "max_rss_bytes": 28442624
+    },
+    "fetch": {
+      "wall_ns": 490000000,
+      "max_rss_bytes": 28442624
+    },
+    "build": {
+      "wall_ns": 53210000000,
+      "max_rss_bytes": 606322688
+    },
+    "host": {
+      "wall_ns": 10000000,
+      "max_rss_bytes": 3670016
+    },
+    "invalid": {
+      "wall_ns": 0,
+      "max_rss_bytes": 2293760
+    },
+    "material": {
+      "wall_ns": 180000000,
+      "max_rss_bytes": 43794432
+    },
+    "threads": {
+      "wall_ns": 1780000000,
+      "max_rss_bytes": 93442048
+    },
+    "device": {
+      "wall_ns": 16550000000,
+      "max_rss_bytes": 197103616
+    },
+    "complete": {
+      "wall_ns": 16240000000,
+      "max_rss_bytes": 210395136
+    }
+  },
+  "files": {
+    "host.time": "10d9f4d7cfa7e5b62e213cc8985a033a4636219ca8f321751cfd08084d550b72",
+    "extract.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fetch.json": "1a2f5836226180eb1f92d6f9cf191bae9b34520cca629ea323ae22734a014fe5",
+    "machine.json": "d1e9619399334e53fe24db9f89741b22139bf0376bc787df900c41d15964059e",
+    "device.json": "974e75d01646e08dd4a878f53701babc5e0850a89f1c9e88d63b8566c7116b30",
+    "host.out": "e833afecd881036e789388e2efb75b2a3ea4aba5ad5dac0933d3818fdd14d55f",
+    "device.out": "6f9525b9a25abbc123628dd79e1a79f3851b0fea0e953acf4aac9f49ace6ca52",
+    "gpu.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "toolchain.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result.json": "62368040143a49e7669ce6868af0cee6bb37c0f18a7d5dcabfe9e5b0f33d688b",
+    "toolchain.out": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3",
+    "extract.json": "d231f1d8d6cde690b847ef8ffd2160423c53f6e3bf9e87f87e248de2c1177dbf",
+    "extract.time": "85b7a1e05afa28ab0fb0925c7c585a5508360a3b51c25d95ec29c58a7bdc6512",
+    "device.err": "6eaa5f5fcbe2e26e8b48eb395cb9e5180257329074056815b0c0768c247e1222",
+    "build.out": "195c3eb30b008936be2f01ce1d4cbe2ab0e24d0986c70d0c153976bf17905027",
+    "gpu.out": "d34ee2cdb823d5397408734aef8b15ea8104016a97db8986818f6c792b3055ca",
+    "fetch.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "device.time": "69ec7c3354e00b89fa1cf8b1c5bca93bf9c7f3c1630fe72c8c1bd4bc1a9088f0",
+    "material.out": "a6c991dabb4ef1675d519aab745021ed913cb01f0d04913a8a2b05b66e2566aa",
+    "gpu.json": "88d95e8df433eeca00d4cb0cedf7491ce32da7991eb4dec840ff3b882ab1f246",
+    "host.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu.time": "d27bea3965101a51da17c2c6e539f5374f9c9371e6e348a70e76027854ea764f",
+    "complete.out": "211e7150107e16c49dce2ddfc24c097f4a17f496e6bd8a0514ac10d3e384ef8f",
+    "material.time": "5a709d76f8a1fbff925f73a4c2adef1c0421ee8fbf83908f2aebe96a2181a3e3",
+    "toolchain.time": "ecf23e1cf3117cb512cd5eb97a83ddf1ba031db55a078fdc4cc34e36f9906848",
+    "threads.json": "6a930dc0aa075d2df453e4f073df2906d608f6e9d84cead81bc95b08c3f44274",
+    "host.json": "4772a2f4129b98fcfe3d803247d91dd2302e26aa6f773617b3e25347347adccc",
+    "extract.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "material.json": "2aa243d41ae9a76b51f62a818591641abd0fee83a8361986db19eeb33113cb48",
+    "threads.out": "33511dcc408126599ea2729ce6473cf88ea66a021380407305b5062455eb88aa",
+    "complete.json": "964c2c508f79635a8215211ae78e23485ddbdc7c07eb9d67f574a559bbf73053",
+    "complete.time": "15efbcb90f0faebf24a86a0feefd07e9fc1a3d64689379f73ff1ed3b05c2c958",
+    "fetch.time": "3872384a76aed3592522c41b1f60abcd946ad9d7a4078c3b892076ca5ce30e68",
+    "toolchain.json": "0fb841cef3f1bc4f40a180abad315645e8cee15ab474b268f4e51470629fbd38",
+    "build.err": "4d53850fc1c693317482cc281559546329fc48bcfc75043c85f3fa04bfe802b7",
+    "invalid.json": "d4e0ca6eaa334c11f678ae3d983de56396911432ab2570d0096a1935a915fb9a",
+    "invalid.time": "f06e3ec992ad44850f7d6c195ff939973376b9c57b3319ca134c795f6f209886",
+    "threads.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.json": "c451aa01f4b02c138744067f58783f51ed07163efb22d0e92118f56a04926be5",
+    "threads.time": "1137fa1f7e070bd10af4d35aa1238fd2737ef82bc827a4cdc368b803573419fe",
+    "build.time": "bc8bc14b901f91ad94e66cad26c8cb141711e61e189b3e33b86cfd1fe9c05826",
+    "invalid.out": "56d3373fda0de18f1304459a9d4c7be30b76aee295a4872d8115e666cbd74a0d",
+    "complete.err": "bb3c9ac7f160b048e4dbd146fa70d0c4049e4bb58b5aff4d50fa8b9a80827bef",
+    "material.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "invalid.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fetch.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "manifest_sha256": "5051e03547ef98f8e82a5acad380a6d220afb48d20323cb7d05de97325cf33c6",
+  "raw_archive_sha256": "4a289ee2a27ebd9c0341f9dfdc4f88a99fbe49f18d1e2ae399be60bd9b7167c2",
+  "terminal_sha256": "8e6b0a4c5ae7076ca3ecc3bbd706f09f16081357e535231096d21e24b5f0af13",
+  "source_archive_sha256": "e60db1dc0f89a4c82626f517288b9652441ee4e3e3da3d731fed99cd1d9da850",
+  "verifier_sha256": "5a47416754d599660692976d60471c21a065baff769433cac9735fc9e91848ed",
+  "scope": "Resident source response qualification only; no integrated proof, performance, complete device-memory or ADR-127 GO credit."
+}
