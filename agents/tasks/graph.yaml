@@ -5399,7 +5399,7 @@ tasks:
   crate: stele-kernels
   status: ready
   acceptance:
-  - Field-only backend and scalar operation table check source ownership, bounds and MSB-first dense round and fold
+  - Field-only backend and scalar operation table check same-id stale-session owners, duplicate imports, bounds and MSB-first dense round and fold
   - Match the genuine CPU geometry, all evaluations, repeated positions and edge values; reject incorrect state or owner before use
   - Preserve the existing CPU proof and verifier dependency graph
 

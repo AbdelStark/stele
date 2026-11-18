@@ -107,9 +107,14 @@ The first interface in `stele-kernels` is the field-only backend for the
 ordinary RFC-0013 A5 item-5 batches. Its CPU implementation defines the
 reference for every operation. Its CUDA mirror implements the same operations.
 The op table names source import, dense batch construction, round, fold and
-final evaluation. Source import binds an opaque owner to a backend instance,
-source identifier and the dimensions of the original hiding message. Reusing
-an owner checks provenance and geometry. For physical dimensions `2R × 2C`
+final evaluation. For each proof attempt the caller starts a fresh backend session, which
+may share its device context. Source import accepts the exact immutable
+message associated by the caller with its authenticated source and binds
+the owner to that session, identifier and physical dimensions. An identifier
+can be imported only once per session. Every consumer checks the session,
+identifier and dimensions. An owner from a different proof, retry or concurrent
+session is rejected even if the identifier, dimensions and device are equal.
+Certificate and root verification belong to the caller. For physical dimensions `2R × 2C`
 the source contains exactly `4RC` base limbs. The data face uses the left
 `C` columns of every physical row. The batch borrows the caller's ordered
 claims and transcript-derived coefficients. A claim carries its ordered
@@ -146,7 +151,8 @@ complete-prover milestones retain their existing gates.
 ledger line, committed cell, lookup, public byte or honest proof byte changes.
 The target cost terms are `c_sc` and `T_misc`. Preserve the ordinary NC-0915
 weight-final rejection. Exercise a corrupted round, a wrong source owner,
-wrong source extent, unavailable CUDA and malformed transition in the device
+a same-id/same-extent owner from another session, wrong source extent,
+unavailable CUDA and malformed transition in the device
 differential. NC-1000 covers canonical field output. This interface specifies
 no new binding and confers no profile promotion. Affected tasks include
 E20-03, E20-04, E20-10, E20-11 and E20-12.
