@@ -5844,3 +5844,18 @@ tasks:
   - Derive occurrence, combined member, and shared layer mask windows from the exact original source ID, data-quadrant offset, limb count and scheduled layer side
   - Compare every field word and all generated leaf, interior and mixed GKR round messages and finals against independent CPU values across 1000 genuine canonical and lazy seed families
   - Replay all 385 T32 GKR steps with the four real original owners live and the actual lookup tree, zero private mask payload H2D, all public challenge and descriptor bytes charged, measured allocation limits and normal verifier controls
+- id: E16-40aj
+  epic: E16
+  title: Compare complete inference proof bytes when the H100 authors masked relation rounds
+  lane: V
+  depends: [E16-40x, E16-40ah]
+  rfc: [RFC-0013 A5, RFC-0014 §5, RFC-0026 §7]
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40aj-h100-inference-parity
+  acceptance:
+  - Use all 50 distinct original model artifacts, their fixed synthetic seeds and verified CPU binaries; check every model identity, full public and proof bytes, complete external verification, deterministic replay and the wrong-model control
+  - For each complete proof require positive evidence that checked masked relation polynomials were produced on the H100 before their Fiat-Shamir challenge, including folds and final evaluations, with the device and operation source pinned
+  - Report the reference CPU, synchronous oracle work, device-authored stages and every fallback separately; this research corpus qualifies exactly its participating operations and confers no production backend or performance claim
