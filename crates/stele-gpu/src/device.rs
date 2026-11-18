@@ -8,6 +8,14 @@ use stele_kernels::{Backend, SourceGeometry, WeightedClaim, M31, QM31};
 /// Actual completed device calls in this proof session.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Counts {
+    pub lookup_tops: usize,
+    pub lookup_rebuilds: usize,
+    pub lookup_child_views: usize,
+    pub lookup_child_released: usize,
+    pub lookup_uploaded_bytes: u64,
+    pub lookup_downloaded_bytes: u64,
+    pub lookup_planned_peak_bytes: usize,
+    pub lookup_observed_peak_bytes: usize,
     pub originals: usize,
     pub source_visits: usize,
     pub source_responses: usize,

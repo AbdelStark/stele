@@ -36,7 +36,7 @@ pub(crate) struct Factor {
 }
 
 #[derive(Clone, Copy)]
-enum Family {
+pub(crate) enum Family {
     Gkr,
     Relation,
 }
@@ -63,7 +63,13 @@ pub struct Gkr<'s, 'd> {
 }
 
 impl<'d> Session<'d> {
-    fn start_masked(&self, p: Plan<'_>, family: Family) -> Result<Gkr<'_, 'd>, Error> {
+    pub(crate) fn start_masked(
+        &self,
+        p: Plan<'_>,
+        family: Family,
+        child: Option<&CudaSlice<u32>>,
+        released: usize,
+    ) -> Result<Gkr<'_, 'd>, Error> {
         let nodes = p.degree + 1;
         let terms = u32::try_from(p.terms.len()).map_err(|_| Error::Geometry)?;
         let n = p.factors.len();
@@ -87,12 +93,15 @@ impl<'d> Session<'d> {
         let device = self.device;
         let blocks = device.grid(p.len / 2).grid_dim.0 as usize;
         let budget = budget(&p, blocks, indices.len())?;
-        let _guard = device.allocation(budget.peak)?;
+        // The last child tree is consumed after synchronized construction, before any fold.
+        let extra = budget
+            .construction
+            .max(budget.peak.saturating_sub(released));
+        let _guard = device.allocation(extra)?;
         let before = device.memory()?;
-        let planned =
-            (before.pool_used + budget.peak).max(before.pool_reserved) + before.outside_pool;
+        let planned = (before.pool_used + extra).max(before.pool_reserved) + before.outside_pool;
         let mut work = Work::default();
-        let factors = factors(device, p.factors, p.len, &mut work)?;
+        let factors = factors(device, p.factors, p.len, &mut work, child)?;
         let stream = &device.stream;
         let state = Gkr {
             session: self,
@@ -153,6 +162,8 @@ impl<'d> RelationBackend<QM31> for Session<'d> {
         self.start_masked(
             Plan::relation(input).map_err(|_| Error::Geometry)?,
             Family::Relation,
+            None,
+            0,
         )
     }
 }
@@ -164,7 +175,7 @@ impl<'d> GkrBackend<QM31> for Session<'d> {
         Self: 's;
     fn gkr_start<'s>(&'s self, input: &GkrConstruction<'_, QM31>) -> Result<Self::Gkr<'s>, Error> {
         let p = Plan::new(input).map_err(|_| Error::Geometry)?;
-        self.start_masked(p, Family::Gkr)
+        self.start_masked(p, Family::Gkr, None, 0)
     }
     fn gkr_round<'s>(s: &mut Self::Gkr<'s>) -> Result<Vec<QM31>, Error>
     where

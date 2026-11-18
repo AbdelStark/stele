@@ -11,6 +11,8 @@ mod gkr_build;
 #[cfg(feature = "cuda")]
 mod hiding;
 #[cfg(feature = "cuda")]
+mod lookup;
+#[cfg(feature = "cuda")]
 mod packing;
 #[cfg(feature = "cuda")]
 mod runtime;
