@@ -128,10 +128,11 @@ fn matches_reference_borrowed_gkr_construction_on_h100() {
                 let (mut state, work) = if raw {
                     dev.build_gkr_raw(&input)
                 } else {
-                    dev.build_gkr(&input)
+                    dev.build_gkr_bounded(&input)
                 }
                 .expect("construct from original inputs");
                 assert!(work.input_bytes > 0 && work.descriptor_bytes > 0);
+                assert!(state.device_buffer_bytes() <= work.peak_bytes);
                 assert_eq!(
                     state.tables().unwrap(),
                     tables(&reference),
@@ -147,6 +148,7 @@ fn matches_reference_borrowed_gkr_construction_on_h100() {
                     );
                     state.fold(*point).unwrap();
                     reference.fold(*point).unwrap();
+                    assert!(state.device_buffer_bytes() <= work.peak_bytes);
                     assert_eq!(
                         state.tables().unwrap(),
                         tables(&reference),

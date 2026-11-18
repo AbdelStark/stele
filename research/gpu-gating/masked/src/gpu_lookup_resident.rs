@@ -161,6 +161,11 @@ impl Resident<'_> {
         4 * self.pairs.len()
     }
 
+    /// The last interior step consumes the two children of every bottom node.
+    pub fn is_last_child(&self, layer_variables: usize) -> bool {
+        self.leaves.ilog2() as usize == layer_variables.saturating_add(1)
+    }
+
     pub(crate) fn check(&self, dev: &Device, id: usize) -> Result<(), Error> {
         if id != self.id || !std::ptr::eq(dev, self.dev) {
             return Err(Error::Shape("lookup context"));

@@ -1,10 +1,18 @@
 """Controls for the actual resident lookup and GKR lifetime receipts."""
 import unittest
 
-from receipt import check_resident_steps
+from receipt import check_final_child_releases, check_resident_steps
 
 
 class ResidentSteps(unittest.TestCase):
+    def test_checks_exact_last_consumer_before_each_leaf(self):
+        steps = [(0, True, 0, 0, 2), (1, True, 0, 0, 3), (2, True, 0, None, 4),
+                 (3, True, 1, 1, 1), (4, True, 1, None, 3)]
+        check_final_child_releases({0: 1, 1: 3}, steps)
+        for moves in ({0: 0, 1: 3}, {0: 2, 1: 3}, {0: 1}):
+            with self.assertRaises(ValueError):
+                check_final_child_releases(moves, steps)
+
     def test_accepts_child_views_and_oversize_step_before_leaf(self):
         # The second nonleaf step in lookup zero is too large. It stays on CPU.
         steps = [(0, True, 0, 0, 1), (1, False, 0, 0, 3), (2, True, 0, None, 4),

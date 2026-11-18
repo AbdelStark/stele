@@ -22,24 +22,26 @@ pub(super) fn build<'a>(
     id: usize,
     leaf: bool,
 ) -> Result<(DeviceMasked<'a>, ConstructionWork), Error> {
-    TREE.with_borrow(|hold| {
+    TREE.with_borrow_mut(|hold| {
         if leaf {
             assert!(hold.is_none(), "resident tree survives to leaf");
             return dev.build_gkr_bounded(input);
         }
         let tree = hold.as_ref().expect("required resident tree");
-        let built = dev.build_gkr_resident(input, id, tree);
+        let retained = tree.bytes();
+        let final_child = tree.is_last_child(input.layer_variables);
+        let built = if final_child {
+            dev.build_gkr_last_child(input, id, hold.take().expect("final child owner"))
+        } else {
+            dev.build_gkr_resident(input, id, tree)
+        };
         if let Ok((_, work)) = &built {
-            assert!(
-                work.layer_views > 0,
-                "nonleaf step did not use a resident child"
-            );
-            eprintln!(
-                "t32_child step={step} id={id} views={} view_bytes={} retained_bytes={}",
-                work.layer_views,
-                work.layer_bytes,
-                tree.bytes()
-            );
+            assert!(work.layer_views > 0, "nonleaf step did not use a resident child");
+            eprintln!("t32_child step={step} id={id} views={} view_bytes={} retained_bytes={retained}", work.layer_views, work.layer_bytes);
+            if final_child {
+                // Release, stream synchronization and its budget recheck are in the GKR build timer.
+                eprintln!("t32_lookup_release id={id} retained_bytes={retained} release_ns=0 after_child_step={step}");
+            }
         }
         built
     })
@@ -86,17 +88,8 @@ fn observe(event: Event<'_>) {
             let memory = dev.memory_sample().expect("lookup CUDA pool");
             eprintln!("t32_selected kind={kind} id={id} normalize_ns={} wall_ns={} stage_ns={} upload_ns={} tree_ns={} top_ns={} download_ns={} assemble_ns={} h2d_bytes={} d2h_bytes={} buffers_bytes={} retained_bytes={} compare_ns={} compare_bytes={compared} pool_used_high={} pool_reserved_high={} total_bytes={}",normalize.as_nanos(),wall.as_nanos(),t.stage.as_nanos(),t.upload.as_nanos(),t.tree.as_nanos(),t.top.as_nanos(),t.download.as_nanos(),t.assemble.as_nanos(),t.upload_bytes,t.download_bytes,t.buffer_peak_bytes,t.retained_bytes,qualification.as_nanos(),memory.used_high,memory.reserved_high,memory.total);
         }
-        Event::Release(id) => TREE.with_borrow_mut(|slot| {
-            let tree = slot.take().expect("leaf without resident tree");
-            tree.check(dev, id).unwrap();
-            let bytes = tree.bytes();
-            let now = Instant::now();
-            drop(tree);
-            dev.sync().unwrap();
-            eprintln!(
-                "t32_lookup_release id={id} retained_bytes={bytes} release_ns={}",
-                now.elapsed().as_nanos()
-            );
+        Event::Release(_id) => TREE.with_borrow(|slot| {
+            assert!(slot.is_none(), "a final GKR child retained the tree at the next leaf");
         }),
     }
 }

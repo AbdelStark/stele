@@ -350,16 +350,20 @@ impl Plan {
                 // gkr_table allocates its output before it uploads each individual span.
                 construction = construction.max(live);
                 for span in &t.spans {
-                    construction = construction.max(
-                        live + 4 * (span.data.len() as u128 + span.shifts.len() as u128),
-                    );
+                    construction = construction
+                        .max(live + 4 * (span.data.len() as u128 + span.shifts.len() as u128));
                 }
             }
         }
         let terms = self.terms.len() as u128;
-        let indices = self.terms.iter().map(|(_, t)| t.len() as u128).sum::<u128>().max(1);
-        let descriptors = 20 * self.factors.len() as u128 + 4 * (terms + 1 + indices)
-            + 16 * terms.max(1);
+        let indices = self
+            .terms
+            .iter()
+            .map(|(_, t)| t.len() as u128)
+            .sum::<u128>()
+            .max(1);
+        let descriptors =
+            20 * self.factors.len() as u128 + 4 * (terms + 1 + indices) + 16 * terms.max(1);
         let scratch = 16 * (self.degree as u128 + 1) * (blocks as u128 + 1);
         live += descriptors + scratch;
         construction = construction.max(live);
@@ -384,7 +388,10 @@ impl Plan {
             }
         }
         let bytes = |n| usize::try_from(n).map_err(|_| "GKR allocation bound");
-        Ok(Peak { construction: bytes(construction)?, fold: bytes(fold)? })
+        Ok(Peak {
+            construction: bytes(construction)?,
+            fold: bytes(fold)?,
+        })
     }
 
     pub fn new(input: &GkrConstruction<'_, K>) -> Build<Self> {
@@ -516,7 +523,10 @@ mod tests {
         // Live scheduling is sensitive to factor order. Releasing the first
         // x's base mask before a later promotion saves the mask's whole table.
         plan.factors[0].mask.as_mut().unwrap().1 = 0;
-        plan.factors.push(FactorPlan { values: table(true, 0), mask: None });
+        plan.factors.push(FactorPlan {
+            values: table(true, 0),
+            mask: None,
+        });
         let released = plan.peak(1).unwrap().fold;
         plan.factors.reverse();
         assert_eq!(plan.peak(1).unwrap().fold, released + 32);

@@ -42,7 +42,7 @@ impl Device {
         &self,
         input: &GkrConstruction<'_, K>,
     ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
-        self.build_gkr_plan(Plan::new(input).map_err(Error::Shape)?, true, None)
+        self.bounded_gkr(input, None, true)
     }
 
     /// Actual CUDA allocator counters, including its retained pages, on the current device.
@@ -78,7 +78,7 @@ impl Device {
         &self,
         input: &GkrConstruction<'_, K>,
     ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
-        self.bounded_gkr(input, None)
+        self.bounded_gkr(input, None, false)
     }
 
     /// Build this step with child values borrowed from the matching rebuilt device tree.
@@ -89,20 +89,57 @@ impl Device {
         tree: &Resident<'_>,
     ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
         tree.check(self, id)?;
-        self.bounded_gkr(input, Some((id, tree)))
+        self.bounded_gkr(input, Some((id, tree)), false)
+    }
+
+    /// Transfer the final child owner after the last consumer has copied its
+    /// values into the factor tables. The owning reference enforces release
+    /// before any round can promote a mask. The two budgets cover each lifetime.
+    pub fn build_gkr_last_child(
+        &self,
+        input: &GkrConstruction<'_, K>,
+        id: usize,
+        tree: Resident<'_>,
+    ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
+        tree.check(self, id)?;
+        if !tree.is_last_child(input.layer_variables) {
+            return Err(Error::Shape("not the final lookup child"));
+        }
+        let plan = Plan::with_layers(input, true).map_err(Error::Shape)?;
+        let peak = plan
+            .peak(self.grid(plan.len / 2).grid_dim.0 as usize)
+            .map_err(Error::Shape)?;
+        self.require_budget(
+            peak.construction
+                .max(peak.fold.saturating_sub(tree.bytes())),
+        )?;
+        let (state, mut work) = self.build_gkr_plan(plan, false, Some((id, &tree)))?;
+        if work.layer_views == 0 {
+            return Err(Error::Shape("unused final lookup child"));
+        }
+        // build_gkr_plan synchronized after copying every child on this stream.
+        drop(tree);
+        self.sync()?;
+        // Point-in-time driver counters now cover the constructed state; only
+        // first-fold overlap beyond that resident state requires additional room.
+        self.require_budget(peak.fold.saturating_sub(state.device_buffer_bytes()))?;
+        work.peak_bytes = peak.construction.max(peak.fold);
+        Ok((state, work))
     }
 
     fn bounded_gkr(
         &self,
         input: &GkrConstruction<'_, K>,
         resident: Option<(usize, &Resident<'_>)>,
+        raw: bool,
     ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
         let plan = Plan::with_layers(input, resident.is_some()).map_err(Error::Shape)?;
         let peak = plan
-            .peak_bytes(self.grid(plan.len / 2).grid_dim.0 as usize)
+            .peak(self.grid(plan.len / 2).grid_dim.0 as usize)
             .map_err(Error::Shape)?;
+        let peak = peak.construction.max(peak.fold);
         self.require_budget(peak)?;
-        let (state, mut work) = self.build_gkr_plan(plan, false, resident)?;
+        let (state, mut work) = self.build_gkr_plan(plan, raw, resident)?;
         work.peak_bytes = peak;
         Ok((state, work))
     }

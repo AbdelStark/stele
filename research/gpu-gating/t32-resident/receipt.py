@@ -32,12 +32,27 @@ def check_resident_steps(steps, children, retained):
     return sum(r["views"] for r in children), sum(r["view_bytes"] for r in children)
 
 
+def check_final_child_releases(early, steps):
+    # Each release must occur on the successfully built penultimate GKR step.
+    expected = {}
+    for current, following in zip(steps, steps[1:]):
+        if current[1] and current[2] == following[2]:
+            expected[current[2]] = current[0]
+    if early != expected or set(early) != {s[2] for s in steps}:
+        raise ValueError("missing or misplaced final child release")
+    for current, following in zip(steps, steps[1:]):
+        if early[current[2]] == current[0] and following[3] is not None:
+            raise ValueError("final child release precedes another nonleaf")
+
+
 def summarize(log):
     gkr_report=runpy.run_path(str(Path(__file__).resolve().parent.parent/"t32-gkr/receipt.py"))["summarize"]
     gkr=gkr_report("\n".join(line for line in log.splitlines() if line.startswith("t32_gkr_")))
     rows=defaultdict(list)
     steps = []
     seen=None
+    early = {}
+    pending = None
     for line in log.splitlines():
         if not line.startswith("t32_"):
             continue
@@ -48,6 +63,8 @@ def summarize(log):
             if k in vals or (k!="kind" and not v.isdecimal()):
                 raise ValueError("invalid resident counter")
             vals[k]=v if k=="kind" else int(v)
+        if pending is not None and tag != "t32_gkr_step":
+            raise ValueError("final child release did not complete a device step")
         if tag=="t32_selected" and vals["kind"]=="rebuild":
             if seen is not None:
                 raise ValueError("overlapping resident tree")
@@ -57,11 +74,29 @@ def summarize(log):
         if tag=="t32_lookup_release":
             if seen!=vals["id"]:
                 raise ValueError("wrong tree release")
+            if "after_child_step" in vals:
+                key = (vals["after_child_step"], seen)
+                if (seen in early or not rows["t32_child"]
+                        or key != (rows["t32_child"][-1]["step"], rows["t32_child"][-1]["id"])
+                        or vals["release_ns"] != 0):
+                    raise ValueError("invalid final child release")
+                pending = key
+                early[seen] = key[0]
             seen=None
         if tag in ("t32_gkr_step","t32_gkr_skip"):
-            steps.append((vals["step"], tag == "t32_gkr_step", vals["lookup"], seen, vals["variables"]))
+            held = seen
+            if pending is not None:
+                if pending != (vals["step"], vals["lookup"]):
+                    raise ValueError("wrong final child step")
+                held = vals["lookup"]  # Owned during construction, released before round zero.
+                pending = None
+            steps.append((vals["step"], tag == "t32_gkr_step", vals["lookup"], held, vals["variables"]))
         else:
             rows[tag].append(vals)
+    if pending is not None:
+        raise ValueError("incomplete final child step")
+    if early:
+        check_final_child_releases(early, steps)
     batch_names=("batch","cpu_weights","cpu_face","round","fold","finals")
     batch_rows={k:rows.pop("t32_"+k) for k in batch_names}
     batch_report=runpy.run_path(str(Path(__file__).resolve().parent.parent/"t32-stages/receipt.py"))["summarize_batches"](batch_rows)

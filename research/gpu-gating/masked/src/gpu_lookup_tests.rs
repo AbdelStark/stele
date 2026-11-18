@@ -198,6 +198,41 @@ fn matches_reference_selected_top_and_resident_layers_on_h100() {
         assert!(tree.layer(&dev, index + 1, 1).is_err());
         assert!(tree.layer(&dev, index, 3).is_err());
         assert!(tree.layer(&dev, index, usize::MAX).is_err());
+        // Transfer the actual bottom owner, with deliberately wrong host pairs.
+        // Both raw and canonical lookups must supply identical child values
+        // after the owner has already been released.
+        let last = expected.layers.len() - 1;
+        let bottom = &expected.layers[last];
+        let poison = vec![[K::ZERO; 2]; bottom.len()];
+        let last_input = GkrConstruction {
+            num_vars: last as u32,
+            layer_variables: last - 1,
+            degree: 2,
+            terms: vec![],
+            factors: vec![GkrFactor::Layer {
+                values: &poison,
+                component: selector % 2,
+                side: selector / 2,
+                mask: GkrMask {
+                    values: vec![M31::ZERO],
+                    coordinates: &[],
+                    vanishing: 0,
+                },
+            }],
+        };
+        assert!(tree.is_last_child(last - 1));
+        assert!(!tree.is_last_child(last));
+        for owner in [tree, raw_tree] {
+            let (state, work) = dev.build_gkr_last_child(&last_input, index, owner).unwrap();
+            assert_eq!(work.layer_bytes, 32 * bottom.len());
+            let actual = state.tables().unwrap();
+            for (i, x) in actual[0].0.iter().enumerate() {
+                assert_eq!(
+                    *x,
+                    bottom[2 * (i % (bottom.len() / 2)) + selector / 2][selector % 2]
+                );
+            }
+        }
     }
     let (s, columns, _, _) = fixture(SEED);
     let case = LookupCase::new(&s, &columns, 0).unwrap();
@@ -206,5 +241,5 @@ fn matches_reference_selected_top_and_resident_layers_on_h100() {
         super::select::top(&dev, &input),
         Err(Error::Lookup(LookupError::DenominatorZero))
     ));
-    eprintln!("resident_lookup_cases={CASES} top_cases={CASES} resident_layer_cases={CASES} context_controls={CASES} zero_denominator_cases=1 raw_top_cases={CASES} raw_resident_layer_cases={CASES} near_miss_cases={CASES} seed={SEED} device={}",dev.name);
+    eprintln!("final_child_owners=2000 resident_lookup_cases={CASES} top_cases={CASES} resident_layer_cases={CASES} context_controls={CASES} zero_denominator_cases=1 raw_top_cases={CASES} raw_resident_layer_cases={CASES} near_miss_cases={CASES} seed={SEED} device={}",dev.name);
 }
