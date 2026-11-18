@@ -277,7 +277,8 @@ transcript and verifier obligation. The existing crate edges suffice.
 
 ### A15 — Reuse the field interfaces for the final shared batch
 
-Status: Proposed (development tier under RFC-0027 §2). Task E20-21.
+Status: Accepted (development tier under RFC-0027 §2). Task E20-21.
+[Independent review](../../agents/reviews/e20-21-shared-batch.md)
 
 The checked reduction may compose A10's degree-two dense operations with
 A13's source operations for RFC-0014 A7. Its shared weight and data face use

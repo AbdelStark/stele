@@ -4692,7 +4692,7 @@ tasks:
   status: ready
   acceptance:
   - Compare 50 pinned complete CPU and selected proofs including all sources and batch families, deterministic replay and independent verifier outcomes
-  - Reject altered shared round, standalone root or sibling, two-block rank or owner, and restore the original reservation after device failure
+  - Reject altered shared round, standalone root, standalone sibling, two-block rank or owner, and restore the original reservation after device failure
   - Account for all five sources and four batches on genuine T32 with independent geometry, realized device counters, A1 peak and paired same-host proof time
 
 - id: E21-01

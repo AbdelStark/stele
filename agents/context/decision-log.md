@@ -4399,3 +4399,12 @@ The host keeps top division, the zero-denominator abort, transcript and original
 claim authority. The last nonleaf can release the tree before folding. E20-20
 qualifies the complete proof and total peak device memory.
 [Review](../reviews/e20-19-lookup-tree-ownership.md)
+
+## ADR-145 — Bind the final shared batch to its device arithmetic and mask source
+
+RFC-0014 A7, RFC-0020 A15 and RFC-0026 A24 admit A2's dense operation for
+the balanced shared claims and A5's material operation for its standalone
+two-block mask source. The host retains the certificate, both different
+opening contexts, Fiat–Shamir and all aborts. This extends the selected
+operations of byte 4. E20-22 qualifies the complete route.
+[Independent lane C review](../reviews/e20-21-shared-batch.md)

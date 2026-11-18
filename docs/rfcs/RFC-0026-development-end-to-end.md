@@ -2411,7 +2411,8 @@ rollback. All development profile, parser and verifier rules remain unchanged.
 
 ### A24 — Select the balanced shared batch and standalone mask source
 
-Status: Proposed (development tier under RFC-0027 §2). Task E20-21.
+Status: Accepted (development tier under RFC-0027 §2). Task E20-21.
+[Independent review](../../agents/reviews/e20-21-shared-batch.md)
 
 An explicitly selected balanced prover can perform RFC-0014 A7 after the
 ordered relation, lookup and ordinary-batch work. Its additional source is

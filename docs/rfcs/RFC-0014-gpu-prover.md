@@ -377,7 +377,8 @@ verifier operation. E20-20 validates the combined normal path.
 
 ### A7 — Prove the balanced shared batch and its two-block mask source on the selected device
 
-Status: Proposed (development tier under RFC-0027 §2). Task E20-21.
+Status: Accepted (development tier under RFC-0027 §2). Task E20-21.
+[Independent review](../../agents/reviews/e20-21-shared-batch.md)
 
 For an RFC-0013 A8 byte-4 proof, the final shared source batches the ordered
 mask-evaluation and layer-block claims under RFC-0013 A5 item 5a. Keep the
@@ -398,7 +399,7 @@ shared-batch instance ID, the two mask blocks and source-specific streams
 from the original seed. Preserve the canonical layout of each block, limb,
 variable and node, all padding and both hiding quadrants. Its data rows are
 `2D`; its data column count is the smallest `2^m ≥ 3n` with `m ≥ 9`.
-The physical rows and columns are twice those data extents. The fifth original
+The physical rows and columns are twice those data extents. The standalone original
 is the exact immutable message that A4 binds. It belongs to the same proof
 session, with a distinct ID from the shared claim source and every other
 source and instance except its own shared batch. The message may have a
@@ -425,7 +426,7 @@ proof, including its standalone source and shared batch. In Stories42M T32,
 all five originals have certificate and opening visits and all four degree-two
 batch sumchecks return actual device rounds, folds and two final factors.
 Count responses on each visit including duplicates. Exercise a changed shared
-round rejected before a fold, a changed standalone rebuilt root or sibling,
+round rejected before a fold, a changed standalone rebuilt root and a changed selected sibling,
 the wrong two-block opening row, a duplicate/foreign owner and reservation
 rollback. Record same-host proof wall time, transfers, original and scratch
 lifetimes, and A1 total peak under four earlier stage families. No new source,
