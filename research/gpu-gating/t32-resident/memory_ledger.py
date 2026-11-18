@@ -13,7 +13,8 @@ parser.add_argument("receipt", type=Path)
 parser.add_argument("output", type=Path)
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[3]
-baseline = json.loads((repo/'bench/ledger/e16-40v-t32-resident-gkr-batch-h100.json').read_text())
+baseline_name = 'e16-40y-t32-compact-lookup-h100.json'
+baseline = json.loads((repo/'bench/ledger'/baseline_name).read_text())
 verified = json.loads(args.receipt.read_text())
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -85,7 +86,7 @@ model = dict(workload=result['workload'],profile=result['profile'],plan=plan,aff
              job=result['job'],evidence_location=f"lucid-cluster:~/stele-codex/e16-40z-gkr-memory-schedule/public-{result['job']}.tar.gz",
              source_archive_sha256=verified['source_sha256'],evidence_sha256=verified['archive_sha256'],
              public_receipt_sha256={name:digest(contents) for name,contents in raw.items() if name.startswith(('run/','machine/'))},
-             baseline='e16-40v-t32-resident-gkr-batch-h100.json',proof_sha256=result['proof_sha256'],public_sha256=result['public_sha256'],
+             baseline=baseline_name,proof_sha256=result['proof_sha256'],public_sha256=result['public_sha256'],
              cli_sha256=result['cli_sha256'],verifier_sha256=result['verifier_sha256'],slurm_elapsed=verified['slurm_elapsed'],
              seeded=dict(gkr_statements=1000,gkr_steps=2728,gkr_representations=5456,consumed_final_owners=2000),
              scope='Independent CPU verifier accepts the development-tier CPU-produced proof. Device stages check original transcript scalars. Combined production GPU proof parity remains open.')
