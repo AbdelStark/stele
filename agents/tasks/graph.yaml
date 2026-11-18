@@ -4341,7 +4341,7 @@ tasks:
   skill: pcs-engineer
   lane: C
   crate: docs
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E19-07-source-material-contract
   acceptance:
@@ -4358,7 +4358,7 @@ tasks:
   skill: pcs-engineer
   lane: C
   crate: stele-pcs
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E19-08-source-material
   acceptance:
