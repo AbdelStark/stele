@@ -533,6 +533,71 @@ mod tests {
     }
 
     #[test]
+    fn matches_reference_large_t32_allocation_phases() {
+        // Job 6781 steps 96/97: nine extension x tables and four delayed base
+        // masks, followed by a leaf with a coordinate-zero base mask and one
+        // delayed mask. Construct only field-width and lifetime metadata.
+        let table = |base| TablePlan {
+            base,
+            spans: Vec::new(),
+        };
+        let factors = |masks: &[Option<usize>], base_indices: &[usize]| {
+            masks
+                .iter()
+                .enumerate()
+                .map(|(i, v)| FactorPlan {
+                    values: table(base_indices.contains(&i)),
+                    mask: v.map(|v| (table(true), v)),
+                })
+                .collect()
+        };
+        let mut p = Plan {
+            len: 1 << 27,
+            degree: 5,
+            terms: Vec::new(),
+            factors: factors(
+                &[
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(1),
+                    Some(1),
+                    Some(2),
+                    Some(2),
+                ],
+                &[],
+            ),
+        };
+        let peak = p.peak(1024).unwrap();
+        let fixed = 20 * p.factors.len() + 8 + 16 + 16 * 6 * 1025;
+        assert_eq!(peak.construction, fixed + 160 * p.len);
+        assert_eq!(peak.fold, fixed + 180 * p.len);
+        p.len = 1 << 28;
+        p.degree = 6;
+        p.factors = factors(
+            &[
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(0),
+                None,
+                None,
+                Some(25),
+                None,
+            ],
+            &[5, 6, 7, 8],
+        );
+        let peak = p.peak(1024).unwrap();
+        let fixed = 20 * p.factors.len() + 8 + 16 + 16 * 7 * 1025;
+        assert_eq!(peak.construction, fixed + 120 * p.len);
+        assert_eq!(peak.fold, fixed + 140 * p.len);
+    }
+
+    #[test]
     fn rejects_invalid_geometry_before_device_access() {
         let mut input = GkrConstruction {
             num_vars: 3,
