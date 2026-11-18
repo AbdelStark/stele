@@ -5318,7 +5318,7 @@ tasks:
   - RFC-0014 §1, §4, §5, A1
   skill: benchmark-runner
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40p-gkr-construction-interface
   acceptance:
