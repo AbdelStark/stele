@@ -4643,7 +4643,7 @@ tasks:
   skill: cuda-kernel-author
   crate: docs
   lane: E
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E20-17-hiding-source-contract
   acceptance:
