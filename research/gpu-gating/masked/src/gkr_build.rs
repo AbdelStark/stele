@@ -15,6 +15,7 @@ pub(crate) enum Op {
     Layer,
     Table,
     OriginalBase,
+    OriginalBlock,
 }
 
 /// Actual source of uploaded words. The coordinate and term descriptors are accounted separately.
@@ -76,7 +77,7 @@ fn span(period: u32, range: Range<usize>, op: Op, arg: u32, data: Vec<u32>) -> B
         op,
         kind: match op {
             Op::Equality => InputKind::Equality,
-            Op::Block => InputKind::Block,
+            Op::Block | Op::OriginalBlock => InputKind::Block,
             Op::Layer => InputKind::Layer,
             Op::Table | Op::Constant => InputKind::Public,
             Op::OriginalBase | Op::GatherBase | Op::GatherExt => InputKind::Column,
@@ -94,14 +95,20 @@ impl TablePlan {
     pub(crate) fn storage_len(&self, domain: usize) -> usize {
         match self.spans.as_slice() {
             [s] if !self.base
-                && matches!(s.op, Op::Block)
+                && matches!(s.op, Op::Block | Op::OriginalBlock)
                 && s.begin == 0
                 && s.end == s.period
                 && s.arg.is_power_of_two()
                 && s.arg <= s.period
                 && s.period.is_power_of_two()
                 && domain.is_multiple_of(s.period as usize)
-                && s.data.len() == 4 + 2 * s.arg as usize =>
+                && match s.op {
+                    Op::Block => s.data.len() == 4 + 2 * s.arg as usize,
+                    Op::OriginalBlock => {
+                        s.data.len() == 4 && s.original.is_some_and(|v| v[5] == 2 * s.arg as usize)
+                    }
+                    _ => false,
+                } =>
             {
                 s.arg as usize
             }
@@ -823,3 +830,7 @@ fn accepts_origin_bound_column_and_rejects_wrong_gather_geometry() {
         assert!(Plan::with_originals(&input, &[vec![Some(bad)]]).is_err());
     }
 }
+
+#[cfg(any(feature = "cuda", test))]
+#[path = "gkr_private.rs"]
+mod private;

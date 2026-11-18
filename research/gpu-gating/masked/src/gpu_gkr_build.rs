@@ -29,6 +29,10 @@ pub struct ConstructionWork {
     pub term_bytes: usize,
     /// Original-column views and addressable bytes across spans, including repeated uses.
     pub original_views: usize,
+    pub mask_views: usize,
+    pub mask_view_bytes: usize,
+    pub block_views: usize,
+    pub block_view_bytes: usize,
     pub original_bytes: usize,
     /// Coordinate shifts plus the summand's term offsets, indices and coefficients.
     pub descriptor_bytes: usize,
@@ -90,6 +94,14 @@ impl ConstructionWork {
 }
 
 type OriginalOwners<'d> = BTreeMap<u64, OriginalMessage<'d>>;
+
+/// Physical child lifetime on a GKR step. A host child is used by the seeded
+/// reference campaign. Real non-leaf steps take the checked device tree.
+pub enum PrivateChild<'a, 'd> {
+    Host,
+    Borrowed(usize, &'a Resident<'d>),
+    Last(usize, Resident<'d>),
+}
 
 #[derive(Clone, Copy, Default)]
 struct Inputs<'a, 'd> {
@@ -190,6 +202,42 @@ impl Device {
         )
     }
 
+    /// Construct on the original source windows while preserving the final-child
+    /// handoff and its two synchronized memory budgets.
+    pub fn build_gkr_private(
+        &self,
+        input: &GkrConstruction<'_, K>,
+        columns: Option<&[ColumnOrigin]>,
+        private: &[Vec<[usize; 6]>],
+        owners: &BTreeMap<u64, OriginalMessage<'_>>,
+        child: PrivateChild<'_, '_>,
+        raw: bool,
+    ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
+        let plan = match columns {
+            Some(columns) => {
+                if !matches!(child, PrivateChild::Host) {
+                    return Err(Error::Shape("GKR leaf with child owner"));
+                }
+                Plan::with_originals(input, columns)
+            }
+            None => Plan::with_layers(input, !matches!(child, PrivateChild::Host)),
+        }
+        .and_then(|p| p.original_masks(private))
+        .map_err(Error::Shape)?;
+        let originals = Some(owners);
+        let tree = match child {
+            PrivateChild::Host => None,
+            PrivateChild::Borrowed(id, tree) => {
+                tree.check(self, id)?;
+                Some((id, tree))
+            }
+            PrivateChild::Last(id, tree) => {
+                return self.last_plan(plan, input.layer_variables, id, tree, originals, raw);
+            }
+        };
+        self.bounded_plan(plan, raw, Inputs { tree, originals })
+    }
+
     /// Build this step with child values borrowed from the matching rebuilt device tree.
     pub fn build_gkr_resident(
         &self,
@@ -210,11 +258,23 @@ impl Device {
         id: usize,
         tree: Resident<'_>,
     ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
+        let plan = Plan::with_layers(input, true).map_err(Error::Shape)?;
+        self.last_plan(plan, input.layer_variables, id, tree, None, false)
+    }
+
+    fn last_plan(
+        &self,
+        plan: Plan,
+        layer_variables: usize,
+        id: usize,
+        tree: Resident<'_>,
+        originals: Option<&OriginalOwners<'_>>,
+        raw: bool,
+    ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
         tree.check(self, id)?;
-        if !tree.is_last_child(input.layer_variables) {
+        if !tree.is_last_child(layer_variables) {
             return Err(Error::Shape("not the final lookup child"));
         }
-        let plan = Plan::with_layers(input, true).map_err(Error::Shape)?;
         let peak = plan
             .peak(self.grid(plan.len / 2).grid_dim.0 as usize)
             .map_err(Error::Shape)?;
@@ -224,10 +284,10 @@ impl Device {
         )?;
         let (state, mut work) = self.build_gkr_plan(
             plan,
-            false,
+            raw,
             Inputs {
                 tree: Some((id, &tree)),
-                originals: None,
+                originals,
             },
         )?;
         if work.layer_views == 0 {
@@ -405,21 +465,30 @@ impl Device {
             };
             let mut original_at = 0u64;
             let mut row_shift = 0u32;
+            let mut original_ptr = 0u64;
             let data_ptr = match (span.op, &layer) {
-                (Op::OriginalBase, _) => {
+                (Op::OriginalBase | Op::OriginalBlock, _) => {
                     let [_, source, rows, columns, at, entries] = span
                         .original
                         .ok_or(Error::Shape("missing GKR original descriptor"))?;
                     let cells = rows
                         .checked_mul(columns)
                         .ok_or(Error::Shape("GKR original extent"))?;
-                    if !rows.is_power_of_two()
+                    let block = matches!(span.op, Op::OriginalBlock);
+                    let shape = if block {
+                        span.arg.is_power_of_two()
+                            && 2 * span.arg as usize == entries
+                            && span.data.len() == 4
+                            && shift_count == 0
+                    } else {
+                        1usize.checked_shl(shift_count) == Some(entries) && data.is_none()
+                    };
+                    if !shape
+                        || !rows.is_power_of_two()
                         || !columns.is_power_of_two()
                         || rows < 2
                         || columns < 2
-                        || 1usize.checked_shl(shift_count) != Some(entries)
                         || at.checked_add(entries).is_none_or(|end| end > cells / 4)
-                        || data.is_some()
                     {
                         return Err(Error::Shape("GKR original gather"));
                     }
@@ -433,9 +502,25 @@ impl Device {
                     original_at =
                         u64::try_from(at).map_err(|_| Error::Shape("GKR original offset"))?;
                     row_shift = (columns / 2).ilog2();
-                    charge(&mut work.original_views, 1)?;
-                    charge(&mut work.original_bytes, 4 * entries)?;
-                    self.ptr(words)
+                    match (span.op, span.kind) {
+                        (Op::OriginalBlock, InputKind::Block) => {
+                            charge(&mut work.block_views, 1)?;
+                            charge(&mut work.block_view_bytes, 4 * entries)?;
+                            original_ptr = self.ptr(words);
+                            self.ptr(data.as_ref().ok_or(Error::Shape("GKR block challenge"))?)
+                        }
+                        (Op::OriginalBase, InputKind::Mask) => {
+                            charge(&mut work.mask_views, 1)?;
+                            charge(&mut work.mask_view_bytes, 4 * entries)?;
+                            self.ptr(words)
+                        }
+                        (Op::OriginalBase, InputKind::Column) => {
+                            charge(&mut work.original_views, 1)?;
+                            charge(&mut work.original_bytes, 4 * entries)?;
+                            self.ptr(words)
+                        }
+                        _ => return Err(Error::Shape("GKR original input kind")),
+                    }
                 }
                 (_, Some(view)) => {
                     charge(&mut work.layer_views, 1)?;
@@ -460,7 +545,8 @@ impl Device {
                 .arg(&width)
                 .arg(&entries)
                 .arg(&original_at)
-                .arg(&row_shift);
+                .arg(&row_shift)
+                .arg(&original_ptr);
             // SAFETY: Plan::new checks each RFC-0008 A7 operation's source extent
             // and coordinates. Each repeated span fits the allocated output; a
             // null operand is never read. A resident layer view has exactly two

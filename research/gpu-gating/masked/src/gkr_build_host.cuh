@@ -14,7 +14,7 @@ int main() {
       const u32 width = span[2] - span[1];
       gkr_build_span(out.data(), table[1], data.data(), shifts.data(), span[5],
                      span[3], span[4], span[0], span[1], width,
-                     (u64)(table[0] / span[0]) * width, 0, 0);
+                     (u64)(table[0] / span[0]) * width, 0, 0, nullptr);
     }
     if (std::fwrite(out.data(), sizeof(u32), out.size(), stdout) != out.size()) return 5;
   }
