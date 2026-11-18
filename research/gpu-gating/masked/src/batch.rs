@@ -105,12 +105,27 @@ pub(crate) fn pack<const PARALLEL: bool>(
     claims: &[Claim<K>],
     gammas: &[K],
 ) -> Option<(Prepared, PackTimes)> {
+    pack_with_message::<PARALLEL>(source, Some(message), claims, gammas)
+}
+
+/// An absent host message means the caller supplies the checked device original.
+pub(crate) fn pack_with_message<const PARALLEL: bool>(
+    source: &Source<K>,
+    original: Option<&[M31]>,
+    claims: &[Claim<K>],
+    gammas: &[K],
+) -> Option<(Prepared, PackTimes)> {
     let columns = source.columns() / 2;
     let len = source.rows().checked_mul(columns)?;
     let half = len / 2;
-    if !source.is_hiding() || message.len() != len.checked_mul(2)? || claims.len() != gammas.len() {
+    let expected_words = len.checked_mul(2)?;
+    if !source.is_hiding()
+        || original.is_some_and(|s| s.len() != expected_words)
+        || claims.len() != gammas.len()
+    {
         return None;
     }
+    let message = original.unwrap_or(&[]);
     let index_start = std::time::Instant::now();
     let count = claims
         .iter()

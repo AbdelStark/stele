@@ -140,6 +140,7 @@ fn run<'a>(
         .and_then(|v| v.checked_add(uploaded_message.max(peak_nodes)))
         .ok_or(Error::Value)?;
 
+    dev.require_budget(buffer_peak_bytes)?;
     // Upload.
     let start = Instant::now();
     let temporary = match input {
