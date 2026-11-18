@@ -150,12 +150,13 @@ def rejection_controls(work):
         raise ValueError("unavailable CUDA did not fail before reservation and proof output")
     print("rejected_unavailable_cuda=1 reservation_unchanged=1", flush=True)
 
-    result = run([work / "reject-round", case, commitment, secret], capture_output=True, text=True)
-    expected = [f"rejected_cuda_{stage}=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1"
-                for stage in ("round", "relation")]
-    if result.stdout.splitlines() != expected:
-        raise ValueError("genuine corrupted CUDA rounds did not reach the checked masked prover")
-    print(result.stdout, end="", flush=True)
+    for args, marker in (([], "rejected_cuda_round"), (["gkr"], "rejected_cuda_gkr_round"),
+                         (["relation"], "rejected_cuda_relation")):
+        result = run([work / "reject-round", case, commitment, secret, *args], capture_output=True, text=True)
+        expected = marker + "=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1"
+        if result.stdout.splitlines() != [expected]:
+            raise ValueError("changed CUDA round did not reach the checked masked prover")
+        print(expected, flush=True)
 
 
 def compare(work, pins):
