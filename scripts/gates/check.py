@@ -764,7 +764,7 @@ def field_sources(root):
                # RFC-0013 A5: masked claims, zero-sums and per-source batches.
                'src/zk_claims.rs', 'tests/zk_claims.rs',
                # RFC-0014 A2 and RFC-0020 A10: field-only ordinary batch adapter.
-               'src/zk_batch_backend.rs', 'src/zk_gkr_backend.rs', 'src/zk_gkr_expand.rs', 'src/zk_projected_relations.rs',
+               'src/zk_batch_backend.rs', 'src/zk_source_backend.rs', 'src/zk_gkr_backend.rs', 'src/zk_gkr_expand.rs', 'src/zk_projected_relations.rs',
                # RFC-0008 A7: ZK-GKR over the A5 trees.
                'src/zk_lookup.rs', 'tests/zk_lookup.rs',
                # E16-40c: reviewed, opt-in production lookup and claim-batch references.
@@ -833,8 +833,20 @@ def field_sources(root):
     adapter_closed = (interface == [('pub', 'struct', 'BatchExecution'), ('pub', 'fn', 'new'),
                                     ('pub', 'fn', 'with_gkr'), ('pub', 'fn', 'with_relations'),
                                     ('pub(super)', 'fn', 'relations'), ('pub(super)', 'fn', 'gkr'),
-                                    ('pub(super)', 'fn', 'prove')]
+                                    ('pub(super)', 'fn', 'prove'), ('pub', 'fn', 'with_sources'),
+                                    ('pub(super)', 'fn', 'prove_original')]
                       and re.findall(r'\bmasked\s*::\s*(prove\w*)\s*\(', body) == ['prove'])
+    # A5 delegates only field material. The reductions adapter checks the rebuilt root,
+    # then passes selected columns through the same certificate and opening producers.
+    path = crate / 'src/zk_source_backend.rs'
+    source_adapter = re.sub(r'//[^\n]*', '', path.read_text()) if path.is_file() else ''
+    source_api = re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', source_adapter)
+    adapter_closed = (adapter_closed and source_api == [
+        ('pub(super)', kind, name) for kind, name in (
+            ('trait', 'Factory'), ('trait', 'Sources'), ('struct', 'Selected'), ('type', 'Session'),
+            ('enum', 'Ready'), ('type', 'Certified'), ('fn', 'prepare'), ('fn', 'source'), ('fn', 'face'),
+            ('fn', 'finish'), ('fn', 'open'), ('fn', 'host_certificates'))]
+        and 'if root != entry.root {' in source_adapter and 'let certificate = certify(&p);' in source_adapter)
     gkr_adapter = crate / 'src/zk_gkr_backend.rs'
     body = re.sub(r'//[^\n]*', '', gkr_adapter.read_text()) if gkr_adapter.is_file() else ''
     # The field backend returns polynomials and compact finals. Reduction-owned
