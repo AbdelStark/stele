@@ -1,0 +1,128 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "47bf465474d75a9a8e0168c8f93ddba5945402d2",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 95830 MiB",
+  "driver": "570.211.01",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "batch_dense/d2h_bytes": 3408,
+    "batch_dense/h2d_bytes": 2760,
+    "batch_prepare/h2d_bytes": 19178106040,
+    "rebuild/d2h_bytes": 31023172224,
+    "rebuild/h2d_bytes": 8749390528,
+    "top/d2h_bytes": 31023172224,
+    "top/h2d_bytes": 8749390528,
+    "whole_measured_process_peak_rss_bytes": 96104181760
+  },
+  "kind": "micro",
+  "model_config": {
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "cli_sha256": "4f67c1b043b78eff98077cc1df95ad1a4e5f9d3264893aa81c4042916ab33cd6",
+    "cpu_reference": "Original CLI proof with all bindings; normal expected-model and wrong-model verification by separately pinned production CLI.",
+    "inputs": {
+      "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+      "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+      "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+      "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+    },
+    "job": "6776",
+    "plan": {
+      "checked": "23..32",
+      "inputs": {
+        "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+        "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+        "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+        "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+      },
+      "lifetime_capacity": 8,
+      "lifetime_index": 0,
+      "profile": "dev-zk",
+      "stages": [
+        "lookup_top",
+        "lookup_rebuild",
+        "ordinary_batch_weights_face",
+        "ordinary_batch_dense"
+      ],
+      "tokens": 32,
+      "workload": "dev/stories42m-t32"
+    },
+    "profile": "dev-zk",
+    "proof_sha256": "f98eefbc6d5770be8c4ee018b75639cbd5cddc265a483cb2d4c4bffa6b66e0ab",
+    "public_evidence_sha256": {
+      "commit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "commit.json": "ed28bcb7dbf3b16b5ea4b01603be776f5189cd8cf2d2450e5080dfdf6226d542",
+      "commit.out": "c668c72a1247849524efc64128c6d7fb00ed7f195d47e2cd746f8627b7a1d1ae",
+      "commit.time": "f1548ea015ea273a22a55f069a68baf3e009bd51d61965a774f2ab1b73ae57dc",
+      "cpu.txt": "3d2270a8b13e5c9dcb9fe3d849e19573be94075c362f94433adf676d97029928",
+      "gpu.txt": "d34ee2cdb823d5397408734aef8b15ea8104016a97db8986818f6c792b3055ca",
+      "prove.err": "b7d94c4fdeda7e30be65ba0df2f39df0011d6d3271f25f22e2edae38277c0a62",
+      "prove.json": "2ade288d6224c2a3a1598e20f77d612963829f0ff8c7a1cd3333e8f6925b14e4",
+      "prove.out": "a9423aac63ff8a79c1f6a9117a18f34474466de1674a6b3f2822ebbd780bdb17",
+      "prove.time": "d65d20907a8cbaaab69d4d63659f70038fb0deabf920c10caa66f071d75b1037",
+      "result.json": "1e41c743d2f2f61f3a0918fdcab50d146c7f80770fe4473cedaa2f7638df1a57",
+      "sacct.txt": "e1aabc61a9a446111de1355d757048704065f0a7760bd0ec3371b702aa2f976e",
+      "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3",
+      "verify.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verify.json": "2772c40db679d8a0d6adf472c1e82d3622a1433d4d147678fb220c806ef8281b",
+      "verify.out": "bdf9779f501678f7398fab617f1d9fd0994086662f54f8d1c32e82291c4b3802",
+      "verify.time": "1940cb9eee251b3beb4df2b4e46b71fd503b95f4b6c30e1ffb17c2ec107b4e2a",
+      "wrong.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "wrong.json": "c7f48988c8d298a668a2458bdab879522afa74a0054fdc437cf6480b69daa54e",
+      "wrong.out": "66291c76513d3bba0adbbe25c40945ee4659b6f16a5cd5d90dff9db01001d566",
+      "wrong.time": "1d2366c681064203ef3e8f60af8ed1f71da734c1e1e0879e2baffa9bd2e20564"
+    },
+    "public_sha256": "4e87bea37c4f9f7eebf9fa5d75a99e3a7e3410749baff42c59c8d39377ddacf5",
+    "source_archive_sha256": "dd6bdae9ae436356b8006693158541f0a3b1755f65333f8bd65bf9dde86594e7",
+    "stage_scope": "All 21 top visits, 21 later full-tree rebuilds and all three ordinary claim batches. Both original normalized inputs and device result destruction charged. Shared batch, all masks, transcript, openings, GKR phases and relations outside scope. Device stage includes host staging, upload, kernels, complete result transfer and assembly. Rebuild includes redundant top; top visit includes redundant complete tree. Dense path consumes actual FS points and compares each polynomial and final.",
+    "verifier_sha256": "b16646342de292f1d4733b9ccb80cff4d857ea550cb522581453249a1feb77dc",
+    "workload": "dev/stories42m-t32"
+  },
+  "note": "Paired stage observations from one complete CPU T32 proof on the same Lucid node with 16 pinned threads. Parent process includes both paths and differential checks. Micro standard is the ledger format for stage measurements and makes no security, integrated proof or whole-prover speedup claim. CUDA context and compile are charged once separately.",
+  "plan_digest": "22f9d0bcd98598389adb4c6ca8e1f6ab22ff60dd992ae8d5da9876c0c5f99f40",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 656340000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "batch_dense/cpu": 4137205465,
+    "batch_dense/gpu": 225099294,
+    "batch_prepare/cpu": 11467035149,
+    "batch_prepare/gpu": 17889593056,
+    "gpu_context_compile": 5522522319,
+    "rebuild/cpu": 16583862623,
+    "rebuild/gpu": 49674966371,
+    "top/cpu": 17980204617,
+    "top/gpu": 51995912416
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-stories42m-t32-lookup-batch-h100"
+}
