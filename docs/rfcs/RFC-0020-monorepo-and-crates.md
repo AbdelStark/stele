@@ -236,7 +236,8 @@ from this amendment alone. E20-14 validates the new normal-entry operations.
 
 ### A12 — Field-only relation construction in a proof session
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-15.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-15.
+[Independent review](../../agents/reviews/e20-15-live-relation-contract.md)
 
 Extend A10–A11's authorized field interface with the RFC-0014 A4 relation
 constructor. The proof-local CUDA session may share A3's live masked

@@ -4371,3 +4371,13 @@ claims through the existing A7 flow. Every selected operation must complete on
 the selected backend. This decision introduces no new round, ledger line,
 commitment or proof byte. It grants implementation authority for E20-14.
 [Independent acceptance](../reviews/e20-13-live-gkr-contract.md)
+
+## ADR-142 — Admit live relation sumchecks in balanced development proofs
+
+The development-tier review accepts RFC-0014 A4, RFC-0020 A12 and RFC-0026 A21.
+The field session may execute every relation alongside GKR and ordinary batches.
+Each relation constructor receives original ordered private and public field
+factors and their checked projections. The existing A4 prover controls every
+transcript draw, and A5 retains authentication of the occurrence claims and
+mask opening. E20-16 must qualify all three stage families on complete proofs.
+[Independent acceptance](../reviews/e20-15-live-relation-contract.md)

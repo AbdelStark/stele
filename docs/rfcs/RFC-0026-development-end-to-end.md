@@ -2373,7 +2373,8 @@ actual device participation, full proof parity and charged T32 resources.
 
 ### A21 — Execute balanced development-ZK relation fields on the selected backend
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-15.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-15.
+[Independent review](../../agents/reviews/e20-15-live-relation-contract.md)
 
 Extend §7 and A19–A20's local execution option to the RFC-0013 A5 relations.
 The explicit combined backend computes all relation round evaluations, folds

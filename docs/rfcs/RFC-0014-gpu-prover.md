@@ -216,7 +216,8 @@ charges. No profile promotion. Target cost terms are `c_lu`, `c_sc` and
 
 ### A4 — Live field execution of balanced development-ZK relation sumchecks
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-15.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-15.
+[Independent review](../../agents/reviews/e20-15-live-relation-contract.md)
 
 **Addition to A2 and A3.** The balanced development prover may select a field
 backend for every RFC-0013 A5 relation sumcheck alongside the ordinary batches
