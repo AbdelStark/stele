@@ -416,13 +416,18 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
             statement,
             length,
             window,
-            zk::BatchExecution::new(&session),
+            zk::BatchExecution::with_gkr(&session),
         );
         if result.is_ok() {
             let c = session.counts();
             let memory = device.memory();
             eprintln!("cuda originals={} batches={} rounds={} folds={} finals={} h2d_bytes={} d2h_bytes={}",
-                c.originals, c.batches, c.rounds, c.folds, c.finals, c.uploaded_bytes, c.downloaded_bytes);
+                c.originals, c.batches, c.rounds, c.folds, c.finals, c.uploaded_bytes - c.gkr_uploaded_bytes,
+                c.downloaded_bytes - c.gkr_downloaded_bytes);
+            eprintln!("cuda_gkr steps={} expected_rounds={} rounds={} folds={} finals={} h2d_bytes={} d2h_bytes={} streamed_layer_bytes={} planned_peak_bytes={} observed_peak_bytes={}",
+                c.gkr_steps, c.gkr_expected_rounds, c.gkr_rounds, c.gkr_folds, c.gkr_finals,
+                c.gkr_uploaded_bytes, c.gkr_downloaded_bytes, c.gkr_layer_source_bytes,
+                c.gkr_planned_peak_bytes, c.gkr_observed_peak_bytes);
             if let Ok(m) = memory {
                 eprintln!(
                     "cuda_memory total_bytes={} outside_pool_bytes={} pool_high_bytes={} observed_peak_bytes={}",

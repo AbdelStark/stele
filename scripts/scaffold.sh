@@ -52,6 +52,9 @@ features = ["std", "driver", "nvrtc", "dynamic-loading", "cuda-12040"]
 
 [features]
 cuda = ["dep:cudarc"]
+
+[dev-dependencies.stele-prover]
+path = "../stele-prover"
 CUDA
   fi
   if [ "$uns" = "yes" ]; then forbid='// unsafe allowed in this crate: every block carries a // SAFETY: comment (agents/guardrails/code.md)'; else forbid='#![forbid(unsafe_code)]'; fi

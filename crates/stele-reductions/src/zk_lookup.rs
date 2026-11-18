@@ -54,9 +54,11 @@ use stele_sumcheck::Term;
 #[path = "zk_lookup_bench.rs"]
 pub(super) mod bench;
 
-#[cfg(feature = "bench")]
 #[path = "zk_gkr_construction.rs"]
 pub(super) mod construction;
+#[path = "zk_gkr_expand.rs"]
+mod device_expand;
+pub(super) use device_expand::field_finals;
 
 /// One member as planned: its padded variables, block offset in the lookup half,
 /// tuple reads as x-coordinates (MSB-first index into `x`), shifts and selector.
@@ -863,23 +865,7 @@ impl<K: ChallengeField> Expand<K> {
                     block,
                     v,
                     u,
-                } => {
-                    let x =
-                        stele_sumcheck::parallel::eq_table(&column_point(coords, &self.point, &[]))
-                            .map_err(|_| Error::Statement)?;
-                    let at: Vec<K> = u.iter().map(|q| self.point[*q]).collect();
-                    let r =
-                        stele_sumcheck::parallel::eq_table(&at).map_err(|_| Error::Statement)?;
-                    let data = column
-                        .iter()
-                        .zip(&x)
-                        .fold(zero::<K>(), |s, (a, b)| s + *a * *b);
-                    let mask = block
-                        .iter()
-                        .zip(&r)
-                        .fold(zero::<K>(), |s, (a, b)| s + element::<K>(*a) * *b);
-                    Ok(data + kappa(self.point[*v]) * mask)
-                }
+                } => device_expand::member(&self.point, column, coords, block, *v, u),
             })
             .collect()
     }
