@@ -52,6 +52,19 @@ fn visit_runs(
     Some(())
 }
 
+/// The paired T32 study qualified multi-GiB weight vectors. Keep the serial
+/// preparation for other sizes; the observed 4,536-position batch favored it.
+pub(crate) fn multi_gib_weights(claims: &[Claim<K>]) -> bool {
+    let mut remaining = 1usize << 27;
+    for c in claims {
+        if c.weights.len() >= remaining {
+            return true;
+        }
+        remaining -= c.weights.len();
+    }
+    false
+}
+
 impl Prepared {
     pub fn new(
         source: &Source<K>,
@@ -59,7 +72,12 @@ impl Prepared {
         claims: &[Claim<K>],
         gammas: &[K],
     ) -> Option<Self> {
-        pack::<false>(source, message, claims, gammas).map(|(p, _)| p)
+        if multi_gib_weights(claims) {
+            pack::<true>(source, message, claims, gammas)
+        } else {
+            pack::<false>(source, message, claims, gammas)
+        }
+        .map(|(p, _)| p)
     }
 
     /// Compare every H2D word and every scalar used by the batch construction.

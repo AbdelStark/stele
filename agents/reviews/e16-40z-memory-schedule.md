@@ -7,3 +7,9 @@ The final-child path checks the device, lookup identity and bottom width. The tr
 The reviewer accepted this ownership boundary for a bounded H100 campaign and requested an explicit positive bound for both memory phases in the receipt. The post-capture parser checks both bounds and the ordering of current and high-water CUDA pool counters. The scheduled job source and its independently archived receipts are frozen.
 
 Reviewed by codex-source-visits, lane Z, and codex-root.
+
+## Producer schedule and hardware qualification
+
+The initial campaign (Lucid 6785, source `888ccdd8`) agreed on all seeded GKR arithmetic, then stopped during the real T32 proof. The raw bottom width identified the wrong physical child for a paired A7 leaf. Source `ea710e6e` now takes the last-child decision from the producer's next step and validates the matching retained view. A first-and-leaf schedule releases the original tree at its sole leaf. Twenty-four generated production schedules exercise these boundaries.
+
+Lucid job 6791 completed all 385 T32 GKR steps and all 21 final-child releases. Both original budget skips completed on the H100. The corrected owner test consumed 2,000 canonical and lazy owners. The independent verifier accepted the resulting CPU-authored proof and rejected the wrong model. Resource and timing receipts are in the [E16-40z ledger](../../bench/ledger/e16-40z-t32-gkr-memory-h100.json). Device-pool high-water marks apply to the research allocation and its actual source lifetimes. PCS original buffers for the complete integrated backend require a separate measurement.
