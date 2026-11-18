@@ -124,7 +124,7 @@
       175
     ],
     "execution": "profiled CUDA",
-    "host_context": "Fresh model commitment, independent public proof indices on one dedicated H100 and 16 pinned CPU cores, verified expected model and wrong-model rejection.",
+    "host_context": "Fresh model commitment, independent public proof indices on one dedicated H100 and 16 pinned CPU threads, verified expected model and wrong-model rejection.",
     "instrumentation": "STELE_STAGE_TIMES=1 on the CUDA prover only; the conventional uninstrumented process is index 0. Nested lap scopes are reported separately.",
     "job": 6959,
     "model": {
