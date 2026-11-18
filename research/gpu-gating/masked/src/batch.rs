@@ -4,6 +4,8 @@ use crate::{lookup::words, Field, K, M31};
 use stele_reductions::stele_pcs::Source;
 use stele_reductions::zk::claims::Claim;
 
+use std::time::{Duration, Instant};
+
 pub(crate) const TILE: usize = 128;
 
 pub(crate) struct Prepared {
@@ -57,80 +59,21 @@ impl Prepared {
         claims: &[Claim<K>],
         gammas: &[K],
     ) -> Option<Self> {
-        let columns = source.columns() / 2;
-        let len = source.rows().checked_mul(columns)?;
-        let half = len / 2;
-        if !source.is_hiding()
-            || message.len() != len.checked_mul(2)?
-            || claims.len() != gammas.len()
-        {
-            return None;
-        }
-        let index_start = std::time::Instant::now();
-        let count = claims
-            .iter()
-            .try_fold(0usize, |n, c| n.checked_add(c.weights.len()))?;
-        let mut offsets = vec![0u64; half.div_ceil(TILE) + 1];
-        visit_runs(claims, half, |_, start, _| offsets[start / TILE + 1] += 1)?;
-        let mut schedule_checks = 0u64;
-        for i in 0..offsets.len() - 1 {
-            let width = TILE.min(half - i * TILE) as u64;
-            schedule_checks = schedule_checks.checked_add(width.checked_mul(offsets[i + 1])?)?;
-            offsets[i + 1] += offsets[i];
-        }
-        let run_count = usize::try_from(*offsets.last()?).ok()?;
-        // Empty CUDA inputs retain a single zero element; the offsets reference no sentinel run.
-        let upload_bytes = message
-            .len()
-            .checked_mul(4)?
-            .checked_add(count.max(1).checked_mul(16)?)?
-            .checked_add(claims.len().max(1).checked_mul(16)?)?
-            .checked_add(run_count.max(1).checked_mul(32)?)?
-            .checked_add(offsets.len().checked_mul(8)?)?;
-        if upload_bytes.checked_add(len.checked_mul(20)?)? > isize::MAX as usize {
-            return None;
-        }
-        let index_time = index_start.elapsed();
-        let mut weights = Vec::with_capacity(count.max(1));
-        let mut runs = vec![[0; 4]; run_count.max(1)];
-        visit_runs(claims, half, |claim, start, entries| {
-            let cursor = &mut offsets[start / TILE];
-            runs[*cursor as usize] = [
-                start as u64,
-                (start + entries.len()) as u64,
-                weights.len() as u64,
-                claim as u64,
-            ];
-            *cursor += 1;
-            weights.extend(entries.iter().map(|(_, w)| words(*w)));
-        })?;
-        // All cursors now point to tile ends. Recover starts without a second
-        // tile-sized allocation. The previous final sentinel is discarded.
-        offsets.rotate_right(1);
-        offsets[0] = 0;
-        if weights.is_empty() {
-            weights.push([0; 4]);
-        }
-        let mut gamma_words: Vec<_> = gammas.iter().copied().map(words).collect();
-        if gamma_words.is_empty() {
-            gamma_words.push([0; 4]);
-        }
-        Some(Self {
-            message: message.iter().map(|x| x.as_u32()).collect(),
-            weights,
-            gammas: gamma_words,
-            runs,
-            offsets,
-            columns,
-            len,
-            schedule_checks,
-            index_time,
-            upload_bytes,
-            claimed_sum: claims
-                .iter()
-                .zip(gammas)
-                .fold(K::from_i64(0), |sum, (c, g)| sum + *g * c.value),
-        })
+        pack::<false>(source, message, claims, gammas).map(|(p, _)| p)
+    }
+
+    /// Compare every H2D word and every scalar used by the batch construction.
+    pub(crate) fn matches(&self, other: &Self) -> bool {
+        self.columns == other.columns
+            && self.len == other.len
+            && self.schedule_checks == other.schedule_checks
+            && self.upload_bytes == other.upload_bytes
+            && self.claimed_sum == other.claimed_sum
+            && self.message == other.message
+            && self.weights == other.weights
+            && self.gammas == other.gammas
+            && self.runs == other.runs
+            && self.offsets == other.offsets
     }
 
     pub fn upload_bytes(&self) -> usize {
@@ -144,4 +87,169 @@ impl Prepared {
             + self.runs.capacity() * 32
             + self.offsets.capacity() * 8
     }
+}
+
+#[derive(Default)]
+pub(crate) struct PackTimes {
+    pub split: Duration,
+    pub alloc: Duration,
+    pub weights: Duration,
+    pub runs: Duration,
+    pub message: Duration,
+    pub scratch: usize,
+}
+
+pub(crate) fn pack<const PARALLEL: bool>(
+    source: &Source<K>,
+    message: &[M31],
+    claims: &[Claim<K>],
+    gammas: &[K],
+) -> Option<(Prepared, PackTimes)> {
+    let columns = source.columns() / 2;
+    let len = source.rows().checked_mul(columns)?;
+    let half = len / 2;
+    if !source.is_hiding() || message.len() != len.checked_mul(2)? || claims.len() != gammas.len() {
+        return None;
+    }
+    let index_start = std::time::Instant::now();
+    let count = claims
+        .iter()
+        .try_fold(0usize, |n, c| n.checked_add(c.weights.len()))?;
+    let mut offsets = vec![0u64; half.div_ceil(TILE) + 1];
+    visit_runs(claims, half, |_, start, _| offsets[start / TILE + 1] += 1)?;
+    let mut schedule_checks = 0u64;
+    for i in 0..offsets.len() - 1 {
+        let width = TILE.min(half - i * TILE) as u64;
+        schedule_checks = schedule_checks.checked_add(width.checked_mul(offsets[i + 1])?)?;
+        offsets[i + 1] += offsets[i];
+    }
+    let run_count = usize::try_from(*offsets.last()?).ok()?;
+    // Empty CUDA inputs retain a single zero element; the offsets reference no sentinel run.
+    let upload_bytes = message
+        .len()
+        .checked_mul(4)?
+        .checked_add(count.max(1).checked_mul(16)?)?
+        .checked_add(claims.len().max(1).checked_mul(16)?)?
+        .checked_add(run_count.max(1).checked_mul(32)?)?
+        .checked_add(offsets.len().checked_mul(8)?)?;
+    if upload_bytes.checked_add(len.checked_mul(20)?)? > isize::MAX as usize {
+        return None;
+    }
+    let index_time = index_start.elapsed();
+    let mut timing = PackTimes::default();
+    let split = Instant::now();
+    let mut starts = Vec::new();
+    if PARALLEL {
+        starts.reserve_exact(claims.len() + 1);
+        let mut end = 0;
+        for claim in claims {
+            starts.push(end);
+            end += claim.weights.len(); // count was already checked
+        }
+        starts.push(end);
+    }
+    timing.split = split.elapsed();
+    timing.scratch = starts.capacity() * size_of::<usize>();
+    let alloc = Instant::now();
+    let mut weights = if PARALLEL {
+        vec![[0; 4]; count.max(1)]
+    } else {
+        Vec::with_capacity(count.max(1))
+    };
+    let mut runs = vec![[0; 4]; run_count.max(1)];
+    let mut packed_message = if PARALLEL {
+        vec![0; message.len()]
+    } else {
+        Vec::new()
+    };
+    timing.alloc = alloc.elapsed();
+    if PARALLEL {
+        let start = Instant::now();
+        stele_reductions::parallel::for_each_chunk(&mut weights[..count], |begin, mut out| {
+            // The final sentinel and duplicate starts make empty claims harmless.
+            if out.is_empty() {
+                return;
+            }
+            let mut c = starts.partition_point(|p| *p <= begin) - 1;
+            let mut skip = begin - starts[c];
+            while !out.is_empty() {
+                let input = &claims[c].weights[skip..];
+                let n = out.len().min(input.len());
+                let (part, rest) = out.split_at_mut(n);
+                for (dst, (_, crate::QM31(crate::CM31(a, b), crate::CM31(c, d)))) in
+                    part.iter_mut().zip(input)
+                {
+                    *dst = [a.as_u32(), b.as_u32(), c.as_u32(), d.as_u32()];
+                }
+                out = rest;
+                skip = 0;
+                c += 1;
+            }
+        });
+        timing.weights = start.elapsed();
+    }
+    drop(starts);
+    let write_runs = Instant::now();
+    let mut packed_cursor = 0;
+    visit_runs(claims, half, |claim, start, entries| {
+        let cursor = &mut offsets[start / TILE];
+        runs[*cursor as usize] = [
+            start as u64,
+            (start + entries.len()) as u64,
+            if PARALLEL {
+                packed_cursor
+            } else {
+                weights.len()
+            } as u64,
+            claim as u64,
+        ];
+        *cursor += 1;
+        if PARALLEL {
+            packed_cursor += entries.len();
+        } else {
+            weights.extend(entries.iter().map(|(_, w)| words(*w)));
+        }
+    })?;
+    // All cursors now point to tile ends. Recover starts without a second
+    // tile-sized allocation. The previous final sentinel is discarded.
+    offsets.rotate_right(1);
+    offsets[0] = 0;
+    if weights.is_empty() {
+        weights.push([0; 4]);
+    }
+    timing.runs = write_runs.elapsed();
+    let write_message = Instant::now();
+    if PARALLEL {
+        stele_reductions::parallel::for_each_chunk(&mut packed_message, |begin, out| {
+            for (dst, x) in out.iter_mut().zip(&message[begin..]) {
+                *dst = x.as_u32();
+            }
+        });
+    } else {
+        packed_message = message.iter().map(|x| x.as_u32()).collect();
+    }
+    timing.message = write_message.elapsed();
+    let mut gamma_words: Vec<_> = gammas.iter().copied().map(words).collect();
+    if gamma_words.is_empty() {
+        gamma_words.push([0; 4]);
+    }
+    Some((
+        Prepared {
+            message: packed_message,
+            weights,
+            gammas: gamma_words,
+            runs,
+            offsets,
+            columns,
+            len,
+            schedule_checks,
+            index_time,
+            upload_bytes,
+            claimed_sum: claims
+                .iter()
+                .zip(gammas)
+                .fold(K::from_i64(0), |sum, (c, g)| sum + *g * c.value),
+        },
+        timing,
+    ))
 }

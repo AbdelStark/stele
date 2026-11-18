@@ -37,6 +37,8 @@ pub mod gpu;
 pub mod gpu_lookup;
 #[cfg(feature = "cuda")]
 pub mod gpu_source;
+#[cfg(any(test, feature = "cuda"))]
+pub mod host_pack;
 #[cfg(test)]
 mod host_probe;
 pub mod inventory;

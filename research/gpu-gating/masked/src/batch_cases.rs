@@ -245,3 +245,41 @@ fn matches_reference_batch_kernels_on_host() {
         }
     }
 }
+
+#[test]
+fn matches_reference_disjoint_claim_pack_and_rejects_bounds() {
+    let message = message(SEED);
+    let source = prepared(&message, SEED);
+    let empty = Claim {
+        value: K::ONE,
+        weights: vec![],
+    };
+    for i in 0..1000 {
+        let (mut claims, mut gammas) = claims(&message, SEED + i);
+        if i == 0 {
+            let mut rng = Rng::new(SEED);
+            claims.push(Claim {
+                value: rng.qm31(),
+                weights: (0..(1 << 17)).map(|p| (p % 1024, rng.qm31())).collect(),
+            });
+            gammas.push(K::ONE);
+        }
+        if !claims.is_empty() {
+            for slot in [claims.len(), claims.len() / 2, 0] {
+                claims.insert(slot, empty.clone());
+                gammas.insert(slot, K::ONE);
+            }
+        }
+        let reference =
+            crate::batch::Prepared::new(source.source(), &message, &claims, &gammas).unwrap();
+        let (candidate, _) =
+            crate::batch::pack::<true>(source.source(), &message, &claims, &gammas).unwrap();
+        assert!(reference.matches(&candidate), "case {i}");
+    }
+    let invalid = [Claim {
+        value: K::ZERO,
+        weights: vec![(message.len() / 4, K::ZERO)],
+    }];
+    assert!(crate::batch::pack::<true>(source.source(), &message, &invalid, &[K::ZERO]).is_none());
+    assert!(crate::batch::pack::<true>(source.source(), &message, &invalid, &[]).is_none());
+}
