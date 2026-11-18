@@ -1522,20 +1522,26 @@ where
 {
     let column = plan.columns[occurrence.column];
     let (at, blocks) = plan.layouts[column.source].offsets[slot(plan, occurrence.column)];
-    let x = stele_poly::eq_table(&column_point(&occurrence.coords, point, free))
+    let x = stele_sumcheck::parallel::eq_table(&column_point(&occurrence.coords, point, free))
         .map_err(|_| Error::Statement)?;
     let u: Vec<K> = occurrence.u.iter().map(|q| point[*q]).collect();
     let r = stele_poly::eq_table(&u).map_err(|_| Error::Statement)?;
     let k = kappa(point[occurrence.v]);
     let first = blocks + occurrence.block * dim::<K>();
     let len = 1usize << column.log_len;
+    let capacity = x
+        .len()
+        .checked_mul(column.limbs)
+        .and_then(|n| n.checked_add(r.len()))
+        .ok_or(Error::Statement)?;
     let mut weights = Vec::new();
-    for d in 0..column.limbs {
-        let e = if column.limbs == 1 {
-            K::from_i64(1)
-        } else {
-            basis::<K>(d)?
-        };
+    weights
+        .try_reserve_exact(capacity)
+        .map_err(|_| Error::Statement)?;
+    // RFC-0013 A5: the first limb uses the unit basis element, including base columns.
+    weights.extend(x.iter().enumerate().map(|(p, w)| (at + p, *w)));
+    for d in 1..column.limbs {
+        let e = basis::<K>(d)?;
         weights.extend(
             x.iter()
                 .enumerate()
@@ -1683,20 +1689,33 @@ fn opening_point<K: ChallengeField>(point: &[K], ell: usize) -> Vec<K> {
 }
 
 /// The verifier's `W'(ρ) = (1 − w*)·W̃(row*, col*)`, zero weight on `w = 1`.
-// shortcut: O(R·C) dense evaluation; a succinct eq-sum per claim when sources grow.
+/// Linearity lets each claim accumulate against the same equality table before batching.
 fn expected_weight<K: ChallengeField>(
     source: &Source<K>,
     claims: &[Claim<K>],
     gammas: &[K],
     point: &[K],
 ) -> Result<K, Error> {
-    let table = weight_table(source, claims, gammas)?;
-    let eq = stele_poly::eq_table(&point[1..]).map_err(|_| Error::Statement)?;
-    let data = eq
-        .iter()
-        .zip(&table)
-        .fold(zero::<K>(), |s, (e, w)| s + *e * *w);
-    Ok((K::from_i64(1) - point[0]) * data)
+    let (w, coordinates) = point.split_first().ok_or(Error::Statement)?;
+    let dimension = (source.rows() / 2)
+        .checked_ilog2()
+        .ok_or(Error::Statement)?
+        + (source.columns() / 2)
+            .checked_ilog2()
+            .ok_or(Error::Statement)?;
+    if coordinates.len() != dimension as usize || claims.len() != gammas.len() {
+        return Err(Error::Statement);
+    }
+    let eq = stele_sumcheck::parallel::eq_table(coordinates).map_err(|_| Error::Statement)?;
+    let mut data = zero::<K>();
+    for (claim, gamma) in claims.iter().zip(gammas) {
+        let mut value = zero::<K>();
+        for (position, weight) in &claim.weights {
+            value = value + *eq.get(*position).ok_or(Error::Statement)? * *weight;
+        }
+        data = data + *gamma * value;
+    }
+    Ok((K::from_i64(1) - *w) * data)
 }
 
 /// Prove one A5 item-5 batch of `claims` on a hiding source, with its plain mask
@@ -3382,12 +3401,12 @@ where
                 route: &route,
             })?;
         }
-        for (source, claim) in finals.claims.iter().cloned() {
+        for (source, claim) in finals.claims {
             claims[source].push(claim);
         }
         mus.push(mask_claim(&plan, index, &point, mu)?);
-        mus.extend(finals.blocks.iter().cloned());
-        lookup::advance(step, run, &point, &finals, t)?;
+        mus.extend(finals.blocks);
+        lookup::advance(step, run, &point, finals.layers, t)?;
         gkr.push(proof);
         detail.lap("zk/detail/gkr_claims");
     }
@@ -3661,12 +3680,12 @@ where
         ledger.masked(&name, &result);
         let point = &result.reduction.point;
         let finals = lookup::finals(&plan, step, run, point, &sumcheck.final_values)?;
-        for (source, claim) in finals.claims.iter().cloned() {
+        for (source, claim) in finals.claims {
             claims[source].push(claim);
         }
         mus.push(mask_claim(&plan, index, point, result.mask_final)?);
-        mus.extend(finals.blocks.iter().cloned());
-        lookup::advance(step, run, point, &finals, t)?;
+        mus.extend(finals.blocks);
+        lookup::advance(step, run, point, finals.layers, t)?;
         reductions.push(result.reduction);
         records.push(result.mask);
     }
@@ -4203,9 +4222,18 @@ mod tests {
             let source = Source::<QM31>::hiding(0, ell, MIN_M, BLOWUP, [0; 32]).unwrap();
             let last = (source.rows() / 2) * (source.columns() / 2) - 1;
             let claims = [
-                Claim { weights: vec![(0, q(2)), (last, q(3)), (0, q(5))], value: q(7) },
-                Claim { weights: vec![(last, q(11)), (2, q(13))], value: q(17) },
-                Claim { weights: vec![], value: q(19) },
+                Claim {
+                    weights: vec![(0, q(2)), (last, q(3)), (0, q(5))],
+                    value: q(7),
+                },
+                Claim {
+                    weights: vec![(last, q(11)), (2, q(13))],
+                    value: q(17),
+                },
+                Claim {
+                    weights: vec![],
+                    value: q(19),
+                },
             ];
             let gammas = [q(23), q(29), q(31)];
             let table = weight_table(&source, &claims, &gammas).unwrap();
@@ -4213,14 +4241,35 @@ mod tests {
             for w in [QM31::from_i64(0), QM31::from_i64(1), q(37)] {
                 point[0] = w;
                 let eq = stele_poly::eq_table(&point).unwrap();
-                let dense = eq.iter().zip(&table).fold(zero::<QM31>(), |s,(a,b)| s + *a * *b);
-                assert_eq!(expected_weight(&source, &claims, &gammas, &point), Ok(dense));
+                let dense = eq
+                    .iter()
+                    .zip(&table)
+                    .fold(zero::<QM31>(), |s, (a, b)| s + *a * *b);
+                assert_eq!(
+                    expected_weight(&source, &claims, &gammas, &point),
+                    Ok(dense)
+                );
             }
-            assert_eq!(expected_weight(&source, &[], &[], &point), Ok(zero::<QM31>()));
-            assert_eq!(expected_weight(&source, &claims, &gammas[..2], &point), Err(Error::Statement));
-            assert_eq!(expected_weight(&source, &claims, &gammas, &point[1..]), Err(Error::Statement));
-            let bad = Claim { weights: vec![(last + 1, q(41))], value: q(43) };
-            assert_eq!(expected_weight(&source, &[bad], &[zero::<QM31>()], &point), Err(Error::Statement));
+            assert_eq!(
+                expected_weight(&source, &[], &[], &point),
+                Ok(zero::<QM31>())
+            );
+            assert_eq!(
+                expected_weight(&source, &claims, &gammas[..2], &point),
+                Err(Error::Statement)
+            );
+            assert_eq!(
+                expected_weight(&source, &claims, &gammas, &point[1..]),
+                Err(Error::Statement)
+            );
+            let bad = Claim {
+                weights: vec![(last + 1, q(41))],
+                value: q(43),
+            };
+            assert_eq!(
+                expected_weight(&source, &[bad], &[zero::<QM31>()], &point),
+                Err(Error::Statement)
+            );
         }
     }
 
