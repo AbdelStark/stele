@@ -252,6 +252,7 @@ name = "stele-masked-gpu-bench"
 version = "0.1.0"
 dependencies = [
  "cudarc",
+ "stele-prover",
  "stele-reductions",
  "stele-sumcheck",
 ]
@@ -273,6 +274,22 @@ version = "0.1.0"
 dependencies = [
  "stele-field",
  "stele-simd",
+]
+
+[[package]]
+name = "stele-proof"
+version = "0.1.0"
+dependencies = [
+ "stele-field",
+]
+
+[[package]]
+name = "stele-prover"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "stele-proof",
+ "stele-reductions",
 ]
 
 [[package]]
