@@ -1,0 +1,42 @@
+{
+  "job": "6774",
+  "source": "490379a4708ebe2100d312d2d99edb0fb67b6464",
+  "host": "h100-nvl-1-1-cc",
+  "gpu": "name, uuid, driver_version, memory.total [MiB]\nNVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 570.211.01, 95830 MiB",
+  "statements": 1000,
+  "steps": 2728,
+  "representations": 5456,
+  "status": "COMPLETED",
+  "exit_code": "0:0",
+  "restarts": 0,
+  "binary_sha256": "17f46bdc18b6efa3094a8444a0ef25879bb382e5b9e8b2bde54327b71a4b7b1e",
+  "evidence_sha256": "ed2a3ca57b7e748d5be33e1530a5614a99f54ce55457f7afd6de41c0498d9ff7",
+  "pins_sha256": "11a31acc4459f02c1c45de72d08eaa32d26b9f90f69cd182b8daf5d701bb94b5",
+  "evidence_manifest_sha256": "770233d39eedc61c0764f4d0e8e460b56736bf811717d6e87a454b43972c6849",
+  "task": "E16-40r",
+  "scope": "Development research, borrowed GKR construction component parity",
+  "source_archive_sha256": "6eb6bf33adb49761e2f0504eb68a3936d94018f7a7f2290e6a9aee819f12ae6f",
+  "evidence_location": "lucid-cluster:~/stele-codex/e16-40r-qualification/evidence-6774.tar.gz",
+  "evidence_payloads": 41,
+  "host_test": "running 1 test\ntest gkr_build::tests::rejects_invalid_geometry_before_device_access ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.00s",
+  "device_test": "running 1 test\ntest gpu::gkr_tests::matches_reference_borrowed_gkr_construction_on_h100 ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 154.74s",
+  "device_progress": [
+    "constructed_gkr_cases_passed=100 steps=268",
+    "constructed_gkr_cases_passed=200 steps=533",
+    "constructed_gkr_cases_passed=300 steps=806",
+    "constructed_gkr_cases_passed=400 steps=1087",
+    "constructed_gkr_cases_passed=500 steps=1362",
+    "constructed_gkr_cases_passed=600 steps=1628",
+    "constructed_gkr_cases_passed=700 steps=1897",
+    "constructed_gkr_cases_passed=800 steps=2177",
+    "constructed_gkr_cases_passed=900 steps=2460",
+    "constructed_gkr_cases_passed=1000 steps=2728",
+    "constructed_gkr_statements=1000 steps=2728 representations=5456 device=NVIDIA H100 NVL"
+  ],
+  "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "release_features": [
+    "cuda"
+  ],
+  "cpu_threads": 16,
+  "slurm_requeue": false
+}
