@@ -42,7 +42,7 @@ pub const WEIGHTS: usize = 1;
 /// One check's members as the multiplicity count needs them.
 struct CountMember {
     vars: u32,
-    tuple: Vec<(ColumnId, Vec<u8>, i64)>,
+    tuple: Vec<(Ref, i64)>,
     selector: Option<Ref>,
 }
 
@@ -212,11 +212,7 @@ pub fn layout(relation: &Relation) -> Result<Layout, Error> {
             Target::Table(lookup.table.0),
             CountMember {
                 vars: u32::from(lookup.vars),
-                tuple: lookup
-                    .tuple
-                    .iter()
-                    .map(|r| (r.column, r.vars.clone(), 0))
-                    .collect(),
+                tuple: lookup.tuple.iter().cloned().map(|r| (r, 0)).collect(),
                 selector: lookup.selector.clone(),
             },
         );
@@ -227,7 +223,13 @@ pub fn layout(relation: &Relation) -> Result<Layout, Error> {
             Target::Range(range.width.bits),
             CountMember {
                 vars: u32::from(log_len),
-                tuple: vec![(range.column, (0..log_len).collect(), -range.width.min())],
+                tuple: vec![(
+                    Ref {
+                        column: range.column,
+                        vars: (0..log_len).collect(),
+                    },
+                    -range.width.min(),
+                )],
                 selector: None,
             },
         );
@@ -247,16 +249,12 @@ pub fn layout(relation: &Relation) -> Result<Layout, Error> {
         let mut spec = Vec::new();
         for member in &members {
             let mut tuple = Vec::new();
-            for (column, v, _) in &member.tuple {
+            for (r, _) in &member.tuple {
                 // Virtual or public tuple columns are not admitted (RFC-0008 A6).
-                let column = index(*column).ok_or(Error::Statement)?;
-                let r = Ref {
-                    column: committed[column],
-                    vars: v.clone(),
-                };
+                let column = index(r.column).ok_or(Error::Statement)?;
                 tuple.push(Read {
                     column,
-                    vars: vars(&r, member.vars),
+                    vars: vars(r, member.vars),
                 });
             }
             let selector = match &member.selector {
@@ -272,7 +270,7 @@ pub fn layout(relation: &Relation) -> Result<Layout, Error> {
             spec.push(Member {
                 vars: member.vars,
                 tuple,
-                shifts: member.tuple.iter().map(|(_, _, s)| *s).collect(),
+                shifts: member.tuple.iter().map(|(_, s)| *s).collect(),
                 selector,
             });
         }
@@ -316,46 +314,72 @@ pub fn columns(
     }
     let c_d = (<K as stele_pcs::CodeField>::DEGREE as u32).trailing_zeros();
     for (lookup, members) in layout.statement.lookups.iter().zip(&layout.counts) {
-        let key =
-            |row: &[i64]| -> Vec<u32> { row.iter().map(|v| M31::from_i64(*v).as_u32()).collect() };
-        let mut index: Vec<(Vec<u32>, usize)> = lookup
-            .table
+        let valid = lookup.valid.min(lookup.table.len());
+        let rows = &lookup.table[..valid];
+        // Range tables map each canonical key directly to its multiplicity position.
+        // Inspect the actual table: callers can modify Layout.statement after derivation.
+        let dense = rows
             .iter()
-            .take(lookup.valid)
             .enumerate()
-            .map(|(i, row)| (key(row), i))
-            .collect();
-        index.sort_unstable();
+            .all(|(i, row)| row.as_slice() == [i as i64]);
+        let index = (!dense).then(|| {
+            let mut index: Vec<(Vec<u32>, usize)> = rows
+                .iter()
+                .enumerate()
+                .map(|(i, row)| (row.iter().map(|v| M31::from_i64(*v).as_u32()).collect(), i))
+                .collect();
+            index.sort_unstable();
+            index
+        });
         let mut mult = vec![0i64; lookup.table.len()];
         for member in members {
             let pad = 1i64 << member.vars.max(c_d + 1).saturating_sub(member.vars).min(62);
             let cols = member
                 .tuple
                 .iter()
-                .map(|(id, _, _)| column(*id))
-                .collect::<Result<Vec<_>, _>>()?;
+                .map(|(r, shift)| Ok((column(r.column)?, r, *shift)))
+                .collect::<Result<Vec<_>, Error>>()?;
             let selector = match &member.selector {
                 None => None,
                 Some(r) => Some((r, column(r.column)?)),
             };
+            if let [(col, r, shift)] = cols.as_slice() {
+                if dense
+                    && selector.is_none()
+                    && col.len() == 1usize << member.vars
+                    && r.vars.iter().copied().eq(0..member.vars as u8)
+                {
+                    for &value in *col {
+                        let i = M31::from_i64(value + shift).as_u32() as usize;
+                        if i < valid {
+                            mult[i] += pad;
+                        }
+                    }
+                    continue;
+                }
+            }
+            let mut key = Vec::with_capacity(cols.len());
             for x in 0..1u64 << member.vars {
                 if selector.is_some_and(|(r, s)| s[r.index(x)] != 1) {
                     continue;
                 }
-                let row: Vec<i64> = member
-                    .tuple
-                    .iter()
-                    .zip(&cols)
-                    .map(|((_, v, shift), col)| {
-                        let r = Ref {
-                            column: ColumnId(0),
-                            vars: v.clone(),
-                        };
-                        col[r.index(x)] + shift
-                    })
-                    .collect();
-                if let Ok(p) = index.binary_search_by(|e| e.0.cmp(&key(&row))) {
-                    mult[index[p].1] += pad;
+                key.clear();
+                key.extend(
+                    cols.iter()
+                        .map(|(col, r, shift)| M31::from_i64(col[r.index(x)] + shift).as_u32()),
+                );
+                let pos = match &index {
+                    Some(sorted) => sorted
+                        .binary_search_by(|e| e.0.cmp(&key))
+                        .ok()
+                        .map(|p| sorted[p].1),
+                    None => match key.as_slice() {
+                        &[p] if (p as usize) < valid => Some(p as usize),
+                        _ => None,
+                    },
+                };
+                if let Some(p) = pos {
+                    mult[p] += pad;
                 }
             }
         }
@@ -620,7 +644,7 @@ mod tests {
         values.set(&relation, id, data.to_vec()).unwrap();
         let member = |vars, shift, selected: bool| CountMember {
             vars: 2,
-            tuple: vec![(id, vars, shift)],
+            tuple: vec![(Ref { column: id, vars }, shift)],
             selector: selected.then(|| Ref {
                 column: selector,
                 vars: vec![0, 1],
@@ -649,7 +673,22 @@ mod tests {
                 CountMember {
                     vars: 2,
                     selector: None,
-                    tuple: vec![(id, vec![1, 0], 0), (id, vec![0, 1], 0)],
+                    tuple: vec![
+                        (
+                            Ref {
+                                column: id,
+                                vars: vec![1, 0],
+                            },
+                            0,
+                        ),
+                        (
+                            Ref {
+                                column: id,
+                                vars: vec![0, 1],
+                            },
+                            0,
+                        ),
+                    ],
                 },
             ]],
             statement: Statement {
