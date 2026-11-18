@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 use std::{env, fs, path::PathBuf};
 use stele_gpu::{Cuda, Error, Session};
+use stele_kernels::gkr::{GkrBackend, GkrConstruction, RelationBackend, RelationConstruction};
 use stele_kernels::{Backend, SourceGeometry, WeightedClaim, M31, QM31};
 use stele_prover::development::{prove_window_with_backend, zk, Statement};
 
@@ -61,10 +62,60 @@ impl<'d> Backend<QM31> for ChangedRound<'d> {
     }
 }
 
+impl<'d> GkrBackend<QM31> for ChangedRound<'d> {
+    type Gkr<'s>
+        = <Session<'d> as GkrBackend<QM31>>::Gkr<'s>
+    where
+        Self: 's;
+    fn gkr_start<'s>(&'s self, input: &GkrConstruction<'_, QM31>) -> Result<Self::Gkr<'s>, Error> {
+        self.0.gkr_start(input)
+    }
+    fn gkr_round<'s>(state: &mut Self::Gkr<'s>) -> Result<Vec<QM31>, Error>
+    where
+        Self: 's,
+    {
+        let mut fields = Session::gkr_round(state)?;
+        let first = fields.first_mut().ok_or(Error::Geometry)?;
+        *first = *first + QM31::ONE;
+        Ok(fields)
+    }
+    fn gkr_fold<'s>(s: &mut Self::Gkr<'s>, c: QM31) -> Result<(), Error>
+    where
+        Self: 's,
+    {
+        Session::gkr_fold(s, c)
+    }
+    fn gkr_finals<'s>(s: &Self::Gkr<'s>) -> Result<Vec<QM31>, Error>
+    where
+        Self: 's,
+    {
+        Session::gkr_finals(s)
+    }
+}
+impl RelationBackend<QM31> for ChangedRound<'_> {
+    fn relation_start<'s>(
+        &'s self,
+        input: &RelationConstruction<'_, QM31>,
+    ) -> Result<Self::Gkr<'s>, Error> {
+        self.0.relation_start(input)
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args_os().skip(1).map(PathBuf::from).collect();
-    let [case, model_commitment, model_secret] = args.as_slice() else {
-        return Err("expected first parity case, model commitment and original state".into());
+    let (case, model_commitment, model_secret, stage) = match args.as_slice() {
+        [case, commitment, secret] => (case, commitment, secret, "batch"),
+        [case, commitment, secret, stage] if stage.as_os_str() == "gkr" => {
+            (case, commitment, secret, "gkr")
+        }
+        [case, commitment, secret, stage] if stage.as_os_str() == "relation" => {
+            (case, commitment, secret, "relation")
+        }
+        _ => {
+            return Err(
+                "expected first parity case, commitment, state and optional gkr or relation".into(),
+            )
+        }
     };
     let commitment =
         zk::ModelCommitment::decode(&fs::read(model_commitment)?).map_err(|e| format!("{e:?}"))?;
@@ -77,12 +128,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         return Err("control requires the unused balanced model commitment".into());
     }
+    let device = Cuda::new()?;
+    let relation = stage == "relation";
     let mut writes = Vec::new();
     let mut index = u32::MAX;
     let seed = fs::read(case.join("proof-seed.bin"))?
         .try_into()
         .map_err(|_| "invalid fixture seed")?;
-    let device = Cuda::new()?;
     let changed = ChangedRound(device.session());
     let result = prove_window_with_backend(
         &fs::read(case.join("model.bin"))?,
@@ -106,7 +158,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             index: &mut index,
         },
-        zk::BatchExecution::new(&changed),
+        if relation {
+            zk::BatchExecution::with_relations(&changed)
+        } else if stage == "gkr" {
+            zk::BatchExecution::with_gkr(&changed)
+        } else {
+            zk::BatchExecution::new(&changed)
+        },
     );
     let error = result.err().ok_or("changed CUDA round was accepted")?;
     // The inner error belongs to the reductions crate. Avoid adding a protocol dependency to
@@ -116,7 +174,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err(format!("expected {claimed}, got {error:?}").into());
     }
     let counts = changed.0.counts();
-    if (
+    if relation {
+        if (
+            counts.relation_steps,
+            counts.relation_rounds,
+            counts.relation_folds,
+            counts.relation_finals,
+            counts.gkr_steps,
+            counts.batches,
+        ) != (1, 1, 0, 0, 0, 0)
+            || counts.relation_downloaded_bytes == 0
+            || counts.relation_downloaded_bytes != counts.downloaded_bytes
+        {
+            return Err("changed relation did not stop at the first real device polynomial".into());
+        }
+    } else if stage == "gkr" {
+        if (
+            counts.gkr_steps,
+            counts.gkr_rounds,
+            counts.gkr_folds,
+            counts.gkr_finals,
+            counts.relation_steps,
+            counts.batches,
+        ) != (1, 1, 0, 0, 0, 0)
+            || counts.gkr_downloaded_bytes == 0
+            || counts.gkr_downloaded_bytes != counts.downloaded_bytes
+        {
+            return Err(
+                "changed GKR round did not stop at the first real device polynomial".into(),
+            );
+        }
+    } else if (
         counts.originals,
         counts.batches,
         counts.rounds,
@@ -132,6 +220,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         return Err("failed round did not restore the reservation".into());
     }
-    println!("rejected_cuda_round=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1");
+    if relation {
+        println!("rejected_cuda_relation=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1");
+    } else if stage == "gkr" {
+        println!("rejected_cuda_gkr_round=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1");
+    } else {
+        println!(
+            "rejected_cuda_round=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1"
+        );
+    }
     Ok(())
 }
