@@ -318,7 +318,7 @@ with every selected visit, A1 memory accounting and independent verification.
 ### A6 — Produce balanced lookup tops and retain GKR child layers
 
 Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-19.
-[Independent review](../../agents/reviews/e20-19-lookup-tree-contract.md)
+[Independent review](../../agents/reviews/e20-19-lookup-tree-ownership.md)
 
 For each balanced byte-4 lookup, a selected prover may construct the RFC-0008
 A7 tree through the proof-local field backend. The reduction derives the lookup

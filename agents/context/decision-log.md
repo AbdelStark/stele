@@ -4398,4 +4398,4 @@ for top construction and retained A7 child access in the development prover.
 The host keeps top division, the zero-denominator abort, transcript and original
 claim authority. The last nonleaf can release the tree before folding. E20-20
 qualifies the complete proof and total peak device memory.
-[Review](../reviews/e20-19-lookup-tree-contract.md)
+[Review](../reviews/e20-19-lookup-tree-ownership.md)
