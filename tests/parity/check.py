@@ -150,11 +150,13 @@ def rejection_controls(work):
         raise ValueError("unavailable CUDA did not fail before reservation and proof output")
     print("rejected_unavailable_cuda=1 reservation_unchanged=1", flush=True)
 
-    result = run([work / "reject-round", case, commitment, secret], capture_output=True, text=True)
-    expected = "rejected_cuda_round=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1"
-    if result.stdout.splitlines()[-1:] != [expected]:
-        raise ValueError("genuine corrupted CUDA round did not reach the checked masked prover")
-    print(expected, flush=True)
+    for args, marker in (([], "rejected_cuda_round"), (["gkr"], "rejected_cuda_gkr_round"),
+                         (["relation"], "rejected_cuda_relation")):
+        result = run([work / "reject-round", case, commitment, secret, *args], capture_output=True, text=True)
+        expected = marker + "=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1"
+        if result.stdout.splitlines() != [expected]:
+            raise ValueError("changed CUDA round did not reach the checked masked prover")
+        print(expected, flush=True)
 
 
 def compare(work, pins):
@@ -210,7 +212,15 @@ def main():
                   "--lib", "--test", "dense", "--", "--ignored", "--nocapture", "--test-threads=1"],
                  text=True, stdout=subprocess.PIPE)
     print(result.stdout, flush=True)
-    if not re.search(r"cuda_dense_cases=1000 rounds=[1-9]\d+ folds=[1-9]\d+ finals=1000", result.stdout) or "2 passed; 0 failed; 0 ignored" not in result.stdout or "cuda_dense_lazy_cases=1000" not in result.stdout:
+    required = ("device::tests::matches_reference_original_across_staging_chunks",
+                "device::tests::matches_reference_raw_lazy_device_boundaries",
+                "gkr_tests::matches_reference_cuda_gkr", "relation_tests::matches_reference_cuda_relations",
+                "matches_reference_cuda_dense_batches", "rejects_foreign_source_and_invalid_dense_transitions")
+    completed = re.findall(r"^test (\S+) \.\.\. (?:[^\n]+\n)?ok$", result.stdout, flags=re.MULTILINE)
+    if (sorted(completed) != sorted(required)
+            or "4 passed; 0 failed; 0 ignored" not in result.stdout or "2 passed; 0 failed; 0 ignored" not in result.stdout
+            or not re.search(r"cuda_dense_cases=1000 rounds=([1-9]\d*) folds=\1 finals=1000", result.stdout)
+            or "cuda_dense_lazy_cases=1000" not in result.stdout):
         raise ValueError("required H100 operation comparisons or controls missing")
     if not re.search(r"cuda_gkr_cases=1000 raw_cuda_gkr_cases=1000 field_rounds=8000 field_folds=8000 field_finals=2000", result.stdout):
         raise ValueError("required H100 GKR comparisons or controls missing")

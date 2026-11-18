@@ -1,0 +1,63 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "c4f7e73df8895dc9d172c7319764d4c9959e6bec",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-cd807199-f8e9-71ab-cfdb-0b50bd340afe, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "canonical_cases": 1000,
+    "device_finals": 2000,
+    "device_folds": 8000,
+    "device_rounds": 8000,
+    "raw_lazy_cases": 1000,
+    "whole_proof_pairs": 0
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk byte 4",
+    "commit": "c4f7e73df8895dc9d172c7319764d4c9959e6bec",
+    "evidence_location": "lucid-cluster:~/stele-codex/e20-16-relation-device/c4f7e73d/job-6936",
+    "executable_sha256": "b67dbaf4becf65d395bb77b12e6c827ca34e3da876294757ec9d1a7a43043a40",
+    "job": 6936,
+    "plan": {
+      "canonical_cases": 1000,
+      "lazy_cases": 1000,
+      "profile": "dev-zk byte 4",
+      "selected": "masked relation arithmetic"
+    },
+    "public_receipt_sha256": {
+      "allocation.txt": "8915e8b2d7953a6eeafc4c8d0965a437bb329ec51a7532b1b18eda5d6ed7e017",
+      "binary.sha256": "3914030d392c086ea12839f332fddcfa1f7df35f12d11b8bbf4f1ed6953f28a1",
+      "device.txt": "10db7f0779c5d791ed170de225e4e1f039387cef4295599ab8e144d83298fa00",
+      "test.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test.out": "3b944fc2b5543e0dc6ec2505a9434720cdef3dd1fe35b837d5e0964e0dab466c",
+      "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3"
+    },
+    "slurm_receipt_sha256": "883e46c89735a7bade00932ede603630d8080ab83f3616b002924a6241419c67",
+    "source_patch_base": "2b632c6c",
+    "source_patch_sha256": "978605464f366091befb0ebf12825b50854030a08cff202a228bf493cf44df3a"
+  },
+  "note": "Each projected relation has a private masked occurrence, an extension scalar and a base column. The 1,000 canonical and 1,000 lazy device inputs exercise MSB permutations, masking, repeated factors, constant products, field equality and isolated relation counters. Time comes from the Rust test harness to its reported precision.",
+  "plan_digest": "9e2dfd438bd27228e566b1dfe6ead49870e3b1235445d743c89c3e918e86e8ca",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 2340000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "canonical_and_lazy_relation_differential": 2340000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-relation-device-operations"
+}
