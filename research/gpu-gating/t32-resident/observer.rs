@@ -13,7 +13,7 @@ pub enum Event<'a> {
         top: Option<[&'a Vec<QM31>; 3]>,
         normalize: Duration,
     },
-    Release(usize),
+    Release(usize, bool),
 }
 pub static OBSERVER: OnceLock<fn(Event<'_>)> = OnceLock::new();
 fn field<T: 'static>(x: &dyn Any) -> &T {
@@ -34,6 +34,6 @@ pub(super) fn lookup<K: ChallengeField>(
         normalize,
     });
 }
-pub(super) fn release(id: usize) {
-    OBSERVER.get().expect("required resident observer")(Event::Release(id));
+pub(super) fn release(id: usize, first: bool) {
+    OBSERVER.get().expect("required resident observer")(Event::Release(id, first));
 }
