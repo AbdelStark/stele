@@ -73,3 +73,26 @@ required in stack order. PR #401 is the one branch awaiting mandatory CI; no
 cumulative full suite was queued. The device consumer waits for this interface
 to merge. Neither review grants GPU execution, integrated-proof parity, complete
 device-memory qualification, measured acceleration or ADR-127 GO credit.
+
+## Earlier stack placement, unchanged implementation
+
+The replacement branch `task/E16-40p-gkr-construction-interface` places this
+independent interface directly after E16-40h and before E16-40i. Its only task
+dependency, E16-40g, is already merged. The original branch and pinned qualification
+packages remain preserved. The original review conclusions above apply unchanged.
+
+Original base `4dbbfd47` and replacement base `984023f0` have the same reductions
+tree, `2fc4c83ebafea6d80f7db7bad3494951dd876685`. Original and replacement
+implementations have the same reductions tree,
+`41d6ca9de7e903d2550cd93990a719fd4fe8a918`. The reductions diff is byte-identical:
+SHA-256 `2dc2d0f0ca29b36cfe3fdc11c1ff81848ca8c39561d8353e62bb1c5d2aedf88c`.
+Only task placement and this review record differ.
+
+At replacement implementation `791d3ff4`, focused GKR/lookup/batch tests with
+`bench,std`, no-default-feature reductions/verifier checking, reductions
+all-target/all-feature Clippy with warnings denied, formatting, task-graph,
+documentation-link and diff checks passed. Logs are
+`stele-validation/e16-40p-interface-{tests,no-std,clippy}.log`.
+PR #401 has merged; PR #403 is the single branch running full CI. This interface
+remains draft until its turn for full workspace/native/ladder validation against
+current main and the intended merge tree. Its device consumer still waits for merge.
