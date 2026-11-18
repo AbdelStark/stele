@@ -111,11 +111,18 @@ impl<'d> HidingBackend for Session<'d> {
             .arg(&salt_block)
             .arg(&slen)
             .arg(&mut nodes);
+        // Count a completed level even if its memory check rejects the visit.
+        let mut complete_level = |count| -> Result<(), Error> {
+            stream.synchronize()?;
+            *hashes += count;
+            self.record(|c| c.source_hashes += count);
+            let peak = dev.memory()?.checked_peak()?;
+            self.record(|c| c.source_observed_peak_bytes = c.source_observed_peak_bytes.max(peak));
+            Ok(())
+        };
         // SAFETY: each canonical leaf owns eight words; encoded covers every physical row.
         unsafe { launch.launch(dev.grid(leaves)) }?;
-        stream.synchronize()?;
-        *hashes += count;
-        self.record(|c| c.source_hashes += count);
+        complete_level(count)?;
         let op = dev.kernel("node_kernel")?;
         let (mut offset, mut width, mut level) = (0usize, leaves, 1u32);
         while width > 1 {
@@ -133,9 +140,7 @@ impl<'d> HidingBackend for Session<'d> {
                 .arg(&node_prefix);
             // SAFETY: disjoint adjacent levels have exactly two child digests per parent.
             unsafe { launch.launch(dev.grid(width / 2)) }?;
-            stream.synchronize()?;
-            *hashes += count;
-            self.record(|c| c.source_hashes += count);
+            complete_level(count)?;
             offset = next;
             width /= 2;
             level += 1;
