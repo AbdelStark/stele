@@ -245,6 +245,8 @@ The GPU constructs the salted Circle commitments, returns authenticated columns,
 
 The CUDA prover writes work and physical memory counters to stderr. Run `scripts/gates/parity.sh` on an allocated H100 to compare the complete public inputs and proofs for 50 pinned CPU cases and exercise the fault controls. [Complete H100 parity and fault controls](../bench/ledger/e20-22-h100-complete-shared-proof-parity.json)
 
+On the public stories42M checkpoint, the 24-token prompt below checks nine greedy choices at positions 23 through 31. To run it on the H100, use the same CUDA prover and CPU verifier as above, set the commitment and proof length to 32, and pass `--checked 23..32` to the prover. On one Lucid H100 SXM with 16 pinned CPU threads across eight cores, three paired runs had a median proving time of 102.17 s on CUDA and 468.74 s on CPU. The median paired speedup was 4.59×. Each proof was 21,411,006 bytes and both CPU verifier builds accepted all six. [Run order, native ledgers and peak device memory](../agents/reviews/e20-22-e45-release-integration.md#three-pair-h100-confirmation)
+
 Eight-layer window, `T = 64`, one Apple laptop, one run each, back to back
 (`bench/ledger/e12-14-synthetic-8layer-mac.json` and
 `bench/ledger/e12-14-synthetic-8layer-zk-mac.json`):
