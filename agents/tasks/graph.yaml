@@ -4559,7 +4559,9 @@ tasks:
   rfc: [RFC-0014 A3, RFC-0020 A11, RFC-0026 A20]
   skill: cuda-kernel-author
   crate: stele-kernels+stele-reductions+stele-gpu+stele-prover+stele-cli
-  status: ready
+  status: in_progress
+  agent: codex-integration
+  branch: task/E20-14-live-gkr
   acceptance:
   - Construct compact and ordinary factors from genuine operands without running the reference dense sumcheck in the selected path
   - Compare field round and fold values, expanded finals, complete selected GPU proof bytes and ordinary positive and tamper outcomes
