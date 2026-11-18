@@ -55,7 +55,7 @@ fn matches_reference_batch_on_h100() {
                 .is_err());
             let (mut state, sum, timing) = if raw {
                 let (mut p, _) =
-                    crate::batch::pack_with_message::<false>(actual, None, &claims, &gammas)
+                    crate::batch::pack_with_message::<true>(actual, None, &claims, &gammas)
                         .unwrap();
                 for word in p
                     .message
@@ -82,7 +82,29 @@ fn matches_reference_batch_on_h100() {
                 .unwrap();
                 (state, p.claimed_sum, time)
             } else {
-                prepare_original(&dev, actual, &owner, &claims, &gammas).unwrap()
+                let (selected, claim, _) =
+                    prepare_original(&dev, actual, &owner, &claims, &gammas).unwrap();
+                let (p, _) =
+                    crate::batch::pack_with_message::<true>(actual, None, &claims, &gammas)
+                        .unwrap();
+                let (parallel, t) = build(
+                    &dev,
+                    &p,
+                    Some(
+                        owner
+                            .words(
+                                &dev,
+                                actual.descriptor().id,
+                                actual.rows(),
+                                actual.columns(),
+                            )
+                            .unwrap(),
+                    ),
+                )
+                .unwrap();
+                assert_eq!(selected.tables().unwrap(), parallel.tables().unwrap());
+                assert_eq!(claim, p.claimed_sum);
+                (parallel, claim, t)
             };
             assert_eq!(sum, reference.instance.claimed_sum);
             let mut tables = vec![reference.weights.clone(), reference.face.clone()];
@@ -157,5 +179,5 @@ fn matches_reference_batch_on_h100() {
     let (mut state, sum, _) = prepare(&dev, &source, &claims, &gammas).unwrap();
     let round = state.round().unwrap();
     assert_ne!(sum, round[0] + round[1], "one claimed value near miss");
-    eprintln!("pinned_batch_owner_cases=2000 batch_device_cases={CASES} source_cases={CASES} raw_weight_cases={CASES} raw_face_cases={CASES} dense_cases={CASES} raw_dense_cases={CASES} near_miss_cases=1 seed={SEED} device={}", dev.name);
+    eprintln!("parallel_pack_cases=2000 pinned_batch_owner_cases=2000 batch_device_cases={CASES} source_cases={CASES} raw_weight_cases={CASES} raw_face_cases={CASES} dense_cases={CASES} raw_dense_cases={CASES} near_miss_cases=1 seed={SEED} device={}", dev.name);
 }

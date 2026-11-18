@@ -134,6 +134,22 @@ fn matches_reference_borrowed_gkr_construction_on_h100() {
                 }
                 .expect("construct from original inputs");
                 assert!(work.input_bytes > 0 && work.descriptor_bytes > 0);
+                assert_eq!(
+                    work.input_bytes,
+                    work.equality_bytes
+                        + work.block_challenge_bytes
+                        + work.block_mask_bytes
+                        + work.column_bytes
+                        + work.mask_bytes
+                        + work.layer_upload_bytes
+                        + work.public_challenge_bytes
+                        + work.public_table_bytes
+                        + work.selector_bytes
+                );
+                assert_eq!(
+                    work.descriptor_bytes,
+                    work.coordinate_bytes + work.term_bytes
+                );
                 assert!(state.device_buffer_bytes() <= work.peak_bytes);
                 assert_eq!(
                     state.tables().unwrap(),
@@ -180,4 +196,38 @@ fn matches_reference_borrowed_gkr_construction_on_h100() {
     assert_eq!(total, 2728);
     assert_eq!(representations, 2 * total);
     eprintln!("periodic_rounds={repeated_rounds} period_transitions={period_transitions} constructed_gkr_statements={CASES} steps={total} representations={representations} device={}", dev.name);
+}
+
+#[test]
+fn matches_reference_original_gkr_gather_across_mask_columns() {
+    // Exercise the exact CUDA expression on a CPU. Unused mask entries have
+    // distinct poisoned values, and each projected read crosses a row boundary.
+    let code = format!(
+        r#"#include <cstdio>
+        #define __device__
+        #define __global__
+        #define __forceinline__ inline
+        {}
+        #define GRID_STRIDE(i,n) for(u64 i=0;i<(n);++i)
+        {}
+        int main() {{
+            u32 data[64] = {{}}, out[16] = {{}};
+            u32 shifts[] = {{0, 2, 0}};
+            for (u32 raw=0; raw<2; raw++) {{
+                for (u32 i=0; i<64; ++i) data[i] = 900+i;
+                for (u32 x=0; x<16; ++x) data[(x/4)*8+x%4]=17+x+raw*2147483647u;
+                gkr_build_span(out,1,data,shifts,3,7,2147483640u,8,0,8,16,3,2);
+                std::fwrite(out,sizeof(u32),16,stdout);
+            }}
+        }}"#,
+        crate::host_probe::helpers(),
+        include_str!("gkr_build.cu")
+    );
+    let expected: Vec<_> = (0u32..32)
+        .map(|i| {
+            let x = ((i & 1) << 2) | (((i >> 2) & 1) << 1) | (i & 1);
+            17 + 3 + x - 7
+        })
+        .collect();
+    assert_eq!(crate::host_probe::run(&code, &[]), expected);
 }
