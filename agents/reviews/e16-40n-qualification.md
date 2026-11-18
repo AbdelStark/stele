@@ -1,9 +1,9 @@
-# E16-40n boundary qualification — prepared, not submitted
+# E16-40n boundary qualification — submitted
 
 Pinned source: `e192fe0b6d4ec604c4d8e922c187532049c8a5dc`.
 The [implementation reviews](e16-40n-implementation.md) and both fresh capture
-reviews pass. No E16-40n hardware job has been submitted. Submission waits for
-E16-40m's actual qualification and accepted evidence.
+reviews pass. Job **6772** was submitted after E16-40m's actual qualification
+evidence passed both independent reviews. Actual n evidence remains pending.
 
 Independent reviewers `boundary_capture_spec_review` and
 `boundary_capture_standards_review` verified every package hash and all 2,389
