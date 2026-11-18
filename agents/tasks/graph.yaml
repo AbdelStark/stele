@@ -5504,3 +5504,27 @@ tasks:
   - preserve validation, public aborts, proof bytes, transcript continuation, disclosure and callback-error behavior; inputs contain private witness material and are never public inventory or verifier inputs
   - no core backend, CUDA, dependency, challenge, binding, commitment, protocol or performance change; construction descriptor and mask copies remain charged host work, and no whole-stage, device-memory or ADR-127 GO claim follows
   - obtain owning lane P and independent standards review; keep default, bench, no_std and mandatory L0/L1 gates green in stack order; this independent lane-V successor to E16-40o consumes only the already merged E16-40g interface, and its device consumer waits for this interface to merge
+
+- id: E16-40q
+  epic: E16
+  title: Qualify resident source responses without full material download
+  lane: V
+  depends:
+  - E16-40b
+  rfc:
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0010 A9
+  - RFC-0012 A3
+  - RFC-0013 A8
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40q-resident-source
+  acceptance:
+  - retain the existing device encoding and Merkle levels and download only each requested column and its bottom-up path; preserve the root-only and complete-material paths and all validation
+  - compare roots and every requested payload and path with production PreparedSource on 1000 seeded device cases including zero, one and p-minus-one values; cover reversed and duplicate requests, first and last columns, out-of-range rejection and ordinary RootMismatch on one changed word
+  - test host payload serialization and malformed sizes, indices and noncanonical values without CUDA; required device execution must refuse absent CUDA or an empty inventory
+  - report preparation and response transfer bytes, retained device buffers, download and host salt assembly work; do not equate tracked buffers with the complete RFC-0014 A1 peak
+  - retire the source response path's dependency on complete host material in the research harness; no new kernel, dependency, core source interface, certificate, proof, binding or protocol change, and no speedup or ADR-127 GO claim
+  - obtain owning lane E and independent standards review, recorded actual H100 parity and mandatory gates in stack order; this independent lane-V successor to E16-40p uses only merged source interfaces and does not consume its GKR construction interface
