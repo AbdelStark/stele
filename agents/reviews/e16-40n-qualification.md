@@ -58,3 +58,27 @@ equality checked. [Repair receipt](e16-40n-machine-receipt-repair.json) records
 old/new pins, reviews and the preflight hash. No hardware evidence is claimed.
 
 No job has been submitted; E16-40m qualification and accepted evidence still precede submission.
+
+## Terminal auditor prepared and independently reviewed
+
+The local-only `verify.py` and `test_verify.py` now have three passing synthetic
+controls. They cover exact command/resource/test records, resealed semantic
+tampering, safe archive membership, and the full terminal/readback path including
+an unchanged repeated audit. GNU time's recorded command must match the expected
+executable and arguments. These controls never supply hardware evidence.
+
+Fresh `boundary_terminal_spec_review` and `boundary_terminal_standards_review`
+identified two gaps: a no-restarts record could belong to another job, and
+recorded deadline overruns were not bounded. New regressions failed before the
+fixes and pass afterward. The auditor now requires exactly one single-line
+`scontrol show job -o JOB` record with the requested JobId and unique zero-valued
+Requeue/Restarts fields. It bounds command and campaign elapsed time, checks
+UTC/monotonic agreement and separately bounds GNU wall time. Cleanup allowance
+covers the process runner's two bounded waits plus polling/bookkeeping.
+
+Both reviewers independently reran the controls and approved the revised
+auditor; the standards reviewer also rejected a coherent GNU-wall overrun.
+[Audit receipt](e16-40n-terminal-audit.json) pins scripts, the preserved original
+auditor, red/green logs and review outcomes. Capture pins, source archive,
+commands and scheduler are unchanged. Actual execution, terminal collection and
+fresh hardware evidence review remain pending.
