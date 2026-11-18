@@ -5813,3 +5813,18 @@ tasks:
   - On three verified quiet-host stories42M T32 proofs, replace only the measured disjoint stage intervals, retain the measured GKR host remainder and charge source visits, batch packing, arithmetic, transfers and synchronization from the paired H100 capture
   - Require the original source and memory receipts, all 385 authentic GKR steps, every lookup and ordinary batch, and the unchanged model controls; report cold and resident projections separately from an actual whole-prover measurement
   - Record the measured ADR-127 reopening decision with its input ledgers, independent review and remaining backend, parity and dependency conditions
+- id: E16-40ah
+  epic: E16
+  title: Qualify masked relation sumchecks on the original T32 workload
+  lane: V
+  depends: [E16-40ag]
+  rfc: [RFC-0009, RFC-0013 A4, RFC-0014 §5]
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-source-visits
+  branch: task/E16-40ah-masked-relations
+  acceptance:
+  - Exercise authentic T32 relation factors including all large-domain instances through the fixed-code H100 masked round and fold operations with the ordinary transcript challenges
+  - Check round polynomials and all final evaluations against the ordinary CPU prover and verify a device-produced relation subproof with its original bindings
+  - Account for factor preparation, mask and descriptor transfers, device setup, synchronized releases, peak memory and measured small-domain crossover independently of CPU dispatch
