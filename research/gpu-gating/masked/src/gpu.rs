@@ -38,6 +38,10 @@ const THREADS: u32 = 256;
 #[path = "gpu_batch.rs"]
 pub mod batch;
 
+#[path = "gpu_original.rs"]
+mod original;
+pub use original::OriginalMessage;
+
 #[path = "gpu_gkr_build.rs"]
 mod gkr_build;
 pub use gkr_build::{ConstructionWork, MemorySample};
@@ -125,6 +129,14 @@ enum Buf {
 impl Buf {
     fn is_base(&self) -> bool {
         matches!(self, Buf::Base(_))
+    }
+    /// A compact extension block repeats over leading variables until the
+    /// logical table first fits its native low-axis domain.
+    fn period(&self, len: usize) -> Option<usize> {
+        match self {
+            Self::Ext(s) if s.len() / 4 < len => Some(s.len() / 4),
+            _ => None,
+        }
     }
     fn slice(&self) -> &CudaSlice<u32> {
         match self {
@@ -314,6 +326,14 @@ impl Device {
             coef.push(K::from_i64(0));
         }
         let count = factors.len();
+        for f in &factors {
+            // Only public, unmasked extension blocks can use cyclic storage.
+            if let Some(period) = f.x.period(len) {
+                if !period.is_power_of_two() || f.r.is_some() || f.v.is_some() {
+                    return Err(Error::Shape("invalid cyclic extension table"));
+                }
+            }
+        }
         Ok(DeviceMasked {
             dev: self,
             factors,
@@ -510,7 +530,8 @@ impl DeviceMasked<'_> {
             .factors
             .iter()
             .map(|f| {
-                u32::from(f.x.is_base())
+                (f.x.period(self.len).map_or(0, |p| (1 + p.ilog2()) << 3))
+                    | u32::from(f.x.is_base())
                     | if f.v == Some(self.bound) {
                         f.r.as_ref()
                             .map_or(0, |r| 2 | (u32::from(r.is_base()) << 2))
@@ -540,7 +561,7 @@ impl DeviceMasked<'_> {
             .arg(&half64)
             .arg(&nodes)
             .arg(&mut self.partials);
-        // SAFETY: every `xs[k]` table has `2·half` entries of its type, every nonzero
+        // SAFETY: each x table is dense or is an unmasked native period (indexed modulo its size); every nonzero
         // `rs[k]` too; checked offsets/indices address these factors (RFC-0014 §5),
         // nodes <= 32, and `partials` has `blocks · nodes` QM31 entries.
         unsafe { b.launch(cfg) }?;
@@ -614,7 +635,14 @@ impl DeviceMasked<'_> {
             let host = self.dev.stream.clone_dtoh(b.slice())?;
             match b {
                 Buf::Base(_) => host[..self.len].iter().map(|x| base(*x)).collect(),
-                Buf::Ext(_) => host[..self.len * 4].chunks(4).map(element).collect(),
+                Buf::Ext(_) => {
+                    let physical = (host.len() / 4).min(self.len);
+                    let entries: Vec<K> = host[..physical * 4]
+                        .chunks_exact(4)
+                        .map(element)
+                        .collect::<Result<_, _>>()?;
+                    Ok(entries.iter().copied().cycle().take(self.len).collect())
+                }
             }
         };
         self.factors
@@ -645,6 +673,11 @@ fn fold_one(
     c: &[u32; 4],
     cfg: LaunchConfig,
 ) -> Result<(), Error> {
+    // A leading coordinate has equal branches in a tiled public block.
+    // Once the active domain reaches its period, fold_ext binds ordinary pairs.
+    if b.period(2 * half).is_some() {
+        return Ok(());
+    }
     let half64 = half as u64;
     match b {
         Buf::Ext(s) => {

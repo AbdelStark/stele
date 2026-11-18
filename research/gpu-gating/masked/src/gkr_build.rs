@@ -66,6 +66,15 @@ fn span(period: u32, range: Range<usize>, op: Op, arg: u32, data: Vec<u32>) -> B
 }
 
 impl TablePlan {
+    /// Unmasked Gin::Block depends only on the low bits of its tiled block.
+    /// All other tables retain the full logical domain.
+    pub(crate) fn storage_len(&self, domain: usize) -> usize {
+        match self.spans.as_slice() {
+            [s] if matches!(s.op, Op::Block) => s.arg as usize,
+            _ => domain,
+        }
+    }
+
     fn single(span: Span) -> Self {
         let base = matches!(span.op, Op::GatherBase | Op::Constant);
         Self {
@@ -341,7 +350,9 @@ pub(crate) struct Peak {
 impl Plan {
     pub fn peak(&self, blocks: usize) -> Build<Peak> {
         let len = self.len as u128;
-        let table_bytes = |table: &TablePlan| len * if table.base { 4 } else { 16 };
+        let table_bytes = |table: &TablePlan| {
+            table.storage_len(self.len) as u128 * if table.base { 4 } else { 16 }
+        };
         let mut live = 0;
         let mut construction = 0;
         for f in &self.factors {
