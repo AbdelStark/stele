@@ -102,7 +102,7 @@ fn observe(event: Event<'_>) {
                 a.round,
                 cpu.as_nanos(),
                 wall.as_nanos(),
-                got.len() * 16
+                got.len() * 16, memory.used_high, memory.reserved_high
             );
         }),
         Event::Fold { challenge, cpu } => ACTIVE.with_borrow_mut(|state| {
@@ -127,14 +127,15 @@ fn observe(event: Event<'_>) {
             drop(a.sum);
             device.sync().unwrap();
             let wall = start.elapsed();
+            let memory = device.memory_sample().expect("batch allocator high water");
             assert!(got == values, "batch finals mismatch id={}", a.id);
             eprintln!(
-                "t32_finals id={} rounds={} cpu_ns={} gpu_ns={} d2h_bytes={}",
+                "t32_finals id={} rounds={} cpu_ns={} gpu_ns={} d2h_bytes={} pool_used_high={} pool_reserved_high={}",
                 a.id,
                 a.round,
                 cpu.as_nanos(),
                 wall.as_nanos(),
-                got.len() * 16
+                got.len() * 16, memory.used_high, memory.reserved_high
             );
         }),
     }
