@@ -5,6 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'bench'))
 from dev_e2e import device_counters
+from hiding_source_counts import check_source_work, source_work
 
 
 class DeviceLedger(unittest.TestCase):
@@ -49,3 +50,28 @@ class DeviceLedger(unittest.TestCase):
                               ('d2h_bytes=100000','d2h_bytes=99999'), ('observed_peak_bytes=398','observed_peak_bytes=401')]:
             with self.subTest(before=before), self.assertRaises(ValueError):
                 device_counters(capture.replace(before, after), self.verified, 4, '580')
+
+    def test_requires_each_original_visit_and_selected_response(self):
+        # One original plus the shared source. The verifier derives the query schedule.
+        def context(source_id):
+            return (b'stele/v0.1/field-source' + bytes([3, 4]) + source_id.to_bytes(8, 'little')
+                    + bytes([4]) + b'stele/circle-m31/v1' + bytes([10, 2]) + (16).to_bytes(8, 'little')
+                    + (1024).to_bytes(8, 'little') + bytes([0, 2]) + bytes(32))
+        contexts = [context(123), context(124)]
+        proof = (b'stele-dev-zk-v1' + bytes(64) + (2).to_bytes(4, 'little')
+                 + b''.join(len(src).to_bytes(4, 'little') + src for src in contexts))
+        report = '\n'.join(f'PCS\t{label}\trow exponent 4, policy Two, q_c/q_o 222/92, k_t 0, k_q 16, {n} opening(s);'
+                           for label, n in [('source 0', 0), ('shared mask source', 1)])
+        work = source_work(proof, report)
+        self.assertEqual(work, dict(originals=2, visits=3, responses=536, hashes=24573, h2d_bytes=61962,
+                                    d2h_bytes=240224, host_salt_bytes=17152))
+        good = {**work, 'observed_peak_bytes': 399}
+        self.assertEqual(check_source_work(good, proof, report, 400), work)
+        for name in good:
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                check_source_work({**good, name: 0}, proof, report, 400)
+        for bad_proof, bad_report in [(proof[:-1], report), (proof, report.replace('source 0', 'source 1')),
+                                      (proof, report.replace('policy Two', 'policy One')),
+                                      (proof.replace(contexts[1], contexts[0]), report)]:
+            with self.assertRaises(ValueError):
+                source_work(bad_proof, bad_report)
