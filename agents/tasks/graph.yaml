@@ -4641,8 +4641,13 @@ tasks:
   epic: E20
   title: Specify live balanced lookup tops and retained GKR child access
   lane: E
-  depends: [E20-17]
-  rfc: [RFC-0014 A6, RFC-0020 A14, RFC-0026 A23, RFC-0008 A7]
+  depends:
+  - E20-17
+  rfc:
+  - RFC-0014 A6
+  - RFC-0020 A14
+  - RFC-0026 A23
+  - RFC-0008 A7
   skill: rfc-author
   crate: docs
   status: in_progress
@@ -4655,8 +4660,14 @@ tasks:
   epic: E20
   title: Build balanced lookup tops and retain the actual child layers on device
   lane: E
-  depends: [E20-18, E20-19]
-  rfc: [RFC-0014 A6, RFC-0020 A14, RFC-0026 A23, RFC-0008 A7]
+  depends:
+  - E20-18
+  - E20-19
+  rfc:
+  - RFC-0014 A6
+  - RFC-0020 A14
+  - RFC-0026 A23
+  - RFC-0008 A7
   skill: cuda-kernel-author
   crate: stele-kernels+stele-reductions+stele-gpu+stele-cli
   status: ready
