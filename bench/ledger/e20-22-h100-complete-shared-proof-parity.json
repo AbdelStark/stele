@@ -46,7 +46,7 @@
   "kind": "micro",
   "model_config": {
     "actual_profile": "development byte 4 (balanced)",
-    "cpu_cores": 16,
+    "allocated_logical_cpus": 16,
     "cpu_reference_sha256": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
     "evidence_location": "lucid-cluster:~/stele-codex/e20-22-complete-92bfae2b/job-6959",
     "job": 6959,

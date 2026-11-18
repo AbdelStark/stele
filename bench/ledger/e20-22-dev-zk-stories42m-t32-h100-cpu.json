@@ -50,7 +50,7 @@
       175
     ],
     "execution": "conventional CPU",
-    "host_context": "Fresh model commitment, independent public proof indices on one dedicated H100 and 16 pinned CPU cores, verified expected model and wrong-model rejection.",
+    "host_context": "Fresh model commitment, independent public proof indices on one dedicated H100 and 16 pinned CPU threads, verified expected model and wrong-model rejection.",
     "job": 6959,
     "model": {
       "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
