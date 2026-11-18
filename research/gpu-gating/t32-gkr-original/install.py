@@ -39,8 +39,8 @@ def install(root, fixtures=False):
     replace(construction,"        factors.push(factor);","        factors.push(factor);\n        column_origins.push(legs);")
     replace(construction,"    Ok(GkrConstruction {","    Ok(GkrConstruction {\n        column_origins,")
     replace(claims,"                    &data,\n                    &shared_message,\n                    &block_of,\n                )\n            };","                    &data,\n                    &projected,\n                    &shared_message,\n                    &block_of,\n                )\n            };")
-    replace(case,"pub struct GkrCase<'a, K> {","pub struct GkrCase<'a, K> {\n    pub original_messages: &'a [Vec<M31>],")
-    replace(claims,"observer(&gkr_bench::GkrCase {","observer(&gkr_bench::GkrCase {\n                original_messages: &messages,")
+    replace(case,"pub struct GkrCase<'a, K> {","pub struct GkrCase<'a, K> {\n    pub original_messages: &'a [Vec<M31>],\n    pub lookup_origins: &'a dyn Fn()->Vec<usize>,")
+    replace(claims,"observer(&gkr_bench::GkrCase {","observer(&gkr_bench::GkrCase {\n                original_messages: &messages,\n                lookup_origins: &||plan.lookups[l].original_columns().collect(),")
     for name in ("gkr_build.rs","gpu_lookup_tests.rs"):
         f=gpu/name
         replace(f,"= GkrConstruction {","= GkrConstruction {\n            column_origins: Vec::new(),",2)

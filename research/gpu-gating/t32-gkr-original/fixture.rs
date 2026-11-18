@@ -19,6 +19,17 @@ fn matches_reference_original_gkr_gathers_on_h100() {
             let input = step.construction()?;
             top_leaf += usize::from(step.first);
             combined += usize::from(step.reference()?.is_compact());
+            let mut expected_origins = (step.lookup_origins)();
+            let mut observed_ids: Vec<_> = input
+                .column_origins
+                .iter()
+                .flatten()
+                .flatten()
+                .map(|d| d[0])
+                .collect();
+            expected_origins.sort_unstable();
+            observed_ids.sort_unstable();
+            assert_eq!(observed_ids, expected_origins);
             let expected_views = input.column_origins.iter().flatten().flatten().count();
             assert!(expected_views > 0);
             let mut originals = BTreeMap::new();
@@ -98,6 +109,19 @@ fn matches_reference_original_gkr_provenance_before_device_access() {
             let input = step.construction()?;
             assert_eq!(input.factors.len(), input.column_origins.len());
             one_level += usize::from(step.first && step.leaf);
+            if step.leaf {
+                let mut expected = (step.lookup_origins)();
+                let mut got: Vec<_> = input
+                    .column_origins
+                    .iter()
+                    .flatten()
+                    .flatten()
+                    .map(|d| d[0])
+                    .collect();
+                expected.sort_unstable();
+                got.sort_unstable();
+                assert_eq!(got, expected);
+            }
             for (factor, legs) in input.factors.iter().zip(&input.column_origins) {
                 let columns = match factor {
                     GkrFactor::Column { values, .. } => vec![*values],
@@ -131,6 +155,6 @@ fn matches_reference_original_gkr_provenance_before_device_access() {
             Ok(())
         });
     }
-    assert!(genuine > 0 && top > 0);
+    assert!(genuine > 0 && top > 0 && one_level > 0);
     eprintln!("host_gkr_original_cases=32 original_legs={genuine} top_legs={top} first_leaf_steps={one_level}");
 }
