@@ -1,0 +1,27 @@
+{
+  "source": "e192fe0b6d4ec604c4d8e922c187532049c8a5dc",
+  "pins_sha256": "90ac22ed5e35f88b29288576eb1d26f7b442591ec53bdee59d8f72eef5d1fab6",
+  "scope": "Future terminal-audit readiness only; no E16-40n hardware job or actual evidence archive exists.",
+  "auditor_files": {
+    "verify.py": "d119640a7c4f258ccb34e6f76d9a858ab75135690d15d2a792527c9ebd03002d",
+    "test_verify.py": "82e02b61c250a3264182e1eb581c1868d72aa5c147f116a160de9ab7967cffa9",
+    "before-terminal-review-fix/verify.py": "0454f5dd4306dc4c83bb4b65b7fef2b1f40958d509835bc375b5cecbf49262c2"
+  },
+  "logs": {
+    "e16-40n-audit-review-red.log": "fef8d12ab0deb929a1c21d96d2c4efdffdecd5cc3939be48a14af74a4c5eaa11",
+    "e16-40n-audit-review-green.log": "cf0727df29d2b1f6aa2b7cd4901d266c81a5cee983104281943ccb02f5e65ebb",
+    "e16-40n-audit-linux-time.log": "2cef435363c97292be81f8db40e2915f9f7b23cd65066be2ebaafc1a544e62f3"
+  },
+  "findings_resolved": [
+    "Bind one unambiguous scontrol -o record and unique no-requeue/restart fields to the requested JobId.",
+    "Bound command and campaign durations, compare UTC/monotonic elapsed values, and separately bound GNU wall time."
+  ],
+  "reviews": {
+    "spec": "boundary_terminal_spec_review: PASS at revised hashes; independently ran all three synthetic tests.",
+    "standards": "boundary_terminal_standards_review: PASS at revised hashes; independently ran all three tests and a coherent GNU-wall overrun control."
+  },
+  "pending": [
+    "Actual terminal archive/readbacks after a completed E16-40n job.",
+    "Fresh actual evidence review and mandatory merge gates."
+  ]
+}
