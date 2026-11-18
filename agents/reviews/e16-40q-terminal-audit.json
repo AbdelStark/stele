@@ -1,0 +1,27 @@
+{
+  "source": "6034113f67ace10258b48c90e973db291a0a4d99",
+  "pins_sha256": "f441c73f4790ff0eb3e818e79b2a64e68fa961d594347b0af71959d9b2564a9d",
+  "scope": "Future terminal-audit readiness only; no E16-40q hardware job or actual evidence archive exists.",
+  "auditor_files": {
+    "verify.py": "e078fa78f93fb5e5250dc5808605148aec08b75a3ecf73d30dca469f3db50c0a",
+    "test_verify.py": "71987c0cb6b9bae3b3e77b3d2f17cd35fa1e70a5e2a9522670a897584f5f6783"
+  },
+  "logs": {
+    "e16-40q-audit-controls.log": "00f90b9a4edfc4ba8a71fcecc5a2d8562d6ef6c74a106787080ad9dd194c3707"
+  },
+  "checks": [
+    "Exactly 46 payloads, three pinned binaries and six exact tests, including 1000 resident cases, 8000 queries and 1000 complete-material cases.",
+    "Pinned source, archive, manifest and current binary readbacks; safe extraction and resealed tamper controls.",
+    "Bound command and campaign durations, compare UTC/monotonic elapsed values and separately bound GNU wall time.",
+    "Bind one unambiguous scontrol -o record and unique no-requeue/restart fields to the requested JobId."
+  ],
+  "reviews": {
+    "spec": "resident_terminal_spec_review (owning lane E): PASS; independently ran all three synthetic tests and verified hashes/pins.",
+    "standards": "resident_terminal_standards_review (lane B): PASS; independently ran all three synthetic tests and verified hashes/pins."
+  },
+  "pending": [
+    "Accepted actual E16-40m then E16-40n qualification before E16-40q submission.",
+    "Actual terminal archive/readbacks after a completed E16-40q job.",
+    "Fresh actual evidence review and mandatory merge gates."
+  ]
+}

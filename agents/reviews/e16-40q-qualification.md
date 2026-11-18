@@ -37,3 +37,14 @@ no execution directory exists.
 Actual H100 evidence, fresh evidence review and mandatory gates on current main's
 intended merge tree remain required. This approval grants no GPU proof,
 performance, full device-memory or ADR-127 GO credit.
+
+## Terminal auditor readiness
+
+The [terminal auditor record](e16-40q-terminal-audit.json) pins the external
+auditor and its three passing synthetic controls. Independent owning-lane E
+`resident_terminal_spec_review` and lane-B `resident_terminal_standards_review`+both PASS at those hashes. Each independently ran the tests and checked the pins.
+The approved E16-40n auditor is adapted only for this package's paths, pins,
+third binary, build flag and expected counters. Its strict timing, scheduler,
+manifest, archive and current-readback checks remain intact. Capture pins have
+not changed. This records readiness to audit a future completed job; it is not
+actual hardware evidence, and no terminal audit has been run on an actual archive.
