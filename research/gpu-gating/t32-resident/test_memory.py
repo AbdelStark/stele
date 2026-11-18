@@ -7,7 +7,11 @@ import unittest
 def check_pool(row):
     total = row["total_bytes"]
     used, reserved = row["pool_used_high"], row["pool_reserved_high"]
-    if not 0 < used <= reserved <= total or used > total * 2 // 5:
+    if not (0 <= row["pool_used_bytes"] <= used <= reserved <= total
+            and row["pool_used_bytes"] <= row["pool_reserved_bytes"] <= reserved
+            and 0 <= row["free_bytes"] <= total):
+        raise ValueError("invalid pool counter ordering")
+    if used <= 0 or used > total * 2 // 5:
         raise ValueError("measured live pool exceeds budget")
     outside = max(0, total - row["free_bytes"] - row["pool_reserved_bytes"])
     # CUDA's pool high-water counters are cumulative. Separately add the
@@ -29,7 +33,7 @@ def check_memory(log):
             raise ValueError("duplicate GKR step")
         rows[step] = row
         construction, fold = row["construction_bytes"], row["first_fold_bytes"]
-        if not 0 < construction <= row["planned_bytes"] == max(construction, fold):
+        if min(construction, fold) <= 0 or row["planned_bytes"] != max(construction, fold):
             raise ValueError("invalid GKR explicit peak")
         check_pool(row)
     if list(rows) != list(range(385)):
@@ -46,12 +50,16 @@ def check_memory(log):
 class Memory(unittest.TestCase):
     def test_rejects_live_and_reserved_high_waters_separately(self):
         row = dict(total_bytes=100, pool_used_high=38, pool_reserved_high=39,
-                   pool_reserved_bytes=20, free_bytes=79)
+                   pool_used_bytes=10, pool_reserved_bytes=20, free_bytes=79)
         check_pool(row)
         with self.assertRaisesRegex(ValueError, "live pool"):
             check_pool(dict(row, pool_used_high=41, pool_reserved_high=42))
         with self.assertRaisesRegex(ValueError, "reserved pool and context"):
             check_pool(dict(row, free_bytes=78))
+
+    def test_rejects_zero_fold_peak(self):
+        with self.assertRaisesRegex(ValueError, "explicit peak"):
+            check_memory("t32_gkr_step step=0 construction_bytes=5 first_fold_bytes=0 planned_bytes=5")
 
     def test_rejects_fallback(self):
         with self.assertRaisesRegex(ValueError, "fallback"):
