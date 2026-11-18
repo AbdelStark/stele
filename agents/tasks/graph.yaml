@@ -5192,7 +5192,7 @@ tasks:
   - RFC-0018 A1
   skill: performance-engineer
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-42-claim-routing
   acceptance:
