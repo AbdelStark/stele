@@ -81,7 +81,7 @@ The zero knowledge is conditional and computational, and there is no security le
 - **Soundness:** `verify-dev` prints a soundness ledger (worst round `2^-95.4` on stories42M; FS unproven, PCS
   conjectural).
 
-The balanced development prover supports `prove-dev --zk --backend cuda` on an H100. The qualification corpus compares complete GPU and CPU proof bytes and public inputs for 50 distinct models. [Run the H100 prover](docs/development-e2e.md#prove-a-balanced-development-window-on-an-h100) · [Parity ledger](bench/ledger/e20-18-h100-complete-hiding-source-proof-parity.json)
+The balanced development prover supports `prove-dev --zk --backend cuda` on an H100. On 50 distinct models the GPU produced byte-identical CPU reference proofs and public inputs, including every hiding source and the final shared batch. [Run the H100 prover](docs/development-e2e.md#prove-a-balanced-development-window-on-an-h100) · [Parity ledger](bench/ledger/e20-22-h100-complete-shared-proof-parity.json)
 
 The independent `no_std` verifier replays registered byte-5 proofs against a trusted plan-registry entry. [Registered verification](docs/development-e2e.md#registered-byte-5-verification-rfc-0026-a16)
 
