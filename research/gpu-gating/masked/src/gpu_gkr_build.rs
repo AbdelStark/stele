@@ -16,6 +16,9 @@ pub struct ConstructionWork {
     pub descriptor_bytes: usize,
     /// Conservative explicit allocation peak for this step, including promotion.
     pub peak_bytes: usize,
+    /// Child-layer views consumed and their addressable bytes across all factors.
+    pub layer_views: usize,
+    pub layer_bytes: usize,
 }
 
 fn charge(total: &mut usize, bytes: usize) -> Result<(), Error> {
@@ -216,7 +219,11 @@ impl Device {
                 _ => None,
             };
             let data_ptr = match &layer {
-                Some(view) => view.device_ptr(&self.stream).0,
+                Some(view) => {
+                    charge(&mut work.layer_views, 1)?;
+                    charge(&mut work.layer_bytes, 4 * view.len())?;
+                    view.device_ptr(&self.stream).0
+                }
                 None => data.as_ref().map_or(0, |d| self.ptr(d)),
             };
             let shifts_ptr = shifts.as_ref().map_or(0, |d| self.ptr(d));

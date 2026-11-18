@@ -33,6 +33,14 @@ def summarize(log):
         }
     if any(len(rows[tag]) != 42 for tag in ("lookup","cpu_lookup","normalize_release")):
         raise ValueError("unexpected tree visits")
+    summary.update(summarize_batches(rows))
+    if any(summary[name][field] <= 0 for name in ("top", "rebuild") for field in ("cpu_ns", "gpu_ns")):
+        raise ValueError("empty lookup interval")
+    return summary
+
+
+def summarize_batches(rows):
+    summary = {}
     batches = rows["batch"]
     ids = [r["id"] for r in batches]
     if len(ids) != 3 or len(set(ids)) != 3:
@@ -66,6 +74,6 @@ def summarize(log):
         "h2d_bytes": descriptors,
         "d2h_bytes": sum(r["d2h_bytes"] for r in rows["round"] + rows["finals"]),
     }
-    if any(summary[name][field] <= 0 for name in ("top", "rebuild", "batch_prepare", "batch_dense") for field in ("cpu_ns", "gpu_ns")):
+    if any(summary[name][field] <= 0 for name in ("batch_prepare", "batch_dense") for field in ("cpu_ns", "gpu_ns")):
         raise ValueError("empty timing interval")
     return summary
