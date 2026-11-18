@@ -14,9 +14,9 @@ def install(root):
         f.write_text(text.replace(old,new))
     claims = reductions / "zk_claims.rs"
     lookup = reductions / "zk_lookup.rs"
-    replace(claims,"lookup::sample(l,lp,columns,", "lookup::sample(l,lp,columns,&projected,",2)
+    replace(claims,"lookup::sample(l,lp,columns,", "lookup::sample(l,lp,(columns,&projected),",2)
     replace(lookup,"    columns: &[Vec<M31>],\n    beta: K,",
-            "    columns: &[Vec<M31>],\n    projected: &[super::t32_alias::Column],\n    beta: K,")
+            "    (columns, projected): (&[Vec<M31>], &[super::t32_alias::Column]),\n    beta: K,")
     replace(lookup,"    let inputs = compact_parts(plan, columns)", "    let mut inputs = compact_parts(plan, columns)")
     replace(lookup,'    let normalize = start.elapsed();','''    inputs.originals = plan.original_columns().map(|i| projected[i].descriptor()).collect();
     let normalize = start.elapsed();''')
