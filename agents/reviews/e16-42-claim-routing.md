@@ -35,3 +35,9 @@ accounting line. The verifier retains its source certificates, sumcheck
 checks, data-face opening and existing NC-0915 control. The full native and
 digest gates, and the matched stories42M measurements, remain merge evidence
 to collect on the intended tree.
+
+## Measured development workload
+
+Three stories42M T32 proofs on the same 16-thread M4 Max verified against the expected model. Each wrong-model control was rejected. Median self-verification fell from 19.970 s to 14.772 s, GKR claim routing from 7.871 s to 6.351 s and relation claim routing from 2.619 s to 0.902 s. Median whole-proof wall time increased from 261.39 s to 265.73 s. GKR round arithmetic, outside this change, took 94.963 s and 100.576 s respectively. The result supports keeping the change for the three targeted CPU stages. The three samples do not establish a whole-prover speedup. [Baseline ledger](../../bench/ledger/e16-41-dev-zk-stories42m-t32-mac-2.json) and [candidate ledgers](../../bench/ledger/e16-42-dev-zk-stories42m-t32-mac-1.json).
+
+The public evidence archive for measured source `9e11a5ff` has SHA-256 `eb9d11c3ae0d9014342573e6fb53f21966eac7654cba1079c7c98e7a96f649b7`. The terminal audit checked the three captures, model pins, proof byte counts, stage inventory and hashes.
