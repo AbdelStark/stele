@@ -25,6 +25,8 @@ mod boundary_cases;
 mod field_cases;
 #[cfg(any(test, feature = "cuda"))]
 pub mod gkr;
+#[cfg(any(test, feature = "cuda"))]
+mod gkr_build;
 #[cfg(test)]
 mod gkr_cases;
 #[cfg(feature = "cuda")]

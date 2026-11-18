@@ -119,26 +119,54 @@ fn matches_reference_borrowed_gkr_construction_on_h100() {
     let dev = Device::new().expect("CUDA device");
     assert!(dev.name.contains("H100"), "H100 required");
     let mut total = 0;
+    let mut representations = 0;
     for case in 0..CASES {
         let seen = observe(case, |step| {
             let input = step.construction()?;
-            let mut reference = step.reference()?;
-            let (mut state, work) = dev.build_gkr(&input).expect("construct from original inputs");
-            assert!(work.input_bytes > 0 && work.descriptor_bytes > 0);
-            assert_eq!(state.tables().unwrap(), tables(&reference));
-            for point in step.point {
-                assert_eq!(state.round().unwrap(), reference.round().unwrap());
-                state.fold(*point).unwrap();
-                reference.fold(*point).unwrap();
-                assert_eq!(state.tables().unwrap(), tables(&reference));
+            for raw in [false, true] {
+                let mut reference = step.reference()?;
+                let (mut state, work) = if raw {
+                    dev.build_gkr_raw(&input)
+                } else {
+                    dev.build_gkr(&input)
+                }
+                .expect("construct from original inputs");
+                assert!(work.input_bytes > 0 && work.descriptor_bytes > 0);
+                assert_eq!(
+                    state.tables().unwrap(),
+                    tables(&reference),
+                    "initial case={case} step={} raw={raw}",
+                    step.step
+                );
+                for point in step.point {
+                    assert_eq!(
+                        state.round().unwrap(),
+                        reference.round().unwrap(),
+                        "round case={case} step={} raw={raw}",
+                        step.step
+                    );
+                    state.fold(*point).unwrap();
+                    reference.fold(*point).unwrap();
+                    assert_eq!(
+                        state.tables().unwrap(),
+                        tables(&reference),
+                        "fold case={case} step={} raw={raw}",
+                        step.step
+                    );
+                }
+                let expected: Vec<_> = reference.tables().map(|(x, _)| x[0]).collect();
+                let actual: Vec<_> = state.tables().unwrap().iter().map(|(x, _)| x[0]).collect();
+                gkr::check_finals(step, &expected, &actual).unwrap();
+                representations += 1;
             }
-            let expected: Vec<_> = reference.tables().map(|(x, _)| x[0]).collect();
-            let actual: Vec<_> = state.tables().unwrap().iter().map(|(x, _)| x[0]).collect();
-            gkr::check_finals(step, &expected, &actual).unwrap();
             Ok(())
         });
         total += seen[..3].iter().sum::<usize>();
+        if (case + 1) % 100 == 0 {
+            eprintln!("constructed_gkr_cases_passed={} steps={total}", case + 1);
+        }
     }
     assert_eq!(total, 2728);
-    eprintln!("constructed_gkr_statements={CASES} steps={total} device={}", dev.name);
+    assert_eq!(representations, 2 * total);
+    eprintln!("constructed_gkr_statements={CASES} steps={total} representations={representations} device={}", dev.name);
 }
