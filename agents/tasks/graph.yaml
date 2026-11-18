@@ -4331,6 +4331,38 @@ tasks:
   acceptance:
   - randomiser and mask-row counts are fields of the source context, zero by default
   - proof bytes with zero counts equal the bytes before this task (pinned)
+- id: E19-07
+  epic: E19
+  title: Specify producer-owned column material for byte-4 hiding sources
+  depends: []
+  rfc:
+  - RFC-0010 A9,A15,A16
+  - RFC-0013 A2,A4,A6,A8
+  skill: pcs-engineer
+  lane: C
+  crate: docs
+  status: in_progress
+  agent: codex-root
+  branch: task/E19-07-source-material-contract
+  acceptance:
+  - A16 defines exactly the material, its lifetime and the authority retained by existing certificate and opening consumers
+  - independent review checks query order, leaf domain, source identity, one-opening budget, lifetime history and pre-existing tamper controls
+- id: E19-08
+  epic: E19
+  title: Use selected columns in the checked hiding source producer
+  depends:
+  - E19-07
+  rfc:
+  - RFC-0010 A9,A15,A16
+  - RFC-0013 A2,A4,A6,A8
+  skill: pcs-engineer
+  lane: C
+  crate: stele-pcs
+  status: ready
+  acceptance:
+  - same verifier-owned source, certificate bytes, opening bytes, field record and transcript as CPU for honest material
+  - wrong root, changed sibling, wrong response size, exhausted lifetime and second opening reject under their specified checks
+  - old CPU callers retain borrowed responses, work counts and no_std support
 - id: E20-01
   epic: E20
   title: Typed small-value columns and base-field first rounds in the relation engine
@@ -4510,7 +4542,7 @@ tasks:
   rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
   skill: cuda-kernel-author
   crate: stele-kernels
-  status: in_progress
+  status: done
   agent: codex-integration
   branch: task/E20-11-dense-field-backend
   acceptance:
