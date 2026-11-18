@@ -31,11 +31,11 @@ fn matches_reference_raw_lazy_device_boundaries() {
         let mut owner = session.original(g, &message).expect("four input limbs");
         let stream = &cuda.stream;
         assert_eq!(
-            stream.clone_dtoh(&owner.words).expect("original DMA"),
+            cuda.complete_transfer(stream.clone_dtoh(&owner.words))
+                .expect("original DMA"),
             message.map(|x| x.as_u32())
         );
-        stream
-            .memcpy_htod(&[raw, p + 1, p, raw][..], &mut owner.words)
+        cuda.complete_transfer(stream.memcpy_htod(&[raw, p + 1, p, raw][..], &mut owner.words))
             .expect("lazy original input");
         let pairs = [(0, q)];
         let claims = [WeightedClaim {
@@ -53,22 +53,22 @@ fn matches_reference_raw_lazy_device_boundaries() {
         let x = QM31::from_i64(i64::from(limb.as_u32()));
         assert_eq!(sum, weight);
         assert_eq!(
-            stream.clone_dtoh(&state.weights).expect("weight DMA"),
+            cuda.complete_transfer(stream.clone_dtoh(&state.weights))
+                .expect("weight DMA"),
             [words(weight), [0; 4]]
         );
         let Face::Base(ref mut face) = state.face else {
             unreachable!()
         };
         assert_eq!(
-            stream.clone_dtoh(face).expect("face DMA"),
+            cuda.complete_transfer(stream.clone_dtoh(face))
+                .expect("face DMA"),
             [limb.as_u32(), 0]
         );
-        stream
-            .memcpy_htod(&[raw, p][..], face)
+        cuda.complete_transfer(stream.memcpy_htod(&[raw, p][..], face))
             .expect("lazy first face");
         let lazy_weight = words(weight).map(|v| v + p);
-        stream
-            .memcpy_htod(&[lazy_weight, [p; 4]][..], &mut state.weights)
+        cuda.complete_transfer(stream.memcpy_htod(&[lazy_weight, [p; 4]][..], &mut state.weights))
             .expect("lazy first weights");
         let multiply = weight * x;
         assert_eq!(
@@ -81,4 +81,32 @@ fn matches_reference_raw_lazy_device_boundaries() {
         assert_eq!(session.counts().finals, 1);
     }
     println!("cuda_dense_lazy_cases=1000");
+}
+
+#[test]
+#[ignore = "requires CUDA hardware"]
+fn matches_reference_original_across_staging_chunks() {
+    let cuda = Cuda::new().expect("CUDA required");
+    let session = cuda.session();
+    let geometry = SourceGeometry {
+        id: 17,
+        rows: 1 << 11,
+        columns: 1 << 10,
+    };
+    let words: Vec<_> = (0..geometry.word_count().expect("valid geometry"))
+        .map(|i| M31::from_u64((167 * i + i / (1 << 20)) as u64))
+        .collect();
+    let owner = session
+        .original(geometry, &words)
+        .expect("two staging chunks");
+    for offset in [0, (1 << 20) - 16, words.len() - 32] {
+        let slice = owner.words.slice(offset..offset + 32);
+        let copied = cuda
+            .complete_transfer(cuda.stream.clone_dtoh(&slice))
+            .expect("completed transfer");
+        assert!(copied
+            .iter()
+            .zip(&words[offset..])
+            .all(|(&x, y)| x == y.as_u32()));
+    }
 }
