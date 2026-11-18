@@ -7,20 +7,20 @@ import runpy
 import tarfile
 
 HERE = Path(__file__).resolve().parent
-REPLACED = ("sources_prepare", "top_prepare", "top_tree", "gkr_tree", "gkr_factors",
+REPLACED = ("sources_prepare", "top_tree", "gkr_tree", "gkr_factors",
             "gkr_rounds", "batch_face", "batch_weights")
 
 
-def project(cpu_ns, laps, host_gkr_ns, device_ns, cold_ns, qualification_ns):
+def project(cpu_ns, laps, host_gkr_ns, host_setup_ns, device_ns, cold_ns, qualification_ns):
     removed = {name: laps["lap_zk_detail_" + name] for name in REPLACED}
     retained = cpu_ns - sum(removed.values())
-    if min(removed.values()) < 0 or min(retained, host_gkr_ns, device_ns, cold_ns) <= 0 or qualification_ns < 0:
+    if min(removed.values()) < 0 or min(retained, host_gkr_ns, host_setup_ns, device_ns, cold_ns) <= 0 or qualification_ns < 0:
         raise ValueError("invalid disjoint timing")
     # In particular the full original ordinary batch rounds stay charged. Only their dense
     # arithmetic moved. This bounds the unmeasured portion for masking and the transcript.
-    warm = retained + host_gkr_ns + device_ns
+    warm = retained + host_gkr_ns + host_setup_ns + device_ns
     return dict(cpu_ns=cpu_ns, replaced_laps_ns=removed, retained_cpu_ns=retained,
-                calibrated_host_gkr_ns=host_gkr_ns, measured_h100_ns=device_ns,
+                calibrated_host_gkr_ns=host_gkr_ns, calibrated_host_setup_ns=host_setup_ns, measured_h100_ns=device_ns,
                 warm_projected_ns=warm, cold_projected_ns=warm+cold_ns,
                 including_oracle_readbacks_ns=warm+qualification_ns,
                 warm_reaches_three=cpu_ns >= 3*warm, cold_reaches_three=cpu_ns >= 3*(warm+cold_ns))
@@ -49,7 +49,7 @@ def capture(archive, expected_sha256):
     return json.loads(result), log, statement
 
 
-def calculate(mac, calibration, hardware, log, result, statement):
+def calculate(mac, calibration, setup_calibration, hardware, log, result, statement):
     if result["profile"] != "dev-zk" or result["workload"] != "dev/stories42m-t32":
         raise ValueError("wrong original proof")
     h = hardware["model_config"]
@@ -84,6 +84,14 @@ def calculate(mac, calibration, hardware, log, result, statement):
             or len({r["commit"] for r in mac}) != 1
             or len({r["model_config"]["proof_sha256"] for r in mac}) != 3):
         raise ValueError("expected three distinct checks from the same CPU producer")
+    wrappers = setup_calibration["model_config"]
+    setup = wrappers["samples"]
+    if (wrappers["process"]["operation_source"] != mac[0]["commit"]
+            or wrappers["process"]["input_sha256"] != original or [r["index"] for r in setup] != [0, 1, 2]
+            or any(r["load_before_thousandths"][0] >= 3000 for r in setup)
+            or setup_calibration["device"] != calibration["device"]):
+        raise ValueError("wrong early source / ordinary batch host calibration")
+    setup_ns = max(r["stages"]["early_source_host_ns"] + r["stages"]["ordinary_batch_setup_host_ns"] for r in setup)
     out = []
     for r in mac:
         m = r["model_config"]
@@ -95,16 +103,16 @@ def calculate(mac, calibration, hardware, log, result, statement):
                 or int(m["statement"]["T"]) != 32 or r["controls"]["passed"] < 1
                 or r["controls"]["failed"] != 0 or r["verifier_time_ns"]["rust"] <= 0):
             raise ValueError("wrong CPU reference or statement")
-        out.append(project(r["prover_time_ns"], r["stage_times_ns"], host_ns, sum(charges.values()),
+        out.append(project(r["prover_time_ns"], r["stage_times_ns"], host_ns, setup_ns, sum(charges.values()),
                            gkr["cold_ns"] + source["cold_ns"], qualifications))
     return dict(cpu_commit=mac[0]["commit"], h100_commit=hardware["commit"], calibration_commit=calibration["commit"],
-                charges_ns=charges, oracle_qualification_ns=qualifications, samples=out,
+                setup_calibration_commit=setup_calibration["commit"], charges_ns=charges, oracle_qualification_ns=qualifications, samples=out,
                 whole_prover_type="cross-host projection", measured_full_gpu_inference_proofs=0)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("hardware_ledger", "public_archive", "mac_gkr_ledger"):
+    for name in ("hardware_ledger", "public_archive", "mac_gkr_ledger", "mac_setup_ledger"):
         parser.add_argument(name, type=Path)
     parser.add_argument("cpu_ledgers", nargs=3, type=Path)
     args = parser.parse_args()
@@ -112,6 +120,6 @@ if __name__ == "__main__":
         return json.loads(p.read_bytes())
     hardware = read(args.hardware_ledger)
     result, log, statement = capture(args.public_archive, hardware["model_config"]["evidence_sha256"])
-    report = calculate([read(p) for p in args.cpu_ledgers], read(args.mac_gkr_ledger),
+    report = calculate([read(p) for p in args.cpu_ledgers], read(args.mac_gkr_ledger), read(args.mac_setup_ledger),
                        hardware, log, result, statement)
     print(json.dumps(report, sort_keys=True, indent=2))
