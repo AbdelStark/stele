@@ -111,3 +111,34 @@ fn matches_reference_genuine_gkr_on_h100() {
     assert!(rounds > representations);
     eprintln!("gkr_device_statements={CASES} first={} interior={} leaf={} compact={} representations={representations} rounds={rounds} seed={SEED} device={}", totals[0],totals[1],totals[2],totals[3],dev.name);
 }
+
+#[test]
+#[ignore = "requires an allocated H100"]
+fn matches_reference_borrowed_gkr_construction_on_h100() {
+    assert!(available(), "required CUDA driver and NVRTC absent");
+    let dev = Device::new().expect("CUDA device");
+    assert!(dev.name.contains("H100"), "H100 required");
+    let mut total = 0;
+    for case in 0..CASES {
+        let seen = observe(case, |step| {
+            let input = step.construction()?;
+            let mut reference = step.reference()?;
+            let (mut state, work) = dev.build_gkr(&input).expect("construct from original inputs");
+            assert!(work.input_bytes > 0 && work.descriptor_bytes > 0);
+            assert_eq!(state.tables().unwrap(), tables(&reference));
+            for point in step.point {
+                assert_eq!(state.round().unwrap(), reference.round().unwrap());
+                state.fold(*point).unwrap();
+                reference.fold(*point).unwrap();
+                assert_eq!(state.tables().unwrap(), tables(&reference));
+            }
+            let expected: Vec<_> = reference.tables().map(|(x, _)| x[0]).collect();
+            let actual: Vec<_> = state.tables().unwrap().iter().map(|(x, _)| x[0]).collect();
+            gkr::check_finals(step, &expected, &actual).unwrap();
+            Ok(())
+        });
+        total += seen[..3].iter().sum::<usize>();
+    }
+    assert_eq!(total, 2728);
+    eprintln!("constructed_gkr_statements={CASES} steps={total} device={}", dev.name);
+}

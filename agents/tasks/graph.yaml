@@ -5534,8 +5534,11 @@ tasks:
   epic: E16
   title: Construct genuine GKR factors from borrowed inputs on H100
   lane: V
-  depends: [E16-40p]
-  rfc: [RFC-0008 A7, RFC-0014 §1 and §5 and A1]
+  depends:
+  - E16-40p
+  rfc:
+  - RFC-0008 A7
+  - RFC-0014 §1, §5, A1
   skill: cuda-kernel-author
   crate: research
   status: in_progress
