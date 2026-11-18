@@ -4263,7 +4263,8 @@ mod tests {
             Coord::Fixed(1),
         ];
         let q = |i: i64| {
-            basis::<QM31>(2).unwrap() * QM31::from_i64(i * i + 1) + QM31::from_i64(i.pow(3) - i + 1)
+            basis::<QM31>(2).expect("extension basis") * QM31::from_i64(i * i + 1)
+                + QM31::from_i64(i.pow(3) - i + 1)
         };
         for ncoords in 0..=3 {
             let column: Vec<_> = (0..1usize << ncoords)
@@ -4291,8 +4292,8 @@ mod tests {
                         let point: Vec<_> = (0..3)
                             .map(|j| QM31::from_i64(bit(i, j, 3) as i64))
                             .collect();
-                        let w =
-                            stele_poly::eq_table(&column_point(&coords, &point, &free)).unwrap();
+                        let w = stele_poly::eq_table(&column_point(&coords, &point, &free))
+                            .expect("dense column oracle");
                         let expected = column
                             .iter()
                             .zip(w)
@@ -4307,7 +4308,7 @@ mod tests {
     #[test]
     fn matches_reference_wide_column_on_a_small_domain() {
         // One live or no live variables: fixed/free column width never sets the scratch size.
-        let unit = basis::<QM31>(1).unwrap();
+        let unit = basis::<QM31>(1).expect("extension basis");
         let column: Vec<_> = (0..1 << 16)
             .map(|i| unit * QM31::from_i64(i) + QM31::from_i64(i * i))
             .collect();
@@ -4320,7 +4321,7 @@ mod tests {
             assert_eq!(value, column[0xffff ^ ((1 - bit(i, 2, 3)) << 8)]);
         }
         let free: Vec<_> = (0..16).map(|i| unit + QM31::from_i64(i)).collect();
-        let eq = stele_poly::eq_table(&free).unwrap();
+        let eq = stele_poly::eq_table(&free).expect("dense free-coordinate table");
         let expected = column
             .iter()
             .zip(eq)
