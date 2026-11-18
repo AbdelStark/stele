@@ -94,6 +94,14 @@ fn coordinates(
 
 impl Packed {
     pub(crate) fn new(input: &Input<'_>) -> Checked<Self> {
+        Self::pack(input, None)
+    }
+
+    pub(crate) fn from_sources(input: &Input<'_>, lengths: &[usize]) -> Checked<Self> {
+        Self::pack(input, Some(lengths))
+    }
+
+    fn pack(input: &Input<'_>, lengths: Option<&[usize]>) -> Checked<Self> {
         let vars = input.variables;
         if vars > 30 || input.top_variables > vars + 1 {
             return Err("compact lookup domain");
@@ -122,7 +130,27 @@ impl Packed {
             sources: Vec::new(),
             end: word(header)?,
         };
-        columns.add(Column::Base(input.multiplicity))?;
+        // Slot zero is the original multiplicity. Remaining slots follow the
+        // member-major tuple order of the validated LookupPlan, including repeats.
+        let mut leg = 0usize;
+        fn base<'a>(
+            columns: &mut Columns<'a>,
+            values: &'a [M31],
+            lengths: Option<&[usize]>,
+            leg: &mut usize,
+        ) -> Checked<u32> {
+            if let Some(lengths) = lengths {
+                if lengths.get(*leg) != Some(&values.len()) {
+                    return Err("original lookup leg length");
+                }
+                let slot = word(*leg)?;
+                *leg += 1;
+                Ok(slot)
+            } else {
+                columns.add(Column::Base(values))
+            }
+        }
+        base(&mut columns, input.multiplicity, lengths, &mut leg)?;
         let stride = width
             .checked_mul(4)
             .and_then(|v| v.checked_add(5))
@@ -154,10 +182,13 @@ impl Packed {
                 if r.range != *range || !r.mask.is_empty() {
                     return Err("compact lookup tuple range or mask");
                 }
-                let offset = columns.add(Column::Base(r.values))?;
+                let offset = base(&mut columns, r.values, lengths, &mut leg)?;
                 let [s, c] = coordinates(&mut shifts, r.coordinates, r.values.len(), vars)?;
                 descriptors.extend([offset, s, c, M31::from_i64(r.shift).as_u32()]);
             }
+        }
+        if lengths.is_some_and(|n| n.len() != leg) {
+            return Err("original lookup leg count");
         }
         let mut fields = Vec::new();
         fields
@@ -234,6 +265,13 @@ mod tests {
                 alpha: K::ONE,
             };
             let p = Packed::new(&input).unwrap();
+            let aliases = Packed::from_sources(&input, &[2, 2, 2]).unwrap();
+            assert_eq!(aliases.fields.len(), p.fields.len() - 2);
+            assert_eq!(aliases.descriptors[5], 1);
+            assert_eq!(aliases.descriptors[9], 2);
+            assert!(Packed::from_sources(&input, &[2, 2]).is_err());
+            assert!(Packed::from_sources(&input, &[2, 2, 4]).is_err());
+            assert!(Packed::from_sources(&input, &[2, 2, 2, 2]).is_err());
             // 3 challenges, 2 multiplicities, 2 table entries and 2 selector values.
             // Both tuple reads share the original multiplicity buffer.
             assert_eq!(p.fields.len(), 18);

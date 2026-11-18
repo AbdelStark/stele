@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 
-def install(root):
+def install(root, device=False):
     here = Path(__file__).resolve().parent
     root = Path(root).resolve()
     if (root / ".git").exists():
@@ -23,8 +23,16 @@ def install(root):
     anchor = 'laps.lap("zk/sources_prepare_certify");'
     if text.count(anchor) != 1:
         raise ValueError("unexpected original preparation hook")
-    claims.write_text(text.replace(anchor, anchor + "\n" + (here / "check.inc.rs").read_text()))
+    hook = (here / "check.inc.rs").read_text()
+    if device:
+        hook = """let alias_start = std::time::Instant::now();
+    let projected = plan.lookup_columns(columns)?;
+    std::eprintln!("alias_layout columns={} sources={} ns={}", projected.len(), prepared.len(), alias_start.elapsed().as_nanos());"""
+    claims.write_text(text.replace(anchor, anchor + "\n" + hook))
+    if device:
+        import runpy
+        runpy.run_path(str(here / "device.py"))["install"](root)
 
 
 if __name__ == "__main__":
-    install(sys.argv[1])
+    install(sys.argv[1], "--device" in sys.argv[2:])

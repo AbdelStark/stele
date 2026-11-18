@@ -44,6 +44,8 @@ impl Column {
         })
     }
 
+    pub fn descriptor(self) -> [usize;6] { [self.index, self.source, self.rows, self.columns, self.at, self.len] }
+
     pub fn physical(self, p: usize) -> Option<usize> {
         if p >= self.len {
             return None;
