@@ -2384,3 +2384,14 @@ their original transcript order. The public bundle, committed statement,
 source material, proof bytes, lifetime reservation and verification rules
 remain identical. E20-16 exercises 50 complete CPU/CUDA proof pairs and
 the ordinary verified T32 workload at development profile byte 4.
+
+### A22 — Device-prepared material in balanced ZK inference
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-17.
+
+Add RFC-0014 A5 to §7 and A19–A21's local byte-4 execution option. The normal
+proof producer may prepare and serve RFC-0010 A16 hiding-source material
+through the selected backend. Its committed model, statement, seeds, lifetime
+transaction, checked witness, Fiat–Shamir order and verified proof bytes
+remain those of A9. The default CPU path keeps its original preparation.
+E20-18 measures the whole selected proving run, including both source visits.
