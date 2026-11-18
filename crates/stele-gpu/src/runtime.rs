@@ -146,12 +146,24 @@ impl Cuda {
         }
         Ok(lock)
     }
-    pub(crate) fn check_peak(&self) -> Result<(), Error> {
+    /// Pageable HostSlice transfers use the asynchronous driver entry points. Wait even
+    /// on a submission error before the caller reuses or releases its host storage.
+    pub(crate) fn complete_transfer<T>(
+        &self,
+        submission: Result<T, DriverError>,
+    ) -> Result<T, Error> {
+        let completion = self.stream.synchronize();
+        let value = submission?;
+        completion?;
+        Ok(value)
+    }
+    pub(crate) fn check_peak(&self) -> Result<usize, Error> {
         self.stream.synchronize()?;
         let m = self.memory()?;
-        if m.outside_pool.saturating_add(m.pool_high) > m.total / 5 * 2 {
+        let peak = m.outside_pool.saturating_add(m.pool_high);
+        if peak > m.total / 5 * 2 {
             return Err(Error::Budget);
         }
-        Ok(())
+        Ok(peak)
     }
 }

@@ -10,6 +10,7 @@ use stele_kernels::{Backend, SourceGeometry, WeightedClaim, M31, QM31};
 pub struct Counts {
     pub originals: usize,
     pub batches: usize,
+    pub observed_peak_bytes: usize,
     pub expected_rounds: usize,
     pub rounds: usize,
     pub folds: usize,
@@ -112,14 +113,15 @@ impl<'d> Backend<QM31> for Session<'d> {
             staging.clear();
             staging.extend(chunk.iter().map(|w| w.as_u32()));
             let start = i * (1 << 20);
-            stream.memcpy_htod(
+            self.device.complete_transfer(stream.memcpy_htod(
                 &staging,
                 &mut device_words.slice_mut(start..start + chunk.len()),
-            )?;
+            ))?;
         }
-        self.device.check_peak()?;
+        let peak = self.device.check_peak()?;
         ids.push(geometry.id);
         self.record(|c| {
+            c.observed_peak_bytes = c.observed_peak_bytes.max(peak);
             c.originals += 1;
             c.uploaded_bytes += bytes as u64
         });
@@ -141,68 +143,7 @@ impl<'d> Backend<QM31> for Session<'d> {
         }
         let len = original.words.len() / 2;
         let packed = Packed::new(claims, len / 2)?;
-        let uploaded = packed.upload_bytes()?;
-        let device = self.device;
-        let grid = device.grid(len / 2);
-        let partial_count = grid.grid_dim.0 as usize * 3;
-        let allocation = len
-            .checked_mul(20)
-            .and_then(|v| v.checked_add(16 * (partial_count + 3)))
-            .and_then(|v| v.checked_add(uploaded))
-            .ok_or(Error::Budget)?;
-        let _guard = device.allocation(allocation)?;
-        let stream = &device.stream;
-        let mut weights = stream.alloc_zeros::<[u32; 4]>(len)?;
-        let mut face = stream.alloc_zeros::<u32>(len)?;
-        let partials = stream.alloc_zeros::<[u32; 4]>(partial_count)?;
-        let polynomial = stream.alloc_zeros::<[u32; 4]>(3)?;
-        let contributions = stream.clone_htod(&packed.weights)?;
-        let gammas = stream.clone_htod(&packed.gammas)?;
-        let runs = stream.clone_htod(&packed.runs)?;
-        let offsets = stream.clone_htod(&packed.offsets)?;
-        let tile = TILE as u64;
-        let half = (len / 2) as u64;
-        let kernel = device.kernel("batch_weights")?;
-        let mut launch = stream.launch_builder(&kernel);
-        launch
-            .arg(&contributions)
-            .arg(&gammas)
-            .arg(&runs)
-            .arg(&offsets)
-            .arg(&mut weights)
-            .arg(&tile)
-            .arg(&half);
-        // SAFETY: packing bounds every tile interval, claim and weight span; half <= weights.len().
-        unsafe { launch.launch(grid) }?;
-        let columns = (geometry.columns / 2) as u64;
-        let count = len as u64;
-        let kernel = device.kernel("batch_face")?;
-        let mut launch = stream.launch_builder(&kernel);
-        launch
-            .arg(&original.words)
-            .arg(&mut face)
-            .arg(&columns)
-            .arg(&count);
-        // SAFETY: original contains exactly 2*len limbs in physical rows of 2*columns.
-        unsafe { launch.launch(device.grid(len)) }?;
-        device.check_peak()?;
-        self.record(|c| {
-            c.batches += 1;
-            c.expected_rounds += len.ilog2() as usize;
-            c.uploaded_bytes += uploaded as u64
-        });
-        Ok((
-            Dense {
-                session: self,
-                weights,
-                face: Face::Base(face),
-                partials,
-                polynomial,
-                len,
-                phase: Phase::Round,
-            },
-            packed.sum,
-        ))
+        self.build_dense(original, packed)
     }
 
     fn dense_round<'s>(state: &mut Self::Dense<'s>) -> Result<[QM31; 3], Error>
@@ -246,7 +187,7 @@ impl<'d> Backend<QM31> for Session<'d> {
             })
         }?;
         let mut result = [[0u32; 4]; 3];
-        stream.memcpy_dtoh(&state.polynomial, &mut result[..])?;
+        device.complete_transfer(stream.memcpy_dtoh(&state.polynomial, &mut result[..]))?;
         let [a, b, c] = result;
         let result = [canonical(a)?, canonical(b)?, canonical(c)?];
         state.phase = Phase::Fold;
@@ -304,7 +245,10 @@ impl<'d> Backend<QM31> for Session<'d> {
                     .arg(&d);
                 // SAFETY: the base face has 2*half limbs and promoted has half extension elements.
                 unsafe { launch.launch(grid) }?;
-                device.check_peak()?;
+                let peak = device.check_peak()?;
+                state
+                    .session
+                    .record(|c| c.observed_peak_bytes = c.observed_peak_bytes.max(peak));
                 state.face = Face::Ext(promoted);
             }
         }
@@ -325,11 +269,12 @@ impl<'d> Backend<QM31> for Session<'d> {
         let Face::Ext(face) = &state.face else {
             return Err(Error::Phase);
         };
-        let stream = &state.session.device.stream;
+        let device = state.session.device;
+        let stream = &device.stream;
         let mut w = [[0u32; 4]; 1];
         let mut f = [[0u32; 4]; 1];
-        stream.memcpy_dtoh(&state.weights.slice(..1), &mut w[..])?;
-        stream.memcpy_dtoh(&face.slice(..1), &mut f[..])?;
+        device.complete_transfer(stream.memcpy_dtoh(&state.weights.slice(..1), &mut w[..]))?;
+        device.complete_transfer(stream.memcpy_dtoh(&face.slice(..1), &mut f[..]))?;
         let pair = [canonical(w[0])?, canonical(f[0])?];
         state.session.record(|c| {
             c.finals += 1;
@@ -338,3 +283,81 @@ impl<'d> Backend<QM31> for Session<'d> {
         Ok(pair)
     }
 }
+
+impl<'d> Session<'d> {
+    fn build_dense<'s>(
+        &'s self,
+        original: &'s Original<'_, 'd>,
+        packed: Packed,
+    ) -> Result<(Dense<'s, 'd>, QM31), Error> {
+        let geometry = original.geometry;
+        let len = original.words.len() / 2;
+        let uploaded = packed.upload_bytes()?;
+        let device = self.device;
+        let grid = device.grid(len / 2);
+        let partial_count = grid.grid_dim.0 as usize * 3;
+        let allocation = len
+            .checked_mul(20)
+            .and_then(|v| v.checked_add(16 * (partial_count + 3)))
+            .and_then(|v| v.checked_add(uploaded))
+            .ok_or(Error::Budget)?;
+        let _guard = device.allocation(allocation)?;
+        let stream = &device.stream;
+        let mut weights = stream.alloc_zeros::<[u32; 4]>(len)?;
+        let mut face = stream.alloc_zeros::<u32>(len)?;
+        let partials = stream.alloc_zeros::<[u32; 4]>(partial_count)?;
+        let polynomial = stream.alloc_zeros::<[u32; 4]>(3)?;
+        let contributions = device.complete_transfer(stream.clone_htod(&packed.weights))?;
+        let gammas = device.complete_transfer(stream.clone_htod(&packed.gammas))?;
+        let runs = device.complete_transfer(stream.clone_htod(&packed.runs))?;
+        let offsets = device.complete_transfer(stream.clone_htod(&packed.offsets))?;
+        let tile = TILE as u64;
+        let half = (len / 2) as u64;
+        let kernel = device.kernel("batch_weights")?;
+        let mut launch = stream.launch_builder(&kernel);
+        launch
+            .arg(&contributions)
+            .arg(&gammas)
+            .arg(&runs)
+            .arg(&offsets)
+            .arg(&mut weights)
+            .arg(&tile)
+            .arg(&half);
+        // SAFETY: packing bounds every tile interval, claim and weight span; half <= weights.len().
+        unsafe { launch.launch(grid) }?;
+        let columns = (geometry.columns / 2) as u64;
+        let count = len as u64;
+        let kernel = device.kernel("batch_face")?;
+        let mut launch = stream.launch_builder(&kernel);
+        launch
+            .arg(&original.words)
+            .arg(&mut face)
+            .arg(&columns)
+            .arg(&count);
+        // SAFETY: original contains exactly 2*len limbs in physical rows of 2*columns.
+        unsafe { launch.launch(device.grid(len)) }?;
+        let peak = device.check_peak()?;
+        self.record(|c| {
+            c.observed_peak_bytes = c.observed_peak_bytes.max(peak);
+            c.batches += 1;
+            c.expected_rounds += len.ilog2() as usize;
+            c.uploaded_bytes += uploaded as u64
+        });
+        Ok((
+            Dense {
+                session: self,
+                weights,
+                face: Face::Base(face),
+                partials,
+                polynomial,
+                len,
+                phase: Phase::Round,
+            },
+            packed.sum,
+        ))
+    }
+}
+
+#[cfg(test)]
+#[path = "dense_tests.rs"]
+mod tests;

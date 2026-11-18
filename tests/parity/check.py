@@ -92,10 +92,10 @@ def main():
             any(len({r[k] for r in rows}) != 50 for k in ("artifact_sha256", "model_id", "proof_sha256"))):
         raise ValueError("expected 50 distinct ordered models")
     result = run(["cargo", "test", "-p", "stele-gpu", "--release", "--locked", "--offline", "--features", "cuda",
-                  "--test", "dense", "--", "--ignored", "--nocapture", "--test-threads=1"],
+                  "--lib", "--test", "dense", "--", "--ignored", "--nocapture", "--test-threads=1"],
                  text=True, stdout=subprocess.PIPE)
     print(result.stdout, flush=True)
-    if not re.search(r"cuda_dense_cases=1000 rounds=[1-9]\d+ folds=[1-9]\d+ finals=1000", result.stdout) or "2 passed; 0 failed; 0 ignored" not in result.stdout:
+    if not re.search(r"cuda_dense_cases=1000 rounds=[1-9]\d+ folds=[1-9]\d+ finals=1000", result.stdout) or "2 passed; 0 failed; 0 ignored" not in result.stdout or "cuda_dense_lazy_cases=1000" not in result.stdout:
         raise ValueError("required H100 operation comparisons or controls missing")
     with tempfile.TemporaryDirectory(prefix="stele-cuda-parity-") as tmp:
         work = Path(tmp)
