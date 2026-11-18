@@ -38,7 +38,7 @@ pub mod batch;
 
 #[path = "gpu_gkr_build.rs"]
 mod gkr_build;
-pub use gkr_build::ConstructionWork;
+pub use gkr_build::{ConstructionWork, MemorySample};
 
 #[cfg(test)]
 #[path = "gpu_boundary_tests.rs"]
@@ -67,6 +67,11 @@ pub enum Error {
     /// Invalid round descriptors, rejected before device allocation.
     Shape(&'static str),
     Lookup(crate::lookup::Error),
+    /// A measured GKR stage would exceed the remaining allocation budget.
+    Budget {
+        required: usize,
+        available: usize,
+    },
     /// A value read back from the device is not canonical.
     Value,
 }

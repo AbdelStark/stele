@@ -326,6 +326,42 @@ fn factor(input: &GkrFactor<'_, K>, len: u32, half: u32) -> Build<FactorPlan> {
 }
 
 impl Plan {
+    /// Bound all explicit allocations for this step. Every M31 table can promote
+    /// to a half-length QM31 table; the old and new buffers overlap on that fold.
+    pub fn peak_bytes(&self, blocks: usize) -> Build<usize> {
+        let len = self.len as u128;
+        let mut base = 0u128;
+        let mut ext = 0u128;
+        let mut staging = 0u128;
+        for f in &self.factors {
+            for table in std::iter::once(&f.values).chain(f.mask.as_ref().map(|(t, _)| t)) {
+                if table.base {
+                    base += 1;
+                } else {
+                    ext += 1;
+                }
+                for s in &table.spans {
+                    staging = staging.max(4 * (s.data.len() as u128 + s.shifts.len() as u128));
+                }
+            }
+        }
+        let initial = len * (4 * base + 16 * ext);
+        let retained = len * (8 * base + 16 * ext);
+        let transition = if base > 0 { 4 * len } else { 0 };
+        let terms = self.terms.len() as u128;
+        let indices = self
+            .terms
+            .iter()
+            .map(|(_, t)| t.len() as u128)
+            .sum::<u128>()
+            .max(1);
+        let descriptors =
+            20 * self.factors.len() as u128 + 4 * (terms + 1 + indices) + 16 * terms.max(1);
+        let scratch = 16 * (self.degree as u128 + 1) * (blocks as u128 + 1);
+        usize::try_from((initial + staging).max(retained + transition + descriptors + scratch))
+            .map_err(|_| "GKR allocation bound")
+    }
+
     pub fn new(input: &GkrConstruction<'_, K>) -> Build<Self> {
         let n = input.num_vars as usize;
         if n == 0
@@ -430,16 +466,20 @@ mod tests {
             spans: vec![span(8, 0..8, Op::Constant, 1, vec![0; words]).unwrap()],
         };
         let mut plan = Plan {
-            len: 8, degree: 2,
+            len: 8,
+            degree: 2,
             terms: vec![(K::ONE, vec![0])],
-            factors: vec![FactorPlan {values: table(false, 1), mask: Some((table(true, 0), 0))}],
+            factors: vec![FactorPlan {
+                values: table(false, 1),
+                mask: Some((table(true, 0), 0)),
+            }],
         };
         // One ext table plus one promoted base table and its old base buffer.
         // Two pointers, a flag, two offsets, one index, a coefficient, three nodes for a block and the output.
         let descriptors = 20 + 8 + 4 + 16 + 2 * 3 * 16;
-        assert_eq!(plan.peak_bytes(1).unwrap(), 128+64+32+descriptors);
-        plan.factors[0].values.spans[0].data.resize(150,0);
-        assert_eq!(plan.peak_bytes(1).unwrap(), 128+32+600);
+        assert_eq!(plan.peak_bytes(1).unwrap(), 128 + 64 + 32 + descriptors);
+        plan.factors[0].values.spans[0].data.resize(150, 0);
+        assert_eq!(plan.peak_bytes(1).unwrap(), 128 + 32 + 600);
     }
 
     #[test]

@@ -12,6 +12,8 @@ pub struct ConstructionWork {
     pub input_bytes: usize,
     /// Coordinate shifts plus the summand's term offsets, indices and coefficients.
     pub descriptor_bytes: usize,
+    /// Conservative explicit allocation peak for this step, including promotion.
+    pub peak_bytes: usize,
 }
 
 fn charge(total: &mut usize, bytes: usize) -> Result<(), Error> {
@@ -36,6 +38,58 @@ impl Device {
         input: &GkrConstruction<'_, K>,
     ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
         self.build_gkr_plan(Plan::new(input).map_err(Error::Shape)?, true)
+    }
+
+    /// Actual CUDA allocator counters, including its retained pages, on the current device.
+    pub fn memory_sample(&self) -> Result<MemorySample, Error> {
+        use cudarc::driver::{result, sys::CUmemPool_attribute as Attr};
+        if !self.ctx.has_async_alloc() {
+            return Err(Error::Shape("CUDA memory pool required"));
+        }
+        self.ctx.bind_to_thread()?;
+        let (free, total) = self.ctx.mem_get_info()?;
+        // SAFETY: the live context owns this CUDA device and its current allocation pool.
+        let pool = unsafe { result::device::get_mem_pool(self.ctx.cu_device()) }?;
+        let read = |attr| {
+            let mut bytes = 0u64;
+            // SAFETY: the four memory counters below have CUDA's cuuint64_t result type.
+            unsafe {
+                result::mem_pool::get_attribute(pool, attr, core::ptr::from_mut(&mut bytes).cast())
+            }?;
+            usize::try_from(bytes).map_err(|_| Error::Shape("CUDA pool byte count"))
+        };
+        Ok(MemorySample {
+            total,
+            free,
+            reserved: read(Attr::CU_MEMPOOL_ATTR_RESERVED_MEM_CURRENT)?,
+            used: read(Attr::CU_MEMPOOL_ATTR_USED_MEM_CURRENT)?,
+            reserved_high: read(Attr::CU_MEMPOOL_ATTR_RESERVED_MEM_HIGH)?,
+            used_high: read(Attr::CU_MEMPOOL_ATTR_USED_MEM_HIGH)?,
+        })
+    }
+
+    /// Apply the RFC-0014 A1 budget before any device allocation for this GKR step.
+    pub fn build_gkr_bounded(
+        &self,
+        input: &GkrConstruction<'_, K>,
+    ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
+        let plan = Plan::new(input).map_err(Error::Shape)?;
+        let peak = plan
+            .peak_bytes(self.grid(plan.len / 2).grid_dim.0 as usize)
+            .map_err(Error::Shape)?;
+        let sample = self.memory_sample()?;
+        let outside_pool = (sample.total - sample.free).saturating_sub(sample.reserved);
+        let available =
+            (sample.total / 5 * 2).saturating_sub(outside_pool.saturating_add(sample.used));
+        if peak > available {
+            return Err(Error::Budget {
+                required: peak,
+                available,
+            });
+        }
+        let (state, mut work) = self.build_gkr_plan(plan, false)?;
+        work.peak_bytes = peak;
+        Ok((state, work))
     }
 
     fn build_gkr_plan(
@@ -154,4 +208,14 @@ impl Device {
             Buf::Ext(out)
         })
     }
+}
+
+/// Device-wide availability and current process pool high-water marks (bytes).
+pub struct MemorySample {
+    pub total: usize,
+    pub free: usize,
+    pub reserved: usize,
+    pub used: usize,
+    pub reserved_high: usize,
+    pub used_high: usize,
 }
