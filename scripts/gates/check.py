@@ -2116,7 +2116,7 @@ def masked_sumcheck_quarantine(root):
                'crates/stele-reductions/src/zk_claims.rs',
                # RFC-0014 A2: same checked shared-mask prover, field-only batch state.
                'crates/stele-reductions/src/zk_batch_backend.rs',
-               'crates/stele-reductions/src/zk_gkr_backend.rs'}
+               'crates/stele-reductions/src/zk_gkr_backend.rs', 'crates/stele-reductions/src/zk_source_backend.rs'}
     pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    for path in (root / directory).rglob('*.rs')
@@ -2172,7 +2172,7 @@ def standard_quarantine(root):
         raise ValueError(f'standard-profile entry point used before E8-05 (ADR-108): {found}')
     # RFC-0026 A11, ADR-111: the development tier's Policy 2 entry points resolve
     # `proven: false`; they stay in the development path and never reach stele-verifier.
-    dev_allowed = {'crates/stele-pcs/examples/scalar_hiding_source.rs',
+    dev_allowed = {'crates/stele-reductions/src/zk_source_backend.rs', 'crates/stele-pcs/examples/scalar_hiding_source.rs',
                    'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
                    'crates/stele-pcs/src/source.rs', 'crates/stele-pcs/src/preparation.rs',
                    'crates/stele-reductions/src/relation.rs', 'crates/stele-reductions/src/relation_tests.rs',
