@@ -5766,3 +5766,19 @@ tasks:
   - Drive the public checked masked prover with a research CUDA summand so every polynomial and final comes from the H100 before the host transcript draws the next challenge
   - Compare complete masked subproofs, certificate and opening bytes and transcript continuation on synthetic inputs; use the ordinary verifier and discharge its ordered input evaluations directly
   - Reject a changed round using the ordinary verifier and distinguish this component from the 50 required inference proof comparisons
+
+- id: E16-40ae
+  epic: E16
+  title: Read compact lookup columns from their original hiding-source messages
+  lane: V
+  depends: [E16-40y, E16-40ac]
+  rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-integration
+  branch: task/E16-40ae-lookup-source-views
+  acceptance:
+  - Derive tuple and multiplicity views from original column IDs, aligned limb runs, claim-mask boundaries and the hiding source's actual two-dimensional geometry
+  - Check every referenced base limb against the genuine stored T32 messages before qualifying the device views; include crossing a row, alias/offset near misses, repeated equal values from distinct columns and missing ownership
+  - Compare all 21 tops and 21 resident rebuilds on H100 with original CPU values; account physical input allocations, qualification readbacks, transfers and ownership under the total device ceiling
