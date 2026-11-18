@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 
 
-def install(root, standalone=False):
+def install(root, standalone=False, corpus=False):
     root=Path(root).resolve()
     if (root/'.git').exists():
         raise ValueError('expected disposable archive')
@@ -18,6 +18,11 @@ def install(root, standalone=False):
         path.write_text(data.replace(old,new))
     def module(path, text):
         with path.open('a') as f: f.write('\n'+text+'\n')
+    if corpus:
+        if not standalone:
+            raise ValueError('synthetic corpus requires a standalone device')
+        replace(root/'research/gpu-gating/masked/examples/synthetic_proof.rs',
+                'fn main() {', 'fn main() {\n    stele_masked_gpu_bench::t32_relations::install();')
     hashed=root/'crates/stele-hash/src/lib.rs'
     trait='pub trait ChallengeField: sealed::Target'
     if trait in hashed.read_text(): replace(hashed,trait,"pub trait ChallengeField: 'static + sealed::Target")
@@ -48,4 +53,5 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('root',type=Path)
     p.add_argument('--standalone', action='store_true')
-    args=p.parse_args();install(args.root,args.standalone)
+    p.add_argument('--corpus', action='store_true', help='require the H100 when proving each synthetic reference case')
+    args=p.parse_args();install(args.root,args.standalone,args.corpus)
