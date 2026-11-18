@@ -26,7 +26,6 @@ impl Inputs<'_> {
         let upload = prepared.upload_bytes();
         let release = Instant::now();
         drop(black_box(prepared));
-        drop(source);
         let release = release.elapsed();
         let wall = start.elapsed();
         let method = if PARALLEL { "parallel" } else { "serial" };

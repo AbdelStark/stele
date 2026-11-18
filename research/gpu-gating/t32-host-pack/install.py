@@ -35,9 +35,14 @@ def install(root):
     shutil.copyfile(here / "observer.rs", claims.parent / "host_sample.rs")
     # Only CPU modules are built; the research package has no CUDA feature here.
     lib = "research/gpu-gating/masked/src/lib.rs"
-    for module in ["mod batch;", "pub mod lookup;", "pub mod host_pack;"]:
+    for module in ["mod batch;", "pub mod host_pack;"]:
         replace(lib, '#[cfg(any(test, feature = "cuda"))]\n' + module, module)
+    # The serial baseline uses the original lookup encoding helper. The rest of
+    # that module builds CUDA lookup inputs and has no caller in this CPU study.
+    lookup = (root / "research/gpu-gating/masked/src/lookup.rs").read_text()
+    words = "pub(crate) fn words(" + lookup.split("pub(crate) fn words(", 1)[1].split("\n}", 1)[0] + "\n}"
     with (root / lib).open("a") as out:
+        out.write('\n#[cfg(not(any(test,feature="cuda")))]\nmod lookup {use crate::{K, Serialize};\n'+words+'\n}\n')
         out.write("\npub use stele_reductions::zk::claims::host_sample::OBSERVER as HOST_OBSERVER;\n")
     replace("Cargo.toml", 'resolver = "2"', 'resolver = "2"\nexclude = ["research/gpu-gating/masked"]')
     replace("crates/stele-cli/Cargo.toml", "[dependencies]", '''[dependencies]
