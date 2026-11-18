@@ -1,0 +1,10 @@
+{
+  "source": "6034113f67ace10258b48c90e973db291a0a4d99",
+  "files": {
+    "source.tar.gz": "e60db1dc0f89a4c82626f517288b9652441ee4e3e3da3d731fed99cd1d9da850",
+    "capture.py": "50e09bd04fafe1bb867f03d3c5a191dae210929869bfff0d7872d91de4171089",
+    "process.py": "e7c40512830071e640c7fed7955cf896f3106d03a04e716d735b673bc87e4c46",
+    "test_capture.py": "36163202734c429c7802f562bd7d643bdb14812a8771ee066cde3bb7de9b13e2",
+    "campaign.sbatch": "42000b2fe888b12fbb62fd7e118d03878c2faf56e9678f98347c0ef5140179ad"
+  }
+}
