@@ -27,7 +27,18 @@ def compare_case(original, candidate, pin):
             raise ValueError(f"candidate {name} differs")
 
 
-def collect(corpus, producer, verifier, output, compare_reference=None):
+def collect(corpus, producer, verifier, output, compare_reference=None, device_relations=False):
+    if device_relations and compare_reference is None:
+        raise ValueError("hardware comparisons require the pinned CPU references")
+    def prove(index, dest):
+        # The fixture requires the destination to be new. Store its device log in the parent.
+        if device_relations:
+            path = output / (dest.name + ".device.log")
+            with path.open("xb") as log:
+                subprocess.run([producer, corpus, str(index), dest], stderr=log, check=True, timeout=600)
+            return path
+        subprocess.run([producer, corpus, str(index), dest], check=True, timeout=600)
+        return None
     cases = json.loads((corpus / "manifest.json").read_text())
     if [case["index"] for case in cases] != list(range(50)):
         raise ValueError("expected ordered cases 0..49")
@@ -42,6 +53,7 @@ def collect(corpus, producer, verifier, output, compare_reference=None):
             raise ValueError("changed CPU reference inputs or verifier")
     output.mkdir(parents=True, exist_ok=False)
     records = []
+    hardware = []
     for case in cases:
         index = case["index"]
         inputs = corpus / str(index)
@@ -49,7 +61,7 @@ def collect(corpus, producer, verifier, output, compare_reference=None):
         if {k: digest(inputs / (k + ".bin")) for k in fields} != case["sha256"]:
             raise ValueError(f"changed fixture {index}")
         dest = output / str(index)
-        subprocess.run([producer, corpus, str(index), dest], check=True, timeout=600)
+        log = prove(index, dest)
         identity = (dest / "model.txt").read_text()
         if len(identity) != 64 or len(bytes.fromhex(identity)) != 32:
             raise ValueError("invalid model identity")
@@ -60,13 +72,21 @@ def collect(corpus, producer, verifier, output, compare_reference=None):
         result = subprocess.run([*verify, identity], capture_output=True, text=True, timeout=300, check=True)
         if result.stdout.splitlines()[-1] != "YES" or "proof index 0 of 1" not in result.stdout.splitlines():
             raise ValueError(f"verifier failed for case {index}")
+        if device_relations:
+            from device_relations import summarize
+            evidence = summarize(log.read_text(), result.stdout)
+            if evidence["proof_bytes"] != (dest / "proof.bin").stat().st_size:
+                raise ValueError("device and verifier sizes differ")
+            hardware.append(dict(index=index, log_sha256=digest(log), **evidence))
         if index == 0:
             other = ("0" if identity[0] != "0" else "1") + identity[1:]
             wrong = subprocess.run([*verify, other], capture_output=True, text=True, timeout=300)
             if wrong.returncode != 1 or wrong.stdout.splitlines()[-1] != "NO: model differs from --expect-model":
                 raise ValueError("wrong model control")
             replay = output / "replay"
-            subprocess.run([producer, corpus, "0", replay], check=True, timeout=600)
+            replay_log = prove(0, replay)
+            if device_relations and summarize(replay_log.read_text(), result.stdout) != evidence:
+                raise ValueError("device replay coverage differs")
             for name in ("public.bin", "proof.bin", "model.txt"):
                 if (dest / name).read_bytes() != (replay / name).read_bytes():
                     raise ValueError(f"nondeterministic {name}")
@@ -82,6 +102,9 @@ def collect(corpus, producer, verifier, output, compare_reference=None):
     manifest = {"producer_sha256": digest(producer), "verifier_sha256": digest(verifier),
                 "corpus_sha256": digest(corpus / "manifest.json"), "reference_cases": records,
                 "replayed_case": 0, "wrong_model_case": 0, "gpu_proofs_compared": 0}
+    if device_relations:
+        manifest.update(gpu_proofs_compared=len(hardware), device_authored="masked_relation_rounds_and_finals",
+                        device_relation_cases=hardware, device_replay_log_sha256=digest(output / "replay.device.log"))
     if compare_reference is not None:
         manifest["cpu_reference_manifest_sha256"] = digest(committed)
         manifest["complete_byte_matches"] = len(records)
@@ -93,6 +116,7 @@ if __name__ == "__main__":
     for arg in ("corpus", "producer", "verifier", "output"):
         parser.add_argument(arg, type=Path)
     parser.add_argument("--compare-reference", type=Path, help="original CPU output directory for byte comparisons")
+    parser.add_argument("--device-relations", action="store_true", help="require device authorship for every checked relation")
     args = parser.parse_args()
     collect(*(p.resolve() for p in (args.corpus, args.producer, args.verifier, args.output)),
-            compare_reference=args.compare_reference)
+            compare_reference=args.compare_reference, device_relations=args.device_relations)
