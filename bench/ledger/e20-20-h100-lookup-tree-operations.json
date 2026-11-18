@@ -1,0 +1,65 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "5f80428e98347f847e815a3e43a038fe361b9de0",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-22afdccc-aafa-3402-5002-3636ec6a5f0e, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "canonical_cases": 1000,
+    "complete_trees": 2000,
+    "last_child_releases": 2000,
+    "raw_lazy_cases": 1000,
+    "retained_child_views": 24000,
+    "whole_proof_pairs": 0
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk byte 4",
+    "composition": [
+      "4ee1a684729539c975d64089e37bbcb65e754ae5",
+      "4be82d4e1bc0a8e2f0eb0fdea664f0b6c117cd00",
+      "671e5a6dd4affc48c3518f27ff5f5032f0405bac"
+    ],
+    "evidence_location": "lucid-cluster:~/stele-codex/e20-20-lookup-5f80428e/job-6948",
+    "executable_sha256": "d13430695a1aeb6229dc5e49c4b02a2d5bd71e8d0d843cfa0f091c38d23f7883",
+    "job": 6948,
+    "plan": {
+      "cases": 1000,
+      "raw_cases": 1000,
+      "selected": "original lookup top, complete internal tree and retained-child masked GKR"
+    },
+    "public_receipt_sha256": {
+      "allocation.txt": "2e984dbf9e71e49471c0f05c33fc6b0f2f8ef623b9cfdac1e29e4ae0c92a7cea",
+      "binary.sha256": "04c3d5bc4d83837063ec7707d31ff4939de58984305b04b77344da0d59f75938",
+      "device.txt": "68776bfaacb1c0bc4c3670216d20eac5df105872dc60800f90a32412bed20e68",
+      "test.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test.out": "5f6606de88f3dafc68b7fdebd4a7ac85ef6b81fdc282fedc1b0a27559a2afa20",
+      "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3"
+    },
+    "source_patch_base": "2b632c6c",
+    "source_patch_sha256": "31e9ecdfbdb2d93b08ab998bc43b56ff05a3f5334d8fabce608a34f3ca19bbdc"
+  },
+  "note": "Hardware unit operation differential. All levels are compared with independently expanded original leaves; every consumed child round, fold and compact final is checked. Physical owner quadrants are poisoned outside the original column and multiplicity extents. The original slots, permutation, signed shifts, public padding, selector, wrong session, changed draw, invalid extent, ordered sides and conserved last-child release are exercised. Rust test time includes mandatory diagnostic transfers. No whole proofs in this micro case.",
+  "plan_digest": "1a749cd2a5319e65a3a79d2e9def1284c972e79c006733dfff34fa9785bccd63",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 6100000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "canonical_and_lazy_lookup_differential": 6100000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-lookup-tree-operations"
+}

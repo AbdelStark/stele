@@ -329,7 +329,7 @@ def scalar_kernel_surface(root, actual, expected):
     directory = root / 'crates' / name
     approved = json.loads((root / 'scripts/gates/scalar-kernel-sources.json').read_text())
     files = {'Cargo.toml', 'ops.toml', 'src/lib.rs', 'src/scalar.rs', 'tests/dense.rs',
-             'src/gkr.rs', 'src/gkr/plan.rs', 'src/gkr/scalar.rs', 'tests/gkr.rs', 'tests/relation.rs', 'src/hiding.rs'}
+             'src/gkr.rs', 'src/gkr/plan.rs', 'src/gkr/scalar.rs', 'tests/gkr.rs', 'tests/relation.rs', 'src/hiding.rs', 'src/lookup.rs', 'src/lookup_scalar.rs', 'tests/lookup.rs'}
     if set(actual) != files or actual != approved or actual['Cargo.toml'] != expected['Cargo.toml']:
         raise ValueError('parity: scalar kernel source differs from the admitted interface')
     contract = tomllib.loads((directory / 'ops.toml').read_text())
@@ -339,18 +339,21 @@ def scalar_kernel_surface(root, actual, expected):
     gkr = re.findall(r'^    fn (\w+)', prior, re.M)
     relation = re.findall(r'^    fn (\w+)', added, re.M)
     hiding = re.findall(r'^    fn (\w+)', (directory / 'src/hiding.rs').read_text(), re.M)
+    lookup = re.findall(r'^    fn (\w+)', (directory / 'src/lookup.rs').read_text().split('pub trait LookupBackend', 1)[1], re.M)
     if (contract != {'format': 1, 'family': 'ordinary_batch', 'operations': methods, 'gkr': {'operations': gkr},
-                     'relation': {'constructor': 'relation_start', 'arithmetic': gkr[1:]}, 'hiding_source': {'operations': hiding}}
+                     'relation': {'constructor': 'relation_start', 'arithmetic': gkr[1:]}, 'hiding_source': {'operations': hiding}, 'lookup': {'operations': lookup}}
+            or lookup != ['lookup_top', 'lookup_tree', 'lookup_gkr']
             or hiding != ['prepare_columns', 'selected_column']
             or relation != ['relation_start']
             or gkr != ['gkr_start', 'gkr_round', 'gkr_fold', 'gkr_finals']
             or methods != ['original', 'dense_batch', 'dense_round', 'dense_fold', 'dense_finals']):
         raise ValueError('parity: scalar operation inventory disagrees with the interface')
-    result = subprocess.run(['cargo', 'test', '--locked', '--offline', '-p', name, '--test', 'dense', '--test', 'gkr', '--test', 'relation',
+    result = subprocess.run(['cargo', 'test', '--locked', '--offline', '-p', name, '--test', 'dense', '--test', 'gkr', '--test', 'relation', '--test', 'lookup',
                              '--', '--nocapture'], cwd=root, text=True, capture_output=True)
     tests = ('matches_reference_original_dense_batches_and_finals', 'rejects_stale_equal_geometry_and_invalid_state',
              'matches_reference_live_gkr_masked_rounds', 'rejects_understated_degree_and_invalid_factor_geometry',
-             'rejects_relation_geometry_degree_and_mask_extent', 'matches_reference_projected_relation_rounds_and_finals')
+             'rejects_relation_geometry_degree_and_mask_extent', 'matches_reference_projected_relation_rounds_and_finals',
+             'matches_reference_lookup_parents_and_rejects_wrong_original')
     if (result.returncode or any('test ' + name + ' ... ok' not in result.stdout for name in tests)
             or 'ordinary_scalar_cases=1000' not in result.stderr.splitlines()
             or 'projected_relation_scalar_cases=1000' not in result.stderr.splitlines()):
