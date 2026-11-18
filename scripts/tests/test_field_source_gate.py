@@ -62,6 +62,7 @@ class FieldSourceGateTests(unittest.TestCase):
             crate = root / 'crates/stele-pcs'
             shutil.copytree(ROOT / 'crates/stele-pcs', crate)
             for name, added in [('src/lib.rs', '\npub fn verify() -> bool { true }\n'),
+                                ('src/material.rs', '\npub fn verifier_decision() -> bool { true }\n'),
                                 ('src/source.rs', '\nimpl<K: ChallengeField> Source<K> { '
                                  'pub fn verify_certificate(&self) -> bool { true } }\n'),
                                 ('src/source.rs', '\nimpl<K: ChallengeField> From<Source<K>> for bool { '

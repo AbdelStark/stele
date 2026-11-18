@@ -35,7 +35,7 @@ pub(crate) struct Factor {
     pub mask: Option<(Table, usize)>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum Family {
     Gkr,
     Relation,
@@ -97,7 +97,12 @@ impl<'d> Session<'d> {
         let extra = budget
             .construction
             .max(budget.peak.saturating_sub(released));
-        let _guard = device.allocation(extra)?;
+        let _guard = device.allocation(extra).inspect_err(|_| {
+            if std::env::var_os("STELE_STAGE_TIMES").is_some() {
+                eprintln!("cuda_masked_rejected family={family:?} operation=construction variables={} degree={} factors={n} terms={terms} peak_bytes={} first_fold_extra_bytes={}",
+                    p.len.ilog2(), p.degree, budget.peak, budget.fold_extra);
+            }
+        })?;
         let before = device.memory()?;
         let planned = (before.pool_used + extra).max(before.pool_reserved) + before.outside_pool;
         let mut work = Work::default();
@@ -269,7 +274,12 @@ impl<'d> GkrBackend<QM31> for Session<'d> {
         s.phase = Phase::Poisoned;
         let device = s.session.device;
         let _guard = if s.axis == 0 {
-            Some(device.allocation(s.fold_extra)?)
+            Some(device.allocation(s.fold_extra).inspect_err(|_| {
+                if std::env::var_os("STELE_STAGE_TIMES").is_some() {
+                    eprintln!("cuda_masked_rejected family={:?} operation=first_fold variables={} factors={} extra_bytes={}",
+                        s.family, s.len.ilog2(), s.factors.len(), s.fold_extra);
+                }
+            })?)
         } else {
             None
         };

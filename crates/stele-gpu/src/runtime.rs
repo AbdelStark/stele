@@ -51,28 +51,45 @@ pub struct Memory {
 
 impl Memory {
     // Driver thread backing cannot reuse unused bytes in the asynchronous allocation pool.
+    #[track_caller]
     fn admit(&self, pool: usize, driver: usize) -> Result<(), Error> {
         let projected = self
             .pool_used
             .checked_add(pool)
             .map(|n| n.max(self.pool_reserved))
             .and_then(|n| n.checked_add(self.outside_pool))
-            .and_then(|n| n.checked_add(driver))
-            .ok_or(Error::Budget)?;
-        if projected > self.total / 5 * 2 {
-            return Err(Error::Budget);
-        }
-        Ok(())
+            .and_then(|n| n.checked_add(driver));
+        self.limit("admission", projected, pool, driver).map(|_| ())
     }
+    #[track_caller]
     pub(crate) fn checked_peak(&self) -> Result<usize, Error> {
-        let peak = self
-            .outside_pool
-            .checked_add(self.pool_high)
-            .ok_or(Error::Budget)?;
-        if peak > self.total / 5 * 2 {
-            return Err(Error::Budget);
+        self.limit(
+            "observation",
+            self.outside_pool.checked_add(self.pool_high),
+            0,
+            0,
+        )
+    }
+
+    #[track_caller]
+    fn limit(
+        &self,
+        operation: &str,
+        bytes: Option<usize>,
+        pool: usize,
+        driver: usize,
+    ) -> Result<usize, Error> {
+        let limit = self.total / 5 * 2;
+        if let Some(n) = bytes.filter(|n| *n <= limit) {
+            return Ok(n);
         }
-        Ok(peak)
+        if std::env::var_os("STELE_STAGE_TIMES").is_some() {
+            let site = std::panic::Location::caller();
+            let file = site.file().rsplit('/').next().unwrap_or(site.file());
+            eprintln!("cuda_budget_rejected operation={operation} site={file}:{} requested_pool_bytes={pool} requested_driver_bytes={driver} projected_bytes={bytes:?} used_bytes={} reserved_bytes={} reserved_high_bytes={} outside_pool_bytes={} limit_bytes={limit} total_bytes={}",
+                site.line(),self.pool_used,self.pool_reserved,self.pool_high,self.outside_pool,self.total);
+        }
+        Err(Error::Budget)
     }
 }
 
@@ -234,6 +251,7 @@ impl Cuda {
         })
     }
 
+    #[track_caller]
     pub(crate) fn allocation(&self, extra: usize) -> Result<MutexGuard<'static, ()>, Error> {
         let lock = ALLOCATION.lock().map_err(|_| Error::Budget)?;
         self.stream.synchronize()?;
@@ -251,6 +269,7 @@ impl Cuda {
         completion?;
         Ok(value)
     }
+    #[track_caller]
     pub(crate) fn check_peak(&self) -> Result<usize, Error> {
         self.stream.synchronize()?;
         self.memory()?.checked_peak()

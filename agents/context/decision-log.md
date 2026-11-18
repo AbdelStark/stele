@@ -4391,6 +4391,16 @@ pin and transcript remain with the host. The existing PCS verifier authenticates
 each complete response. This admits implementation and qualification.
 [Independent lane Z review](../reviews/e20-17-hiding-source-contract.md)
 
+## ADR-141 — Retain selected column material at the producer (E19-07)
+
+Status: Accepted for balanced development proofs. The producer may hold the
+encoded message and Merkle tree on its chosen device. The ordinary transcript
+requests the salted column and sibling path at each derived index. The same
+certificate and opening verifiers authenticate the bytes. Rebuilding material
+preserves the authenticated context and lifetime opening budget. This decision
+introduces no new wire bytes, committed columns, challenge or verifier dependency.
+[Lane E soundness review](../reviews/e19-07-source-material.md)
+
 ### ADR-144 — Retain balanced lookup child layers on the selected device
 
 RFC-0014 A6, RFC-0020 A14 and RFC-0026 A23 admit proof-local original inputs
