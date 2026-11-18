@@ -14,7 +14,8 @@ def interval_union(intervals):
 
 def summarize(log):
     cold, preparations, visits = [], {}, defaultdict(dict)
-    rows_expected = {0: 4096, 1: 4096, 2: 16, 3: 128, 1268: 16}
+    geometry = {0: (4096, 131072), 1: (4096, 131072), 2: (16, 1024),
+                3: (128, 8192), 1268: (16, 1024)}
     for line in log.splitlines():
         if not line.startswith("t32_"):
             continue
@@ -37,7 +38,7 @@ def summarize(log):
         if tag != "t32_source" or row["opening"] not in (0, 1) or row["opening"] in visits[id_]:
             raise ValueError("unexpected/duplicate source visit")
         rows, cols, queries = row["rows"], row["cols"], row["queries"]
-        if rows != rows_expected.get(id_) or cols < 2 or (cols & (cols - 1)) or (id_ in (0, 1) and cols != 131072):
+        if (rows, cols) != geometry.get(id_):
             raise ValueError("unexpected source geometry")
         count = 4 * cols
         depth = count.bit_length() - 1
@@ -60,8 +61,8 @@ def summarize(log):
         if row["prepare_ns"] < prepare or row["stop"] - row["start"] < charged + row["observe_ns"]:
             raise ValueError("incorrect device interval")
         visits[id_][row["opening"]] = row
-    if (len(cold) != 1 or cold[0] <= 0 or set(preparations) != set(rows_expected)
-            or set(visits) != set(rows_expected) or any(set(pair) != {0, 1} for pair in visits.values())):
+    if (len(cold) != 1 or cold[0] <= 0 or set(preparations) != set(geometry)
+            or set(visits) != set(geometry) or any(set(pair) != {0, 1} for pair in visits.values())):
         raise ValueError("incomplete hiding source coverage")
     all_rows = []
     for id_, pair in sorted(visits.items()):

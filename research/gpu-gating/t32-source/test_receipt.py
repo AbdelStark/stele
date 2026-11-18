@@ -18,7 +18,7 @@ class Sources(unittest.TestCase):
     def test_accepts_all_encoded_visits_and_rejects_one_byte_short(self):
         lines = ["t32_source_cold ns=1"]
         clock = 3
-        for id_, rows, cols in ((0,4096,131072),(1,4096,131072),(2,16,1024),(3,128,1024),(1268,16,1024)):
+        for id_, rows, cols in ((0,4096,131072),(1,4096,131072),(2,16,1024),(3,128,8192),(1268,16,1024)):
             lines.append(f"t32_source_prepare id={id_} cpu_start=1 cpu_stop=2")
             message = 4 * rows * cols
             count = 4 * cols
@@ -40,6 +40,8 @@ class Sources(unittest.TestCase):
                 clock += 13
         log = "\n".join(lines)
         self.assertEqual(summarize(log)["queries"], 1570)
+        with self.assertRaisesRegex(ValueError, "geometry"):
+            summarize(log.replace("rows=128 cols=8192", "rows=128 cols=4096"))
         upload = message + metadata
         with self.assertRaisesRegex(ValueError, "transfer"):
-            summarize(log.replace(f"h2d={upload} ", f"h2d={upload - 1} ", 1))
+            summarize(log.replace(f"h2d={upload} ", f"h2d={upload - 1} "))
