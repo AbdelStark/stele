@@ -4410,7 +4410,7 @@ case falls below 3×. The two hosts have different CPUs. Each ratio is a
 projection for the measured workload and source revision. The inference
 proof that qualified the component measurements was CPU-authored.
 
-Decision proposed for independent review. All three resident projections
+Accepted after independent lane Z review of `b711bd76`. All three resident projections
 clear ADR-127's threshold. Reopen the development-tier implementation on
 this E45-qualified source, through an interface-first task and an explicit
 field-kernel dependency amendment. Carry E45 or an equally qualified CPU
@@ -4420,6 +4420,8 @@ in the subsequent same-host end-to-end CPU and GPU benchmark. Release
 requires the actual parity gate, independently verified complete proofs
 and memory evidence. The broader E10-01 and E16-37 milestones retain
 their original acceptance criteria. This decision grants no profile promotion.
+The reviewer reproduced all six ratios, the 519,321,501 ns host setup
+charge and the inclusion of the full late-source preparation interval.
 
 Machine-readable evidence, input hashes, retained stages and per-sample charges
 are in [the projection](../../bench/ledger/e16-40ag-t32-resident-projection.json)
