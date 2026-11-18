@@ -4136,6 +4136,47 @@ mod tests {
     use super::*;
     use stele_field::{Field, QM31};
 
+    #[test]
+    fn matches_reference_source_mask_prefix_with_rejections() {
+        let mut words: Vec<u32> = (0..2052).collect();
+        // Both encodings of p, including rejections straddling the first 4 KiB read.
+        words[0] = u32::MAX;
+        words[1023] = 0x7fff_ffff;
+        words[1024] = u32::MAX;
+        let bytes: Vec<u8> = words.iter().flat_map(|x| x.to_le_bytes()).collect();
+        for wanted in [0, 1, 1022, 1023, 1024, 2048] {
+            let mut position = 0;
+            skip_mask_prefix(wanted, |out| {
+                out.copy_from_slice(&bytes[position..position + out.len()]);
+                position += out.len();
+            });
+            let mut reference = words.iter();
+            for _ in 0..wanted {
+                reference.find(|&&w| w & 0x7fff_ffff != 0x7fff_ffff).unwrap();
+            }
+            assert_eq!(&bytes[position..], &bytes[4 * (words.len() - reference.len())..]);
+        }
+    }
+
+    #[test]
+    fn matches_reference_source_mask_stream_tail() {
+        for (id, rows, width) in [(0, 1, 1), (7, 2, 128), (31, 16, 128)] {
+            let mut reference = MaskStream::new(&[21; 32], SOURCE_MASK, id);
+            for _ in 0..3 * rows * width {
+                reference.m31();
+            }
+            let mut candidate = after_masks(&[21; 32], id, rows, width);
+            for _ in 0..17 {
+                assert_eq!(candidate.m31(), reference.m31());
+            }
+            let mut expected = [0; 79];
+            let mut actual = [0; 79];
+            reference.fill(&mut expected);
+            candidate.fill(&mut actual);
+            assert_eq!(actual, expected);
+        }
+    }
+
     /// E12-26: the ledger's integer log2 and its round security, rounded toward the
     /// larger error; the eight-layer byte-4 LU and witness tensor rounds.
     #[test]
