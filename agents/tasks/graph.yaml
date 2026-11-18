@@ -4633,6 +4633,34 @@ tasks:
   - seeded operation parity against the existing host preparation for Circle, salted leaves, roots and complete individual paths, with malformed owner and index controls
   - after the E19-08 selected-material interface lands, normal byte-4 CUDA proofs certify and open all original sources, reusing each original and charging every preparation, transferred byte and peak
   - full pinned CPU/H100 proof pairs include device source, relation, LogUp-GKR and ordinary batch work and a T32 run with all source visits and independent verification
+- id: E20-19
+  epic: E20
+  title: Specify live balanced lookup tops and retained GKR child access
+  lane: E
+  depends: [E20-17]
+  rfc: [RFC-0014 A6, RFC-0020 A14, RFC-0026 A23, RFC-0008 A7]
+  skill: rfc-author
+  crate: docs
+  status: in_progress
+  agent: codex-live-gkr
+  branch: task/E20-19-lookup-tree-contract
+  acceptance:
+  - Review original data-quadrant provenance, authenticated top and denominator order, retained tree ownership, last-child release and same-proof geometry controls
+
+- id: E20-20
+  epic: E20
+  title: Build balanced lookup tops and retain the actual child layers on device
+  lane: E
+  depends: [E20-18, E20-19]
+  rfc: [RFC-0014 A6, RFC-0020 A14, RFC-0026 A23, RFC-0008 A7]
+  skill: cuda-kernel-author
+  crate: stele-kernels+stele-reductions+stele-gpu+stele-cli
+  status: ready
+  acceptance:
+  - Compare ordered tops and every consumed child against the original CPU lookup across seeded canonical and raw controls, including selected, shifted and aliased members
+  - Produce 50 pinned ordinary CPU/CUDA byte-identical complete proofs and the balanced T32 with independent positive and wrong-model verification and all earlier live stages
+  - Report actual top, rebuild, resident child and total memory counters, transfers and same-host whole-proof costs
+
 - id: E21-01
   epic: E21
   title: RFC-0030 accepted; per-round ledger

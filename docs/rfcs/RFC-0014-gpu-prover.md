@@ -314,3 +314,62 @@ NC-0607. The combined gate requires positive source, relation, GKR and batch
 counts for all 50 pinned proof pairs and actual T32 CPU and H100 inference
 with every selected visit, A1 memory accounting and independent verification.
 [Source experiment and T32 visit evidence](https://github.com/AbdelStark/stele/pull/422)
+
+### A6 — Produce balanced lookup tops and retain GKR child layers
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-19.
+
+For each balanced byte-4 lookup, a selected prover may construct the RFC-0008
+A7 tree through the proof-local field backend. The reduction derives the lookup
+ordinal, tree exponent n, top exponent k0, ordered members and the table from the
+same validated statement as the scalar prover. After it absorbs the original
+multiplicity sources and lookup messages it draws β and α from the transcript.
+These exact values apply to both visits. The field backend receives the actual
+member intervals, original ordered MSB-first projections, signed shifts, public
+selectors, ordered table rows and valid extent. Every private column leg and
+the multiplicity use the original A5 source owner. The reduction derives the
+logical column offset and extent from the source layout; each access maps to
+the data quadrant of the actual physical M31 message. Check the proof session,
+source identity, row and column geometry and complete logical extent before
+use. Equal field data does not establish provenance.
+
+At the first visit, return exactly the ordered `2^k0` pairs (p,q). The host
+computes h=p/q with the original inverse, aborts on a zero q, and supplies the
+same three columns to the existing top-source commitment. At the next visit
+that actually needs a child, reconstruct from the same inputs and retain an
+opaque tree for this one lookup. A first-and-leaf step reads no child and
+requires no reconstruction. For each nonleaf A7 step at level k, bind its four
+original child factors to level k+1 with the specified polynomial, side and
+mask in original instance order. The backend rejects foreign sessions, lookup
+identities, levels, sides, components and extents. The caller must bind a tree
+to its exact preparation, including its immutable inputs and challenges; a new
+attempt or repeated lookup ordinal cannot reuse an old tree. A3's masked
+rounds, finals, original claim routing and checked transcript remain in force.
+
+At Boolean position x, let s be the selected row indicator, t the shifted
+tuple compressed with the successive powers of β, m the multiplicity (zero
+outside its extent), and qT the existing table branch (one outside its valid
+extent). The first parent may be computed directly from the two A7 branches
+`[s, α−s·t]` and `[−m,qT]`. It is `[s·qT−m·(α−s·t),(α−s·t)·qT]`.
+The highest child level any nonleaf reads is n. A producer may omit the raw
+branch level n+1. The final nonleaf may consume the tree after its child factor
+reads complete and before the first fold. All tree-backed reads finish before
+the allocation is released; an owner is never retained into the leaf step.
+
+**Qualification.** Exercise at least 1,000 canonical and raw device inputs
+against the original CPU tree, comparing each consumed child and top in
+order. Require controls for closed and foreign same-geometry owners, changed
+offset/side/multiplicity/selector/shift, invalid extents, and zero-denominator
+rollback. Compare 50 pinned complete CPU and selected proof pairs with
+source, relation, GKR, lookup and ordinary-batch calls; demonstrate a replay
+and independent expected-model and wrong-model verification. On Stories42M
+T32 report all top visits, retained rebuilds, all consumed child factors,
+and every GKR step. Charge all visits, original and derived data movement,
+scratch, flags and total live device memory under A1. Compare end-to-end wall
+time with a same-host scalar proof. Existing research measured top and rebuild
+visits and confirmed each consumed layer against the scalar tree.
+[Component ledger](https://github.com/AbdelStark/stele/blob/ce366e0f/bench/ledger/e16-40af-t32-gkr-originals-h100.json)
+
+The cost terms are lookup tree construction, GKR child construction and
+transfers. This change adds no challenge, error term, source, proof byte or
+verifier operation. E20-20 validates the combined normal path.
