@@ -16,6 +16,7 @@ use stele_sumcheck::{
 pub struct BatchExecution<'a, K> {
     batches: &'a dyn Arithmetic<K>,
     sources: Option<&'a dyn super::source_backend::Factory<K>>,
+    pub(super) standalone: Option<&'a dyn super::source_backend::Factory<K>>,
     trees: Option<&'a dyn super::source_backend::TreeFactory<K>>,
     gkr: Option<&'a dyn super::gkr_backend::Arithmetic<K>>,
     relations: Option<&'a dyn super::gkr_backend::Relations<K>>,
@@ -27,6 +28,7 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
         Self {
             batches: session,
             sources: None,
+            standalone: None,
             trees: None,
             gkr: None,
             relations: None,
@@ -38,6 +40,7 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
         Self {
             batches: session,
             sources: None,
+            standalone: None,
             trees: None,
             gkr: Some(session),
             relations: None,
@@ -49,6 +52,7 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
         Self {
             batches: session,
             sources: None,
+            standalone: None,
             trees: None,
             gkr: Some(session),
             relations: Some(session),
@@ -86,6 +90,15 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
 }
 
 impl<'a> BatchExecution<'a, stele_kernels::QM31> {
+    /// Select all balanced field, lookup and source operations, including the A4 mask (A7).
+    pub fn with_shared<B: stele_kernels::lookup::LookupBackend + stele_kernels::HidingBackend>(
+        session: &'a B,
+    ) -> Self {
+        let mut execution = Self::with_lookup(session);
+        execution.standalone = Some(session);
+        execution
+    }
+
     /// Select lookup trees and all earlier field and source operations on one proof session (A6).
     pub fn with_lookup<B: stele_kernels::lookup::LookupBackend + stele_kernels::HidingBackend>(
         session: &'a B,

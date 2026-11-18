@@ -174,6 +174,27 @@ fn prove_at<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    prove_bound(i, seed, t, policy, None, |mask, source, t| {
+        masked::prove(i, summand, mask, source, t).map_err(Error::Sumcheck)
+    })
+}
+
+/// A4 binds the two-block mask before any round and authenticates its one opening afterward.
+fn prove_bound<K: ChallengeField + CodeField + Eq>(
+    i: &Instance<K>,
+    seed: &[u8; 32],
+    t: &mut Transcript<K>,
+    policy: Policy,
+    factory: Option<&dyn claims::source_backend::Factory<K>>,
+    sumcheck: impl FnOnce(
+        &Mask<K>,
+        &[u8],
+        &mut Transcript<K>,
+    ) -> Result<(masked::Proof<K>, Vec<K>), Error>,
+) -> Result<(Proof<K>, Vec<K>), Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let degree = masked::degree(i).map_err(Error::Sumcheck)?;
     let mask = Mask::derive(seed, i).map_err(Error::Sumcheck)?;
     let (ell, m) = layout(i, degree)?;
@@ -194,43 +215,55 @@ where
         }
     }
     let message = hiding_message(i.id, ell, m, &data, seed).map_err(Error::Pcs)?;
-    let prepared = PreparedSource::<K>::hiding_mask_with(
-        i.id,
-        ell,
-        m,
-        BLOWUP,
-        &message,
-        seed,
-        &mut HashUsage::default(),
-        policy,
-    )
-    .map_err(Error::Pcs)?;
-    let certificate = prepared.certificate().map_err(|f| Error::Pcs(f.cause))?.0;
-    let verified = verify_certificate(*prepared.source(), &certificate)
-        .map_err(|f| Error::Pcs(f.cause))?
-        .0;
+    let (prepared, (certificate, verified)) = if let Some(factory) = factory {
+        if policy != Policy::Two {
+            return Err(Error::Statement);
+        }
+        // The A4 message is local to this bound proof. Its registry borrows the same
+        // backend session, with its own distinct source ID and one opening allowance.
+        let scoped = factory.begin();
+        claims::source_backend::prepare(
+            &scoped,
+            i.id,
+            (ell, m),
+            &message,
+            seed,
+            stele_pcs::HidingUse::MaskPolynomial,
+            None,
+        )?
+    } else {
+        let prepared = PreparedSource::<K>::hiding_mask_with(
+            i.id,
+            ell,
+            m,
+            BLOWUP,
+            &message,
+            seed,
+            &mut HashUsage::default(),
+            policy,
+        )
+        .map_err(Error::Pcs)?;
+        let certificate = claims::certify(&prepared)?;
+        (claims::source_backend::Ready::Host(prepared), certificate)
+    };
     let source = prepared.source().bytes().to_vec();
-    let (sumcheck, point) =
-        masked::prove(i, summand, &mask, &source, t).map_err(Error::Sumcheck)?;
+    let (sumcheck, point) = sumcheck(&mask, &source, t)?;
     let last = *point.last().ok_or(Error::MaskSource)?;
     // A4 item 5: the mask lemma needs ρ_n ≠ 0 and 2ρ_n ≠ 1; a public abort.
     if last == K::from_i64(0) || last + last == K::from_i64(1) {
         return Err(Error::MaskPoint);
     }
     let (a, b) = functional(i, degree, 2 * columns, &point)?;
-    let opening = prepared
-        .opening(
-            t,
-            &verified,
-            Functional {
-                id: i.id,
-                a: &a,
-                b: &b,
-                value: sumcheck.mask_final,
-            },
-        )
-        .map_err(|f| Error::Pcs(f.cause))?
-        .0;
+    let opening = prepared.open_mask(
+        t,
+        &verified,
+        Functional {
+            id: i.id,
+            a: &a,
+            b: &b,
+            value: sumcheck.mask_final,
+        },
+    )?;
     Ok((
         Proof {
             source,

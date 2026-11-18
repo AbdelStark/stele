@@ -21,11 +21,11 @@ use stele_sumcheck::{
 mod lookup;
 pub(super) use lookup::TreeFactory;
 
-pub(super) trait Factory<K> {
+pub(in crate::zk) trait Factory<K> {
     fn begin(&self) -> Rc<dyn Sources<'_, K> + '_>;
 }
 
-pub(super) trait Sources<'s, K> {
+pub(in crate::zk) trait Sources<'s, K> {
     fn trees(&self) -> Option<&dyn lookup::Trees<K>>;
     fn import(
         &self,
@@ -222,7 +222,7 @@ impl<'s, B: HidingBackend> Sources<'s, QM31> for Registry<'s, B> {
     }
 }
 
-pub(super) struct Selected<'s, K> {
+pub(in crate::zk) struct Selected<'s, K> {
     registry: Rc<dyn Sources<'s, K> + 's>,
     descriptor: merkle::Descriptor,
     root: merkle::Digest,
@@ -240,13 +240,13 @@ impl<K> ColumnMaterial for Selected<'_, K> {
 }
 
 pub(super) type Session<'s, K> = Rc<dyn Sources<'s, K> + 's>;
-pub(super) enum Ready<'s, K: ChallengeField> {
+pub(in crate::zk) enum Ready<'s, K: ChallengeField> {
     Host(PreparedSource<'s, K>),
     Device(PreparedSource<'s, K, Selected<'s, K>>, Session<'s, K>),
 }
 pub(super) type Certified<'s, K> = (Ready<'s, K>, (Vec<u8>, VerifiedCertificate<K>));
 
-pub(super) fn prepare<'s, K: ChallengeField + CodeField>(
+pub(in crate::zk) fn prepare<'s, K: ChallengeField + CodeField>(
     registry: &Session<'s, K>,
     id: u64,
     (ell, m): (u8, u8),
@@ -286,7 +286,7 @@ where
 }
 
 impl<K: ChallengeField + CodeField + Eq> Ready<'_, K> {
-    pub(super) fn source(&self) -> &Source<K> {
+    pub(in crate::zk) fn source(&self) -> &Source<K> {
         match self {
             Self::Host(p) => p.source(),
             Self::Device(p, _) => p.source(),
@@ -322,6 +322,22 @@ impl<K: ChallengeField + CodeField + Eq> Ready<'_, K> {
             Self::Device(p, _) => finish_batch(id, p, verified, result, t),
         })
     }
+    pub(in crate::zk) fn open_mask(
+        &self,
+        t: &mut Transcript<K>,
+        verified: &VerifiedCertificate<K>,
+        functional: stele_pcs::Functional<'_, K>,
+    ) -> Result<Vec<u8>, Error> {
+        self.opening_visit(|| {
+            match self {
+                Self::Host(p) => p.opening(t, verified, functional),
+                Self::Device(p, _) => p.opening(t, verified, functional),
+            }
+            .map(|(opening, _)| opening)
+            .map_err(|f| Error::Pcs(f.cause))
+        })
+    }
+
     pub(super) fn open(
         &self,
         t: &mut Transcript<K>,
