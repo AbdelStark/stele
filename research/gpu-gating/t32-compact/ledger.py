@@ -70,10 +70,29 @@ def build(archive, baseline, verified):
                     if line.startswith(f"t32_selected kind={kind} ")]
             assert len(rows) == 21
             times[f"{kind}/detail_{k[:-3]}"] = sum(int(r[k]) for r in rows)
-    gkr_inputs = [int(re.search(r" original_inputs_ns=(\d+)",line)[1])
-                  for line in log.splitlines() if line.startswith(("t32_gkr_step ","t32_gkr_skip "))]
-    assert len(gkr_inputs) == 385
-    times["gkr/detail_original_construction_inputs"] = sum(gkr_inputs)
+    for kind in ("step","skip"):
+        observed = [dict(v.split("=") for v in line.split()[1:]) for line in log.splitlines()
+                    if line.startswith("t32_gkr_"+kind+" ")]
+        for r in observed:
+            elapsed = int(r["build_ns" if kind=="step" else "attempt_ns"])
+            if elapsed < int(r["original_inputs_ns"]):
+                raise ValueError("GKR original input timer exceeds its build interval")
+        times["gkr/detail_original_construction_inputs_"+kind] = sum(int(r["original_inputs_ns"]) for r in observed)
+    # The 40v measurement logged geometry to shared storage inside this CPU lap.
+    # Record the same interval on node-local storage without subtracting it.
+    shape, small = None, []
+    for line in log.splitlines():
+        if line.startswith("shape relation field="):
+            shape = int(re.search(r" vars=(\d+)", line)[1])
+        elif line.startswith("stage zk/detail/relation_setup "):
+            if shape == 6:
+                small.append(int(line.split()[-1]))
+            shape = None
+    if not small:
+        raise ValueError("missing small CPU relation setup laps")
+    times["observed_inclusive/six_variable_relation_setup_nominal"] = sum(small)*1_000_000
+    times["observed_inclusive/six_variable_relation_setup_upper"] = (sum(small)+len(small))*1_000_000
+    counters["six_variable_relation_setups"] = len(small)
     timing = files["run/prove.time"].decode()
     wall = re.search(r"Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): ([\d:.]+)",timing)[1]
     secs = Decimal(0)
