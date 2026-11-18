@@ -1,0 +1,56 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "1ce99231a2768e4ae400cb70324290d359e5027d",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-1e01ce17-cb36-727c-aa41-de5f146e9a22, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "raw_lazy_cases": 1000,
+    "typed_cases": 1000,
+    "typed_finals": 1000,
+    "typed_folds": 6000,
+    "typed_rounds": 6000
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk byte 4",
+    "job": 6928,
+    "plan": {
+      "profile": "dev-zk byte 4",
+      "raw_lazy_cases": 1000,
+      "selected": "ordinary masked dense batches",
+      "typed_cases": 1000
+    },
+    "public_receipt_sha256": {
+      "allocation.txt": "b9ab5bf7e4c98a308292edb1541e8c272a00df29a1bbe4ff88250b57304af88d",
+      "device.txt": "8ea27b6054f79f6207c915bcea83a31a868476a7d77ef9162efea244239a88aa",
+      "test.err": "d68826930d90397862bf308359df17397c7b76237535648e42aedef67de78eb4",
+      "test.out": "dc3ac66d91abdd6a57f13a461710d77de0b8bc1736fcff5390334fbf0c26504a",
+      "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3"
+    }
+  },
+  "note": "Sum of release test harness elapsed times, reported to hundredths of a second. The typed operation and raw lazy-representation suites use actual H100 device memory. The typed suite also checks foreign owners and invalid transitions.",
+  "plan_digest": "195d1567021104395217a55b7d7495e40f7488892a369ea48262421ec756bfe6",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 2480000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "lazy_test_binary": 1100000000,
+    "typed_test_binary": 1380000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-ordinary-device-operations"
+}
