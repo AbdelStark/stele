@@ -424,6 +424,25 @@ mod tests {
     }
 
     #[test]
+    fn accepts_gkr_peak_including_upload_and_promotion_overlap() {
+        let table = |base, words| TablePlan {
+            base,
+            spans: vec![span(8, 0..8, Op::Constant, 1, vec![0; words]).unwrap()],
+        };
+        let mut plan = Plan {
+            len: 8, degree: 2,
+            terms: vec![(K::ONE, vec![0])],
+            factors: vec![FactorPlan {values: table(false, 1), mask: Some((table(true, 0), 0))}],
+        };
+        // One ext table plus one promoted base table and its old base buffer.
+        // Two pointers, a flag, two offsets, one index, a coefficient, three nodes for a block and the output.
+        let descriptors = 20 + 8 + 4 + 16 + 2 * 3 * 16;
+        assert_eq!(plan.peak_bytes(1).unwrap(), 128+64+32+descriptors);
+        plan.factors[0].values.spans[0].data.resize(150,0);
+        assert_eq!(plan.peak_bytes(1).unwrap(), 128+32+600);
+    }
+
+    #[test]
     fn rejects_invalid_geometry_before_device_access() {
         let mut input = GkrConstruction {
             num_vars: 3,
