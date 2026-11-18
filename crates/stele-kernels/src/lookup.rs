@@ -6,12 +6,12 @@ use core::ops::Range;
 
 /// Actual lookup draws and dimensions, retained by the reduction for both visits.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Key {
+pub struct Key<K = QM31> {
     pub id: u64,
     pub variables: usize,
     pub top_variables: usize,
-    pub beta: QM31,
-    pub alpha: QM31,
+    pub beta: K,
+    pub alpha: K,
 }
 
 /// Logical original column interval in the upper-left quadrant of one physical A5 owner.
@@ -59,8 +59,8 @@ pub struct Member<'a> {
     pub selector: Option<(&'a [i64], &'a [usize])>,
     pub tuple: Vec<Leg<'a>>,
 }
-pub struct Input<'a> {
-    pub key: Key,
+pub struct Input<'a, K = QM31> {
+    pub key: Key<K>,
     pub multiplicity: Column,
     pub members: &'a [Member<'a>],
     pub table: &'a [Vec<i64>],
@@ -81,7 +81,7 @@ fn coordinates(positions: &[usize], len: usize, n: usize) -> bool {
     true
 }
 
-impl Input<'_> {
+impl<K> Input<'_, K> {
     /// Validate every extent, selector and projection before allocating or launching.
     pub fn check(&self) -> Result<(), Error> {
         let n = self.key.variables;

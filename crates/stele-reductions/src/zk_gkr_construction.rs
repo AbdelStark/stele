@@ -13,7 +13,7 @@ pub(in crate::zk::claims) fn inputs<'a, K: ChallengeField + CodeField>(
     plan: &'a Plan<K>,
     step: &'a GkrStep,
     run: &'a Run<K>,
-    layers: &'a [Vec<[K; 2]>],
+    layers: Option<&'a [Vec<[K; 2]>]>,
     data: &'a [Vec<K>],
     shared: &[M31],
     block_of: &dyn Fn(&Occurrence) -> Vec<M31>,
@@ -68,14 +68,23 @@ pub(in crate::zk::claims) fn inputs<'a, K: ChallengeField + CodeField>(
             Gin::Layer { poly, t, v, u } => {
                 let block = block_entries(plan, shared, lp.block(step.k + 1, *poly));
                 let half = block.len() / 2;
-                GkrFactor::Layer {
-                    values: &layers[step.k + 1],
-                    component: *poly,
-                    side: *t,
-                    mask: GkrMask {
-                        values: block[t * half..(t + 1) * half].to_vec(),
-                        coordinates: u,
-                        vanishing: *v,
+                let mask = GkrMask {
+                    values: block[t * half..(t + 1) * half].to_vec(),
+                    coordinates: u,
+                    vanishing: *v,
+                };
+                match layers {
+                    Some(host) => GkrFactor::Layer {
+                        values: host.get(step.k + 1).ok_or(Error::Statement)?,
+                        component: *poly,
+                        side: *t,
+                        mask,
+                    },
+                    None => GkrFactor::RetainedLayer {
+                        layer: step.k + 1,
+                        component: *poly,
+                        side: *t,
+                        mask,
                     },
                 }
             }

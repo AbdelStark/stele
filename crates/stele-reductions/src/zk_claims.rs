@@ -2990,6 +2990,10 @@ fn prove_observed<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    #[cfg(feature = "bench")]
+    if execution.is_some() && observer.is_some() {
+        return Err(Error::Statement);
+    }
     let plan = plan_with(statement, lifetime.as_ref().map(|(l, _)| *l))?;
     let (life_source, model) = match lifetime {
         Some((l, secret)) => (Some(l.source), Some(secret)),
@@ -3044,9 +3048,7 @@ where
     // The registry may borrow the two late messages until its originals have been released.
     #[allow(clippy::needless_late_init)]
     let (top_message, shared_message);
-    let registry = execution
-        .and_then(|b| b.sources)
-        .map(|factory| factory.begin());
+    let registry = execution.and_then(BatchExecution::begin_sources);
     if registry.is_some() && plan.policy() != Policy::Two {
         return Err(Error::Statement);
     }
@@ -3149,6 +3151,10 @@ where
         .map_err(fail)?;
     // RFC-0008 A7 items 1–3: β and α after the multiplicities, then the top. Only the
     // top is kept: each tree is rebuilt, identically, for its own GKR steps (E16-33).
+    let trees = registry.as_ref().and_then(|r| r.trees());
+    let descriptors = trees
+        .map(|_| lookup::source_input::descriptors(&plan, columns))
+        .transpose()?;
     let mut runs = Vec::new();
     for (l, lp) in plan.lookups.iter().enumerate() {
         let mut detail = stele_sumcheck::parallel::Laps::start();
@@ -3156,10 +3162,15 @@ where
         let beta = t.challenge(ChallengeLabel::LookupBeta).map_err(fail)?;
         let alpha = t.challenge(ChallengeLabel::LookupAlpha).map_err(fail)?;
         detail.lap("zk/detail/top_prefix");
-        let layers = lookup::tree(lp, &data, beta, alpha);
-        detail.lap("zk/detail/top_tree");
-        let [p, q, mut h] = lookup::top(lp, &layers)?;
-        drop(layers);
+        let [p, q, mut h] = if let (Some(trees), Some(descriptors)) = (trees, &descriptors) {
+            let pairs = trees.top(&descriptors[l].input(beta, alpha))?;
+            detail.lap("zk/detail/top_tree");
+            lookup::top_pairs(&pairs)?
+        } else {
+            let layers = lookup::tree(lp, &data, beta, alpha);
+            detail.lap("zk/detail/top_tree");
+            lookup::top(lp, &layers)?
+        };
         detail.lap("zk/detail/top_values");
         if forgery == Some(Forgery::Ratio(l)) {
             let total = h.iter().fold(zero::<K>(), |s, v| s + *v);
@@ -3327,12 +3338,21 @@ where
     // reads precede the appended tops, so it is the same tree), and dropped before
     // the leaf step, the largest, which reads no layer. Proof bytes are unchanged.
     let mut tree: Option<(usize, Vec<Vec<[K; 2]>>)> = None;
+    let mut resident_lookup = None;
     for (g, step) in plan.gkr.iter().enumerate() {
         let mut detail = stele_sumcheck::parallel::Laps::start();
         let index = plan.steps.len() + g;
         let l = step.lookup_index();
         if step.is_leaf() {
             tree = None;
+            if resident_lookup.is_some() {
+                return Err(Error::Backend);
+            }
+        } else if let (Some(trees), Some(descriptors)) = (trees, &descriptors) {
+            if resident_lookup != Some(l) {
+                trees.rebuild(&descriptors[l].input(runs[l].beta, runs[l].alpha))?;
+                resident_lookup = Some(l);
+            }
         } else if tree.as_ref().map(|(at, _)| *at) != Some(l) {
             drop(tree.take()); // the previous tree goes before the next is built
             let lp = &plan.lookups[l];
@@ -3390,7 +3410,7 @@ where
                 &plan,
                 step,
                 run,
-                layers,
+                trees.is_none().then_some(layers),
                 &data,
                 &shared_message,
                 &block_of,
@@ -3400,8 +3420,30 @@ where
             };
             detail.lap("zk/detail/gkr_factors");
             detail.lap("zk/detail/gkr_setup");
-            let (proof, point) =
-                backend.prove(&i, &construction, &masks[index], &binding, t, &expand)?;
+            let (proof, point) = if let (Some(trees), Some(descriptors), false) =
+                (trees, &descriptors, step.is_leaf())
+            {
+                let last = plan
+                    .gkr
+                    .get(g + 1)
+                    .is_some_and(|next| next.lookup_index() == l && next.is_leaf());
+                let result = trees.prove(
+                    descriptors[l].input(run.beta, run.alpha).key,
+                    last,
+                    &i,
+                    &construction,
+                    &masks[index],
+                    &binding,
+                    t,
+                    &expand,
+                )?;
+                if last {
+                    resident_lookup = None;
+                }
+                result
+            } else {
+                backend.prove(&i, &construction, &masks[index], &binding, t, &expand)?
+            };
             detail.lap("zk/detail/gkr_rounds");
             let truth = proof.final_values.clone();
             let mu = proof.mask_final;
@@ -3483,7 +3525,7 @@ where
                     &plan,
                     step,
                     run,
-                    layers,
+                    Some(layers),
                     &data,
                     &shared_message,
                     &block_of,

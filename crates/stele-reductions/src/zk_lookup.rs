@@ -54,6 +54,9 @@ use stele_sumcheck::Term;
 #[path = "zk_lookup_bench.rs"]
 pub(super) mod bench;
 
+#[path = "zk_lookup_input.rs"]
+pub(super) mod source_input;
+
 #[path = "zk_gkr_construction.rs"]
 pub(super) mod construction;
 #[path = "zk_gkr_expand.rs"]
@@ -727,7 +730,10 @@ pub(super) fn top<K: ChallengeField>(
     lp: &LookupPlan,
     layers: &[Vec<[K; 2]>],
 ) -> Result<[Vec<K>; 3], Error> {
-    let layer = &layers[lp.k0];
+    top_pairs(&layers[lp.k0])
+}
+
+pub(super) fn top_pairs<K: ChallengeField>(layer: &[[K; 2]]) -> Result<[Vec<K>; 3], Error> {
     let mut h = Vec::new();
     for [p, q] in layer {
         h.push(*p * q.inverse().ok_or(Error::DenominatorZero)?);

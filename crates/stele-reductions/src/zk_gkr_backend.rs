@@ -9,7 +9,7 @@ use stele_sumcheck::{
     Instance, Summand,
 };
 
-type Expand<'a, K> = dyn Fn(&[K], &[K]) -> Result<Vec<K>, Error> + 'a;
+pub(super) type Expand<'a, K> = dyn Fn(&[K], &[K]) -> Result<Vec<K>, Error> + 'a;
 
 pub(super) trait Arithmetic<K: ChallengeField> {
     fn prove(
@@ -82,7 +82,7 @@ impl<K: ChallengeField + Eq, B: RelationBackend<K>> Relations<K> for B {
     }
 }
 
-fn prove_fields<'a, K: ChallengeField + Eq, B: GkrBackend<K> + 'a>(
+pub(super) fn prove_fields<'a, K: ChallengeField + Eq, B: GkrBackend<K> + 'a>(
     i: &Instance<K>,
     state: B::Gkr<'a>,
     compact: usize,

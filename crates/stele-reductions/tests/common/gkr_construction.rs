@@ -16,6 +16,9 @@ pub fn materialize(input: &GkrConstruction<'_, QM31>, seen: &mut [bool; 8]) -> M
         .iter()
         .map(|factor| {
             let kind = match factor {
+                GkrFactor::RetainedLayer { .. } => {
+                    unreachable!("CPU observer requires original layers")
+                }
                 GkrFactor::Equality { .. } => 0,
                 GkrFactor::Block { .. } => 1,
                 GkrFactor::Column { .. } => 2,
@@ -38,6 +41,7 @@ pub fn materialize(input: &GkrConstruction<'_, QM31>, seen: &mut [bool; 8]) -> M
             for index in 0..1usize << n {
                 let pos = index % half;
                 let value = match factor {
+                    GkrFactor::RetainedLayer { .. } => unreachable!(),
                     GkrFactor::Equality {
                         point,
                         scale,
