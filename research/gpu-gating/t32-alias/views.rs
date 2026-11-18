@@ -55,3 +55,7 @@ impl Column {
             .checked_add(x % width)
     }
 }
+
+#[cfg(test)]
+#[path = "t32_alias_tests.rs"]
+mod tests;

@@ -1,5 +1,6 @@
 //! RFC-0013 A5. Columns span data rows, with mask halves excluded.
 use super::Column;
+use alloc::vec::Vec;
 
 #[test]
 fn matches_reference_physical_data_run_across_rows() {

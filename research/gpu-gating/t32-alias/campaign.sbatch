@@ -20,6 +20,8 @@ rustc -Vv > "$run/toolchain.txt"
 lscpu > "$run/cpu.txt"
 python3 -B research/gpu-gating/t32-alias/install.py .
 cargo fetch --locked
+cargo test --frozen -p stele-reductions --lib t32_alias::tests > "$run/controls.txt"
+grep -F '2 passed; 0 failed' "$run/controls.txt"
 cargo build --frozen --release -p stele-cli
 scratch=$(mktemp -d /tmp/stele-alias.XXXXXX)
 trap 'rm -rf -- "$scratch"' EXIT

@@ -18,6 +18,7 @@ def install(root):
     claims = reductions / "zk_claims.rs"
     append(claims, "original.inc.rs")
     shutil.copyfile(here / "views.rs", reductions / "t32_alias.rs")
+    shutil.copyfile(here / "views_tests.rs", reductions / "t32_alias_tests.rs")
     text = claims.read_text()
     anchor = 'laps.lap("zk/sources_prepare_certify");'
     if text.count(anchor) != 1:
