@@ -333,3 +333,46 @@ mod tests {
         assert!(matches!(Packed::new(&raw), Err("compact lookup gather")));
     }
 }
+
+#[cfg(test)]
+#[test]
+fn matches_reference_original_address_expression_with_masked_rows() {
+    let mut input = Vec::new();
+    let mut reference = Vec::new();
+    let mut rng = crate::Rng::new(0x40ae);
+    for seed in 0..1000 {
+        let row_log = 1 + seed % 5;
+        let width = 1usize << row_log;
+        let physical = 32 * width;
+        let mut message: Vec<_> = (0..physical).map(|_| rng.m31().as_u32()).collect();
+        let len = 2 * width;
+        let at = seed % (physical / 4 - len + 1);
+        for raw in [false, true] {
+            if raw {
+                for v in &mut message {
+                    *v += M31::MODULUS;
+                }
+            }
+            input.extend([physical as u32, at as u32, row_log as u32, len as u32]);
+            input.extend(&message);
+            for p in at..at + len {
+                let row = p / width;
+                let col = p % width;
+                reference.push(message[row * 2 * width + col]);
+            }
+        }
+    }
+    let source=format!("#include <cstdio>\n#include <vector>\n#define __device__\n#define __global__\n#define __forceinline__ inline\n{}\n#define GRID_STRIDE(i,n) for(u64 i=0;i<(n);++i)\n{}\n{}",crate::host_probe::helpers(),include_str!("lookup_compact.cu"),r#"
+int main() {
+  u32 h[4];
+  while (std::fread(h,4,4,stdin)==4) {
+    std::vector<u32> message(h[0]), out(h[3]);
+    if (std::fread(message.data(),4,h[0],stdin)!=h[0]) return 1;
+    u64 v[] = {(u64)message.data(),h[1],h[2]};
+    for(u32 j=0;j<h[3];++j) out[j]=lookup_base<true>(nullptr,v,0,j);
+    if (std::fwrite(out.data(),4,h[3],stdout)!=h[3]) return 1;
+  }
+  return std::feof(stdin)?0:1;
+}"#);
+    assert_eq!(crate::host_probe::run(&source, &input), reference);
+}

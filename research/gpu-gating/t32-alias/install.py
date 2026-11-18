@@ -25,9 +25,9 @@ def install(root, device=False):
         raise ValueError("unexpected original preparation hook")
     hook = (here / "check.inc.rs").read_text()
     if device:
-        hook = """let alias_start = std::time::Instant::now();
-    let projected = plan.lookup_columns(columns)?;
-    std::eprintln!("alias_layout columns={} sources={} ns={}", projected.len(), prepared.len(), alias_start.elapsed().as_nanos());"""
+        # Publish the checked plan only after every CPU comparison succeeded. Charge
+        # layout construction once and keep this extra full oracle scan separate.
+        hook = "let projected = " + hook[hook.index("{") :].rstrip()[:-1] + "    projected\n};\n"
     claims.write_text(text.replace(anchor, anchor + "\n" + hook))
     if device:
         import runpy
