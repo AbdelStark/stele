@@ -28,3 +28,7 @@ opt-level = 3
 
 [profile.test]
 opt-level = 2
+
+[dev-dependencies]
+# Production Dense is the oracle for the resident claim-batch rounds.
+stele-sumcheck = { path = "../../../crates/stele-sumcheck", features = ["std"] }
