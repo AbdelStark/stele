@@ -19,10 +19,11 @@ def compare_case(original, candidate, pin):
         raise ValueError("candidate model differs")
     for name in ("public", "proof"):
         path = original / (name + ".bin")
-        if digest(path) != pin[name + "_sha256"]:
+        original_bytes = path.read_bytes()
+        if hashlib.sha256(original_bytes).hexdigest() != pin[name + "_sha256"]:
             raise ValueError(f"changed reference {name}")
         candidate_path = candidate / path.name
-        if path.stat().st_size != candidate_path.stat().st_size or path.read_bytes() != candidate_path.read_bytes():
+        if original_bytes != candidate_path.read_bytes():
             raise ValueError(f"candidate {name} differs")
 
 
@@ -72,6 +73,8 @@ def collect(corpus, producer, verifier, output, compare_reference=None):
         row = {"index": index, "artifact_sha256": case["sha256"]["artifact"], "model_id": identity,
                "proof_bytes": (dest / "proof.bin").stat().st_size, "proof_sha256": digest(dest / "proof.bin"),
                "public_sha256": digest(dest / "public.bin")}
+        if compare_reference is not None and row != pinned["reference_cases"][index]:
+            raise ValueError(f"changed candidate record after verification for case {index}")
         print(json.dumps(row, sort_keys=True), flush=True)
         records.append(row)
     if any(len({row[key] for row in records}) != 50 for key in ("artifact_sha256", "model_id", "proof_sha256")):
