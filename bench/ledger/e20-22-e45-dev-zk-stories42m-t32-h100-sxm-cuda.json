@@ -115,8 +115,9 @@
     },
     "job": 6961,
     "legacy_verifier_sha256": "b16646342de292f1d4733b9ccb80cff4d857ea550cb522581453249a1feb77dc",
+    "matched_cpu_proof_sha256": "1b4406391403b8670377d2538f96a5024fb9d61e00127a2adf0ba915cbad27ef",
     "measured_source_manifest_sha256": "e806975842104d9cabe203ed7a529602099f70b23461ad4caa65267132c4bbd4",
-    "measurement_scope": "Completed first conventional CUDA proof and two CPU-only verifications",
+    "measurement_scope": "Completed conventional CUDA and CPU proofs under one published commitment",
     "model": {
       "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
       "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
@@ -178,7 +179,7 @@
     "validation_tree": "ce4a363a93543a68df111f7613938eb050f211e4",
     "verifier_sha256": "6ee9689a348a0115509bc6341805f7540d816706c6378688c99ed115cc9cb76d"
   },
-  "note": "Development-tier balanced policy-2 ZK inference under RFC-0026 A9 and RFC-0013 A8. One uninstrumented CUDA prove-dev process generated index zero for this published eight-proof commitment. The measured CPU-only verifier and a separately pinned older CPU verifier each accepted this same public proof and rejected a changed expected model. Model commitment has a separate process measurement. Each time is GNU time wall clock. Peak device use combines outside-pool use and pool high water under RFC-0014 A1. The remaining work in the Slurm allocation is outside these measurements. No security level is claimed for this tier.",
+  "note": "Development-tier balanced policy-2 ZK inference under RFC-0026 A9 and RFC-0013 A8. One uninstrumented CUDA prove-dev process generated index zero for this published eight-proof commitment. The measured CPU-only verifier and a separately pinned older CPU verifier each accepted this same public proof and rejected a changed expected model. Model commitment has a separate process measurement. Each time is GNU time wall clock. Peak device use combines outside-pool use and pool high water under RFC-0014 A1. The separately measured CPU proof at index one also verified under this commitment. No security level is claimed for this tier.",
   "plan_digest": "28022687e752d6a0bef1228e092a251439803dea3ad98e33907b3bbf838299e8",
   "profile": "development",
   "prompt_tokens": 24,
