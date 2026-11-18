@@ -33,6 +33,9 @@
 use super::{basis, prove_at, verify_with, Error, Seed, BLOWUP, MIN_M};
 #[path = "zk_batch_backend.rs"]
 mod backend;
+#[path = "zk_source_backend.rs"]
+mod source_backend;
+use source_backend::Ready;
 #[path = "zk_gkr_backend.rs"]
 mod gkr_backend;
 #[path = "zk_projected_relations.rs"]
@@ -1673,7 +1676,9 @@ fn batch_instance<K: ChallengeField>(
 }
 
 /// `M̃'` on the face `Y = 0`, over `(w, row, col)`.
-fn face<K: ChallengeField>(prepared: &PreparedSource<'_, K>) -> Vec<K> {
+fn face<K: ChallengeField>(
+    prepared: &PreparedSource<'_, K, impl stele_pcs::ColumnMaterial>,
+) -> Vec<K> {
     let columns = prepared.source().columns();
     prepared
         .message()
@@ -1753,7 +1758,7 @@ pub fn prove_weighted<K: ChallengeField + CodeField + Eq>(
 
 fn finish_batch<K: ChallengeField + CodeField + Eq>(
     id: u64,
-    prepared: &PreparedSource<'_, K>,
+    prepared: &PreparedSource<'_, K, impl stele_pcs::ColumnMaterial>,
     verified: &VerifiedCertificate<K>,
     (sumcheck, point): (masked::Proof<K>, Vec<K>),
     t: &mut Transcript<K>,
@@ -2458,7 +2463,7 @@ fn shared_message<K: ChallengeField + CodeField>(
 }
 
 fn certify<K: ChallengeField + CodeField>(
-    prepared: &PreparedSource<'_, K>,
+    prepared: &PreparedSource<'_, K, impl stele_pcs::ColumnMaterial>,
 ) -> Result<(Vec<u8>, VerifiedCertificate<K>), Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
@@ -3019,8 +3024,9 @@ where
         .collect();
     let early = plan.early();
     // A6: the lifetime source is rebuilt from the model seed, every proof alike.
-    let seed_of = |s: usize| match (&model, life_source) {
-        (Some(m), Some(l)) if l == s => m.seed,
+    let model_seed = model.as_ref().map(|m| m.seed);
+    let seed_of = |s: usize| match (model_seed, life_source) {
+        (Some(model_seed), Some(l)) if l == s => model_seed,
         _ => seed,
     };
     // Independent per source; built concurrently, kept in source order (E16-24).
@@ -3035,6 +3041,15 @@ where
         .iter()
         .map(|(id, n, degree)| Mask::plain(seed, *id, *n, *degree).map_err(Error::Sumcheck))
         .collect::<Result<Vec<_>, _>>()?;
+    // The registry may borrow the two late messages until its originals have been released.
+    #[allow(clippy::needless_late_init)]
+    let (top_message, shared_message);
+    let registry = execution
+        .and_then(|b| b.sources)
+        .map(|factory| factory.begin());
+    if registry.is_some() && plan.policy() != Policy::Two {
+        return Err(Error::Statement);
+    }
     let hiding = |id: u64, (ell, m): (u8, u8), message| {
         PreparedSource::<K>::hiding_with(
             id,
@@ -3087,17 +3102,45 @@ where
     // E16-33: one source at a time. Each encoding is already parallel inside, and two
     // large sources encoded together doubled the transient peak.
     let mut detail = stele_sumcheck::parallel::Laps::start();
-    let mut prepared = (0..early).map(prepare).collect::<Result<Vec<_>, _>>()?;
-    detail.lap("zk/detail/sources_prepare");
+    let early_sources = if let Some(registry) = &registry {
+        let mut sources = Vec::with_capacity(early);
+        for (s, message) in messages.iter().enumerate() {
+            let layout = &plan.layouts[s];
+            let (purpose, expected) = match (model.as_ref(), &plan.lifetime) {
+                (Some(m), Some(l)) if l.source == s => (
+                    stele_pcs::HidingUse::Lifetime {
+                        budget: l.proofs,
+                        revealed: revealed.clone(),
+                    },
+                    Some(m.root),
+                ),
+                _ => (stele_pcs::HidingUse::Single, None),
+            };
+            sources.push(source_backend::prepare(
+                registry,
+                plan.source_id(s),
+                (layout.ell, layout.m),
+                message,
+                seed_of(s),
+                purpose,
+                expected,
+            )?);
+        }
+        sources
+    } else {
+        let host = (0..early).map(prepare).collect::<Result<Vec<_>, _>>()?;
+        detail.lap("zk/detail/sources_prepare");
+        source_backend::host_certificates(host)?
+    };
+    let mut prepared = Vec::new();
     let mut sources = Vec::new();
     let mut certificates = Vec::new();
     let mut verified = Vec::new();
-    let certified = stele_sumcheck::parallel::map(prepared.len(), |i| certify(&prepared[i]));
-    for (p, c) in prepared.iter().zip(certified) {
-        let (certificate, v) = c?;
+    for (p, (certificate, v)) in early_sources {
         sources.push(p.source().bytes().to_vec());
         certificates.push(certificate);
         verified.push(v);
+        prepared.push(p);
     }
     detail.lap("zk/detail/sources_certify");
     let fail = |e: stele_hash::Error| Error::Sumcheck(e.into());
@@ -3127,34 +3170,54 @@ where
     }
     laps.lap("zk/logup_trees_and_tops");
     let mut detail = stele_sumcheck::parallel::Laps::start();
-    let top_message = if plan.lookups.is_empty() {
+    top_message = if plan.lookups.is_empty() {
         Vec::new()
     } else {
         source_message(&plan, early, &data, seed, claim_masks)?
     };
-    let shared_message = self::shared_message(&plan, &masks, seed, claim_masks)?;
+    shared_message = self::shared_message(&plan, &masks, seed, claim_masks)?;
     detail.lap("zk/detail/top_messages");
-    let (top, shared) = stele_sumcheck::parallel::join(
-        || {
-            (!plan.lookups.is_empty()).then(|| {
-                let layout = &plan.layouts[early];
-                hiding(plan.source_id(early), (layout.ell, layout.m), &top_message)
+    let top = (!plan.lookups.is_empty()).then(|| {
+        let layout = &plan.layouts[early];
+        (
+            plan.source_id(early),
+            (layout.ell, layout.m),
+            top_message.as_slice(),
+        )
+    });
+    let shared = (plan.shared_id(), plan.shared, shared_message.as_slice());
+    let late = if let Some(registry) = &registry {
+        top.into_iter()
+            .chain(core::iter::once(shared))
+            .map(|(id, dims, message)| {
+                source_backend::prepare(
+                    registry,
+                    id,
+                    dims,
+                    message,
+                    seed,
+                    stele_pcs::HidingUse::Single,
+                    None,
+                )
             })
-        },
-        || hiding(plan.shared_id(), plan.shared, &shared_message),
-    );
-    if let Some(top) = top {
-        prepared.push(top?);
-    }
-    prepared.push(shared?);
-    detail.lap("zk/detail/top_prepare");
-    let certified =
-        stele_sumcheck::parallel::map(prepared.len() - early, |i| certify(&prepared[early + i]));
-    for (p, c) in prepared[early..].iter().zip(certified) {
-        let (certificate, v) = c?;
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        let (top, shared) = stele_sumcheck::parallel::join(
+            || top.map(|(id, dims, message)| hiding(id, dims, message)),
+            || hiding(shared.0, shared.1, shared.2),
+        );
+        let host = top
+            .into_iter()
+            .chain(core::iter::once(shared))
+            .collect::<Result<Vec<_>, _>>()?;
+        detail.lap("zk/detail/top_prepare");
+        source_backend::host_certificates(host)?
+    };
+    for (p, (certificate, v)) in late {
         sources.push(p.source().bytes().to_vec());
         certificates.push(certificate);
         verified.push(v);
+        prepared.push(p);
     }
     t.absorb(AbsorbLabel::FieldSources, &sources[early..].concat())
         .map_err(fail)?;
@@ -3461,20 +3524,34 @@ where
             let input = &prepared[*source];
             let gammas = coefficients(t, claims[*source].len())?;
             let instance = batch_instance(id, input.source(), &claims[*source], &gammas);
-            let result = backend.prove(
-                &instance,
-                input,
-                &claims[*source],
-                &gammas,
-                &masks[index],
-                &binding,
-                t,
-            )?;
-            finish_batch(id, input, &verified[*source], result, t)?
+            let result = match input {
+                Ready::Host(p) => backend.prove(
+                    &instance,
+                    p,
+                    &claims[*source],
+                    &gammas,
+                    &masks[index],
+                    &binding,
+                    t,
+                ),
+                Ready::Device(p, registry) => registry.batch(
+                    p.source().descriptor().id,
+                    &instance,
+                    &claims[*source],
+                    &gammas,
+                    &masks[index],
+                    &binding,
+                    t,
+                ),
+            }?;
+            input.finish(id, &verified[*source], result, t)?
         } else {
+            let Ready::Host(input) = &prepared[*source] else {
+                return Err(Error::Backend);
+            };
             prove_batch(
                 id,
-                &prepared[*source],
+                input,
                 &verified[*source],
                 &claims[*source],
                 &masks[index],
@@ -3498,23 +3575,20 @@ where
     let gammas = coefficients(t, mus.len())?;
     let weights = weight_table(shared.source(), &mus, &gammas)?;
     let i = batch_instance(plan.shared_batch_id(), shared.source(), &mus, &gammas);
-    let dense = Dense::new(&i, vec![weights, face(shared)]).map_err(Error::Sumcheck)?;
+    let dense = Dense::new(&i, vec![weights, shared.face()]).map_err(Error::Sumcheck)?;
     detail.lap("zk/detail/shared_weights_face");
     let (proof, point) = prove_at(&i, dense, seed, t, plan.policy())?;
     detail.lap("zk/detail/shared_prove");
     if point[0] == zero::<K>() {
         return Err(Error::BatchPoint);
     }
-    let shared_opening = shared
-        .opening_point(
-            t,
-            &verified[shared_index],
-            plan.shared_batch_id(),
-            &opening_point(&point, plan.shared.0 as usize),
-            proof.sumcheck.final_values[1],
-        )
-        .map_err(|f| Error::Pcs(f.cause))?
-        .0;
+    let shared_opening = shared.open(
+        t,
+        &verified[shared_index],
+        plan.shared_batch_id(),
+        &opening_point(&point, plan.shared.0 as usize),
+        proof.sumcheck.final_values[1],
+    )?;
     detail.lap("zk/detail/shared_opening");
     laps.lap("zk/shared_batch_and_opening");
     Ok((
