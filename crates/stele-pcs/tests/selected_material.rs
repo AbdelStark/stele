@@ -83,7 +83,7 @@ fn external<'a>(
 }
 fn message() -> Vec<M31> {
     let data: Vec<_> = (0..1 << 12).map(|i| M31::from_i64(i % 97)).collect();
-    hiding_message(ID, 3, 9, &data, &SEED).unwrap()
+    hiding_message(ID, 3, 9, &data, &SEED).expect("hiding message")
 }
 
 #[test]
@@ -99,12 +99,15 @@ fn matches_reference_certificate_opening_and_single_spend() {
         &mut HashUsage::default(),
         Policy::Two,
     )
-    .unwrap();
-    let candidate = external(&message, Change::Honest, HidingUse::Single).unwrap();
+    .expect("scalar hiding source");
+    let candidate = external(&message, Change::Honest, HidingUse::Single).expect("selected source");
     assert_eq!(host.source().bytes(), candidate.source().bytes());
-    let (cert, hashes) = host.certificate().unwrap();
-    assert_eq!(candidate.certificate().unwrap(), (cert.clone(), hashes));
-    let (verified, _) = verify_certificate(*host.source(), &cert).unwrap();
+    let (cert, hashes) = host.certificate().expect("scalar certificate");
+    assert_eq!(
+        candidate.certificate().expect("material certificate"),
+        (cert.clone(), hashes)
+    );
+    let (verified, _) = verify_certificate(*host.source(), &cert).expect("authenticated source");
     let element = |seed: u64| {
         let limb = |i: u64| M31::from_u64(seed * 7919 + i * 104729 + 3);
         stele_field::QM31(
@@ -116,26 +119,28 @@ fn matches_reference_certificate_opening_and_single_spend() {
     point.extend((10..13).map(element));
     point.push(QM31::from_i64(0)); // Y=0 on the A15 data face.
     point.extend((40..49).map(element));
-    let weights = stele_poly::eq_table(&point).unwrap();
+    let weights = stele_poly::eq_table(&point).expect("point weights");
     let value = weights
         .iter()
         .zip(&message)
         .fold(QM31::from_i64(0), |sum, (w, x)| {
             sum + *w * QM31::from_i64(i64::from(x.as_u32()))
         });
-    let transcript = || Transcript::<QM31>::new(b"external material").unwrap();
+    let transcript = || Transcript::<QM31>::new(b"external material").expect("new transcript");
     let expected = host
         .opening_point(&mut transcript(), &verified, 3, &point, value)
-        .unwrap()
+        .expect("scalar opening")
         .0;
     let actual = candidate
         .opening_point(&mut transcript(), &verified, 3, &point, value)
-        .unwrap()
+        .expect("material opening")
         .0;
     assert_eq!(expected, actual);
-    verify_point(&mut transcript(), &verified, 3, &point, value, &actual).unwrap();
+    verify_point(&mut transcript(), &verified, 3, &point, value, &actual)
+        .expect("verified opening");
     // A malformed download after the row was absorbed still spends this prepared opening.
-    let damaged = external(&message, Change::Short, HidingUse::Single).unwrap();
+    let damaged =
+        external(&message, Change::Short, HidingUse::Single).expect("malformed response provider");
     for cause in [Error::Merkle(merkle::Error::InvalidLeaf), Error::MaskBudget] {
         assert!(
             matches!(damaged.opening_point(&mut transcript(), &verified, 3, &point, value), Err(f) if f.cause == cause)
@@ -159,19 +164,21 @@ fn rejects_malformed_material_and_changed_authentication() {
         (Change::Long, merkle::Error::InvalidLeaf),
         (Change::ShortPath, merkle::Error::InvalidPath),
     ] {
-        let source = external(&message, mutation, HidingUse::Single).unwrap();
+        let source =
+            external(&message, mutation, HidingUse::Single).expect("malformed response provider");
         assert!(matches!(source.certificate(), Err(f) if f.cause == Error::Merkle(failure)));
     }
     for corruption in [Change::FlipSibling, Change::WrongRoot] {
-        let source = external(&message, corruption, HidingUse::Single).unwrap();
-        let (certificate, _) = source.certificate().unwrap();
+        let source =
+            external(&message, corruption, HidingUse::Single).expect("changed tree provider");
+        let (certificate, _) = source.certificate().expect("unverified certificate bytes");
         assert!(
             matches!(verify_certificate(*source.source(), &certificate), Err(f) if f.cause == Error::Merkle(merkle::Error::RootMismatch))
         );
     }
     assert!(
         !Source::<QM31>::hiding_with(ID, 3, 9, 2, [0; 32], Policy::Two)
-            .unwrap()
+            .expect("valid geometry")
             .admits_lifetime(usize::MAX)
     );
 }
@@ -179,7 +186,7 @@ fn rejects_malformed_material_and_changed_authentication() {
 #[test]
 fn rejects_exhausted_or_rank_deficient_material_history() {
     let data = vec![M31::ONE; 1 << 14];
-    let message = hiding_message(ID, 4, 10, &data, &SEED).unwrap();
+    let message = hiding_message(ID, 4, 10, &data, &SEED).expect("lifetime hiding message");
     let prepare = |revealed| {
         PreparedSource::hiding_material(
             ID,
@@ -223,29 +230,29 @@ fn rejects_exhausted_or_rank_deficient_material_history() {
         })
         .collect();
     point[5] = QM31::from_i64(0);
-    let prior = stele_poly::eq_table(&point[..5]).unwrap();
+    let prior = stele_poly::eq_table(&point[..5]).expect("row weights");
     let value = stele_poly::eq_table(&point)
-        .unwrap()
+        .expect("point weights")
         .iter()
         .zip(&message)
         .fold(QM31::from_i64(0), |sum, (w, x)| {
             sum + *w * QM31::from_i64(i64::from(x.as_u32()))
         });
     let make_proof = |source: &PreparedSource<'_, QM31, Provider<'_>>| {
-        let certificate = source.certificate().unwrap().0;
+        let certificate = source.certificate().expect("certificate").0;
         let verified = verify_certificate(*source.source(), &certificate)
-            .unwrap()
+            .expect("verified certificate")
             .0;
         source.opening_point(
-            &mut Transcript::new(b"A6 prior row").unwrap(),
+            &mut Transcript::new(b"A6 prior row").expect("opening transcript"),
             &verified,
             1,
             &point,
             value,
         )
     };
-    assert!(make_proof(&prepare(vec![]).unwrap()).is_ok());
+    assert!(make_proof(&prepare(vec![]).expect("fresh material")).is_ok());
     assert!(
-        matches!(make_proof(&prepare(vec![prior]).unwrap()), Err(f) if f.cause == Error::MaskRank)
+        matches!(make_proof(&prepare(vec![prior]).expect("persisted prior opening")), Err(f) if f.cause == Error::MaskRank)
     );
 }
