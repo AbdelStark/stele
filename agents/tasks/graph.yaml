@@ -5669,3 +5669,19 @@ tasks:
   - Generate 50 distinct small model artifacts and greedy requests from pinned seeds with the existing family-1 generator; use synthetic public model and proof randomness only
   - Drive the normal balanced development-ZK proving library, verify the complete public bundle and proof with a separately built CLI under the expected model, and save byte digests for later GPU comparison
   - Replay a case for determinism, reject a mismatched model pin, and give this CPU corpus zero GPU parity credit
+
+- id: E16-40y
+  epic: E16
+  title: Build lookup leaves from the original base-field columns on the device
+  lane: V
+  depends: [E16-40u]
+  rfc: [RFC-0008 A7, RFC-0014 §5 and A1]
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-integration
+  branch: task/E16-40y-compact-lookup-inputs
+  acceptance:
+  - consume original base-field columns, member ranges and selectors, public table rows and multiplicity, and account all input preparation and explicit transfers
+  - compare canonical and lazy device values to original lookup trees and selected tops in 1000 seeded cases, including malformed geometry, zero denominator and single-value controls
+  - retain resident child ownership, budget preflight and original CPU comparisons through the complete verified stories42M T32 proof; compare the same lookup visits against E16-40u
