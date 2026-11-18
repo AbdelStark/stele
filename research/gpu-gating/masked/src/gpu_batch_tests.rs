@@ -33,7 +33,7 @@ fn matches_reference_batch_on_h100() {
                 {
                     *word += M31::MODULUS;
                 }
-                let (state, time) = build(&dev, &p).unwrap();
+                let (state, time) = build(&dev, &p, None).unwrap();
                 (state, p.claimed_sum, time)
             } else {
                 prepare(&dev, &source, &claims, &gammas).unwrap()

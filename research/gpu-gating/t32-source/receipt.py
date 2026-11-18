@@ -48,10 +48,15 @@ def summarize(log):
         encoded = count * rows * 4
         nodes = (2 * count - 1) * 32
         wire = queries * (32 + rows * 4 + depth * 32)
+        uses_owner = "original_bytes" in row
+        if uses_owner and (row["original_bytes"] != message
+                or row["original_upload"] != (0 if row["opening"] else message)):
+            raise ValueError("incorrect pinned original payload")
+        staged = 0 if uses_owner else message
         if (queries != (92 if row["opening"] else 222) or row["response_bytes"] != wire
-                or row["d2h"] != 32 + wire - queries * 32 or row["h2d"] != metadata + message):
+                or row["d2h"] != 32 + wire - queries * 32 or row["h2d"] != metadata + staged):
             raise ValueError("source transfer does not cover actual queries")
-        if not (row["retained"] == encoded + nodes and row["peak"] == metadata + encoded + max(message, nodes)
+        if not (row["retained"] == encoded + nodes and row["peak"] == metadata + encoded + max(staged, nodes)
                 and row["retained"] <= row["peak"] <= row["device_total"] * 2 // 5
                 and 0 < row["used_high"] <= row["reserved_high"]
                 and row["reserved_high"] + row["outside_pool"] <= row["device_total"] * 2 // 5):
@@ -81,11 +86,11 @@ def summarize(log):
     if interval_union(device_intervals) != full:
         raise ValueError("overlapping resident sources")
     return dict(cold_ns=cold[0], preparations=len(preparations), visits=len(all_rows),
-                immutable_message_visits=len(all_rows), queries=sum(r["queries"] for r in all_rows),
+                immutable_message_visits=sum(not r.get("opening") if "original_bytes" in r else 1 for r in all_rows), queries=sum(r["queries"] for r in all_rows),
                 cpu_preparation_wall_ns=interval_union(preparations.values()),
                 device_ns=full - sum(r["observe_ns"] for r in all_rows),
                 host_oracle_compare_ns=sum(r["observe_ns"] for r in all_rows),
-                upload_bytes=sum(r["h2d"] for r in all_rows), download_bytes=sum(r["d2h"] for r in all_rows),
+                upload_bytes=sum(r["h2d"]+r.get("original_upload",0) for r in all_rows), download_bytes=sum(r["d2h"] for r in all_rows),
                 max_buffer_bytes=max(r["peak"] for r in all_rows),
                 max_pool_reserved_bytes=max(r["reserved_high"] for r in all_rows),
                 sources=all_rows)
