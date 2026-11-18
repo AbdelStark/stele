@@ -1,17 +1,52 @@
-//! RFC-0013 A5 item 5: stage a prepared hiding source and ordered claim weights.
-//! Research inputs are committed message values and claims, not new commitments.
+//! RFC-0013 A5 item 5: pack claim weights in their original order. A run maps
+//! consecutive weights of one claim to consecutive positions within one tile.
 use crate::{lookup::words, Field, K, M31};
 use stele_reductions::stele_pcs::Source;
 use stele_reductions::zk::claims::Claim;
 
+pub(crate) const TILE: usize = 128;
+
 pub(crate) struct Prepared {
     pub message: Vec<u32>,
-    /// One (weight, gamma) pair per occurrence, grouped stably by data position.
-    pub pairs: Vec<u32>,
+    pub weights: Vec<[u32; 4]>,
+    pub gammas: Vec<[u32; 4]>,
+    /// [destination begin, exclusive end, first packed weight, claim index].
+    pub runs: Vec<[u64; 4]>,
+    /// Each tile owns a stable interval of runs.
     pub offsets: Vec<u64>,
     pub columns: usize,
     pub len: usize,
     pub claimed_sum: K,
+    pub schedule_checks: u64,
+    upload_bytes: usize,
+}
+
+/// Visit original claims and their consecutive position ranges, splitting at a
+/// tile boundary, gap, reversal or repeated position. Every position, including
+/// a zero-weight or zero-coefficient occurrence, must be in the data face.
+fn visit_runs(
+    claims: &[Claim<K>],
+    half: usize,
+    mut visit: impl FnMut(usize, usize, &[(usize, K)]),
+) -> Option<()> {
+    for (claim, c) in claims.iter().enumerate() {
+        let mut remaining = c.weights.as_slice();
+        while let Some(&(start, _)) = remaining.first() {
+            if start >= half {
+                return None;
+            }
+            let limit = remaining.len().min(TILE - start % TILE).min(half - start);
+            let count = 1 + remaining[1..limit]
+                .iter()
+                .enumerate()
+                .take_while(|(i, (position, _))| *position == start + 1 + *i)
+                .count();
+            let (entries, tail) = remaining.split_at(count);
+            visit(claim, start, entries);
+            remaining = tail;
+        }
+    }
+    Some(())
 }
 
 impl Prepared {
@@ -32,45 +67,61 @@ impl Prepared {
         }
         let count = claims
             .iter()
-            .try_fold(0usize, |sum, c| sum.checked_add(c.weights.len()))?;
-        let pair_words = count.checked_mul(8)?.max(8); // A nonempty CUDA allocation even for no claims.
-        let bytes = message
-            .len()
-            .checked_mul(4)?
-            .checked_add(pair_words.checked_mul(4)?)?
-            .checked_add(half.checked_add(1)?.checked_mul(8)?)?
-            .checked_add(len.checked_mul(20)?)?;
-        if bytes > isize::MAX as usize
-            || claims
-                .iter()
-                .flat_map(|c| &c.weights)
-                .any(|(p, _)| *p >= half)
-        {
-            return None;
-        }
-        let mut offsets = vec![0u64; half + 1];
-        for (position, _) in claims.iter().flat_map(|c| &c.weights) {
-            offsets[position + 1] += 1;
-        }
-        for i in 0..half {
+            .try_fold(0usize, |n, c| n.checked_add(c.weights.len()))?;
+        let mut offsets = vec![0u64; half.div_ceil(TILE) + 1];
+        visit_runs(claims, half, |_, start, _| offsets[start / TILE + 1] += 1)?;
+        let mut schedule_checks = 0u64;
+        for i in 0..offsets.len() - 1 {
+            let width = TILE.min(half - i * TILE) as u64;
+            schedule_checks = schedule_checks.checked_add(width.checked_mul(offsets[i + 1])?)?;
             offsets[i + 1] += offsets[i];
         }
-        let mut cursor = offsets[..half].to_vec();
-        let mut pairs = vec![0; pair_words];
-        for (claim, gamma) in claims.iter().zip(gammas) {
-            for (position, weight) in &claim.weights {
-                let at = 8 * cursor[*position] as usize;
-                pairs[at..at + 4].copy_from_slice(&words(*weight));
-                pairs[at + 4..at + 8].copy_from_slice(&words(*gamma));
-                cursor[*position] += 1;
-            }
+        let run_count = usize::try_from(*offsets.last()?).ok()?;
+        // Empty CUDA inputs retain a single zero element; the offsets reference no sentinel run.
+        let upload_bytes = message
+            .len()
+            .checked_mul(4)?
+            .checked_add(count.max(1).checked_mul(16)?)?
+            .checked_add(claims.len().max(1).checked_mul(16)?)?
+            .checked_add(run_count.max(1).checked_mul(32)?)?
+            .checked_add(offsets.len().checked_mul(8)?)?;
+        if upload_bytes.checked_add(len.checked_mul(20)?)? > isize::MAX as usize {
+            return None;
+        }
+        let mut weights = Vec::with_capacity(count.max(1));
+        let mut runs = vec![[0; 4]; run_count.max(1)];
+        visit_runs(claims, half, |claim, start, entries| {
+            let cursor = &mut offsets[start / TILE];
+            runs[*cursor as usize] = [
+                start as u64,
+                (start + entries.len()) as u64,
+                weights.len() as u64,
+                claim as u64,
+            ];
+            *cursor += 1;
+            weights.extend(entries.iter().map(|(_, w)| words(*w)));
+        })?;
+        // All cursors now point to tile ends. Recover starts without a second
+        // tile-sized allocation. The previous final sentinel is discarded.
+        offsets.rotate_right(1);
+        offsets[0] = 0;
+        if weights.is_empty() {
+            weights.push([0; 4]);
+        }
+        let mut gamma_words: Vec<_> = gammas.iter().copied().map(words).collect();
+        if gamma_words.is_empty() {
+            gamma_words.push([0; 4]);
         }
         Some(Self {
             message: message.iter().map(|x| x.as_u32()).collect(),
-            pairs,
+            weights,
+            gammas: gamma_words,
+            runs,
             offsets,
             columns,
             len,
+            schedule_checks,
+            upload_bytes,
             claimed_sum: claims
                 .iter()
                 .zip(gammas)
@@ -79,6 +130,14 @@ impl Prepared {
     }
 
     pub fn upload_bytes(&self) -> usize {
-        4 * (self.message.len() + self.pairs.len()) + 8 * self.offsets.len()
+        self.upload_bytes
+    }
+
+    /// Explicit host vector capacities kept while CUDA constructs the tables.
+    pub fn host_buffer_bytes(&self) -> usize {
+        self.message.capacity() * 4
+            + (self.weights.capacity() + self.gammas.capacity()) * 16
+            + self.runs.capacity() * 32
+            + self.offsets.capacity() * 8
     }
 }

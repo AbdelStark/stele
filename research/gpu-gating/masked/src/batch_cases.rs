@@ -59,6 +59,11 @@ pub(crate) fn claims(message: &[M31], seed: u64) -> (Vec<Claim<K>>, Vec<K>) {
         ];
         weights
             .extend((0..1 + seed % 13).map(|_| ((rng.next() % half as u64) as usize, rng.qm31())));
+        if seed % 8 == 1 {
+            let tile = crate::batch::TILE;
+            weights.extend((tile - 2..2 * tile + 3).map(|p| (p, rng.qm31())));
+            weights.extend((tile + 1..tile + 9).map(|p| (p, rng.qm31())));
+        }
         let value = weights.iter().fold(K::ZERO, |sum, (p, w)| {
             sum + *w * K::from_i64(i64::from(message[p / cols * 2 * cols + p % cols].as_u32()))
         });
@@ -83,15 +88,21 @@ fn matches_reference_overlapping_runs_at_tile_boundaries() {
         value: K::ZERO,
         weights: positions.iter().map(|p| (*p, K::ONE)).collect(),
     };
-    let claims = [claim(&[TILE-1,TILE,TILE+1,TILE,TILE+1]), claim(&[TILE,TILE+1])];
-    let p = Prepared::new(source.source(), &message, &claims, &[K::ZERO,K::ONE]).unwrap();
-    assert_eq!(p.offsets[..3], [0,1,4]);
-    assert_eq!(p.runs[..], [
-        [(TILE-1) as u64,TILE as u64,0,0],
-        [TILE as u64,(TILE+2) as u64,1,0],
-        [TILE as u64,(TILE+2) as u64,3,0],
-        [TILE as u64,(TILE+2) as u64,5,1],
-    ]);
+    let claims = [
+        claim(&[TILE - 1, TILE, TILE + 1, TILE, TILE + 1]),
+        claim(&[TILE, TILE + 1]),
+    ];
+    let p = Prepared::new(source.source(), &message, &claims, &[K::ZERO, K::ONE]).unwrap();
+    assert_eq!(p.offsets[..3], [0, 1, 4]);
+    assert_eq!(
+        p.runs[..],
+        [
+            [(TILE - 1) as u64, TILE as u64, 0, 0],
+            [TILE as u64, (TILE + 2) as u64, 1, 0],
+            [TILE as u64, (TILE + 2) as u64, 3, 0],
+            [TILE as u64, (TILE + 2) as u64, 5, 1],
+        ]
+    );
     assert_eq!(p.weights.len(), 7);
     assert_eq!(p.gammas.len(), 2);
 }
@@ -190,17 +201,35 @@ fn matches_reference_batch_kernels_on_host() {
         let p = crate::batch::Prepared::new(prepared.source(), &message, &claims, &gammas).unwrap();
         assert_eq!(
             p.upload_bytes(),
-            4 * (p.message.len() + p.pairs.len()) + 8 * p.offsets.len()
+            4 * p.message.len()
+                + 16 * (p.weights.len() + p.gammas.len())
+                + 32 * p.runs.len()
+                + 8 * p.offsets.len()
+        );
+        assert!(p.host_buffer_bytes() >= p.upload_bytes());
+        assert_eq!(
+            p.schedule_checks,
+            p.offsets.last().unwrap() * crate::batch::TILE as u64
         );
         for raw in [0, 1] {
-            input.extend([p.len as u32, p.columns as u32, p.pairs.len() as u32, raw]);
+            input.extend([
+                p.len as u32,
+                p.columns as u32,
+                p.offsets.len() as u32,
+                p.runs.len() as u32,
+                p.weights.len() as u32,
+                p.gammas.len() as u32,
+                crate::batch::TILE as u32,
+                raw,
+            ]);
             input.extend(
                 p.offsets
                     .iter()
+                    .chain(p.runs.iter().flatten())
                     .flat_map(|x| [*x as u32, (*x >> 32) as u32]),
             );
             input.extend_from_slice(&p.message);
-            input.extend_from_slice(&p.pairs);
+            input.extend(p.weights.iter().chain(&p.gammas).flatten().copied());
         }
     }
     let source = format!("#include <cstdio>\n#include <vector>\n#define __device__\n#define __global__\n#define __forceinline__ inline\n{}\n#define GRID_STRIDE(j,n) for(u64 j=0;j<(n);++j)\n{}\n{}", crate::host_probe::helpers(), include_str!("batch.cu"), include_str!("batch_host.cuh"));

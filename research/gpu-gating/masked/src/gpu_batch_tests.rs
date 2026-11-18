@@ -25,7 +25,12 @@ fn matches_reference_batch_on_h100() {
         for raw in [false, true] {
             let (mut state, sum, timing) = if raw {
                 let mut p = Prepared::new(source.source(), &message, &claims, &gammas).unwrap();
-                for word in p.message.iter_mut().chain(&mut p.pairs) {
+                for word in p
+                    .message
+                    .iter_mut()
+                    .chain(p.weights.iter_mut().flatten())
+                    .chain(p.gammas.iter_mut().flatten())
+                {
                     *word += M31::MODULUS;
                 }
                 let (state, time) = build(&dev, &p).unwrap();
