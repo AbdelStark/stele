@@ -329,22 +329,29 @@ def scalar_kernel_surface(root, actual, expected):
     directory = root / 'crates' / name
     approved = json.loads((root / 'scripts/gates/scalar-kernel-sources.json').read_text())
     files = {'Cargo.toml', 'ops.toml', 'src/lib.rs', 'src/scalar.rs', 'tests/dense.rs',
-             'src/gkr.rs', 'src/gkr/plan.rs', 'src/gkr/scalar.rs', 'tests/gkr.rs'}
+             'src/gkr.rs', 'src/gkr/plan.rs', 'src/gkr/scalar.rs', 'tests/gkr.rs', 'tests/relation.rs'}
     if set(actual) != files or actual != approved or actual['Cargo.toml'] != expected['Cargo.toml']:
         raise ValueError('parity: scalar kernel source differs from the admitted interface')
     contract = tomllib.loads((directory / 'ops.toml').read_text())
     methods = re.findall(r'^    fn (\w+)', (directory / 'src/lib.rs').read_text(), re.M)
-    gkr = re.findall(r'^    fn (\w+)', (directory / 'src/gkr.rs').read_text(), re.M)
-    if (contract != {'format': 1, 'family': 'ordinary_batch', 'operations': methods, 'gkr': {'operations': gkr}}
+    source = (directory / 'src/gkr.rs').read_text()
+    prior, added = source.split('pub trait RelationBackend', 1)
+    gkr = re.findall(r'^    fn (\w+)', prior, re.M)
+    relation = re.findall(r'^    fn (\w+)', added, re.M)
+    if (contract != {'format': 1, 'family': 'ordinary_batch', 'operations': methods, 'gkr': {'operations': gkr},
+                     'relation': {'constructor': 'relation_start', 'arithmetic': gkr[1:]}}
+            or relation != ['relation_start']
             or gkr != ['gkr_start', 'gkr_round', 'gkr_fold', 'gkr_finals']
             or methods != ['original', 'dense_batch', 'dense_round', 'dense_fold', 'dense_finals']):
         raise ValueError('parity: scalar operation inventory disagrees with the interface')
-    result = subprocess.run(['cargo', 'test', '--locked', '--offline', '-p', name, '--test', 'dense', '--test', 'gkr',
+    result = subprocess.run(['cargo', 'test', '--locked', '--offline', '-p', name, '--test', 'dense', '--test', 'gkr', '--test', 'relation',
                              '--', '--nocapture'], cwd=root, text=True, capture_output=True)
     tests = ('matches_reference_original_dense_batches_and_finals', 'rejects_stale_equal_geometry_and_invalid_state',
-             'matches_reference_live_gkr_masked_rounds', 'rejects_understated_degree_and_invalid_factor_geometry')
+             'matches_reference_live_gkr_masked_rounds', 'rejects_understated_degree_and_invalid_factor_geometry',
+             'rejects_relation_geometry_degree_and_mask_extent', 'matches_reference_projected_relation_rounds_and_finals')
     if (result.returncode or any('test ' + name + ' ... ok' not in result.stdout for name in tests)
-            or 'ordinary_scalar_cases=1000' not in result.stderr.splitlines()):
+            or 'ordinary_scalar_cases=1000' not in result.stderr.splitlines()
+            or 'projected_relation_scalar_cases=1000' not in result.stderr.splitlines()):
         raise ValueError('parity: scalar operation tests or controls failed: ' + result.stderr[-1000:])
     print('gate parity: scalar ordinary batch and GKR interfaces, 1000 cases each')
     return expected
@@ -755,7 +762,7 @@ def field_sources(root):
                # RFC-0013 A5: masked claims, zero-sums and per-source batches.
                'src/zk_claims.rs', 'tests/zk_claims.rs',
                # RFC-0014 A2 and RFC-0020 A10: field-only ordinary batch adapter.
-               'src/zk_batch_backend.rs', 'src/zk_gkr_backend.rs', 'src/zk_gkr_expand.rs',
+               'src/zk_batch_backend.rs', 'src/zk_gkr_backend.rs', 'src/zk_gkr_expand.rs', 'src/zk_projected_relations.rs',
                # RFC-0008 A7: ZK-GKR over the A5 trees.
                'src/zk_lookup.rs', 'tests/zk_lookup.rs',
                # E16-40c: reviewed, opt-in production lookup and claim-batch references.
@@ -822,7 +829,8 @@ def field_sources(root):
     body = re.sub(r'//[^\n]*', '', adapter.read_text()) if adapter.is_file() else ''
     interface = re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', body)
     adapter_closed = (interface == [('pub', 'struct', 'BatchExecution'), ('pub', 'fn', 'new'),
-                                    ('pub', 'fn', 'with_gkr'), ('pub(super)', 'fn', 'gkr'),
+                                    ('pub', 'fn', 'with_gkr'), ('pub', 'fn', 'with_relations'),
+                                    ('pub(super)', 'fn', 'relations'), ('pub(super)', 'fn', 'gkr'),
                                     ('pub(super)', 'fn', 'prove')]
                       and re.findall(r'\bmasked\s*::\s*(prove\w*)\s*\(', body) == ['prove'])
     gkr_adapter = crate / 'src/zk_gkr_backend.rs'
@@ -831,8 +839,15 @@ def field_sources(root):
     # code must enter exactly the existing bound masked prover.
     adapter_closed = (adapter_closed
                       and re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', body)
-                      == [('pub(super)', 'trait', 'Arithmetic')]
+                      == [('pub(super)', 'trait', 'Arithmetic'), ('pub(super)', 'trait', 'Relations')]
                       and re.findall(r'\bmasked\s*::\s*(prove\w*)\s*\(', body) == ['prove'])
+    projected = crate / 'src/zk_projected_relations.rs'
+    body = re.sub(r'//[^\n]*', '', projected.read_text()) if projected.is_file() else ''
+    adapter_closed = (adapter_closed
+                      and re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', body)
+                      == [('pub(super)', 'struct', 'Prepared'), ('pub(super)', 'fn', 'prepare'),
+                          ('pub(super)', 'fn', 'construction')]
+                      and not re.search(r'\b(?:masked|Transcript|verify|opening|certificate)\s*::', body))
     code = re.sub(r'//[^\n]*', '', (crate / 'src/field_sources.rs').read_text())
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
     stacked = re.sub(r'//[^\n]*', '', (crate / 'src/stacked_sources.rs').read_text())

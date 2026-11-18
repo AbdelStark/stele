@@ -101,20 +101,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 request.clone(),
                 2,
                 window,
-                zk::BatchExecution::with_gkr(&session),
+                zk::BatchExecution::with_relations(&session),
             );
             let c = session.counts();
             fs::write(
                 dest.join("device.txt"),
                 format!(
-                    "{} {} {} {} {} {} {}\n{} {} {} {} {} {} {} {} {} {}\n",
+                    "{} {} {} {} {} {} {}\n{} {} {} {} {} {} {} {} {} {}\n{} {} {} {} {} {} {} {} {} {} {}\n",
                     c.originals,
                     c.batches,
                     c.expected_rounds,
                     c.rounds,
                     c.folds,
                     c.finals,
-                    c.downloaded_bytes - c.gkr_downloaded_bytes,
+                    c.downloaded_bytes - c.gkr_downloaded_bytes - c.relation_downloaded_bytes,
                     c.gkr_steps,
                     c.gkr_expected_rounds,
                     c.gkr_rounds,
@@ -125,6 +125,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     c.gkr_layer_source_bytes,
                     c.gkr_planned_peak_bytes,
                     c.gkr_observed_peak_bytes,
+                    c.relation_steps, c.relation_expected_rounds, c.relation_rounds, c.relation_folds, c.relation_finals,
+                    c.relation_uploaded_bytes, c.relation_downloaded_bytes, c.relation_value_bytes,
+                    c.relation_mask_bytes, c.relation_planned_peak_bytes, c.relation_observed_peak_bytes,
                 ),
             )?;
             result

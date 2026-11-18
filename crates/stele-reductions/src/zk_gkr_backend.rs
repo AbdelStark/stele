@@ -3,7 +3,7 @@ use super::Error;
 use alloc::vec::Vec;
 use core::{cell::RefCell, marker::PhantomData};
 use stele_hash::{ChallengeField, Transcript};
-use stele_kernels::gkr::{GkrBackend, GkrConstruction};
+use stele_kernels::gkr::{GkrBackend, GkrConstruction, RelationBackend, RelationConstruction};
 use stele_sumcheck::{
     masked::{self, Mask},
     Instance, Summand,
@@ -39,18 +39,69 @@ impl<K: ChallengeField + Eq, B: GkrBackend<K>> Arithmetic<K> for B {
         let state = self
             .gkr_start(construction)
             .map_err(|_| Error::Sumcheck(stele_sumcheck::Error::Source))?;
-        let summand = FieldGkr::<K, B> {
-            state: RefCell::new(state),
-            remaining: i.num_vars,
-            original: i.inputs.len(),
-            compact: construction.factors.len(),
-            degree: construction.degree,
-            point: Vec::new(),
-            expand,
-            field: PhantomData,
-        };
-        masked::prove(i, summand, mask, binding, t).map_err(Error::Sumcheck)
+        prove_fields::<K, B>(
+            i,
+            state,
+            construction.factors.len(),
+            mask,
+            binding,
+            t,
+            Some(expand),
+        )
     }
+}
+
+pub(super) trait Relations<K: ChallengeField> {
+    fn prove_relation(
+        &self,
+        i: &Instance<K>,
+        input: &RelationConstruction<'_, K>,
+        mask: &Mask<K>,
+        binding: &[u8],
+        t: &mut Transcript<K>,
+    ) -> Result<(masked::Proof<K>, Vec<K>), Error>;
+}
+
+impl<K: ChallengeField + Eq, B: RelationBackend<K>> Relations<K> for B {
+    fn prove_relation(
+        &self,
+        i: &Instance<K>,
+        input: &RelationConstruction<'_, K>,
+        mask: &Mask<K>,
+        binding: &[u8],
+        t: &mut Transcript<K>,
+    ) -> Result<(masked::Proof<K>, Vec<K>), Error> {
+        if input.num_vars != i.num_vars
+            || input.degree != mask.degree()
+            || input.factors.len() != i.inputs.len()
+        {
+            return Err(Error::Statement);
+        }
+        let state = self.relation_start(input).map_err(|_| Error::Backend)?;
+        prove_fields::<K, B>(i, state, input.factors.len(), mask, binding, t, None)
+    }
+}
+
+fn prove_fields<'a, K: ChallengeField + Eq, B: GkrBackend<K> + 'a>(
+    i: &Instance<K>,
+    state: B::Gkr<'a>,
+    compact: usize,
+    mask: &Mask<K>,
+    binding: &[u8],
+    t: &mut Transcript<K>,
+    expand: Option<&'a Expand<'a, K>>,
+) -> Result<(masked::Proof<K>, Vec<K>), Error> {
+    let summand = FieldGkr::<K, B> {
+        state: RefCell::new(state),
+        remaining: i.num_vars,
+        original: i.inputs.len(),
+        compact,
+        degree: mask.degree(),
+        point: Vec::new(),
+        expand,
+        field: PhantomData,
+    };
+    masked::prove(i, summand, mask, binding, t).map_err(Error::Sumcheck)
 }
 
 struct FieldGkr<'a, K: ChallengeField, B: GkrBackend<K> + 'a> {
@@ -60,7 +111,7 @@ struct FieldGkr<'a, K: ChallengeField, B: GkrBackend<K> + 'a> {
     compact: usize,
     degree: usize,
     point: Vec<K>,
-    expand: &'a Expand<'a, K>,
+    expand: Option<&'a Expand<'a, K>>,
     field: PhantomData<B>,
 }
 
@@ -82,7 +133,9 @@ impl<K: ChallengeField, B: GkrBackend<K>> Summand<K> for FieldGkr<'_, K, B> {
             .checked_sub(1)
             .ok_or(stele_sumcheck::Error::PublicShape)?;
         B::gkr_fold(self.state.get_mut(), point).map_err(|_| stele_sumcheck::Error::Source)?;
-        self.point.push(point);
+        if self.expand.is_some() {
+            self.point.push(point);
+        }
         self.remaining = next;
         Ok(())
     }
@@ -95,8 +148,12 @@ impl<K: ChallengeField, B: GkrBackend<K>> Summand<K> for FieldGkr<'_, K, B> {
         if compact.len() != self.compact {
             return Err(stele_sumcheck::Error::ProofShape);
         }
-        let values =
-            (self.expand)(&self.point, &compact).map_err(|_| stele_sumcheck::Error::Source)?;
+        let values = match self.expand {
+            Some(expand) => {
+                expand(&self.point, &compact).map_err(|_| stele_sumcheck::Error::Source)?
+            }
+            None => compact,
+        };
         if values.len() != self.original {
             return Err(stele_sumcheck::Error::ProofShape);
         }

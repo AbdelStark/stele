@@ -27,6 +27,17 @@ pub struct Counts {
     pub gkr_layer_source_bytes: u64,
     pub gkr_planned_peak_bytes: usize,
     pub gkr_observed_peak_bytes: usize,
+    pub relation_steps: usize,
+    pub relation_expected_rounds: usize,
+    pub relation_rounds: usize,
+    pub relation_folds: usize,
+    pub relation_finals: usize,
+    pub relation_uploaded_bytes: u64,
+    pub relation_downloaded_bytes: u64,
+    pub relation_value_bytes: u64,
+    pub relation_mask_bytes: u64,
+    pub relation_planned_peak_bytes: usize,
+    pub relation_observed_peak_bytes: usize,
 }
 
 /// The source registry lasts for exactly one proof attempt.

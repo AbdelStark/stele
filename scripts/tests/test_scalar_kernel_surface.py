@@ -16,7 +16,7 @@ class Surface(unittest.TestCase):
         scaffold = json.loads((ROOT / 'scripts/gates/bootstrap-sources.json').read_text())['stele-kernels']
         with self.assertRaisesRegex(ValueError, 'admitted interface'):
             gates.scalar_kernel_surface(ROOT, scaffold, scaffold)
-        for name in ('src/scalar.rs', 'tests/dense.rs', 'Cargo.toml', 'src/device.rs'):
+        for name in ('src/scalar.rs', 'tests/dense.rs', 'Cargo.toml', 'src/device.rs', 'tests/relation.rs', 'src/gkr.rs'):
             wrong = dict(admitted)
             wrong[name] = '0' * 64
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'admitted interface'):
