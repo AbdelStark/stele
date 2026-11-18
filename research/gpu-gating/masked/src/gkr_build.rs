@@ -14,6 +14,19 @@ pub(crate) enum Op {
     GatherExt,
     Layer,
     Table,
+    OriginalBase,
+}
+
+/// Actual source of uploaded words. The coordinate and term descriptors are accounted separately.
+#[derive(Clone, Copy)]
+pub(crate) enum InputKind {
+    Equality,
+    Block,
+    Column,
+    Mask,
+    Layer,
+    Public,
+    Selector,
 }
 
 pub(crate) struct Span {
@@ -21,6 +34,8 @@ pub(crate) struct Span {
     pub begin: u32,
     pub end: u32,
     pub op: Op,
+    pub kind: InputKind,
+    pub original: Option<[usize; 6]>,
     pub arg: u32,
     pub shifts: Vec<u32>,
     pub data: Vec<u32>,
@@ -59,6 +74,14 @@ fn span(period: u32, range: Range<usize>, op: Op, arg: u32, data: Vec<u32>) -> B
         begin: range.start as u32,
         end: range.end as u32,
         op,
+        kind: match op {
+            Op::Equality => InputKind::Equality,
+            Op::Block => InputKind::Block,
+            Op::Layer => InputKind::Layer,
+            Op::Table | Op::Constant => InputKind::Public,
+            Op::OriginalBase | Op::GatherBase | Op::GatherExt => InputKind::Column,
+        },
+        original: None,
         arg,
         shifts: Vec::new(),
         data,
@@ -87,7 +110,7 @@ impl TablePlan {
     }
 
     fn single(span: Span) -> Self {
-        let base = matches!(span.op, Op::GatherBase | Op::Constant);
+        let base = matches!(span.op, Op::GatherBase | Op::OriginalBase | Op::Constant);
         Self {
             base,
             spans: vec![span],
@@ -102,7 +125,7 @@ impl TablePlan {
         }
         let base = spans
             .iter()
-            .all(|s| matches!(s.op, Op::GatherBase | Op::Constant));
+            .all(|s| matches!(s.op, Op::GatherBase | Op::OriginalBase | Op::Constant));
         Ok(Self { base, spans })
     }
 }
@@ -122,7 +145,31 @@ fn column(
     values: &[K],
     coords: &[usize],
     shift: i64,
+    origin: Option<[usize; 6]>,
 ) -> Build<Span> {
+    if let Some(origin @ [_, _, rows, cols, at, count]) = origin {
+        let cells = rows.checked_mul(cols).ok_or("GKR original extent")?;
+        if rows < 2
+            || cols < 2
+            || !rows.is_power_of_two()
+            || !cols.is_power_of_two()
+            || count != values.len()
+            || at.checked_add(count).is_none_or(|end| end > cells / 4)
+        {
+            return Err("GKR original column geometry");
+        }
+        // Origin comes from the statement's base-typed column, before embedding
+        // into the CPU challenge field. No host field scan or payload copy is required.
+        let mut s = span(
+            period,
+            range,
+            Op::OriginalBase,
+            M31::from_i64(shift).as_u32(),
+            vec![],
+        )?;
+        s.original = Some(origin);
+        return gather(s, coords, count);
+    }
     let (op, data) = if values
         .iter()
         .all(|k| k.0 .1 == M31::ZERO && k.1 .0 == M31::ZERO && k.1 .1 == M31::ZERO)
@@ -158,10 +205,32 @@ fn mask(len: u32, m: &GkrMask<'_>) -> Build<(TablePlan, usize)> {
     ))
 }
 
-fn factor(input: &GkrFactor<'_, K>, len: u32, half: u32, resident: bool) -> Build<FactorPlan> {
+fn factor(
+    input: &GkrFactor<'_, K>,
+    len: u32,
+    half: u32,
+    resident: bool,
+    original: Option<&crate::gkr::ColumnOrigin>,
+) -> Build<FactorPlan> {
+    if let Some(legs) = original {
+        let count = match input {
+            GkrFactor::Column { .. } => 1,
+            GkrFactor::Combined { members, .. } => members.len(),
+            GkrFactor::Layer { .. } => return Err("original GKR leaf has a child"),
+            _ => 0,
+        };
+        // At k0 == n, Gin::Top and Gin::Leaf share a step. The former is a
+        // later QM31 source, explicitly marked None by the producing plan.
+        if legs.len() != count
+            || (matches!(input, GkrFactor::Combined { .. }) && legs.iter().any(Option::is_none))
+        {
+            return Err("original GKR leaf column provenance");
+        }
+    }
+    let leg = |i: usize| original.and_then(|s| s[i]);
     let all = 0..len as usize;
     let layer = 0..half as usize;
-    let (values, mask) = match input {
+    let (mut values, mut mask) = match input {
         GkrFactor::Equality {
             point,
             scale,
@@ -213,7 +282,7 @@ fn factor(input: &GkrFactor<'_, K>, len: u32, half: u32, resident: bool) -> Buil
             coordinates,
             mask: m,
         } => (
-            TablePlan::single(column(len, all, values, coordinates, 0)?),
+            TablePlan::single(column(len, all, values, coordinates, 0, leg(0))?),
             Some(mask(len, m)?),
         ),
         GkrFactor::Layer {
@@ -314,13 +383,14 @@ fn factor(input: &GkrFactor<'_, K>, len: u32, half: u32, resident: bool) -> Buil
         GkrFactor::Combined { members, vanishing } => {
             let mut xs = Vec::new();
             let mut rs = Vec::new();
-            for m in members {
+            for (ordinal, m) in members.iter().enumerate() {
                 xs.push(column(
                     half,
                     m.range.clone(),
                     m.values,
                     m.coordinates,
                     m.shift,
+                    leg(ordinal),
                 )?);
                 if !m.mask.len().is_power_of_two() || m.mask.len() > half as usize {
                     return Err("GKR member mask");
@@ -347,6 +417,16 @@ fn factor(input: &GkrFactor<'_, K>, len: u32, half: u32, resident: bool) -> Buil
         .is_some_and(|(_, v)| *v >= len.ilog2() as usize)
     {
         return Err("GKR vanishing coordinate");
+    }
+    if matches!(input, GkrFactor::Selector { .. }) {
+        for span in &mut values.spans {
+            span.kind = InputKind::Selector;
+        }
+    }
+    if let Some((mask, _)) = &mut mask {
+        for span in &mut mask.spans {
+            span.kind = InputKind::Mask;
+        }
     }
     Ok(FactorPlan { values, mask })
 }
@@ -427,7 +507,25 @@ impl Plan {
         Self::with_layers(input, false)
     }
 
+    pub(crate) fn with_originals(
+        input: &GkrConstruction<'_, K>,
+        origins: &[crate::gkr::ColumnOrigin],
+    ) -> Build<Self> {
+        if origins.len() != input.factors.len() {
+            return Err("original GKR factor count");
+        }
+        Self::make(input, false, Some(origins))
+    }
+
     pub(crate) fn with_layers(input: &GkrConstruction<'_, K>, resident: bool) -> Build<Self> {
+        Self::make(input, resident, None)
+    }
+
+    fn make(
+        input: &GkrConstruction<'_, K>,
+        resident: bool,
+        origins: Option<&[crate::gkr::ColumnOrigin]>,
+    ) -> Build<Self> {
         let n = input.num_vars as usize;
         if n == 0
             || n > 30
@@ -452,7 +550,8 @@ impl Plan {
         let factors = input
             .factors
             .iter()
-            .map(|f| factor(f, len, half, resident))
+            .enumerate()
+            .map(|(i, f)| factor(f, len, half, resident, origins.map(|v| &v[i])))
             .collect::<Build<_>>()?;
         Ok(Self {
             len: len as usize,
@@ -681,5 +780,46 @@ mod tests {
             beta: K::ONE,
         };
         assert!(matches!(Plan::new(&input), Err("GKR row width")));
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn accepts_origin_bound_column_and_rejects_wrong_gather_geometry() {
+    use stele_reductions::zk::claims::bench::{GkrFactor, GkrMask};
+    use stele_sumcheck::Term;
+    let values = [K::ONE, K::ZERO];
+    let input = GkrConstruction {
+        num_vars: 2,
+        layer_variables: 1,
+        degree: 3,
+        terms: vec![Term {
+            coefficient: K::ONE,
+            factors: vec![0],
+        }],
+        factors: vec![GkrFactor::Column {
+            values: &values,
+            coordinates: vec![1],
+            mask: GkrMask {
+                values: vec![M31::ONE, M31::ZERO],
+                coordinates: &[1],
+                vanishing: 0,
+            },
+        }],
+    };
+    let origin = [3, 0, 8, 4, 1, 2];
+    let origins = vec![vec![Some(origin)]];
+    let p = Plan::with_originals(&input, &origins).unwrap();
+    let s = &p.factors[0].values.spans[0];
+    assert!(matches!(s.op, Op::OriginalBase));
+    assert!(s.data.is_empty());
+    assert_eq!(s.original, Some(origin));
+    assert!(matches!(
+        p.factors[0].mask.as_ref().unwrap().0.spans[0].kind,
+        InputKind::Mask
+    ));
+    assert!(Plan::with_originals(&input, &[]).is_err());
+    for bad in [[3, 0, 8, 4, 1, 4], [3, 0, 8, 4, 7, 2], [3, 0, 8, 3, 1, 2]] {
+        assert!(Plan::with_originals(&input, &[vec![Some(bad)]]).is_err());
     }
 }
