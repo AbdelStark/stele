@@ -600,3 +600,106 @@ pub fn verify(
         .map_err(|e| Error::Sumcheck(e.into()))?;
     claims::verify(&layout.statement, proof, t)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use stele_ir::relation::Width;
+
+    #[test]
+    fn matches_reference_shifted_and_selected_multiplicities() {
+        let mut relation = Relation::default();
+        let group = Kind::Witness(relation.add_group("g", 2));
+        let id = relation.add_column("x", group, Width::signed(4), 2);
+        let selector =
+            relation.add_column("s", Kind::Public(vec![1, 0, 1, 1]), Width::unsigned(1), 2);
+        let mut values = Values::new(&relation);
+        let p = i64::from(M31::MODULUS);
+        // The final data entry has the same field value as 1.
+        let data = [-2, 0, 3, 1 + p];
+        values.set(&relation, id, data.to_vec()).unwrap();
+        let member = |vars, shift, selected: bool| CountMember {
+            vars: 2,
+            tuple: vec![(id, vars, shift)],
+            selector: selected.then(|| Ref {
+                column: selector,
+                vars: vec![0, 1],
+            }),
+        };
+        let lookup = Lookup {
+            table: vec![
+                vec![0],
+                vec![1],
+                vec![2],
+                vec![3],
+                vec![5],
+                vec![0],
+                vec![0],
+                vec![0],
+            ],
+            valid: 5,
+            members: Vec::new(),
+            multiplicity: 0,
+        };
+        let mut layout = Layout {
+            committed: vec![id],
+            counts: vec![vec![
+                member(vec![0, 1], 2, false),
+                member(vec![Ref::FIXED_1, 0], 0, true),
+                CountMember {
+                    vars: 2,
+                    selector: None,
+                    tuple: vec![(id, vec![1, 0], 0), (id, vec![0, 1], 0)],
+                },
+            ]],
+            statement: Statement {
+                sources: 1,
+                columns: vec![],
+                relations: vec![],
+                lookups: vec![lookup],
+            },
+        };
+        // Vary the actual public table through the exposed Layout.statement.
+        // Every case has padding, unknown keys, selection, and 2x domain padding.
+        for rows in [
+            vec![vec![0], vec![1], vec![2], vec![3], vec![4]],
+            vec![vec![3], vec![0], vec![2], vec![p], vec![1]],
+            vec![vec![-2, -2], vec![3, 0], vec![0, 3], vec![1, 1], vec![p, 3]],
+        ] {
+            layout.statement.lookups[0].table[..5].clone_from_slice(&rows);
+            let canonical = |row: &[i64]| {
+                row.iter()
+                    .map(|x| M31::from_i64(*x).as_u32())
+                    .collect::<Vec<_>>()
+            };
+            let mut sorted: Vec<_> = rows
+                .iter()
+                .enumerate()
+                .map(|(i, r)| (canonical(r), i))
+                .collect();
+            sorted.sort_unstable();
+            let mut expected = vec![0i64; 8];
+            for x in 0..4usize {
+                let mut points = vec![
+                    vec![data[x] + 2],
+                    vec![data[((x & 1) << 1) | (x >> 1)], data[x]],
+                ];
+                if x != 1 {
+                    points.push(vec![data[1 + ((x & 1) << 1)]]);
+                }
+                for key in points {
+                    if let Ok(i) = sorted.binary_search_by_key(&canonical(&key), |v| v.0.clone()) {
+                        expected[sorted[i].1] += 2;
+                    }
+                }
+            }
+            assert_eq!(
+                columns(&layout, &relation, &values).unwrap(),
+                [
+                    data.map(M31::from_i64).to_vec(),
+                    expected.into_iter().map(M31::from_i64).collect()
+                ]
+            );
+        }
+    }
+}
