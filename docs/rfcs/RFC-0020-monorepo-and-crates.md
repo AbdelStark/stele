@@ -264,7 +264,8 @@ or error term changes. E20-18 qualifies the selected operations.
 
 ### A14 — Field-only lookup construction and retained child access
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-19.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-19.
+[Independent review](../../agents/reviews/e20-19-lookup-tree-contract.md)
 
 Add RFC-0014 A6's lookup input, top operation, retained tree and GKR child
 construction to the proof-local field interface in `stele-kernels`. Reuse the

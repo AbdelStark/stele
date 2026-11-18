@@ -2399,7 +2399,8 @@ E20-18 measures the whole selected proving run, including both source visits.
 
 ### A23 — Selected lookup tops and retained GKR children in balanced inference
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-19.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-19.
+[Independent review](../../agents/reviews/e20-19-lookup-tree-contract.md)
 
 The byte-4 normal prover may select RFC-0014 A6 after A22. The same top
 values and quotient enter the late source, and A7 receives the same ordered
