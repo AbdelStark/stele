@@ -1,5 +1,7 @@
 """Validate observed T32 stage coverage and sum matched CPU and H100 work."""
 from collections import defaultdict
+from pathlib import Path
+import runpy
 
 
 def summarize(log):
@@ -33,6 +35,14 @@ def summarize(log):
         }
     if any(len(rows[tag]) != 42 for tag in ("lookup","cpu_lookup","normalize_release")):
         raise ValueError("unexpected tree visits")
+    summary.update(summarize_batches(rows))
+    if any(summary[name][field] <= 0 for name in ("top", "rebuild") for field in ("cpu_ns", "gpu_ns")):
+        raise ValueError("empty lookup interval")
+    return summary
+
+
+def summarize_batches(rows):
+    summary = {}
     batches = rows["batch"]
     ids = [r["id"] for r in batches]
     if len(ids) != 3 or len(set(ids)) != 3:
@@ -46,8 +56,13 @@ def summarize(log):
         "h2d_bytes": sum(r["h2d_bytes"] + r["term_bytes"] for r in batches),
     }
     if any("runs" in b for b in batches):
-        from packing import summarize as summarize_packing
-        summary["batch_packing"] = summarize_packing(batches)
+        packing = runpy.run_path(str(Path(__file__).with_name("packing.py")))
+        stats = packing["summarize"](batches)
+        for field in ("pool_used_high", "pool_reserved_high"):
+            stats[field + "_through_batches"] = max(r[field] for r in rows["finals"])
+        if not 0 < stats["pool_used_high_through_batches"] <= stats["pool_reserved_high_through_batches"]:
+            raise ValueError("invalid device allocator high water")
+        summary["batch_packing"] = stats
     schedule = []
     descriptors = 0
     for batch, final in zip(batches, rows["finals"]):
@@ -69,6 +84,6 @@ def summarize(log):
         "h2d_bytes": descriptors,
         "d2h_bytes": sum(r["d2h_bytes"] for r in rows["round"] + rows["finals"]),
     }
-    if any(summary[name][field] <= 0 for name in ("top", "rebuild", "batch_prepare", "batch_dense") for field in ("cpu_ns", "gpu_ns")):
+    if any(summary[name][field] <= 0 for name in ("batch_prepare", "batch_dense") for field in ("cpu_ns", "gpu_ns")):
         raise ValueError("empty timing interval")
     return summary
