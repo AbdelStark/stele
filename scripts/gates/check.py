@@ -2153,7 +2153,8 @@ def standard_quarantine(root):
         raise ValueError(f'standard-profile entry point used before E8-05 (ADR-108): {found}')
     # RFC-0026 A11, ADR-111: the development tier's Policy 2 entry points resolve
     # `proven: false`; they stay in the development path and never reach stele-verifier.
-    dev_allowed = {'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
+    dev_allowed = {'crates/stele-pcs/examples/scalar_hiding_source.rs',
+                   'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
                    'crates/stele-pcs/src/source.rs', 'crates/stele-pcs/src/preparation.rs',
                    'crates/stele-reductions/src/relation.rs', 'crates/stele-reductions/src/relation_tests.rs',
                    'crates/stele-prover/src/development.rs', 'crates/stele-prover/src/development/bundle.rs',
