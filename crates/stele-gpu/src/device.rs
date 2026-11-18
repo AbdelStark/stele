@@ -10,6 +10,7 @@ use stele_kernels::{Backend, SourceGeometry, WeightedClaim, M31, QM31};
 pub struct Counts {
     pub originals: usize,
     pub batches: usize,
+    pub expected_rounds: usize,
     pub rounds: usize,
     pub folds: usize,
     pub finals: usize,
@@ -177,6 +178,7 @@ impl<'d> Backend<QM31> for Session<'d> {
         device.check_peak()?;
         self.record(|c| {
             c.batches += 1;
+            c.expected_rounds += len.ilog2() as usize;
             c.uploaded_bytes += uploaded as u64
         });
         Ok((

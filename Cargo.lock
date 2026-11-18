@@ -274,6 +274,7 @@ name = "stele-cli"
 version = "0.1.0"
 dependencies = [
  "stele-bench",
+ "stele-gpu",
  "stele-passport",
  "stele-prover",
  "stele-verifier",

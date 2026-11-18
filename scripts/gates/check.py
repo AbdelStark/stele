@@ -22,7 +22,7 @@ SCOPES = {
     'digest': ('prover', 'proof'),
     'negative-controls': ('verifier',),
     'soundness-accounting': ('verifier',),
-    'parity': ('gpu', 'kernels'),
+    'parity': ('kernels',),
 }
 OWNERS = {
     'digest': 'E8-06', 'negative-controls': 'E0-03',
@@ -33,7 +33,7 @@ ARTIFACTS = {
     'digest': ('tests/digests',),
     'negative-controls': (),
     'soundness-accounting': ('tests/soundness',),
-    'parity': ('tests/parity',),
+    'parity': (),
 }
 
 
@@ -324,7 +324,7 @@ def development_surface(crate, name, actual, expected):
 
 
 def scalar_kernel_surface(root, actual, expected):
-    """E20-11. Execute the independently reviewed scalar interface with CUDA still empty."""
+    """E20-11. Execute the independently reviewed scalar operations before the CUDA differential."""
     name = 'stele-kernels'
     directory = root / 'crates' / name
     approved = json.loads((root / 'scripts/gates/scalar-kernel-sources.json').read_text())
@@ -342,7 +342,7 @@ def scalar_kernel_surface(root, actual, expected):
     if (result.returncode or any('test ' + name + ' ... ok' not in result.stdout for name in tests)
             or 'ordinary_scalar_cases=1000' not in result.stderr.splitlines()):
         raise ValueError('parity: scalar operation tests or controls failed: ' + result.stderr[-1000:])
-    print('gate parity: scalar ordinary batch interface, 1000 cases; production CUDA remains empty')
+    print('gate parity: scalar ordinary batch interface, 1000 cases')
     return expected
 
 
@@ -368,6 +368,8 @@ def bootstrap_guard(root, gate):
             if file.is_file() and file.name not in {'catalog.md', 'README.md', '.gitkeep'}:
                 raise ValueError(f'{gate}: validator not wired for {file.relative_to(root)} '
                                  f'(task {OWNERS[gate]})')
+    if gate == 'parity':
+        subprocess.run([sys.executable, str(root / 'tests/parity/check.py')], cwd=root, check=True)
     print(f'gate {gate}: remaining scaffold guards verified (task {OWNERS[gate]})')
 
 
