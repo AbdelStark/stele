@@ -58,7 +58,8 @@ def scopes(paths):
     selection = 'all' if broad else '-'.join(selected) or 'none'
     return {
         'gpu': any(path.startswith((b'crates/stele-gpu/', b'crates/stele-kernels/', b'tests/parity/'))
-                   or path in (b'crates/stele-cli/examples/parity_proof.rs', b'crates/stele-cli/src/main.rs',
+                   or path in (b'crates/stele-reductions/src/zk_claims.rs', b'crates/stele-reductions/src/zk_relation.rs',
+                               b'crates/stele-cli/examples/parity_proof.rs', b'crates/stele-cli/src/main.rs',
                                b'crates/stele-cli/Cargo.toml', b'crates/stele-prover/src/development.rs',
                                b'crates/stele-prover/src/development/zk.rs', b'crates/stele-reductions/src/zk_batch_backend.rs',
                                b'scripts/gates/parity.sh') for path in paths),
