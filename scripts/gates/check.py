@@ -730,6 +730,8 @@ def field_sources(root):
                'src/zk_batch_bench.rs', 'tests/batch_bench.rs',
                # E16-40g: reviewed, opt-in production factor and routing observer.
                'src/zk_gkr_bench.rs', 'tests/gkr_bench.rs',
+               # E16-40p: reviewed, opt-in borrowed GKR construction and parity helper.
+               'src/zk_gkr_construction.rs', 'tests/common/gkr_construction.rs',
                # RFC-0026 A9 (E12-14a): any development relation as one dev-zk statement.
                'src/zk_relation.rs',
                # RFC-0026 §5 rows 1-2 (E16-04): modules, plain-checker tests and the mutation survey.
