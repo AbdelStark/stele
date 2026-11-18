@@ -243,7 +243,7 @@ def main():
             any(len({r[k] for r in rows}) != 50 for k in ("artifact_sha256", "model_id", "proof_sha256"))):
         raise ValueError("expected 50 distinct ordered models")
     result = run(["cargo", "test", "-p", "stele-gpu", "--release", "--locked", "--offline", "--features", "cuda",
-                  "--lib", "--test", "dense", "--", "--ignored", "--nocapture", "--test-threads=1"],
+                  "--lib", "--test", "dense", "--", "--ignored", "--nocapture", "--test-threads=1", "--skip", "accepts_primed_source_backing"],
                  text=True, stdout=subprocess.PIPE)
     print(result.stdout, flush=True)
     required = ("device::tests::matches_reference_original_across_staging_chunks",
@@ -260,6 +260,15 @@ def main():
         raise ValueError("required H100 GKR comparisons or controls missing")
     if "cuda_relation_cases=1000 raw_cuda_relation_cases=1000 field_rounds=8000 field_folds=8000 field_finals=2000" not in result.stdout:
         raise ValueError("required relation arithmetic comparisons missing")
+    for mode in ("LAZY", "EAGER"):
+        tests = run(["cargo", "test", "-p", "stele-gpu", "--features", "cuda", "--frozen", "--release",
+                     "--lib", "runtime::source_budget_tests::", "--", "--include-ignored", "--test-threads=1"],
+                    env={**os.environ, "CUDA_MODULE_LOADING": mode}, capture_output=True, text=True)
+        if ("test result: ok. 2 passed; 0 failed; 0 ignored" not in tests.stdout or
+                "accepts_primed_source_backing_before_any_private_original ... ok" not in tests.stdout or
+                "rejects_driver_backing_hidden_by_unused_pool_reservation ... ok" not in tests.stdout):
+            raise ValueError("missing fresh-context hiding source capacity controls")
+        print(f"cuda_source_fresh_context={mode} capacity_controls=2", flush=True)
     with tempfile.TemporaryDirectory(prefix="stele-cuda-parity-") as tmp:
         work = Path(tmp)
         hiding_sources(work)
