@@ -5634,3 +5634,23 @@ tasks:
   - compare actual and lazy H100 outputs, dense rounds and finals to the reference across 1000 seeded sources, retaining invalid-position and wrong-value controls
   - capture the real stories42M T32 proof with ordinary independent verification and the wrong-model control; measure host packing, transfers, schedule, allocations and complete preparation against job 6776
 
+- id: E16-40w
+  epic: E16
+  title: Measure two real hiding-source visits and their selected responses on H100
+  lane: V
+  depends:
+  - E16-40q
+  - E16-40s
+  rfc:
+  - RFC-0010 A9 and A15
+  - RFC-0013 A2 and A6
+  - RFC-0014 A1
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-source-visits
+  branch: task/E16-40w-source-visits
+  acceptance:
+  - compare every actual certificate and opening column and Merkle sibling against the CPU proof from the same original hiding message and salt seed
+  - charge both uploads and preparations, selected response downloads and release before returning; preflight all device buffers including concurrent holds under the A1 budget
+  - verify the ordinary stories42M T32 proof with the pinned expected model and wrong-model control; publish only aggregated timings and public evidence
