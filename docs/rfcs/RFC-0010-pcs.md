@@ -1124,3 +1124,55 @@ Addition to A9 §1 (version 3):
 
 NC-0902 (one changed salt byte, `RootMismatch`) and NC-0903 (admission,
 `UnsupportedSource`) are reserved. Cost: see RFC-0013 A2. Affected task: E12-12.
+
+### A16 — Selected column material for the development hiding source producer
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E19-07.
+[Independent soundness review](../../agents/reviews/e19-07-source-material.md)
+
+**Motivation.** The byte-4 prover can prepare an A15 encoding on an accelerator.
+Certificate and opening production need its root and the individual column
+responses at the indices the host transcript draws. Downloading every encoded
+symbol and Merkle node to use those responses adds a second copy of the tree.
+[Measured source visits on the T32 rung](https://github.com/AbdelStark/stele/pull/422)
+
+**Addition to A9 §§1, 3 and 4, limited to RFC-0013 A8 balanced development
+proofs.** A producer may retain column material outside host memory. First it
+derives the existing source context and descriptor from the caller's source id,
+geometry, Circle code and policy. It checks the immutable row-major message has
+the exact physical extent. The producer passes that context, the message and the
+source salt seed to preparation. The result is bound to this source, message
+and proof attempt. Its root fills only the root field of the same A15 context.
+A model's resulting root must equal the published root before use. A reconstructed
+tree for a later visit must have the identical root and context. Rebuilding
+storage does not create a new opening allowance.
+
+For an index drawn by the existing certificate or opening transcript, material
+supplies the full A15 salted column and individual bottom-up sibling path. The
+producer checks that the index is within the descriptor, the payload has
+exactly its declared width and the path has exactly its tree height before
+writing the response. Repeat indices retain all occurrences, in draw order.
+The original immutable message supplies the row combination. The host retains
+every rank, mask, lifetime, history, single-opening and claimed-value check,
+the grind, the draws and the existing serialization. Failure aborts this
+attempt under the existing lifetime transaction. The authorized source,
+certificate and opening verifiers authenticate the resulting bytes exactly as
+in A9. A material owner issues no certificate, opening record or verifier
+decision. The scalar material continues to supply the same borrowed payloads.
+
+Hash work counts the actual tree constructions and verifier checks. Transferred
+bytes, preparation scratch, retained material and the selected responses are
+charged where they are held. A repeated preparation counts again. An observation
+cannot supply an adversary query budget or change an acceptance parameter.
+This amendment grants a producer interface. Its hardware operation table and
+routine selection are specified separately under RFC-0014.
+
+**Soundness, cost and controls.** No new challenge, round, error term, lookup,
+committed cell or proof byte. The existing certificate and opening ledger lines
+apply unchanged. The affected costs are Circle encoding, Merkle construction
+and host/device transfer. Control NC-0601 keeps the drawn index authoritative,
+NC-0602 authenticates the payload and path, NC-0606 binds the certificate
+context and NC-0607 checks the opened M31 encoding. Qualification additionally
+checks short and oversized responses, single-opening consumption on a failed
+opening, prior lifetime history, and pinned honest bytes. Affects E19-07,
+E19-08 and E16-37.

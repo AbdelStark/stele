@@ -4360,3 +4360,13 @@ operation and complete proof pairs. A fresh T32 measurement establishes
 the actual whole-prover cost. No challenge, soundness line, proof byte,
 committed column or verifier dependency changes in this decision.
 [Independent acceptance](../reviews/e20-10-dev-zk-backend-contract.md)
+
+## ADR-141 — Retain selected column material at the producer (E19-07)
+
+Status: Accepted for balanced development proofs. The producer may hold the
+encoded message and Merkle tree on its chosen device. The ordinary transcript
+requests the salted column and sibling path at each derived index. The same
+certificate and opening verifiers authenticate the bytes. Rebuilding material
+preserves the authenticated context and lifetime opening budget. This decision
+introduces no new wire bytes, committed columns, challenge or verifier dependency.
+[Lane E soundness review](../reviews/e19-07-source-material.md)
