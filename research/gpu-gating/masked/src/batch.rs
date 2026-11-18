@@ -18,6 +18,7 @@ pub(crate) struct Prepared {
     pub len: usize,
     pub claimed_sum: K,
     pub schedule_checks: u64,
+    pub index_time: std::time::Duration,
     upload_bytes: usize,
 }
 
@@ -65,6 +66,7 @@ impl Prepared {
         {
             return None;
         }
+        let index_start = std::time::Instant::now();
         let count = claims
             .iter()
             .try_fold(0usize, |n, c| n.checked_add(c.weights.len()))?;
@@ -88,6 +90,7 @@ impl Prepared {
         if upload_bytes.checked_add(len.checked_mul(20)?)? > isize::MAX as usize {
             return None;
         }
+        let index_time = index_start.elapsed();
         let mut weights = Vec::with_capacity(count.max(1));
         let mut runs = vec![[0; 4]; run_count.max(1)];
         visit_runs(claims, half, |claim, start, entries| {
@@ -121,6 +124,7 @@ impl Prepared {
             columns,
             len,
             schedule_checks,
+            index_time,
             upload_bytes,
             claimed_sum: claims
                 .iter()

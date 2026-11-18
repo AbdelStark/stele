@@ -45,6 +45,9 @@ def summarize(log):
         "gpu_ns": sum(r["wall_ns"] for r in batches),
         "h2d_bytes": sum(r["h2d_bytes"] + r["term_bytes"] for r in batches),
     }
+    if any("runs" in b for b in batches):
+        from packing import summarize as summarize_packing
+        summary["batch_packing"] = summarize_packing(batches)
     schedule = []
     descriptors = 0
     for batch, final in zip(batches, rows["finals"]):

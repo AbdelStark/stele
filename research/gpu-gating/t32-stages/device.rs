@@ -80,7 +80,7 @@ fn observe(event: Event<'_>) {
                 "batch claimed sum mismatch id={id}"
             );
             let positions: usize = claims.iter().map(|c| c.weights.len()).sum();
-            eprintln!("t32_batch id={id} rows={} columns={} claims={} positions={positions} runs={} run_checks={} host_pack_bytes={} device_build_bytes={} wall_ns={} group_ns={} upload_ns={} build_ns={} setup_ns={} h2d_bytes={} term_bytes={} round_h2d_bytes={}",src.rows(),src.columns(),claims.len(),t.scheduled_runs,t.schedule_checks,t.host_buffer_bytes,t.construction_peak_bytes,wall.as_nanos(),t.stage.as_nanos(),t.upload.as_nanos(),t.build.as_nanos(),t.round_setup.as_nanos(),t.upload_bytes,sum.descriptor_upload_bytes(),sum.round_upload_bytes());
+            eprintln!("t32_batch id={id} rows={} columns={} claims={} positions={positions} tile={} runs={} run_checks={} host_pack_bytes={} device_build_bytes={} wall_ns={} index_ns={} group_ns={} upload_ns={} build_ns={} setup_ns={} h2d_bytes={} term_bytes={} round_h2d_bytes={}",src.rows(),src.columns(),claims.len(),crate::batch::TILE,t.scheduled_runs,t.schedule_checks,t.host_buffer_bytes,t.construction_peak_bytes,wall.as_nanos(),t.index_time.as_nanos(),t.stage.as_nanos(),t.upload.as_nanos(),t.build.as_nanos(),t.round_setup.as_nanos(),t.upload_bytes,sum.descriptor_upload_bytes(),sum.round_upload_bytes());
             ACTIVE.with(|active| {
                 assert!(active.replace(Some(Active { id, sum, round: 0 })).is_none())
             });

@@ -198,6 +198,7 @@ fn matches_reference_batch_kernels_on_host() {
                 .chain(reference.face.iter().map(|x| crate::lookup::words(*x)[0]))
                 .collect::<Vec<_>>(),
         );
+        let start = std::time::Instant::now();
         let p = crate::batch::Prepared::new(prepared.source(), &message, &claims, &gammas).unwrap();
         assert_eq!(
             p.upload_bytes(),
@@ -207,6 +208,7 @@ fn matches_reference_batch_kernels_on_host() {
                 + 8 * p.offsets.len()
         );
         assert!(p.host_buffer_bytes() >= p.upload_bytes());
+        assert!(p.index_time <= start.elapsed());
         assert_eq!(
             p.schedule_checks,
             p.offsets.last().unwrap() * crate::batch::TILE as u64

@@ -13,6 +13,8 @@ mod tests;
 /// Operation wall times and explicit allocations, excluding CUDA infrastructure.
 pub struct Timing {
     pub stage: Duration,
+    /// Included in stage: count and validate runs, prefix tile offsets and predict run visits.
+    pub index_time: Duration,
     pub upload: Duration,
     pub build: Duration,
     pub round_setup: Duration,
@@ -20,7 +22,7 @@ pub struct Timing {
     /// Host vector capacities during preparation, excluding the original prover inputs.
     pub host_buffer_bytes: usize,
     pub scheduled_runs: u64,
-    /// Actual position/run range comparisons across the selected tiles.
+    /// Position/run range tests across the selected tiles.
     pub schedule_checks: u64,
     /// All upload buffers and both output tables coexist during construction.
     pub construction_peak_bytes: usize,
@@ -126,6 +128,7 @@ fn build<'a>(dev: &'a Device, p: &Prepared) -> Result<(DeviceMasked<'a>, Timing)
         state,
         Timing {
             stage: Duration::ZERO,
+            index_time: p.index_time,
             upload,
             build,
             round_setup,

@@ -35,6 +35,17 @@ class Receipt(unittest.TestCase):
         self.assertEqual(result["batch_prepare"]["h2d_bytes"], 144)
         self.assertEqual(result["batch_dense"]["d2h_bytes"], 528)
 
+    def test_reconciles_tile_schedule_and_buffers(self):
+        from packing import summarize as packing
+        row = dict(rows=4, columns=4, tile=128, claims=1, positions=2, runs=1, run_checks=4,
+                   h2d_bytes=160, host_pack_bytes=160, device_build_bytes=320,
+                   index_ns=1, group_ns=1, upload_ns=2, build_ns=3, setup_ns=4)
+        totals = packing([row]*3)
+        self.assertEqual(totals["h2d_bytes"], 480)
+        for key in ("run_checks", "h2d_bytes", "device_build_bytes"):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                packing([row, row, {**row, key: row[key]+1}])
+
     def test_rejects_missing_and_repeated_visits(self):
         lines = example()
         for prefix in ("t32_normalize_release", "t32_cpu_lookup", "t32_lookup", "t32_round", "t32_finals"):
