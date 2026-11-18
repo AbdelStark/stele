@@ -427,6 +427,7 @@ dependencies = [
  "stele-gkr",
  "stele-hash",
  "stele-ir",
+ "stele-kernels",
  "stele-lookup",
  "stele-pcs",
  "stele-poly",
