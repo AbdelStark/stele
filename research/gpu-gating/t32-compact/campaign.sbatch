@@ -39,8 +39,19 @@ grep -q '1 passed; 0 failed; 0 ignored' "$job/device.out"
 grep -q 'compact_lookup_cases=1000 raw_leaf_cases=1000 raw_top_cases=1000 complete_trees=2000 near_miss_cases=1000 zero_denominator_cases=1' "$job/device.err"
 srun --cpu-bind=cores cargo test --frozen -p stele-reductions --features bench --lib matches_reference_base_and_extension_rounds > "$job/mixed.out" 2> "$job/mixed.err"
 grep -q '1 passed; 0 failed; 0 ignored' "$job/mixed.out"
-export STELE_STAGE_TIMES=1
+local_run=$(mktemp -d "${SLURM_TMPDIR:-/tmp}/stele-compact.XXXXXX")
+export STELE_PROVE_STDERR="$local_run/prove.err" STELE_STAGE_TIMES=1
+findmnt -T "$local_run" --output TARGET,SOURCE,FSTYPE > "$job/prove-stderr-filesystem.txt"
+echo "$STELE_PROVE_STDERR" >> "$job/prove-stderr-filesystem.txt"
 nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu --format=csv -l 5 > "$job/gpu-memory.csv" &
 sampler=$!
-trap 'kill "$sampler" 2>/dev/null || true' EXIT
+finish() {
+    kill "$sampler" 2>/dev/null || true
+    if test -f "$STELE_PROVE_STDERR" && test -d "$job/run"; then
+        cp "$STELE_PROVE_STDERR" "$job/run/prove.err"
+        rm "$STELE_PROVE_STDERR"
+    fi
+    rmdir "$local_run"
+}
+trap finish EXIT
 srun --cpu-bind=cores python3 -B research/gpu-gating/t32-resident/capture.py

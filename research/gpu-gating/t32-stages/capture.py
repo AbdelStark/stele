@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -29,9 +30,16 @@ def main(summarize_log=summarize):
     if len(os.sched_getaffinity(0)) != 16 or os.environ["RAYON_NUM_THREADS"] != "16":
         raise ValueError("expected 16 pinned CPUs")
     def run(label, args, expected=0, limit=300):
-        with (work / (label + ".out")).open("w") as out, (work / (label + ".err")).open("w") as err:
-            cmd = ["/usr/bin/time", "-v", "-o", str(work / (label + ".time")), *map(str, args)]
-            result = subprocess.run(cmd, stdout=out, stderr=err, timeout=limit)
+        shared_log = work / (label + ".err")
+        local = os.environ.get("STELE_PROVE_STDERR") if label == "prove" else None
+        stderr = Path(local) if local else shared_log
+        try:
+            with (work / (label + ".out")).open("w") as out, stderr.open("w") as err:
+                cmd = ["/usr/bin/time", "-v", "-o", str(work / (label + ".time")), *map(str, args)]
+                result = subprocess.run(cmd, stdout=out, stderr=err, timeout=limit)
+        finally:
+            if local and stderr.is_file():
+                shutil.copyfile(stderr, shared_log)
         (work / (label + ".json")).write_text(json.dumps({"command":cmd, "exit":result.returncode}))
         if result.returncode != expected:
             raise RuntimeError(f"{label} exit {result.returncode}")
