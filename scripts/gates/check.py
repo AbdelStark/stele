@@ -1325,6 +1325,7 @@ def field_source_codec(root):
           'test matches_reference_certificate_opening_and_single_spend ... ok',
           'test rejects_malformed_material_and_changed_authentication ... ok',
           'test rejects_exhausted_or_rank_deficient_material_history ... ok',
+          'test rejects_invalid_work_and_preserves_prior_usage ... ok',
           'test matches_reference_om31_source_and_wire ... ok',
           'test rejects_unsupported_sources_without_allocation ... ok',
           'test accepts_maximum_source_shape_without_domain_allocation ... ok',

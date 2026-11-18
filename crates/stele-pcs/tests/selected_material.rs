@@ -256,3 +256,96 @@ fn rejects_exhausted_or_rank_deficient_material_history() {
         matches!(make_proof(&prepare(vec![prior]).expect("persisted prior opening")), Err(f) if f.cause == Error::MaskRank)
     );
 }
+
+#[test]
+fn rejects_invalid_work_and_preserves_prior_usage() {
+    let message = message();
+    let mut counts = HashUsage {
+        hash_evaluations: 17,
+        state_updates: 3,
+        ..HashUsage::default()
+    };
+    for (invalid, expected) in [
+        (false, Error::Capacity),
+        (true, Error::Merkle(merkle::Error::InvalidTree)),
+    ] {
+        let previous = counts;
+        let result: Result<PreparedSource<'_, QM31, Provider<'_>>, _> =
+            PreparedSource::hiding_material(
+                ID,
+                3,
+                9,
+                &message,
+                &SEED,
+                HidingUse::Single,
+                &mut counts,
+                |_, _, _, local| {
+                    assert_eq!(*local, HashUsage::default());
+                    local.hash_evaluations = 5;
+                    local.state_updates = u64::from(invalid);
+                    Err(Error::Capacity)
+                },
+            );
+        assert!(matches!(result, Err(e) if e == expected));
+        assert_eq!(
+            counts,
+            HashUsage {
+                hash_evaluations: previous.hash_evaluations + if invalid { 0 } else { 5 },
+                ..previous
+            }
+        );
+    }
+    let honest = external(&message, Change::Honest, HidingUse::Single).expect("known source");
+    let make = |counts: &mut HashUsage, hashes: u64| {
+        PreparedSource::hiding_material(
+            ID,
+            3,
+            9,
+            &message,
+            &SEED,
+            HidingUse::<QM31>::Single,
+            counts,
+            |_, input, seed, local| {
+                let scalar = PreparedSource::hiding_with(
+                    ID,
+                    3,
+                    9,
+                    2,
+                    input,
+                    seed,
+                    &mut HashUsage::default(),
+                    Policy::Two,
+                )?;
+                local.hash_evaluations = hashes;
+                Ok(Provider {
+                    host: scalar,
+                    change: Change::Honest,
+                })
+            },
+        )
+    };
+    let full = 2 * honest.source().descriptor().count - 1;
+    let baseline = counts;
+    for incorrect in [0, full + 1] {
+        assert!(matches!(
+            make(&mut counts, incorrect),
+            Err(Error::Merkle(merkle::Error::InvalidTree))
+        ));
+        assert_eq!(counts, baseline);
+    }
+    make(&mut counts, full).expect("one complete tree");
+    assert_eq!(
+        counts,
+        HashUsage {
+            hash_evaluations: baseline.hash_evaluations + full,
+            ..baseline
+        }
+    );
+    counts.hash_evaluations = u64::MAX;
+    let prior = counts;
+    assert!(matches!(
+        make(&mut counts, full),
+        Err(Error::Merkle(merkle::Error::UsageOverflow))
+    ));
+    assert_eq!(counts, prior);
+}

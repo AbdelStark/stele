@@ -429,7 +429,29 @@ impl<'a, K: ChallengeField, M: ColumnMaterial> PreparedSource<'a, K, M> {
         if matches!(purpose, HidingUse::MaskPolynomial) && source.rows() / 2 != 2 * K::DEGREE {
             return Err(Error::UnsupportedSource);
         }
-        let material = prepare(&source, message, seed, usage)?;
+        // A16 charges one full binary Merkle tree. The factory only sees its own
+        // local observation, including work before failure, never the caller's totals.
+        let mut local = HashUsage::default();
+        let material = prepare(&source, message, seed, &mut local);
+        let full_tree = source
+            .descriptor()
+            .count
+            .checked_mul(2)
+            .and_then(|n| n.checked_sub(1))
+            .ok_or(Error::Capacity)?;
+        let hashes = local.hash_evaluations;
+        local.hash_evaluations = 0;
+        if local != HashUsage::default()
+            || hashes > full_tree
+            || (material.is_ok() && hashes != full_tree)
+        {
+            return Err(Error::Merkle(merkle::Error::InvalidTree));
+        }
+        usage.hash_evaluations = usage
+            .hash_evaluations
+            .checked_add(hashes)
+            .ok_or(Error::Merkle(merkle::Error::UsageOverflow))?;
+        let material = material?;
         if material.descriptor() != source.descriptor() {
             return Err(Error::CertificateContext);
         }
