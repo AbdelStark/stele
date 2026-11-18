@@ -20,11 +20,27 @@ def check_pool(row):
         raise ValueError("measured reserved pool and context exceed budget")
 
 
+def check_released_bytes(rows, releases):
+    for step, row in rows.items():
+        want = releases.get(step, (row["lookup"], 0))
+        if (row["lookup"], row["released_bytes"]) != want:
+            raise ValueError("GKR and lookup owner receipts disagree")
+    if not releases.keys() <= rows.keys():
+        raise ValueError("lookup release outside GKR schedule")
+
+
 def check_memory(log):
     rows = {}
+    releases = {}
     for line in log.splitlines():
         if line.startswith("t32_gkr_skip "):
             raise ValueError("GKR budget fallback")
+        if line.startswith("t32_lookup_release "):
+            owner = {k: int(v) for k, v in (field.split("=") for field in line.split()[1:])}
+            step = owner["after_child_step"]
+            if step in releases:
+                raise ValueError("duplicate final child release")
+            releases[step] = (owner["id"], owner["retained_bytes"])
         if not line.startswith("t32_gkr_step "):
             continue
         row = {k: int(v) for k, v in (field.split("=") for field in line.split()[1:])}
@@ -42,7 +58,8 @@ def check_memory(log):
     if (interior["variables"], leaf["variables"], interior["released_bytes"],
             leaf["released_bytes"]) != (27, 28, 32 * ((2 << 28) - 1), 0):
         raise ValueError("missing large-step final child handoff")
-    if sum(bool(r["released_bytes"]) for r in rows.values()) != 21:
+    check_released_bytes(rows, releases)
+    if len(releases) != 21 or sum(bool(r["released_bytes"]) for r in rows.values()) != 21:
         raise ValueError("incomplete final child handoffs")
     return rows
 
@@ -56,6 +73,13 @@ class Memory(unittest.TestCase):
             check_pool(dict(row, pool_used_high=41, pool_reserved_high=42))
         with self.assertRaisesRegex(ValueError, "reserved pool and context"):
             check_pool(dict(row, free_bytes=78))
+
+    def test_checks_each_released_owner_byte_count_and_lookup(self):
+        rows = {3: dict(lookup=0, released_bytes=4096), 4: dict(lookup=0, released_bytes=0)}
+        check_released_bytes(rows, {3: (0, 4096)})
+        for releases in ({}, {4: (0, 4096)}, {3: (1, 4096)}, {3: (0, 4095)}):
+            with self.assertRaises(ValueError):
+                check_released_bytes(rows, releases)
 
     def test_rejects_zero_fold_peak(self):
         with self.assertRaisesRegex(ValueError, "explicit peak"):
