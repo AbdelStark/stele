@@ -1,12 +1,24 @@
 //! RFC-0014 A3. Compare genuine device GKR operations against the field-only scalar backend.
-#![cfg(feature = "cuda")]
-use stele_gpu::{Cuda, Error, Session};
-use stele_kernels::gkr::{GkrBackend, GkrConstruction, GkrFactor, GkrMask, Term};
+use crate::{Cuda, Error, Session};
+use stele_kernels::gkr::{
+    GkrBackend, GkrConstruction, GkrFactor, GkrMask, GkrMember, GkrSelector, Term,
+};
 use stele_kernels::{Field, Scalar, CM31, M31, QM31};
 
 #[test]
 #[ignore = "requires a real CUDA device; invoked explicitly by the hardware gate"]
 fn matches_reference_cuda_gkr() {
+    for raw in [false, true] {
+        RAW.set(raw);
+        compare_representatives();
+    }
+    RAW.set(false);
+    println!("cuda_gkr_cases=1000 raw_cuda_gkr_cases=1000 field_rounds=8000 field_folds=8000 field_finals=2000");
+}
+
+std::thread_local! { pub(crate) static RAW: std::cell::Cell<bool> = const { std::cell::Cell::new(false) }; }
+
+fn compare_representatives() {
     let cuda = Cuda::new().expect("required CUDA device");
     let mut rounds = 0;
     let mut seed = 0xc0590425a1u64;
@@ -46,10 +58,20 @@ fn matches_reference_cuda_gkr() {
             values: vec![base(), base()],
         };
         let period = 1usize << (id % (layer_bits + 1));
+        let coords = [0];
+        let columns = [point, QM31::ONE];
+        let column_mask = || GkrMask {
+            coordinates: &coords,
+            vanishing: (id + 1) % n,
+            values: vec![M31::ONE, M31::ZERO],
+        };
+        let rows = [vec![id as i64, -1], vec![1, id as i64]];
+        let selected = [-1, id as i64];
+        let at = [point];
         let mut input = GkrConstruction {
             num_vars: n as u32,
             layer_variables: layer_bits,
-            degree: 4,
+            degree: 6,
             terms: vec![
                 Term {
                     coefficient: QM31::ONE,
@@ -71,8 +93,47 @@ fn matches_reference_cuda_gkr() {
                     values: (0..2 * period).map(|_| base()).collect(),
                     point,
                 },
+                GkrFactor::Equality {
+                    point: &at,
+                    scale: point,
+                    offset: (1 << n) - 2,
+                },
+                GkrFactor::Column {
+                    values: &columns,
+                    coordinates: vec![n - 1],
+                    mask: column_mask(),
+                },
+                GkrFactor::Combined {
+                    members: vec![GkrMember {
+                        range: 0..half,
+                        values: &columns,
+                        coordinates: &coords,
+                        shift: -1,
+                        mask: vec![M31::ONE, M31::from_i64(-1)],
+                    }],
+                    vanishing: id % n,
+                },
+                GkrFactor::Selector {
+                    members: vec![GkrSelector {
+                        range: 0..half,
+                        values: Some((&selected, &coords)),
+                    }],
+                },
+                GkrFactor::Table {
+                    rows: &rows,
+                    valid: 2,
+                    alpha: point,
+                    beta: point + QM31::ONE,
+                },
+                GkrFactor::Pad { variables: 1 },
             ],
         };
+        for (a, b) in [(2, 3), (3, 4), (5, 6), (7, 7)] {
+            input.terms.push(Term {
+                coefficient: point + QM31::ONE,
+                factors: vec![a, b],
+            });
+        }
         let mut reference = cpu.gkr_start(&input).expect("valid GKR fixture");
         let mut selected = gpu.gkr_start(&input).expect("valid GKR fixture");
         assert!(matches!(Session::gkr_finals(&selected), Err(Error::Phase)));
@@ -113,8 +174,8 @@ fn matches_reference_cuda_gkr() {
             ),
             (1, n, n, 1)
         );
-        input.terms[0].factors.push(2);
+        input.terms[0].factors.push(input.factors.len() as u32);
         assert!(matches!(gpu.gkr_start(&input), Err(Error::Geometry)));
     }
-    println!("cuda_gkr_cases=1000 rounds={rounds} folds={rounds} finals=1000");
+    assert_eq!(rounds, 4000);
 }

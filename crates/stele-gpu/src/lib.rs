@@ -16,3 +16,6 @@ mod runtime;
 pub use device::{Counts, Session};
 #[cfg(feature = "cuda")]
 pub use runtime::{Cuda, Error, Memory};
+
+#[cfg(all(test, feature = "cuda"))]
+mod gkr_tests;
