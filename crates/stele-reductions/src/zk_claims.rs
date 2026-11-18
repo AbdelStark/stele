@@ -2219,30 +2219,55 @@ fn bit(index: usize, var: usize, n: usize) -> usize {
 /// variables it does not read.
 fn domain_table<K: ChallengeField>(column: &[K], coords: &[Coord], free: &[K], n: usize) -> Vec<K> {
     use alloc::borrow::Cow;
-    // Fold bound axes once. Axes to the right retain their original stride
-    // because we remove coordinates from left to right (RFC-0013 A5 item 2).
-    let mut table = Cow::Borrowed(column);
-    let mut vars = Vec::new();
-    for (j, coord) in coords.iter().enumerate() {
-        if let Coord::Var(axis) = coord {
-            vars.push(*axis);
-            continue;
-        }
-        let stride = 1 << (coords.len() - j - 1);
-        let mut next = vec![zero::<K>(); table.len() / 2];
-        stele_sumcheck::parallel::for_each_chunk(&mut next, |start, chunk| {
-            for (i, value) in (start..).zip(chunk) {
-                // Insert a zero at the removed axis. The other child is stride away.
-                let left = i + (i & !(stride - 1));
-                *value = match coord {
-                    Coord::Fixed(b) => table[left + usize::from(*b) * stride],
-                    Coord::Free(q) => table[left] + free[*q] * (table[left + stride] - table[left]),
-                    Coord::Var(_) => unreachable!(),
-                };
+    // At a fixed assignment of the read variables, only the free axes vary.
+    // Interpolate directly on that subcube; never allocate a half-column.
+    fn interpolate<K: ChallengeField>(column: &[K], offset: usize, free: &[(usize, K)]) -> K {
+        match free.split_first() {
+            None => column[offset],
+            Some((&(stride, z), rest)) => {
+                let low = interpolate(column, offset, rest);
+                let high = interpolate(column, offset | stride, rest);
+                low + z * (high - low)
             }
-        });
-        table = Cow::Owned(next);
+        }
     }
+
+    let mut vars = Vec::new();
+    let mut source_bits = Vec::new();
+    let mut free_axes = Vec::new();
+    let mut fixed = 0;
+    for (j, coord) in coords.iter().enumerate() {
+        let shift = coords.len() - 1 - j;
+        match coord {
+            Coord::Var(q) => {
+                vars.push(*q);
+                source_bits.push(shift);
+            }
+            Coord::Fixed(b) => fixed |= usize::from(*b) << shift,
+            Coord::Free(q) => free_axes.push((1 << shift, free[*q])),
+        }
+    }
+    let table = if vars.len() == coords.len() {
+        Cow::Borrowed(column)
+    } else {
+        let mut projected = vec![zero::<K>(); 1 << vars.len()];
+        stele_sumcheck::parallel::for_each_chunk_weighted(
+            &mut projected,
+            1 << free_axes.len(),
+            |start, chunk| {
+                for (i, value) in (start..).zip(chunk) {
+                    let offset = source_bits
+                        .iter()
+                        .enumerate()
+                        .fold(fixed, |at, (j, shift)| {
+                            at | (bit(i, j, vars.len()) << shift)
+                        });
+                    *value = interpolate(column, offset, &free_axes);
+                }
+            },
+        );
+        Cow::Owned(projected)
+    };
     let len = 1 << n;
     let Some(&last) = vars.last() else {
         return vec![table[0]; len];
@@ -4277,6 +4302,38 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn matches_reference_wide_column_on_a_small_domain() {
+        // One live or no live variables: fixed/free column width never sets the scratch size.
+        let unit = basis::<QM31>(1).unwrap();
+        let column: Vec<_> = (0..1 << 16)
+            .map(|i| unit * QM31::from_i64(i) + QM31::from_i64(i * i))
+            .collect();
+        let mut fixed = vec![Coord::Fixed(1); 16];
+        fixed[7] = Coord::Var(2);
+        for (i, value) in domain_table(&column, &fixed, &[], 3)
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(value, column[0xffff ^ ((1 - bit(i, 2, 3)) << 8)]);
+        }
+        let free: Vec<_> = (0..16).map(|i| unit + QM31::from_i64(i)).collect();
+        let eq = stele_poly::eq_table(&free).unwrap();
+        let expected = column
+            .iter()
+            .zip(eq)
+            .fold(zero::<QM31>(), |s, (v, w)| s + *v * w);
+        assert_eq!(
+            domain_table(
+                &column,
+                &(0..16).map(Coord::Free).collect::<Vec<_>>(),
+                &free,
+                3
+            ),
+            vec![expected; 8]
+        );
     }
 
     #[test]
