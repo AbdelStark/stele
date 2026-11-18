@@ -71,6 +71,7 @@
   "model_config": {
     "accounting_parser_sha256": "2e829125b43a037d15d93fbe8493f624844307770aed1fcbefcd9704cbdcd0a9",
     "accounting_source": "ffb8700685ecc39e46ba842274ec51ff2232be01",
+    "allocation": 6961,
     "allocation_sha256": "2a977ef1b3bfa82a9b3ea56a2d5375f60aba37b1cce592200bffbb37b9afaa05",
     "artifact_location": "lucid-cluster:~/stele-codex/e20-22-optimized-27a27592/job-6961/0",
     "backend": "cuda",
@@ -107,6 +108,8 @@
       183
     ],
     "driver_receipt_sha256": "dcbc9a7b6f7feb046248dc61e116a096760441997b62d4ee5b1e6b12e3c14020",
+    "gpu_sampling_sha256": "ebe004e6447752c4e49d094f7f704ea8704248f7418a16ef2e48e278846949e8",
+    "host_context": "A7 plus E16-42 through E16-45 validation composition. Fresh model commitment with separate public proof indices on one dedicated H100 and 16 pinned CPU cores. CPU-only verifier from the measured build and separately pinned older CPU verifier both checked expected and changed model. Conventional prover runs uninstrumented; the third run has stage timing.",
     "inputs": {
       "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
       "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
@@ -116,6 +119,7 @@
     "job": 6961,
     "legacy_verifier_sha256": "b16646342de292f1d4733b9ccb80cff4d857ea550cb522581453249a1feb77dc",
     "matched_cpu_proof_sha256": "1b4406391403b8670377d2538f96a5024fb9d61e00127a2adf0ba915cbad27ef",
+    "measured_patch_sha256": "fb96b5a892e82c1f0865b24e474236a99f712f6714e14da5e5f16778f61a4f92",
     "measured_source_manifest_sha256": "e806975842104d9cabe203ed7a529602099f70b23461ad4caa65267132c4bbd4",
     "measurement_scope": "Completed conventional CUDA and CPU proofs under one published commitment",
     "model": {
@@ -139,9 +143,30 @@
       "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
     },
     "model_commitment_sha256": "dd17dd78fe33c377ea18e4d16af1f2d436c2a2a661d9ecca08f44b0a7ca2d621",
+    "parity_gate_sha256": "7ce68fc8cbd4d919787d39f0aeef4511a8f6e3a64e57099ed93f4bdef048ed25",
+    "parity_summary": "cuda_complete_byte_matches=50 selected_batches=200 device_rounds=3450 gkr_steps=10800 gkr_rounds=97350 relations=8850 relation_rounds=46550 source_visits=500 source_responses=78500 replay=0 changed_model=0",
+    "physical_host": "h100-sxm-8-0",
     "previous_cpu_verifier_time_ns": 59720000000,
     "profile_byte": 4,
     "proof_index": 0,
+    "proof_inventory": {
+      "dense_batches_rounds": [
+        4,
+        88
+      ],
+      "gkr_steps_rounds_nodes": [
+        385,
+        4997,
+        30698
+      ],
+      "relation_steps_rounds_nodes_finals": [
+        876,
+        6221,
+        26218,
+        9032
+      ],
+      "shared_rounds": 19
+    },
     "proof_sha256": "ca7495479c271f4c705f10cf4e17ae805b61031c64bc9380666ed5140822f9ad",
     "proofs": 8,
     "public_receipt_sha256": {
@@ -166,6 +191,8 @@
       "verify.time": "f947a053ac930707dd7302ec10496ca77d7d32d41f6915c8be4338a206957a4b"
     },
     "public_sha256": "341aae13d83bd07d92677b8137f92a2d54352b845f12121dd9cdc6d4b557dcd8",
+    "scheduler": "6961|COMPLETED|0:0|00:28:48|h100-sxm-8-0|billing=16,cpu=16,gres/gpu:h100=1,gres/gpu=1,mem=160G,node=1",
+    "scheduler_sha256": "078af9bf61a88567254455e793b9d8be8834fd007352683c26671c74d30eb074",
     "source_patch_sha256": "fb96b5a892e82c1f0865b24e474236a99f712f6714e14da5e5f16778f61a4f92",
     "statement": {
       "T": "32",
