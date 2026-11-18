@@ -1,0 +1,23 @@
+{
+  "pr": 401,
+  "base": "ccafde57742957b8fdc2b667f1e895a1b060d054",
+  "head": "c3ec8683413ca144734c12fa95b3005fe935c831",
+  "tree": "c42915072036af3cd8c0215cd40645d30d71a5e7",
+  "tested_merge_ref": "4e415a23d906a8787f7812252819dfd49c07fe72",
+  "run_id": 44202390273,
+  "run_attempt": 1,
+  "jobs": 84,
+  "success": 81,
+  "valid_unselected_skips": [
+    "table-build",
+    "gpu-parity",
+    "table-parity"
+  ],
+  "raw": {
+    "ci1038-run-final.json": "c4f271363c1e7b489b0a9530bc9c765313a26e2cedbf8fcc66766c7ce588ca2f",
+    "ci1038-jobs-final.json": "8bb65a488784f99fd9714f4657af4047897175422d3c493445435ae7c03d49f6"
+  },
+  "scope": "Exact current-main base and head content equal intended merge tree; full selected CI passed. No integrated GPU proof credit.",
+  "merge_commit": "8c414b188c06b916fb1b42b5c2d0a3301f29c3fe",
+  "merged": true
+}
