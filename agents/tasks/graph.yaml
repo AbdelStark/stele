@@ -4621,7 +4621,6 @@ tasks:
   depends:
   - E20-16
   - E20-17
-  - E19-08
   rfc:
   - RFC-0014 A5
   - RFC-0010 A16
@@ -4632,7 +4631,7 @@ tasks:
   status: ready
   acceptance:
   - seeded operation parity against the existing host preparation for Circle, salted leaves, roots and complete individual paths, with malformed owner and index controls
-  - normal byte-4 CUDA proofs certify and open all original sources, reusing each original and charging every preparation, transferred byte and peak
+  - after the E19-08 selected-material interface lands, normal byte-4 CUDA proofs certify and open all original sources, reusing each original and charging every preparation, transferred byte and peak
   - full pinned CPU/H100 proof pairs include device source, relation, LogUp-GKR and ordinary batch work and a T32 run with all source visits and independent verification
 - id: E21-01
   epic: E21
