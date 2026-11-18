@@ -177,6 +177,7 @@
       },
       "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
     },
+    "model_commitment_sha256": "dd17dd78fe33c377ea18e4d16af1f2d436c2a2a661d9ecca08f44b0a7ca2d621",
     "parity_gate_sha256": "7ce68fc8cbd4d919787d39f0aeef4511a8f6e3a64e57099ed93f4bdef048ed25",
     "parity_summary": "cuda_complete_byte_matches=50 selected_batches=200 device_rounds=3450 gkr_steps=10800 gkr_rounds=97350 relations=8850 relation_rounds=46550 source_visits=500 source_responses=78500 replay=0 changed_model=0",
     "physical_host": "h100-sxm-8-0",
