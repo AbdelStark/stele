@@ -138,7 +138,7 @@ fn mask(len: u32, m: &GkrMask<'_>) -> Build<(TablePlan, usize)> {
     ))
 }
 
-fn factor(input: &GkrFactor<'_, K>, len: u32, half: u32) -> Build<FactorPlan> {
+fn factor(input: &GkrFactor<'_, K>, len: u32, half: u32, resident: bool) -> Build<FactorPlan> {
     let all = 0..len as usize;
     let layer = 0..half as usize;
     let (values, mask) = match input {
@@ -205,7 +205,13 @@ fn factor(input: &GkrFactor<'_, K>, len: u32, half: u32) -> Build<FactorPlan> {
             if *component > 1 || *side > 1 || values.len() != half as usize * 2 {
                 return Err("GKR child layer");
             }
-            let data = values.iter().flatten().copied().flat_map(words).collect();
+            // The resident tree supplies these checked pairs directly from its device
+            // allocation. All other factor inputs keep their ordinary representation.
+            let data = if resident {
+                Vec::new()
+            } else {
+                values.iter().flatten().copied().flat_map(words).collect()
+            };
             (
                 TablePlan::single(span(
                     half,
@@ -363,6 +369,10 @@ impl Plan {
     }
 
     pub fn new(input: &GkrConstruction<'_, K>) -> Build<Self> {
+        Self::with_layers(input, false)
+    }
+
+    pub(crate) fn with_layers(input: &GkrConstruction<'_, K>, resident: bool) -> Build<Self> {
         let n = input.num_vars as usize;
         if n == 0
             || n > 30
@@ -387,7 +397,7 @@ impl Plan {
         let factors = input
             .factors
             .iter()
-            .map(|f| factor(f, len, half))
+            .map(|f| factor(f, len, half, resident))
             .collect::<Build<_>>()?;
         Ok(Self {
             len: len as usize,

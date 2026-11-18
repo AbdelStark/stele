@@ -1,7 +1,9 @@
 //! RFC-0008 A7 and RFC-0014 §5: construct compact summand tables on the device.
 use super::{Buf, Device, DeviceMasked, Error, Factor, PushKernelArg};
 use crate::gkr_build::{Op, Plan, TablePlan};
+use crate::gpu_lookup::select::Resident;
 use crate::{round::Terms, Field, K, M31};
+use cudarc::driver::DevicePtr;
 use stele_reductions::zk::claims::bench::GkrConstruction;
 
 /// Actual explicit H2D copies. CUDA launch parameters, allocations and device
@@ -29,7 +31,7 @@ impl Device {
         &self,
         input: &GkrConstruction<'_, K>,
     ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
-        self.build_gkr_plan(Plan::new(input).map_err(Error::Shape)?, false)
+        self.build_gkr_plan(Plan::new(input).map_err(Error::Shape)?, false, None)
     }
 
     #[cfg(test)]
@@ -37,7 +39,7 @@ impl Device {
         &self,
         input: &GkrConstruction<'_, K>,
     ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
-        self.build_gkr_plan(Plan::new(input).map_err(Error::Shape)?, true)
+        self.build_gkr_plan(Plan::new(input).map_err(Error::Shape)?, true, None)
     }
 
     /// Actual CUDA allocator counters, including its retained pages, on the current device.
@@ -73,10 +75,36 @@ impl Device {
         &self,
         input: &GkrConstruction<'_, K>,
     ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
-        let plan = Plan::new(input).map_err(Error::Shape)?;
+        self.bounded_gkr(input, None)
+    }
+
+    /// Build this step with child values borrowed from the matching rebuilt device tree.
+    pub fn build_gkr_resident(
+        &self,
+        input: &GkrConstruction<'_, K>,
+        id: usize,
+        tree: &Resident<'_>,
+    ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
+        tree.check(self, id)?;
+        self.bounded_gkr(input, Some((id, tree)))
+    }
+
+    fn bounded_gkr(
+        &self,
+        input: &GkrConstruction<'_, K>,
+        resident: Option<(usize, &Resident<'_>)>,
+    ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
+        let plan = Plan::with_layers(input, resident.is_some()).map_err(Error::Shape)?;
         let peak = plan
             .peak_bytes(self.grid(plan.len / 2).grid_dim.0 as usize)
             .map_err(Error::Shape)?;
+        self.require_budget(peak)?;
+        let (state, mut work) = self.build_gkr_plan(plan, false, resident)?;
+        work.peak_bytes = peak;
+        Ok((state, work))
+    }
+
+    pub(crate) fn require_budget(&self, peak: usize) -> Result<(), Error> {
         let sample = self.memory_sample()?;
         let outside_pool = (sample.total - sample.free).saturating_sub(sample.reserved);
         let available =
@@ -87,15 +115,14 @@ impl Device {
                 available,
             });
         }
-        let (state, mut work) = self.build_gkr_plan(plan, false)?;
-        work.peak_bytes = peak;
-        Ok((state, work))
+        Ok(())
     }
 
     fn build_gkr_plan(
         &self,
         plan: Plan,
         raw: bool,
+        resident: Option<(usize, &Resident<'_>)>,
     ) -> Result<(DeviceMasked<'_>, ConstructionWork), Error> {
         let nodes = plan
             .degree
@@ -105,10 +132,10 @@ impl Device {
         let mut work = ConstructionWork::default();
         let mut factors = Vec::with_capacity(plan.factors.len());
         for factor in plan.factors {
-            let x = self.gkr_table(factor.values, plan.len, raw, &mut work)?;
+            let x = self.gkr_table(factor.values, plan.len, raw, resident, &mut work)?;
             let (r, v) = match factor.mask {
                 Some((mask, v)) => (
-                    Some(self.gkr_table(mask, plan.len, raw, &mut work)?),
+                    Some(self.gkr_table(mask, plan.len, raw, resident, &mut work)?),
                     Some(v),
                 ),
                 None => (None, None),
@@ -126,6 +153,7 @@ impl Device {
         table: TablePlan,
         len: usize,
         raw: bool,
+        resident: Option<(usize, &Resident<'_>)>,
         work: &mut ConstructionWork,
     ) -> Result<Buf, Error> {
         let words = len
@@ -181,7 +209,16 @@ impl Device {
                 &mut work.descriptor_bytes,
                 std::mem::size_of_val(span.shifts.as_slice()),
             )?;
-            let data_ptr = data.as_ref().map_or(0, |d| self.ptr(d));
+            let layer = match (span.op, resident) {
+                (Op::Layer, Some((id, tree))) => {
+                    Some(tree.layer(self, id, 2 * span.period as usize)?)
+                }
+                _ => None,
+            };
+            let data_ptr = match &layer {
+                Some(view) => view.device_ptr(&self.stream).0,
+                None => data.as_ref().map_or(0, |d| self.ptr(d)),
+            };
             let shifts_ptr = shifts.as_ref().map_or(0, |d| self.ptr(d));
             let op = span.op as u32;
             let entries = count as u64;
@@ -199,7 +236,9 @@ impl Device {
                 .arg(&entries);
             // SAFETY: Plan::new checks each RFC-0008 A7 operation's source extent
             // and coordinates. Each repeated span fits the allocated output; a
-            // null operand is never read. Upload, kernel and free share one stream.
+            // null operand is never read. A resident layer view has exactly two
+            // QM31s per child pair and its owner lives through the final sync.
+            // Upload, kernel and free share one stream.
             unsafe { b.launch(self.grid(count)) }?;
         }
         Ok(if table.base {

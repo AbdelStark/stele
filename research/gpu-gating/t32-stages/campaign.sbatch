@@ -23,7 +23,7 @@ cd "$run/source"
 nvidia-smi --query-gpu=name,uuid,driver_version,memory.total --format=csv > "$run/gpu.txt"
 rustc -Vv > "$run/toolchain.txt"
 lscpu > "$run/cpu.txt"
-python3 -B research/gpu-gating/t32-stages/install.py .
+python3 -B research/gpu-gating/t32-stages/install.py . "$@"
 cargo fetch --locked
 cargo build --frozen --release -p stele-cli
-srun --cpu-bind=cores python3 -B research/gpu-gating/t32-stages/capture.py
+srun --cpu-bind=cores python3 -B research/gpu-gating/t32-stages/capture.py "$@"
