@@ -102,7 +102,7 @@ fn observe(event: Event<'_>) {
                 a.round,
                 cpu.as_nanos(),
                 wall.as_nanos(),
-                got.len() * 16, memory.used_high, memory.reserved_high
+                got.len() * 16
             );
         }),
         Event::Fold { challenge, cpu } => ACTIVE.with_borrow_mut(|state| {
