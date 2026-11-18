@@ -12,6 +12,10 @@ import tempfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
+sys.path.insert(0, str(ROOT / "bench"))
+from hiding_source_counts import check_source_work
+from lookup_tree_counts import FIELDS as LOOKUP_FIELDS, check_lookup_work
+
 REFERENCE_SHA256 = "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd"
 
 
@@ -123,9 +127,9 @@ def gkr_counts(text, expected):
     return steps, rounds
 
 
-def hardware_counts(text, batches):
+def hardware_counts(text, batches, source_originals=None):
     originals, selected, planned, rounds, folds, finals, downloaded = map(int, text.split())
-    if (selected != batches - 1 or originals != selected or finals != selected or selected <= 0
+    if (selected != batches - 1 or originals != (selected if source_originals is None else source_originals) or finals != selected or selected <= 0
             or planned != rounds or planned != folds or planned <= 0 or downloaded != 48 * rounds + 32 * finals):
         raise ValueError("device calls disagree with the authenticated ordinary batches")
     return selected, rounds
@@ -146,7 +150,7 @@ def verify(binary, case, identity, changed_model):
         result = subprocess.run(argv, capture_output=True, text=True, cwd=ROOT)
         if result.returncode != 1 or result.stdout.splitlines()[-1:] != ["NO: model differs from --expect-model"]:
             raise ValueError("wrong-model control failed")
-    return int(m[1]), int(m[2]), int(m[3])
+    return (int(m[1]), int(m[2]), int(m[3])), "\n".join(lines)
 
 
 def rejection_controls(work):
@@ -168,16 +172,26 @@ def rejection_controls(work):
         raise ValueError("unavailable CUDA did not fail before reservation and proof output")
     print("rejected_unavailable_cuda=1 reservation_unchanged=1", flush=True)
 
-    result = run([work / "reject-round", case, commitment, secret], capture_output=True, text=True)
-    expected = "rejected_cuda_round=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1"
-    if result.stdout.splitlines()[-1:] != [expected]:
-        raise ValueError("genuine corrupted CUDA round did not reach the checked masked prover")
-    print(expected, flush=True)
+    for args, marker in (([], "rejected_cuda_round"), (["gkr"], "rejected_cuda_gkr_round"),
+                         (["relation"], "rejected_cuda_relation")):
+        result = run([work / "reject-round", case, commitment, secret, *args], capture_output=True, text=True)
+        expected = marker + "=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1"
+        if result.stdout.splitlines() != [expected]:
+            raise ValueError("changed CUDA round did not reach the checked masked prover")
+        print(expected, flush=True)
+
+    for stage in ("source-root", "source-sibling", "lookup-denominator"):
+        result = run([work / "reject-round", case, commitment, secret, stage], capture_output=True, text=True)
+        cause = "DenominatorZero" if stage == "lookup-denominator" else "RootMismatch"
+        expected = f"rejected_cuda_{stage}={cause} injected=1 reservation_restored=1"
+        if result.stdout.splitlines()[-1:] != [expected] or secret.read_bytes() != before:
+            raise ValueError("changed CUDA source material did not reject and roll back")
+        print(expected, flush=True)
 
 
 def compare(work, pins):
     total_batches = total_rounds = total_steps = total_gkr_rounds = 0
-    total_relations = total_relation_rounds = 0
+    total_relations = total_relation_rounds = total_visits = total_responses = 0
     for i in [*range(50), "replay"]:
         index = 0 if i == "replay" else i
         row = pins["reference_cases"][index]
@@ -191,28 +205,38 @@ def compare(work, pins):
             if (hashlib.sha256(left).hexdigest() != row[name + "_sha256"]
                     or left != (gpu / (name + ".bin")).read_bytes()):
                 raise ValueError(f"{name} bytes differ in case {i}")
-        expected = verify(work / "verifier", cpu, identity, i == 0)
-        if verify(work / "verifier", gpu, identity, i == 0) != expected:
+        expected, report = verify(work / "verifier", cpu, identity, i == 0)
+        if verify(work / "verifier", gpu, identity, i == 0) != (expected, report):
             raise ValueError("different verifier inventories")
         rel_schedule, (steps, gkr_rounds, evaluations), (selected, batch_rounds) = proof_schedule((cpu / "proof.bin").read_bytes())
         if expected != (rel_schedule[0], steps, selected + 1):
             raise ValueError("decoded schedule and independent verifier disagree")
-        dense, gkr, relations = (gpu / "device.txt").read_text().splitlines()
-        batches, rounds = hardware_counts(dense, expected[2])
+        dense, gkr, relations, source, lookup = (gpu / "device.txt").read_text().splitlines()
+        keys = ("originals", "visits", "responses", "hashes", "h2d_bytes", "d2h_bytes",
+                "host_salt_bytes", "observed_peak_bytes", "total_bytes")
+        fields = dict(zip(keys, map(int, source.split()), strict=True))
+        lookup_fields = dict(zip(LOOKUP_FIELDS, map(int, lookup.split()), strict=True))
+        lookup_counts = check_lookup_work(lookup_fields, report, fields["total_bytes"] * 2 // 5)
+        if int(gkr.split()[7]) != 0:
+            raise ValueError("host child layers were uploaded during retained lookup execution")
+        work_counts = check_source_work(fields, (cpu / "proof.bin").read_bytes(), report, fields["total_bytes"] * 2 // 5)
+        batches, rounds = hardware_counts(dense, expected[2], work_counts["originals"])
         if rounds != batch_rounds:
             raise ValueError("device batch rounds differ from the reference proof")
         gkr_counts(gkr, (steps, gkr_rounds, evaluations))
         nrel, rel_rounds = relation_counts(relations, rel_schedule)
         print(json.dumps(dict(case=i, model=identity, proof_sha256=row["proof_sha256"],
-                              selected_batches=batches, device_rounds=rounds, gkr_steps=steps, gkr_rounds=gkr_rounds, relations=nrel, relation_rounds=rel_rounds)), flush=True)
+                              selected_batches=batches, device_rounds=rounds, gkr_steps=steps, gkr_rounds=gkr_rounds, relations=nrel, relation_rounds=rel_rounds, source_work=work_counts, lookup_work=lookup_counts)), flush=True)
         if i != "replay":
+            total_visits += work_counts["visits"]
+            total_responses += work_counts["responses"]
             total_batches += batches
             total_rounds += rounds
             total_relations += nrel
             total_relation_rounds += rel_rounds
             total_steps += steps
             total_gkr_rounds += gkr_rounds
-    return total_batches, total_rounds, total_steps, total_gkr_rounds, total_relations, total_relation_rounds
+    return total_batches, total_rounds, total_steps, total_gkr_rounds, total_relations, total_relation_rounds, total_visits, total_responses
 
 
 def main():
@@ -225,15 +249,33 @@ def main():
             any(len({r[k] for r in rows}) != 50 for k in ("artifact_sha256", "model_id", "proof_sha256"))):
         raise ValueError("expected 50 distinct ordered models")
     result = run(["cargo", "test", "-p", "stele-gpu", "--release", "--locked", "--offline", "--features", "cuda",
-                  "--lib", "--test", "dense", "--", "--ignored", "--nocapture", "--test-threads=1"],
+                  "--lib", "--test", "dense", "--", "--ignored", "--nocapture", "--test-threads=1", "--skip", "accepts_primed_source_backing"],
                  text=True, stdout=subprocess.PIPE)
     print(result.stdout, flush=True)
-    if not re.search(r"cuda_dense_cases=1000 rounds=[1-9]\d+ folds=[1-9]\d+ finals=1000", result.stdout) or "2 passed; 0 failed; 0 ignored" not in result.stdout or "cuda_dense_lazy_cases=1000" not in result.stdout:
+    required = ("device::tests::matches_reference_original_across_staging_chunks",
+                "device::tests::matches_reference_raw_lazy_device_boundaries",
+                "lookup_tests::matches_reference_cuda_lookup", "gkr_tests::matches_reference_cuda_gkr", "relation_tests::matches_reference_cuda_relations",
+                "matches_reference_cuda_dense_batches", "rejects_foreign_source_and_invalid_dense_transitions")
+    completed = re.findall(r"^test (\S+) \.\.\. (?:[^\n]+\n)?ok$", result.stdout, flags=re.MULTILINE)
+    if ("cuda_lookup_cases=1000 raw_cuda_lookup_cases=1000 complete_trees=2000 checked_child_views=24000 last_child_releases=2000" not in result.stdout
+            or sorted(completed) != sorted(required)
+            or "5 passed; 0 failed; 0 ignored" not in result.stdout or "2 passed; 0 failed; 0 ignored" not in result.stdout
+            or not re.search(r"cuda_dense_cases=1000 rounds=([1-9]\d*) folds=\1 finals=1000", result.stdout)
+            or "cuda_dense_lazy_cases=1000" not in result.stdout):
         raise ValueError("required H100 operation comparisons or controls missing")
     if not re.search(r"cuda_gkr_cases=1000 raw_cuda_gkr_cases=1000 field_rounds=8000 field_folds=8000 field_finals=2000", result.stdout):
         raise ValueError("required H100 GKR comparisons or controls missing")
     if "cuda_relation_cases=1000 raw_cuda_relation_cases=1000 field_rounds=8000 field_folds=8000 field_finals=2000" not in result.stdout:
         raise ValueError("required relation arithmetic comparisons missing")
+    for mode in ("LAZY", "EAGER"):
+        tests = run(["cargo", "test", "-p", "stele-gpu", "--features", "cuda", "--frozen", "--release",
+                     "--lib", "runtime::source_budget_tests::", "--", "--include-ignored", "--test-threads=1"],
+                    env={**os.environ, "CUDA_MODULE_LOADING": mode}, capture_output=True, text=True)
+        if ("test result: ok. 2 passed; 0 failed; 0 ignored" not in tests.stdout or
+                "accepts_primed_source_backing_before_any_private_original ... ok" not in tests.stdout or
+                "rejects_driver_backing_hidden_by_unused_pool_reservation ... ok" not in tests.stdout):
+            raise ValueError("missing fresh-context hiding source capacity controls")
+        print(f"cuda_source_fresh_context={mode} capacity_controls=2", flush=True)
     with tempfile.TemporaryDirectory(prefix="stele-cuda-parity-") as tmp:
         work = Path(tmp)
         hiding_sources(work)
@@ -246,8 +288,8 @@ def main():
         rejection_controls(work)
         for name in ("cpu", "cuda"):
             run([work / (name + "-prove"), work / "fixtures", work / name, name])
-        batches, rounds, steps, gkr_rounds, relations, relation_rounds = compare(work, pinned)
-    print(f"cuda_complete_byte_matches=50 selected_batches={batches} device_rounds={rounds} gkr_steps={steps} gkr_rounds={gkr_rounds} relations={relations} relation_rounds={relation_rounds} replay=0 changed_model=0", flush=True)
+        batches, rounds, steps, gkr_rounds, relations, relation_rounds, visits, responses = compare(work, pinned)
+    print(f"cuda_complete_byte_matches=50 selected_batches={batches} device_rounds={rounds} gkr_steps={steps} gkr_rounds={gkr_rounds} relations={relations} relation_rounds={relation_rounds} source_visits={visits} source_responses={responses} replay=0 changed_model=0", flush=True)
 
 
 if __name__ == "__main__":

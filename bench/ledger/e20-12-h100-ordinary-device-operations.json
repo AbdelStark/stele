@@ -1,13 +1,13 @@
 {
   "batch_size": 1,
   "bindings_all_on": true,
-  "commit": "1ce99231a2768e4ae400cb70324290d359e5027d",
+  "commit": "11a1f564e1f6a3b9eade9907ef01f88c4653f3e5",
   "controls": {
     "failed": 0,
     "passed": 0,
     "total": 0
   },
-  "device": "NVIDIA H100 80GB HBM3, GPU-1e01ce17-cb36-727c-aa41-de5f146e9a22, 81559 MiB",
+  "device": "NVIDIA H100 80GB HBM3, GPU-22afdccc-aafa-3402-5002-3636ec6a5f0e, 81559 MiB",
   "driver": "580.173.02",
   "generated_tokens": 0,
   "kernel_counters": {
@@ -20,7 +20,7 @@
   "kind": "micro",
   "model_config": {
     "actual_profile": "dev-zk byte 4",
-    "job": 6928,
+    "job": 6933,
     "plan": {
       "profile": "dev-zk byte 4",
       "raw_lazy_cases": 1000,
@@ -28,11 +28,11 @@
       "typed_cases": 1000
     },
     "public_receipt_sha256": {
-      "allocation.txt": "b9ab5bf7e4c98a308292edb1541e8c272a00df29a1bbe4ff88250b57304af88d",
-      "device.txt": "8ea27b6054f79f6207c915bcea83a31a868476a7d77ef9162efea244239a88aa",
-      "test.err": "d68826930d90397862bf308359df17397c7b76237535648e42aedef67de78eb4",
-      "test.out": "dc3ac66d91abdd6a57f13a461710d77de0b8bc1736fcff5390334fbf0c26504a",
-      "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3"
+      "allocation.txt": "008725425441f8920f970d70439981f93007377c0ec537022d0af4411bd2cff6",
+      "campaign.time": "bca2bcd32d14ad5f88a9a69d133aeea9995a55e65a996177f09f6995750f162a",
+      "device.txt": "68776bfaacb1c0bc4c3670216d20eac5df105872dc60800f90a32412bed20e68",
+      "parity.err": "a12d9fea01a4fce6acabc5cd88becc8f53bfdbec6392c70a886143664ee160ec",
+      "parity.out": "d0d7b1c3d3ccae3d70528fc288e5111081a5c3c1b37105b9eac71a0690d9a1fd"
     }
   },
   "note": "Sum of release test harness elapsed times, reported to hundredths of a second. The typed operation and raw lazy-representation suites use actual H100 device memory. The typed suite also checks foreign owners and invalid transitions.",
@@ -40,11 +40,11 @@
   "profile": "standard",
   "prompt_tokens": 0,
   "proof_size_bytes": 0,
-  "prover_time_ns": 2480000000,
+  "prover_time_ns": 2970000000,
   "schema_version": 1,
   "stage_times_ns": {
-    "lazy_test_binary": 1100000000,
-    "typed_test_binary": 1380000000
+    "raw_and_transfer_tests": 1400000000,
+    "typed_device_tests": 1570000000
   },
   "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
   "verifier_time_ns": {
