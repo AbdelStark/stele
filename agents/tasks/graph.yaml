@@ -5397,7 +5397,9 @@ tasks:
   rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
   skill: cuda-kernel-author
   crate: stele-kernels
-  status: ready
+  status: in_progress
+  agent: codex-integration
+  branch: task/E20-11-dense-field-backend
   acceptance:
   - Field-only backend and scalar operation table check same-id stale-session owners, duplicate imports, bounds and MSB-first dense round and fold
   - Match the genuine CPU geometry, all evaluations, repeated positions and edge values; reject incorrect state or owner before use
