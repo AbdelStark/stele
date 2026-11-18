@@ -37,13 +37,18 @@ def install(root):
             std::eprintln!("t32_cpu_lookup kind=rebuild id={l} ns={}",cpu_lookup.elapsed().as_nanos());
             lookup::sample(l,lp,&data,runs[l].beta,runs[l].alpha,&layers,None);
             tree=Some((l,layers));""")
-    replace(claims,"if step.is_leaf() {\n            tree = None;","if step.is_leaf() {\n            t32_sample::release(l);\n            tree = None;")
+    replace(claims,"if step.is_leaf() {\n            tree = None;","if step.is_leaf() {\n            t32_sample::release(l, step.is_first());\n            tree = None;")
+    replace("crates/stele-reductions/src/zk_gkr_bench.rs", "    pub leaf: bool,",
+            "    pub leaf: bool,\n    pub final_child: bool,")
+    replace(claims, "                first: step.is_first(),",
+            """                first: step.is_first(),
+                final_child: !step.is_leaf() && plan.gkr.get(g+1).is_some_and(|next| next.lookup_index() == l && next.is_leaf()),""")
     device="research/gpu-gating/masked/src/t32_timing.rs"
     shutil.copyfile(here/"device.rs",root/"research/gpu-gating/masked/src/resident_timing.rs")
     replace(device,"static DEVICE:",'#[path="resident_timing.rs"] mod resident;\nstatic DEVICE:')
     replace(device,'    eprintln!("t32_gkr_cold', '    resident::install();\n    eprintln!("t32_gkr_cold')
     replace(device, "let built = dev.build_gkr_bounded(&input);", """let mut child = None;
-    let built = resident::build(dev,&input,&mut child,step.lookup,step.leaf);""")
+    let built = resident::build(dev,&input,&mut child,step.lookup,step.leaf,step.final_child);""")
     replace(device, "    let build = now.elapsed();", """    let build = now.elapsed();
     if let Some(child) = child {
         eprintln!("t32_child step={} id={} views={} view_bytes={} retained_bytes={}", step.step, step.lookup, child.views, child.view_bytes, child.retained);

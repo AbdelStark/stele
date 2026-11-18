@@ -161,9 +161,11 @@ impl Resident<'_> {
         4 * self.pairs.len()
     }
 
-    /// The last interior step consumes the two children of every bottom node.
+    /// The materialized lookup tree ends in two raw branch leaves per row.
+    /// Its last interior GKR step reads their parents. The next GKR step
+    /// evaluates those raw branches directly from the input columns.
     pub fn is_last_child(&self, layer_variables: usize) -> bool {
-        self.leaves.ilog2() as usize == layer_variables.saturating_add(1)
+        self.leaves.ilog2() as usize == layer_variables.saturating_add(2)
     }
 
     pub(crate) fn check(&self, dev: &Device, id: usize) -> Result<(), Error> {
