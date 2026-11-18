@@ -4535,6 +4535,36 @@ tasks:
   - Mandatory hardware comparisons for 1000 seeded cases per implemented operation and 50 complete byte-identical proof pairs from pinned public fixtures
   - Record whole T32 candidate timings, transfer and allocation lifetimes with every binding active; keep the calibrated reference and actual measured speed distinct
 
+- id: E20-13
+  epic: E20
+  title: Admit live GKR arithmetic under the checked dev-zk proof entry
+  lane: E
+  depends:
+  - E20-12
+  rfc: [RFC-0014 A3, RFC-0020 A11, RFC-0026 A20]
+  skill: rfc-author
+  crate: docs
+  status: in_progress
+  agent: codex-integration
+  branch: task/E20-13-live-gkr-contract
+  acceptance:
+  - Review construction, compact-to-original expansion, unchanged A7 masking and transcript, source geometry and total memory accounting independently
+
+- id: E20-14
+  epic: E20
+  title: Author each balanced dev-zk GKR round with the selected field backend
+  lane: E
+  depends:
+  - E20-13
+  rfc: [RFC-0014 A3, RFC-0020 A11, RFC-0026 A20]
+  skill: cuda-kernel-author
+  crate: stele-kernels+stele-reductions+stele-gpu+stele-prover+stele-cli
+  status: ready
+  acceptance:
+  - Construct compact and ordinary factors from genuine operands without running the reference dense sumcheck in the selected path
+  - Compare field round and fold values, expanded finals, complete selected GPU proof bytes and ordinary positive and tamper outcomes
+  - Prove and verify the original T32 workload with all 385 device GKR steps and ordinary batches under the planned and measured device ceiling, reporting all actual transfers
+
 - id: E21-01
   epic: E21
   title: RFC-0030 accepted; per-round ledger

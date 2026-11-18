@@ -220,3 +220,15 @@ Soundness, cells, lookups, honest bytes and protocol controls are unchanged.
 The edge authorizes the field execution described in RFC-0014 A2 and has no
 measured cost by itself. E20-11 and E20-12 must update exact dependency
 guards only with their implemented surface.
+
+### A11 — Field-only GKR construction and masked arithmetic
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-13.
+
+Extend A10's existing reductions-to-kernels edge to the field-only GKR
+construction and state operations in RFC-0014 A3. The kernels crate carries
+field data, geometry, term indices and masks. The reduction owns compact-to-
+original expansion, masking challenges, transcript order, source authentication
+and claim routing. The CUDA mirror retains its existing dependency direction.
+No new Cargo edge, binding, challenge, cost claim or profile admission follows
+from this amendment alone. E20-14 validates the new normal-entry operations.

@@ -2359,3 +2359,13 @@ Soundness, challenge counts, ledger error terms, cells, lookups, proof bytes
 and control IDs are unchanged. RFC-0014 A2 defines operation parity, normal
 verification and measured resource checks. Affected tasks are E20-11 and
 E20-12. Promotion remains governed by Workflow 10.
+
+### A20 — Compute balanced dev-zk GKR field messages through a selected backend
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-13.
+
+Extend A19's §7 execution option to the existing RFC-0008 A7 GKR field
+messages as specified by RFC-0014 A3. The full source-bound statement, wire
+bytes, public checks, challenge schedule, lifetime admission, soundness ledger
+and independent verification remain those of profile byte 4. E20-14 reports
+actual device participation, full proof parity and charged T32 resources.

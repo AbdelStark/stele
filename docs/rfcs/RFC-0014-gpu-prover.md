@@ -157,3 +157,58 @@ unavailable CUDA and malformed transition in the device
 differential. NC-1000 covers canonical field output. This interface specifies
 no new binding and confers no profile promotion. Affected tasks include
 E20-03, E20-04, E20-10, E20-11 and E20-12.
+
+### A3 — Live field execution of balanced dev-zk LogUp-GKR
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-13.
+
+**Addition to A2, §§2 and 5.** An explicitly selected balanced dev-zk backend
+may produce each RFC-0008 A7 GKR step through the same proof-local field
+interface. A combined implementation must execute every scheduled GKR step
+and each selected ordinary batch. A backend error aborts the proof attempt.
+
+The reduction derives the original instance, declared degree, variable order
+and coefficients from the plan and transcript exactly as in the reference.
+It passes the field backend the compact summand for a grouped leaf and the
+ordinary summand for other steps. Its construction describes scaled equality
+on an interval, the interpolated periodic block, projected original columns,
+the selected numerator/denominator child at its side, Boolean padding, public
+member selectors, the tuple-compressed table and a concatenation of projected
+tuple members. Positions are MSB first. Columns and child layers are borrowed
+from the caller's genuine step. Source-owner views, where used, must satisfy
+A2's identity and lifetime checks. Masked factors retain their base polynomial,
+the mask polynomial indexed by its original coordinates and the vanishing
+coordinate. Their value is the base plus the mask times `v(1−v)`. The
+authenticated mask source and shared seed stay in the original reduction.
+
+For every coordinate the backend returns the declared degree plus one ordered
+field evaluations. The ordinary checked masked prover adds its own mask
+polynomial, checks the running sum and absorbs the resulting message before
+drawing the next challenge. The backend folds every factor at that actual
+challenge; when the vanishing coordinate is bound it incorporates its mask.
+After the final fold the backend returns compact values in construction order.
+The reduction uses the actual folded point and original borrowed columns and
+mask blocks to expand all required original inputs in the existing A7 order.
+The existing product, public-final, rank, vanishing, GKR continuation and
+claim-routing checks remain in force. The backend can neither draw challenges
+nor supply verifier decisions. The normal path does not first run an entire
+CPU summand as an oracle.
+
+Charge host packing, transfers, device execution, final expansion and remaining
+CPU routing. Imported columns, masks, public tables and materialized layers each
+count as real input or a checked borrowed view. The planned simultaneous
+device allocation and measured high water, including the source and promotion
+temporaries, obey A1. An unsupported geometry or insufficient memory returns
+a checked error. A shared context alone never proves a source owner matches.
+
+**Soundness and controls.** No round, degree, challenge order, error line,
+commitment, column, lookup or honest proof byte changes. Preserve NC-0912,
+NC-0915 and the existing compact-substitution controls NC-0930–0932. The
+field differential exercises mismatched factor indices, round degree,
+vanishing coordinate, span extent and premature finals. Require per-operation
+1,000 seeded device/scalar comparisons, genuine compact and expanded GKR shapes,
+and 50 complete CPU/CUDA proof pairs using the normal selected entry with
+both GKR and batch device calls present in the actual candidate. The original
+T32 reports all 385 GKR steps, ordinary verification and memory/transfer
+charges. No profile promotion. Target cost terms are `c_lu`, `c_sc` and
+`T_misc`. [Measured GKR operations](https://github.com/AbdelStark/stele/blob/ce366e0f/bench/ledger/e16-40af-t32-gkr-originals-h100.json)
