@@ -4216,6 +4216,34 @@ mod tests {
     }
 
     #[test]
+    fn matches_reference_projected_relation_columns() {
+        // Project each input axis independently. Variable axes cannot repeat (the plan validates distinct).
+        let choices = [Coord::Var(0), Coord::Var(2), Coord::Free(1), Coord::Free(0), Coord::Fixed(0), Coord::Fixed(1)];
+        let q = |i| basis::<QM31>(2).unwrap() + QM31::from_i64(i);
+        for ncoords in 0..=3 {
+            let column: Vec<_> = (0..1usize << ncoords).map(|i| q(1 + 3 * i as i64)).collect();
+            for mut code in 0..choices.len().pow(ncoords as u32) {
+                let mut coords = Vec::new();
+                for _ in 0..ncoords {
+                    coords.push(choices[code % choices.len()].clone());
+                    code /= choices.len();
+                }
+                if [0,2].iter().any(|v| coords.iter().filter(|c| matches!(c, Coord::Var(i) if i == v)).count() > 1) { continue; }
+                for free in [[q(7),q(-3)], [zero::<QM31>(),QM31::from_i64(1)]] {
+                    let got = domain_table(&column, &coords, &free, 3);
+                    assert_eq!(got.len(), 8);
+                    for (i, value) in got.into_iter().enumerate() {
+                        let point: Vec<_> = (0..3).map(|j| QM31::from_i64(bit(i,j,3) as i64)).collect();
+                        let w = stele_poly::eq_table(&column_point(&coords, &point, &free)).unwrap();
+                        let expected = column.iter().zip(w).fold(zero::<QM31>(), |s,(x,w)| s + *x*w);
+                        assert_eq!(value, expected);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn matches_reference_sparse_batch_weight() {
         let q = |n| basis::<QM31>(1).unwrap() + QM31::from_i64(n);
         for ell in [3, 4] {
