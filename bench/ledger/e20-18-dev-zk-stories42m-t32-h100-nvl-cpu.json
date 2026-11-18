@@ -1,0 +1,151 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "76ef8371cd894391c47afa9167a70071ea9d1a6d",
+  "controls": {
+    "failed": 0,
+    "passed": 1,
+    "total": 1
+  },
+  "device": "06/cf on h100-nvl-1-1-cc",
+  "driver": "not-applicable",
+  "generated_tokens": 8,
+  "kernel_counters": {
+    "checked_positions": 9,
+    "commit_peak_rss_bytes": 36194492416,
+    "model_commitment_bytes": 638,
+    "prove_peak_rss_bytes": 89716232192,
+    "public_bytes": 243863,
+    "verify_peak_rss_bytes": 16826195968
+  },
+  "kind": "inference",
+  "model_config": {
+    "accounting_driver_sha256": "eada8a44be2b14cfea9dba2152500ed6086ce8a3ee091376f8e76374975683d9",
+    "accounting_parser_sha256": "6b47c7395e99a1856b67d9c336c77304a0f7079c20d047cd5051b0fd9e2d4528",
+    "allocation": "One dedicated H100 and 16 pinned CPU threads on Lucid. Staging, context and complete ordinary CLI wall are included.",
+    "binary_sha256": "c701ab31500ecfa88db35d3d602851a16b2893e42421ad53cbe5d13e32f101ea",
+    "campaign_sha256": "f445cfc56bf30f03df9a5c9284cbf5783a18bfd1c7e7c38c252ace561b5d808f",
+    "command": "stele commit-model --zk / prove-dev --zk / verify-dev --expect-model",
+    "composition_parents": [
+      "24a64df5a2b4e640634a5fb27217c257365c6a44",
+      "dd6496047ae758eed357a51244ab8a1e7d8d5482",
+      "671e5a6dd4affc48c3518f27ff5f5032f0405bac",
+      "5d64f6db8de6dd16485921374d7947e195711960",
+      "4318a017a15701c7f6215b7ae450d89abbb36f45"
+    ],
+    "controls": {
+      "pin": "model differs from --expect-model"
+    },
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "external_receipts": "lucid-cluster:~/stele-codex/e20-18-source-t32/76ef8371/job-6946",
+    "hardware_samples_sha256": "63279bca1d8eb87256cbecba6494c79851bd11af3172588dc77ab2c21841f2b3",
+    "host_context": "CLI proof and reference proof use distinct indices at one fresh commitment with sixteen bound CPU cores. Both independent verifier checks and wrong-model controls ran.",
+    "inputs": {
+      "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+      "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+      "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+      "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+    },
+    "job": 6946,
+    "measured_base": "2b632c6c",
+    "measured_source_manifest_sha256": "f7dcf2c21a09e9e3339bd28b28a60fc69bda963dc885806ce4fd448123294484",
+    "measured_worker_sha256": "273f2ca297d49141ff63c37c066ece73ed860797791daf34023a3804821a0fcc",
+    "model": {
+      "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+      "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
+      "fidelity": "agents/reviews/e16-11-stories42m/fidelity.json",
+      "model_sha256": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+      "name": "llama2.c stories42M (MIT), converted by research/cqis-model-contract/stories42m.py",
+      "preparation_sha256": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+      "scales_sha256": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8",
+      "shape": {
+        "context": 1024,
+        "d": 512,
+        "head_width": 64,
+        "heads": 8,
+        "hidden": 1376,
+        "kv_heads": 8,
+        "layers": 8,
+        "vocabulary": 32000
+      },
+      "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
+    },
+    "prior_sxm_rejection": {
+      "cause": "Zk(Sumcheck(Source))",
+      "cause_detail": "The older binary returned the public Sumcheck(Source) error before a proof was emitted. Its operator trace did not identify an individual allocation.",
+      "job": 6942,
+      "proof": false,
+      "public_receipt_sha256": "0ce743c667da906f65e8d8c91369976a353fd2a661ae777a13aabf43f91b950c",
+      "source": "d648be9da9f577168b747d1524d2ba0017f45f19"
+    },
+    "profile_byte": 4,
+    "proof_index": 1,
+    "proof_sha256": "866f173e8394e87eb4e9469f5a2ae1439bc26cf1cdc6c89025de8ea24ba19ccc",
+    "proofs": 8,
+    "public_receipt_sha256": {
+      "original-contexts.bin": "7aada6fd1b201fcc037daf22d512fda46a72b305d98ec689319a1f893baaa696",
+      "pin.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pin.out": "586f68a0092a26a370e82361b3bdf183e048b13ba05155b9467a5adedf13fb41",
+      "pin.time": "ff956e36361606861f4085d89524932eaf156e472a44f89fdbd4a9ddc3c978c4",
+      "prove.err": "24abe61d88da65b59803b89f595692b7e2785ac9f3f5a29badb054f000f494b7",
+      "prove.out": "18db102aaf94e3bfd1a4a44bba151a45643b218f0d6288e1e831ba1526aae78c",
+      "prove.time": "a205559ca80620bc096da93c00beb725e4f8948a1e0364e9ff8a9f8b0ef7ee90",
+      "result.json": "88545e7e4a2fd40d2f7a8e9356d4a315d2cc608f8e8c49d7270851a4ffe906f4",
+      "verify.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verify.out": "f76aeccb40fa1e25ad0f6fe452aaea8f2f8dc98f02f44fe9754bf02d7b43388d",
+      "verify.time": "a032f74df552e66bfa088e4a2fe5184aee3f9dbd7487e43b3cd6e5aeda7b64c6"
+    },
+    "public_sha256": "9c825311c66a93d89a2561bf63513690bad00265481f66c988116083f0f8e8c0",
+    "scheduler_exit": 0,
+    "scheduler_observation": "The ordinary CLI provers and independent pinned CPU verifiers exited as expected. A separate CPU-only receipt reconstruction reads the same public files and the original process output.",
+    "scheduler_sha256": "d421fe4540ee1666f5bfbd8b1914c028eed586e4e740188fefa093bb2c6e6b49",
+    "source_accounting_sha256": "82cad45c6b96c4739adad72c7114ae0d00da7f9c2154e244f757800da46cebf8",
+    "source_patch_sha256": "77f40272d28515123c08c5e084b7330e6282f7351bd32269acdb5ea1530e0fe9",
+    "statement": {
+      "T": "32",
+      "checked": "23..32",
+      "cqis_id": "551b6f3e0a5518bf66dabd6c31dc9bbdf603684013f99322e7bdd78178ef3b14",
+      "model": "90d1a204bf80d23b6cb6e1f72a532c40cfce4a8c34f3258628c609006d6fe680",
+      "next": "2654",
+      "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,29892"
+    },
+    "threads": 16,
+    "validation_tree": "4318a017a15701c7f6215b7ae450d89abbb36f45",
+    "verifier_sha256": "b16646342de292f1d4733b9ccb80cff4d857ea550cb522581453249a1feb77dc"
+  },
+  "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile byte 4 (balanced policy-2 hiding sources, RFC-0013 A8; RFC-0026 A9), development tier; zero knowledge is conditional and computational (seed-derived masks). The weights and the 1-D records (RFC-0013 A7) are committed once by commit-model as one published commitment for P = 8 proofs (A6), recorded as stage model_commitment_once and not part of the prove time. Prover time is the prove-dev --zk process wall time of proof index 1: Artifact decode, executor capture, plain check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; another proof against the same commitment also verifies. The control is verify-dev of a proof pinned to another model digest. Repeats, if any, are in model_config.host_context. Soundness ledger (verify-dev, E12-26): eps_interactive <= 731241032/p^4; worst round LU+ZD check 5, 2^-95.4, grinding 0 bits. CPU only, no GPU. Peak RSS is the GNU time -v maximum resident set size. Not a cost-model fit input.",
+  "plan_digest": "db8c343345d3cecbb22d3954f6bbd6d2f9797d6dcbfd08ab0e53156915e413e8",
+  "profile": "development",
+  "prompt_tokens": 24,
+  "proof_size_bytes": 21411006,
+  "prover_time_ns": 475550000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "model_commitment_once": 64040000000,
+    "prove_dev_wall": 475550000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 56660000000
+  },
+  "witness_recompute_ns": 0,
+  "workload": "dev/stories42m-t32"
+}
