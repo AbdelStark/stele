@@ -124,12 +124,12 @@ mod tests {
     fn matches_reference_shifted_equality_for_all_small_intervals() {
         let one = QM31::from_i64(1);
         let zero = QM31::from_i64(0);
-        let basis = basis::<QM31>(1).unwrap();
+        let basis = basis::<QM31>(1).expect("extension basis");
         for n in 0..=6 {
             let z: Vec<_> = (0..n)
                 .map(|i| basis + QM31::from_i64(3 + i as i64))
                 .collect();
-            let z_table = stele_poly::eq_table(&z).unwrap();
+            let z_table = stele_poly::eq_table(&z).expect("source equality table");
             for m in 0..=n {
                 let free: Vec<_> = (0..m)
                     .map(|i| basis * QM31::from_i64(4 + i as i64))
@@ -140,7 +140,7 @@ mod tests {
                         .map(|i| if i % 2 == 0 { one } else { zero })
                         .collect(),
                 ] {
-                    let weights = stele_poly::eq_table(&q).unwrap();
+                    let weights = stele_poly::eq_table(&q).expect("column equality table");
                     for at in 0..=z_table.len() - weights.len() {
                         let expected = weights
                             .iter()
@@ -165,8 +165,8 @@ mod tests {
     #[test]
     fn matches_reference_routed_limb_mask_and_claim_order() {
         use super::super::{expected_weight, Claim, BLOWUP, MIN_M};
-        let source = Source::<QM31>::hiding(0, 3, MIN_M, BLOWUP, [0; 32]).unwrap();
-        let q = |x| QM31::from_i64(x) + basis::<QM31>(1).unwrap();
+        let source = Source::<QM31>::hiding(0, 3, MIN_M, BLOWUP, [0; 32]).expect("hiding source");
+        let q = |x| QM31::from_i64(x) + basis::<QM31>(1).expect("extension basis");
         let make = |at, limbs| Routed {
             at,
             limbs,
@@ -178,14 +178,17 @@ mod tests {
         };
         let dense = |r: &Routed<QM31>| {
             let mut weights = Vec::new();
-            let x = stele_poly::eq_table(&r.point).unwrap();
+            let x = stele_poly::eq_table(&r.point).expect("column equality table");
             for limb in 0..r.limbs {
                 for (i, w) in x.iter().enumerate() {
-                    weights.push((r.at + limb * x.len() + i, basis::<QM31>(limb).unwrap() * *w));
+                    weights.push((
+                        r.at + limb * x.len() + i,
+                        basis::<QM31>(limb).expect("limb basis") * *w,
+                    ));
                 }
             }
             for (i, w) in stele_poly::eq_table(&r.mask_point)
-                .unwrap()
+                .expect("mask equality table")
                 .into_iter()
                 .enumerate()
             {
