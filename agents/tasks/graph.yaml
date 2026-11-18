@@ -5572,3 +5572,23 @@ tasks:
   - compare every tree and top and every dense batch round and final to the CPU reference at its genuine transcript challenges; record failure on errors and incomplete coverage
   - charge cold context and compilation, host normalization and grouping, transfers, device construction and outputs; identify residual protocol work separately and preserve independent expected-model verification
   - retain source and job provenance and the current Mac laps; no core binding, protocol change or integrated proof credit
+
+- id: E16-40t
+  epic: E16
+  title: Measure genuine masked GKR construction and rounds at stories42M scale
+  lane: V
+  depends:
+  - E16-40p
+  - E16-40a
+  rfc:
+  - RFC-0008 A7
+  - RFC-0014 §§1, 4, 5 and A1
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40t-t32-gkr
+  acceptance:
+  - compare 385 actual GKR steps against the original CPU polynomials, challenges and compact finals in a complete stories42M T32 proof with expected-model and wrong-model controls; classify any oversize step as CPU work
+  - charge input preparation, allocations, H2D, construction, rounds, folds and readbacks; retain CPU masking, transcript, final expansion and routing costs
+  - bound allocations before each launch and record driver pool high-water and process memory for this component; obtain independent review and mandatory gates
