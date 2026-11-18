@@ -1,8 +1,10 @@
-# E16-40m bounded GKR qualification — queued
+# E16-40m bounded GKR qualification — captured
 
 Source `86d503b3edbc3379a5887d656b858c1e334d09fd` has the
 [implementation reviews](e16-40m-implementation.md). The single submitted
-Lucid job is **6733**. No hardware result is available yet.
+Lucid job is **6733**. It completed successfully without requeue or restart;
+the [actual receipt](e16-40m-h100.json) retains the audited output. The preparation
+history below describes the same immutable campaign.
 
 Fresh capture reviewers `gkr_capture_spec_review` and
 `gkr_capture_standards_review` both passed the qualification package. They checked
@@ -41,7 +43,7 @@ preflight evidence are retained at
 sibling `e16-40m-{held-allocation,allocation-override,released-allocation}.log`.
 
 Actual H100 qualification and mandatory current-main/intended-merge-tree gates
-remain pending. This supplies no integrated GPU proof, performance, complete
+remain required for merge. This supplies no integrated GPU proof, performance, complete
 pipeline-memory or ADR-127 GO credit.
 
 ## Machine-metadata collision repaired before execution
@@ -68,3 +70,22 @@ After both reviews, a live check verified every remote pin, the held state and
 absence of a run directory. The same job was released; readback remained pending,
 with zero runtime, no allocation and zero restarts. No resubmission occurred.
 The release readback hash is retained in the repair receipt.
+
+## Terminal auditor revision
+
+The [auditor record](e16-40m-terminal-audit.json) pins the corrected external
+auditor and four passing synthetic controls. It requires exact command/test
+receipts, independent corpus/accounting checks, bounded clocks and GNU timing,
+safe archive extraction, and one job-bound scheduler record with no restarts.
+
+Independent standards review found that the shared timer reader could prefer
+appended BSD values or the first of duplicate GNU fields. Four resealed timer
+mutations reproduced acceptance before the fix. The auditor now requires unique,
+anchored GNU wall/RSS fields and rejects BSD timing before invoking that reader.
+The same fix was applied to the E16-40n and E16-40q auditors, with their old files
+preserved. No source, capture, pins or scheduler request changed.
+
+Fresh `gkr_terminal_spec_review` and `gkr_terminal_standards_review` both PASS
+the corrected m/n/q auditors and independently ran all four tests in each.
+Actual job 6733 passes the corrected auditor across all 38 evidence payloads.
+Qualification review and mandatory merge gates remain separate requirements.
