@@ -416,14 +416,14 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
             statement,
             length,
             window,
-            zk::BatchExecution::with_sources(&session),
+            zk::BatchExecution::with_lookup(&session),
         );
         if result.is_ok() {
             let c = session.counts();
             let memory = device.memory();
             eprintln!("cuda originals={} batches={} rounds={} folds={} finals={} h2d_bytes={} d2h_bytes={}",
-                c.originals, c.batches, c.rounds, c.folds, c.finals, c.uploaded_bytes - c.gkr_uploaded_bytes - c.relation_uploaded_bytes,
-                c.downloaded_bytes - c.gkr_downloaded_bytes - c.relation_downloaded_bytes);
+                c.originals, c.batches, c.rounds, c.folds, c.finals, c.uploaded_bytes - c.gkr_uploaded_bytes - c.relation_uploaded_bytes - c.lookup_uploaded_bytes,
+                c.downloaded_bytes - c.gkr_downloaded_bytes - c.relation_downloaded_bytes - c.lookup_downloaded_bytes);
             eprintln!("cuda_gkr steps={} expected_rounds={} rounds={} folds={} finals={} h2d_bytes={} d2h_bytes={} streamed_layer_bytes={} planned_peak_bytes={} observed_peak_bytes={}",
                 c.gkr_steps, c.gkr_expected_rounds, c.gkr_rounds, c.gkr_folds, c.gkr_finals,
                 c.gkr_uploaded_bytes, c.gkr_downloaded_bytes, c.gkr_layer_source_bytes,
@@ -435,10 +435,13 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
             eprintln!("cuda_sources originals={} visits={} responses={} hashes={} h2d_bytes={} d2h_bytes={} host_salt_bytes={} observed_peak_bytes={}",
                 c.originals, c.source_visits, c.source_responses, c.source_hashes, c.source_uploaded_bytes,
                 c.source_downloaded_bytes, 32 * c.source_responses, c.source_observed_peak_bytes);
+            eprintln!("cuda_lookup tops={} rebuilds={} child_views={} child_released={} h2d_bytes={} d2h_bytes={} planned_peak_bytes={} observed_peak_bytes={}",
+                c.lookup_tops,c.lookup_rebuilds,c.lookup_child_views,c.lookup_child_released,
+                c.lookup_uploaded_bytes,c.lookup_downloaded_bytes,c.lookup_planned_peak_bytes,c.lookup_observed_peak_bytes);
             if let Ok(m) = memory {
                 eprintln!(
                     "cuda_memory total_bytes={} outside_pool_bytes={} pool_high_bytes={} observed_peak_bytes={}",
-                    m.total, m.outside_pool, m.pool_high, c.observed_peak_bytes.max(c.relation_observed_peak_bytes).max(c.gkr_observed_peak_bytes).max(c.source_observed_peak_bytes)
+                    m.total, m.outside_pool, m.pool_high, c.observed_peak_bytes.max(c.relation_observed_peak_bytes).max(c.gkr_observed_peak_bytes).max(c.source_observed_peak_bytes).max(c.lookup_observed_peak_bytes)
                 );
             }
         }

@@ -35,6 +35,7 @@ import re
 import subprocess
 
 from hiding_source_counts import check_source_work
+from lookup_tree_counts import check_lookup_work
 
 
 def gnu_time(path):
@@ -89,11 +90,14 @@ def device_counters(stderr, verified, byte, driver, proof=None):
     has_gkr = any(line.startswith('cuda_gkr ') for line in lines)
     has_relations = any(line.startswith('cuda_relations ') for line in lines)
     has_sources = any(line.startswith('cuda_sources ') for line in lines)
+    has_lookup = any(line.startswith('cuda_lookup ') for line in lines)
+    if has_lookup and not has_sources:
+        raise ValueError('selected lookup execution requires original source owners')
     if has_sources and not has_relations:
         raise ValueError('selected CUDA sources require combined relation execution')
     if has_relations and not has_gkr:
         raise ValueError('selected CUDA relations require the combined GKR execution')
-    prefixes = ['cuda '] + (['cuda_gkr '] if has_gkr else []) + (['cuda_relations '] if has_relations else []) + (['cuda_sources '] if has_sources else []) + ['cuda_memory ']
+    prefixes = ['cuda '] + (['cuda_gkr '] if has_gkr else []) + (['cuda_relations '] if has_relations else []) + (['cuda_sources '] if has_sources else []) + (['cuda_lookup '] if has_lookup else []) + ['cuda_memory ']
     if not driver and not lines:
         return {}
     if not driver or byte != 4 or len(lines) != len(prefixes):
@@ -104,7 +108,7 @@ def device_counters(stderr, verified, byte, driver, proof=None):
             raise ValueError('unexpected CUDA counters')
         for entry in line[len(prefix):].split():
             name, value = entry.split('=')
-            if prefix in ('cuda_gkr ', 'cuda_relations ', 'cuda_sources '):
+            if prefix in ('cuda_gkr ', 'cuda_relations ', 'cuda_sources ', 'cuda_lookup '):
                 name = prefix.removeprefix('cuda_').strip() + '_' + name
             if name in fields or not re.fullmatch(r'[0-9]+', value):
                 raise ValueError('invalid CUDA counter')
@@ -148,6 +152,10 @@ def device_counters(stderr, verified, byte, driver, proof=None):
             raise ValueError('CUDA sources require the independently verified proof')
         source = {name.removeprefix('sources_'): value for name, value in fields.items() if name.startswith('sources_')}
         check_source_work(source, proof, verified, fields['total_bytes'] * 2 // 5)
+    if has_lookup:
+        check_lookup_work({k.removeprefix('lookup_'): v for k, v in fields.items() if k.startswith('lookup_')}, verified, fields['total_bytes'] * 2 // 5)
+        if fields['gkr_streamed_layer_bytes'] != 0:
+            raise ValueError('retained GKR layers transferred from host')
     peak = fields['outside_pool_bytes'] + fields['pool_high_bytes']
     if not 0 < max(peak, fields.get('observed_peak_bytes', 0)) <= fields['total_bytes'] * 2 // 5:
         raise ValueError('CUDA memory exceeds RFC-0014 A1')

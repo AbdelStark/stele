@@ -15,6 +15,7 @@ enum Change {
     Round,
     Root,
     Sibling,
+    LookupDenominator,
 }
 struct Changed<'d, const ROUND: bool> {
     device: Session<'d>,
@@ -166,6 +167,39 @@ impl<'d> HidingBackend for Changed<'d, false> {
     }
 }
 
+impl<'d> stele_kernels::lookup::LookupBackend for Changed<'d, false> {
+    type Tree<'s>
+        = <Session<'d> as stele_kernels::lookup::LookupBackend>::Tree<'s>
+    where
+        Self: 's;
+    fn lookup_top(
+        &self,
+        input: &stele_kernels::lookup::Input<'_>,
+        owners: &[&Self::Original<'_>],
+    ) -> Result<Vec<[QM31; 2]>, Error> {
+        let mut pairs = self.device.lookup_top(input, owners)?;
+        if self.target == Change::LookupDenominator && !self.injected.replace(true) {
+            pairs.first_mut().ok_or(Error::Geometry)?[1] = QM31::ZERO;
+        }
+        Ok(pairs)
+    }
+    fn lookup_tree<'s>(
+        &'s self,
+        input: &stele_kernels::lookup::Input<'_>,
+        owners: &[&Self::Original<'_>],
+    ) -> Result<Self::Tree<'s>, Error> {
+        self.device.lookup_tree(input, owners)
+    }
+    fn lookup_gkr<'s>(
+        &'s self,
+        key: stele_kernels::lookup::Key,
+        visit: stele_kernels::lookup::Visit<'_, Self::Tree<'_>>,
+        input: &GkrConstruction<'_, QM31>,
+    ) -> Result<Self::Gkr<'s>, Error> {
+        self.device.lookup_gkr(key, visit, input)
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args_os().skip(1).map(PathBuf::from).collect();
     let (case, model_commitment, model_secret, stage) = match args.as_slice() {
@@ -178,6 +212,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         [case, commitment, secret, stage] if stage.as_os_str() == "source-root" => (case,commitment,secret,"source-root"),
         [case, commitment, secret, stage] if stage.as_os_str() == "source-sibling" => (case,commitment,secret,"source-sibling"),
+        [case, commitment, secret, stage] if stage.as_os_str() == "lookup-denominator" => (case,commitment,secret,"lookup-denominator"),
         _ => {
             return Err(
                 "expected first parity case, commitment, state and optional gkr, relation, source-root or source-sibling".into(),
@@ -203,6 +238,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .try_into()
         .map_err(|_| "invalid fixture seed")?;
     let target = match stage {
+        "lookup-denominator" => Change::LookupDenominator,
         "source-root" => Change::Root,
         "source-sibling" => Change::Sibling,
         _ => Change::Round,
@@ -231,7 +267,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             index: &mut index,
         },
-        if target != Change::Round {
+        if target == Change::LookupDenominator {
+            zk::BatchExecution::with_lookup(&material)
+        } else if target != Change::Round {
             zk::BatchExecution::with_sources(&material)
         } else if relation {
             zk::BatchExecution::with_relations(&changed)
@@ -246,6 +284,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // this field backend just to match its nested variants in this rejection binary.
     let claimed = if target == Change::Round {
         "Zk(Sumcheck(RoundSumMismatch))"
+    } else if target == Change::LookupDenominator {
+        "Zk(DenominatorZero)"
     } else {
         "Zk(Pcs(Merkle(RootMismatch)))"
     };
@@ -257,7 +297,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         material.device.counts()
     };
-    if target != Change::Round {
+    if target == Change::LookupDenominator {
+        if !material.injected.get()
+            || counts.lookup_tops != 1
+            || counts.gkr_steps != 0
+            || counts.lookup_rebuilds != 0
+        {
+            return Err("invalid abort point after changed top denominator".into());
+        }
+    } else if target != Change::Round {
         if !material.injected.get()
             || counts.source_responses == 0
             || counts.source_visits == 0
@@ -312,7 +360,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         return Err("failed round did not restore the reservation".into());
     }
-    if target != Change::Round {
+    if target == Change::LookupDenominator {
+        println!("rejected_cuda_{stage}=DenominatorZero injected=1 reservation_restored=1");
+    } else if target != Change::Round {
         println!("rejected_cuda_{stage}=RootMismatch injected=1 reservation_restored=1");
     } else if relation {
         println!("rejected_cuda_relation=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1");
