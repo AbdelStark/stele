@@ -134,7 +134,9 @@ def ledger(archive, verified):
                evidence_sha256=verified["archive_sha256"],source_archive_sha256=verified["source_sha256"],
                evidence_location=f"lucid-cluster:~/stele-codex/e16-40ac-originals/public-{result['job']}.tar.gz",
                physical=physical,seeded=seeded,slurm_elapsed=verified["slurm_elapsed"],
-               receipt_sha256={name:digest(value) for name,value in raw.items() if name.startswith(("machine/","run/"))},
+               proof_sha256=result["proof_sha256"],public_sha256=result["public_sha256"],
+               cli_sha256=result["cli_sha256"],verifier_sha256=result["verifier_sha256"],
+               public_receipt_sha256={name:digest(value) for name,value in raw.items() if name.startswith(("machine/","run/"))},
                scope="The H100 checks component outputs. The CPU-authored development proof uses the ordinary verifier and wrong-model control. The production GPU proof remains unqualified.")
     out = {k:v for k,v in z.items() if k not in ("model_config","kernel_counters","stage_times_ns","plan_digest","note")}
     out.update(commit=verified["source"],workload="micro/dev-zk-stories42m-t32-original-residency-h100",
