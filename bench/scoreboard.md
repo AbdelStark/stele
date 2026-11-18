@@ -71,6 +71,8 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | NVIDIA H100 80GB HBM3 on h100-sxm-8-0 | 16 | 459.69 | 0.070 | 58.18 | 21.4 | 88.7 | — | — | — | none | 1/1 | [e20-12-e45-dev-zk-stories42m-t32-h100-cuda-0](ledger/e20-12-e45-dev-zk-stories42m-t32-h100-cuda-0.json) @ `f558939` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | NVIDIA H100 80GB HBM3 on h100-sxm-8-0 | 16 | 461.47 | 0.069 | 59.23 | 21.4 | 88.7 | — | — | — | none | 1/1 | [e20-12-e45-dev-zk-stories42m-t32-h100-cuda-3](ledger/e20-12-e45-dev-zk-stories42m-t32-h100-cuda-3.json) @ `f558939` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | NVIDIA H100 80GB HBM3 on h100-sxm-8-0 | 16 | 460.93 | 0.069 | 59.62 | 21.4 | 88.7 | — | — | — | none | 1/1 | [e20-12-e45-dev-zk-stories42m-t32-h100-cuda-4](ledger/e20-12-e45-dev-zk-stories42m-t32-h100-cuda-4.json) @ `f558939` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | 06/cf on h100-nvl-1-1-cc | 16 | 475.55 | 0.067 | 56.66 | 21.4 | 89.7 | — | — | — | none | 1/1 | [e20-18-dev-zk-stories42m-t32-h100-nvl-cpu](ledger/e20-18-dev-zk-stories42m-t32-h100-nvl-cpu.json) @ `76ef837` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | NVIDIA H100 NVL on h100-nvl-1-1-cc | 16 | 243.68 | 0.131 | 57.93 | 21.4 | 38.8 | — | — | — | none | 1/1 | [e20-18-dev-zk-stories42m-t32-h100-nvl-cuda](ledger/e20-18-dev-zk-stories42m-t32-h100-nvl-cuda.json) @ `76ef837` |
 
 Rungs with no record: L2b, L3a, L3b, L3c, L4, L5, L6.
 
