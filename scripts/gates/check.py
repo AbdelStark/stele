@@ -354,7 +354,7 @@ def bootstrap_guard(root, gate):
         expected = baseline[f'stele-{name}']
         actual = {str(p.relative_to(crate)): hashlib.sha256(p.read_bytes()).hexdigest()
                   for p in crate.rglob('*') if p.is_file()}
-        if gate == 'parity' and name == 'kernels' and actual != expected:
+        if gate == 'parity' and name == 'kernels':
             actual = scalar_kernel_surface(root, actual, expected)
         if gate == 'digest' and name in DEVELOPMENT:
             actual = development_surface(crate, name, actual, expected)

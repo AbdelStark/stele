@@ -14,6 +14,8 @@ class Surface(unittest.TestCase):
     def test_rejects_unreviewed_source_and_missing_scalar_oracle(self):
         admitted = json.loads((ROOT / 'scripts/gates/scalar-kernel-sources.json').read_text())
         scaffold = json.loads((ROOT / 'scripts/gates/bootstrap-sources.json').read_text())['stele-kernels']
+        with self.assertRaisesRegex(ValueError, 'admitted interface'):
+            gates.scalar_kernel_surface(ROOT, scaffold, scaffold)
         for name in ('src/scalar.rs', 'tests/dense.rs', 'Cargo.toml', 'src/device.rs'):
             wrong = dict(admitted)
             wrong[name] = '0' * 64
