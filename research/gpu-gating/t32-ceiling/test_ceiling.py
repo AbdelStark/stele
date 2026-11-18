@@ -16,3 +16,14 @@ class Ceiling(unittest.TestCase):
     def test_rejects_impossible_replacement(self):
         with self.assertRaisesRegex(ValueError, "disjoint"):
             project(80, {"lap_zk_detail_" + k: 10 for k in REPLACED}, 1, 2, 3, 0)
+
+
+class SourceAndBatchHost(unittest.TestCase):
+    def test_charges_only_the_observed_host_remainder(self):
+        from host import retained
+        log = ("source_material id=0 ns=3\nsource_material id=1 ns=5\nearly_sources count=2 ns=13\n"
+               "source_material id=3 ns=700\n" + "\n".join(
+                   f"batch_setup id={i} total_ns=9 copy_ns=7" for i in (1265, 1266, 1267)))
+        self.assertEqual(retained(log), dict(early_source_host_ns=5, ordinary_batch_setup_host_ns=6))
+        with self.assertRaisesRegex(ValueError, "overlapping"):
+            retained(log.replace("copy_ns=7", "copy_ns=10"))
