@@ -5782,3 +5782,19 @@ tasks:
   - Derive tuple and multiplicity views from original column IDs, aligned limb runs, claim-mask boundaries and the hiding source's actual two-dimensional geometry
   - Check every referenced base limb against the genuine stored T32 messages before qualifying the device views; include crossing a row, alias/offset near misses, repeated equal values from distinct columns and missing ownership
   - Compare all 21 tops and 21 resident rebuilds on H100 with original CPU values; account physical input allocations, qualification readbacks, transfers and ownership under the total device ceiling
+
+- id: E16-40af
+  epic: E16
+  title: Read original GKR column gathers from their authenticated source messages
+  lane: V
+  depends: [E16-40ae]
+  rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-integration
+  branch: task/E16-40af-gkr-source-views
+  acceptance:
+  - Derive source identity at the actual production column origin for every implemented GKR gather; distinguish publics, masks and challenge-derived factors even if their values match
+  - Check canonical and raw boundary statements and all 385 genuine T32 GKR round and final outputs on H100 against the CPU proof under the total allocation ceiling
+  - Classify actual H2D input bytes by gathers, public tables, masks, selectors, Fiat–Shamir inputs and descriptors; reconstruct the charged total without counting borrowed data as a transfer
