@@ -45,6 +45,7 @@ fn visit(input: Visit<'_>) {
     (root/file).write_text(visit)
     replace(file,"    let prepare_start = now();",'''    let upload_start=now();
     if !input.opening {
+        assert!(!registry.owners.contains_key(&input.id), "duplicate pinned original");
         let owner=OriginalMessage::upload(dev,input.id,input.rows,input.cols,input.message).expect("pinned original upload");
         assert!(registry.owners.insert(input.id,owner).is_none() && registry.roots.insert(input.id,input.root).is_none());
     }
