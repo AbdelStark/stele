@@ -90,6 +90,7 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | NVIDIA H100 80GB HBM3 on h100-sxm-8-0 | 16 | 233.16 | 0.137 | 58.81 | 21.4 | 38.8 | — | — | — | none | 1/1 | [e20-18-dev-zk-stories42m-t32-h100-sxm-cuda](ledger/e20-18-dev-zk-stories42m-t32-h100-sxm-cuda.json) @ `615a8ea` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | Intel(R) Xeon(R) Platinum 8480CL on h100-sxm-8-0 | 16 | 553.02 | 0.058 | 59.19 | 21.4 | 89.7 | — | — | — | none | 1/1 | [e20-20-dev-zk-stories42m-t32-h100-cpu](ledger/e20-20-dev-zk-stories42m-t32-h100-cpu.json) @ `72593eb` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | NVIDIA H100 80GB HBM3 on h100-sxm-8-0 | 16 | 186.38 | 0.172 | 58.81 | 21.4 | 24.2 | — | — | — | none | 1/1 | [e20-20-dev-zk-stories42m-t32-h100-cuda](ledger/e20-20-dev-zk-stories42m-t32-h100-cuda.json) @ `72593eb` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | 16 pinned CPU workers on h100-sxm-8-0 | 16 | 469.46 | 0.068 | 27.27 | 21.4 | 88.5 | — | — | — | none | 2/2 | [e20-22-e45-dev-zk-stories42m-t32-h100-sxm-cpu](ledger/e20-22-e45-dev-zk-stories42m-t32-h100-sxm-cpu.json) @ `27a2759` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | NVIDIA H100 80GB HBM3 on h100-sxm-8-0 | 16 | 103.93 | 0.308 | 26.80 | 21.4 | 23.7 | — | — | — | none | 2/2 | [e20-22-e45-dev-zk-stories42m-t32-h100-sxm-cuda](ledger/e20-22-e45-dev-zk-stories42m-t32-h100-sxm-cuda.json) @ `27a2759` |
 
 Rungs with no record: L2b, L3a, L3b, L3c, L4, L5, L6.
