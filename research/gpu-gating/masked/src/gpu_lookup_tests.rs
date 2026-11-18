@@ -136,3 +136,31 @@ fn matches_reference_lookup_inverse_on_h100() {
         dev.name
     );
 }
+
+#[test]
+#[ignore = "requires an allocated H100"]
+fn matches_reference_selected_top_and_resident_layers_on_h100() {
+    let dev = device();
+    for index in 0..CASES {
+        let (s, columns, beta, alpha) = fixture(SEED + 2 * index as u64);
+        let case = LookupCase::new(&s, &columns, 0).unwrap();
+        let input = case.inputs(beta, alpha);
+        let expected = case.reference(beta, alpha).unwrap();
+        let (top, timing) = super::select::top(&dev, &input).unwrap();
+        assert_eq!(top, expected.top);
+        assert_eq!(timing.download_bytes, 52 * top[0].len());
+        let (tree, timing) = super::select::resident(&dev, index, &input).unwrap();
+        assert_eq!(timing.download_bytes, 0);
+        assert_eq!(tree.compare_all(&expected.layers).unwrap(), tree.bytes());
+        assert!(tree.layer(&dev, index + 1, 1).is_err());
+        assert!(tree.layer(&dev, index, 3).is_err());
+        assert!(tree.layer(&dev, index, usize::MAX).is_err());
+    }
+    let (s, columns, _, _) = fixture(SEED);
+    let case = LookupCase::new(&s, &columns, 0).unwrap();
+    let input = case.inputs(K::ZERO, K::ZERO);
+    assert!(matches!(
+        super::select::top(&dev, &input),
+        Err(Error::Lookup(LookupError::DenominatorZero))
+    ));
+}

@@ -5592,3 +5592,24 @@ tasks:
   - compare 385 actual GKR steps against the original CPU polynomials, challenges and compact finals in a complete stories42M T32 proof with expected-model and wrong-model controls; classify any oversize step as CPU work
   - charge input preparation, allocations, H2D, construction, rounds, folds and readbacks; retain CPU masking, transcript, final expansion and routing costs
   - bound allocations before each launch and record driver pool high-water and process memory for this component; obtain independent review and mandatory gates
+
+- id: E16-40u
+  epic: E16
+  title: Consume selected lookup tops and resident lookup children in GKR
+  lane: V
+  depends:
+  - E16-40i
+  - E16-40r
+  rfc:
+  - RFC-0008 A7
+  - RFC-0014 §1, §5, A1
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-integration
+  branch: task/E16-40u-resident-lookup-gkr
+  acceptance:
+  - download only p/q/h and the denominator flags on the first visit, preserving the ordinary zero denominator abort
+  - retain the rebuilt tree on H100, use checked geometry and device identity to construct GKR child factors directly from the resident layer, and release before the leaf
+  - enforce the combined device budget before allocation and separately charge packing, transfers, allocation lifetimes and qualification-only readback
+  - compare all required tops, rebuild pairs, actual round polynomials and finals against the ordinary CPU prover on seeded cases and the complete T32 workload; preserve its independent verifier and control
