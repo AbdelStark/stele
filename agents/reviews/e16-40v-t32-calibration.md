@@ -6,9 +6,11 @@ Lucid job 6781 ran the ordinary stories42M dev-zk T32 producer at source `0a59b5
 |---|---:|---:|---|
 | Lookup tops | 19.238 | 17.856 | 21 tops, 8,736 bytes downloaded |
 | Resident rebuild | 18.904 | 16.851 | 21 trees, 1,452 checked child views |
-| GKR construction and rounds | 232.617 | 136.144 | 383 device steps and 2 budget fallbacks, including 100.611 seconds residual CPU |
+| GKR construction and rounds | 232.617 | 162.723 | 383 device steps and 2 budget fallbacks, including 100.611 seconds residual CPU and a 26.579-second upper bound for compact routing |
 | Ordinary batch preparation | 12.304 | 9.849 | All three source messages |
 | Ordinary dense rounds and folds | 4.145 | 0.224 | All 69 rounds and three finals |
+
+The GKR comparison retains the entire CPU factor-construction interval on each of the 20 admitted compact leaves. These intervals include the host routing map needed to expand the compact finals. The two fallback steps already charge all their CPU work.
 
 The rebuild qualification copied 31,023,168,864 additional bytes and took 7.497 seconds. Charging the entire readback and its synchronization raises the rebuild path to 24.348 seconds. The cold CUDA context took 5.227 seconds. Driver allocator high waters through the final batch were 29,259,566,480 bytes used and 30,098,325,504 reserved. The two GKR fallback steps retained their full CPU cost. [Combined ledger](../../bench/ledger/e16-40v-t32-resident-gkr-batch-h100.json)
 
