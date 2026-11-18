@@ -1,7 +1,8 @@
 // RFC-0008 A7: evaluate one span of an actual GKR factor on its original inputs.
 // Operations are the repr(u32) variants of gkr_build::Op, in order.
 __device__ __forceinline__ Q gkr_entry(u32 op, u32 arg, u32 pos, u32 begin,
-                                      const u32 *data, const u32 *shifts, u32 shift_count) {
+                                      const u32 *data, const u32 *shifts, u32 shift_count,
+                                      u64 original_at, u32 row_shift) {
   switch (op) {
   case 0: // Constant.
     return qembed(arg);
@@ -20,11 +21,17 @@ __device__ __forceinline__ Q gkr_entry(u32 op, u32 arg, u32 pos, u32 begin,
     return qadd(qembed(a), qmulm(qload(data, 0), msub(b, a)));
   }
   case 3: // GatherBase.
-  case 4: { // GatherExt.
+  case 4: // GatherExt.
+  case 7: { // OriginalBase: gather directly from the certified M' data quadrant.
     u64 x = 0;
     for (u32 k = 0; k < shift_count; ++k)
       x = (x << 1) | ((pos >> shifts[k]) & 1);
-    Q value = op == 3 ? qembed(data[x]) : qload(data, x);
+    if (op == 7) {
+      // Each data row of 2^row_shift limbs has an equally wide mask half.
+      u64 logical = original_at + x;
+      x = logical + ((logical >> row_shift) << row_shift);
+    }
+    Q value = op == 4 ? qload(data, x) : qembed(data[x]);
     return qadd(value, qembed(arg));
   }
   case 5: // Child-layer pairs in row-major order.
@@ -43,12 +50,12 @@ __device__ __forceinline__ Q gkr_entry(u32 op, u32 arg, u32 pos, u32 begin,
 
 extern "C" __global__ void gkr_build_span(u32 *out, u32 base, const u32 *data,
     const u32 *shifts, u32 shift_count, u32 op, u32 arg, u32 period,
-    u32 begin, u32 width, u64 count) {
+    u32 begin, u32 width, u64 count, u64 original_at, u32 row_shift) {
   // Visit only the entries this span owns; one thread per destination.
   GRID_STRIDE(i, count) {
     u32 pos = begin + (u32)(i % width);
     u64 destination = (i / width) * period + pos;
-    Q value = gkr_entry(op, arg, pos, begin, data, shifts, shift_count);
+    Q value = gkr_entry(op, arg, pos, begin, data, shifts, shift_count, original_at, row_shift);
     if (base) out[destination] = mcanon(value.a0);
     else qstore(out, destination, value);
   }
