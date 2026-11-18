@@ -277,55 +277,41 @@ mod source_budget_tests {
 
     #[test]
     #[ignore = "requires a dedicated fresh CUDA process"]
-    fn accepts_primed_source_backing_before_any_private_original() {
-        let device = Cuda::open().unwrap();
-        let initial = device.memory().unwrap();
-        let initial_stack = device
-            .ctx
-            .get_limit(sys::CUlimit::CU_LIMIT_STACK_SIZE)
-            .unwrap();
+    fn accepts_primed_source_backing_before_any_private_original() -> Result<(), Error> {
+        let device = Cuda::open()?;
+        let initial = device.memory()?;
+        let initial_stack = device.ctx.get_limit(sys::CUlimit::CU_LIMIT_STACK_SIZE)?;
         {
-            let _guard = ALLOCATION.lock().unwrap();
-            device.prime_source_kernels().unwrap();
+            let _guard = ALLOCATION.lock().expect("test owns device");
+            device.prime_source_kernels()?;
         }
-        device.stream.synchronize().unwrap();
-        let ready = device.memory().unwrap();
-        let stack = device
-            .ctx
-            .get_limit(sys::CUlimit::CU_LIMIT_STACK_SIZE)
-            .unwrap();
-        let leaf_local = device
-            .kernel("leaf_kernel")
-            .unwrap()
-            .local_size_bytes()
-            .unwrap();
+        device.stream.synchronize()?;
+        let ready = device.memory()?;
+        let stack = device.ctx.get_limit(sys::CUlimit::CU_LIMIT_STACK_SIZE)?;
+        let leaf_local = device.kernel("leaf_kernel")?.local_size_bytes()?;
         eprintln!("source_a1_initial_outside_bytes={} source_a1_ready_outside_bytes={} initial_stack={initial_stack} ready_stack={stack} leaf_local_bytes={leaf_local}", initial.outside_pool, ready.outside_pool);
         // A deep multi-chunk column and enough leaves for the full production grid.
         for (id, rows, columns) in [(0, 2048, 1024), (1, 16, 1 << 17)] {
             let session = device.session();
             let g = SourceGeometry { id, rows, columns };
             let words = vec![M31::from_u64(5); rows * columns];
-            let source = session.original(g, &words).unwrap();
+            let source = session.original(g, &words)?;
             let mut hashes = 0;
-            let (tree, _) = session
-                .prepare_columns(g, &source, &[3; 32], &mut hashes)
-                .unwrap();
+            let (tree, _) = session.prepare_columns(g, &source, &[3; 32], &mut hashes)?;
             assert_eq!(hashes, (8 * columns - 1) as u64);
-            let response = session.selected_column(g, &tree, 4 * columns - 1).unwrap();
+            let response = session.selected_column(g, &tree, 4 * columns - 1)?;
             assert_eq!(response.symbols.len(), rows);
-            let current = device.memory().unwrap();
+            let current = device.memory()?;
             eprintln!("source_a1_completed_id={id} outside_bytes={} pool_high_bytes={} physical_budget_bytes={}", current.outside_pool, current.pool_high, current.total / 5 * 2);
             assert!(
                 current.outside_pool <= ready.outside_pool,
                 "outside-pool allocation grew after priming"
             );
             assert_eq!(
-                device
-                    .ctx
-                    .get_limit(sys::CUlimit::CU_LIMIT_STACK_SIZE)
-                    .unwrap(),
+                device.ctx.get_limit(sys::CUlimit::CU_LIMIT_STACK_SIZE)?,
                 stack
             );
         }
+        Ok(())
     }
 }
