@@ -17,11 +17,21 @@ pub struct Counts {
     pub finals: usize,
     pub uploaded_bytes: u64,
     pub downloaded_bytes: u64,
+    pub gkr_steps: usize,
+    pub gkr_expected_rounds: usize,
+    pub gkr_rounds: usize,
+    pub gkr_folds: usize,
+    pub gkr_finals: usize,
+    pub gkr_uploaded_bytes: u64,
+    pub gkr_downloaded_bytes: u64,
+    pub gkr_layer_source_bytes: u64,
+    pub gkr_planned_peak_bytes: usize,
+    pub gkr_observed_peak_bytes: usize,
 }
 
 /// The source registry lasts for exactly one proof attempt.
 pub struct Session<'d> {
-    device: &'d Cuda,
+    pub(crate) device: &'d Cuda,
     ids: RefCell<Vec<u64>>,
     counts: Cell<Counts>,
 }
@@ -39,7 +49,7 @@ impl Session<'_> {
     pub fn counts(&self) -> Counts {
         self.counts.get()
     }
-    fn record(&self, update: impl FnOnce(&mut Counts)) {
+    pub(crate) fn record(&self, update: impl FnOnce(&mut Counts)) {
         let mut counts = self.counts.get();
         update(&mut counts);
         self.counts.set(counts);
@@ -55,7 +65,7 @@ enum Face {
     Ext(CudaSlice<[u32; 4]>),
 }
 #[derive(Clone, Copy, PartialEq)]
-enum Phase {
+pub(crate) enum Phase {
     Round,
     Fold,
     Poisoned,
@@ -103,10 +113,10 @@ impl<'d> Backend<QM31> for Session<'d> {
             staging.clear();
             staging.extend(chunk.iter().map(|w| w.as_u32()));
             let start = i * (1 << 20);
-            stream.memcpy_htod(
+            self.device.complete_transfer(stream.memcpy_htod(
                 &staging,
                 &mut device_words.slice_mut(start..start + chunk.len()),
-            )?;
+            ))?;
         }
         let peak = self.device.check_peak()?;
         ids.push(geometry.id);
@@ -177,7 +187,7 @@ impl<'d> Backend<QM31> for Session<'d> {
             })
         }?;
         let mut result = [[0u32; 4]; 3];
-        stream.memcpy_dtoh(&state.polynomial, &mut result[..])?;
+        device.complete_transfer(stream.memcpy_dtoh(&state.polynomial, &mut result[..]))?;
         let [a, b, c] = result;
         let result = [canonical(a)?, canonical(b)?, canonical(c)?];
         state.phase = Phase::Fold;
@@ -259,11 +269,12 @@ impl<'d> Backend<QM31> for Session<'d> {
         let Face::Ext(face) = &state.face else {
             return Err(Error::Phase);
         };
-        let stream = &state.session.device.stream;
+        let device = state.session.device;
+        let stream = &device.stream;
         let mut w = [[0u32; 4]; 1];
         let mut f = [[0u32; 4]; 1];
-        stream.memcpy_dtoh(&state.weights.slice(..1), &mut w[..])?;
-        stream.memcpy_dtoh(&face.slice(..1), &mut f[..])?;
+        device.complete_transfer(stream.memcpy_dtoh(&state.weights.slice(..1), &mut w[..]))?;
+        device.complete_transfer(stream.memcpy_dtoh(&face.slice(..1), &mut f[..]))?;
         let pair = [canonical(w[0])?, canonical(f[0])?];
         state.session.record(|c| {
             c.finals += 1;
@@ -296,10 +307,10 @@ impl<'d> Session<'d> {
         let mut face = stream.alloc_zeros::<u32>(len)?;
         let partials = stream.alloc_zeros::<[u32; 4]>(partial_count)?;
         let polynomial = stream.alloc_zeros::<[u32; 4]>(3)?;
-        let contributions = stream.clone_htod(&packed.weights)?;
-        let gammas = stream.clone_htod(&packed.gammas)?;
-        let runs = stream.clone_htod(&packed.runs)?;
-        let offsets = stream.clone_htod(&packed.offsets)?;
+        let contributions = device.complete_transfer(stream.clone_htod(&packed.weights))?;
+        let gammas = device.complete_transfer(stream.clone_htod(&packed.gammas))?;
+        let runs = device.complete_transfer(stream.clone_htod(&packed.runs))?;
+        let offsets = device.complete_transfer(stream.clone_htod(&packed.offsets))?;
         let tile = TILE as u64;
         let half = (len / 2) as u64;
         let kernel = device.kernel("batch_weights")?;

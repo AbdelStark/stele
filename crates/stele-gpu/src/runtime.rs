@@ -81,8 +81,11 @@ impl Cuda {
             },
             ..Default::default()
         };
-        let ptx = compile_ptx_with_opts(include_str!("dense.cu"), options)
-            .map_err(|error| Error::Compile(error.to_string()))?;
+        let ptx = compile_ptx_with_opts(
+            concat!(include_str!("dense.cu"), "\n", include_str!("gkr.cu")),
+            options,
+        )
+        .map_err(|error| Error::Compile(error.to_string()))?;
         let module = ctx.load_module(ptx)?;
         let stream = ctx.default_stream();
         Ok(Self {
@@ -142,6 +145,17 @@ impl Cuda {
             return Err(Error::Budget);
         }
         Ok(lock)
+    }
+    /// Pageable HostSlice transfers use the asynchronous driver entry points. Wait even
+    /// on a submission error before the caller reuses or releases its host storage.
+    pub(crate) fn complete_transfer<T>(
+        &self,
+        submission: Result<T, DriverError>,
+    ) -> Result<T, Error> {
+        let completion = self.stream.synchronize();
+        let value = submission?;
+        completion?;
+        Ok(value)
     }
     pub(crate) fn check_peak(&self) -> Result<usize, Error> {
         self.stream.synchronize()?;
