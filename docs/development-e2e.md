@@ -241,7 +241,9 @@ target/cpu/release/stele verify-dev --public /tmp/dev-e2e/cuda-public.bin \
   --proof /tmp/dev-e2e/cuda-proof.bin --expect-model "$model_digest"
 ```
 
-The prover reports ordinary batch, GKR, relation and source counters on stderr. The parity gate checks the produced proof and public bytes against the pinned CPU reference, replays the verifier and exercises failures before publishing a proof. Run it on the allocated GPU with `scripts/gates/parity.sh`. The qualification ledger records the stage coverage and the remaining CPU work for its source revision. [H100 complete-proof parity](../bench/ledger/e20-18-h100-complete-hiding-source-proof-parity.json)
+The GPU constructs the salted Circle commitments, returns authenticated columns, builds lookup trees and keeps their child layers on-device. It computes each masked relation and GKR sumcheck and every degree-two batch, including the final shared batch. The host constructs the witness, owns the transcript, checks rounds, derives the opening functionals, and verifies the result before committing the proof index. The CPU CLI above uses the byte-4 reference verifier. The independent registered verifier described earlier handles byte 5.
+
+The CUDA prover writes work and physical memory counters to stderr. Run `scripts/gates/parity.sh` on an allocated H100 to compare the complete public inputs and proofs for 50 pinned CPU cases and exercise the fault controls. [Complete H100 parity and fault controls](../bench/ledger/e20-22-h100-complete-shared-proof-parity.json)
 
 Eight-layer window, `T = 64`, one Apple laptop, one run each, back to back
 (`bench/ledger/e12-14-synthetic-8layer-mac.json` and
