@@ -5701,3 +5701,19 @@ tasks:
   - Bound construction and first-fold live allocations in factor order, with actual mask consumption, scratch, staging and stream-ordered frees
   - Release a final child owner after synced factor construction and before promotions with a checked last layer
   - Compare 1000 seeded canonical/raw statements and all rounds and finals; measure all 385 T32 steps without skips under the device budget with the real lookup tree
+
+- id: E16-40aa
+  epic: E16
+  title: Calibrate original GKR construction and rounds on the T32 laps host
+  lane: V
+  depends: [E16-40o, E16-40t]
+  rfc: [RFC-0008 A7, RFC-0014 §5 and A1, RFC-0018 A1]
+  skill: benchmark-runner
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40aa-mac-gkr-calibration
+  acceptance:
+  - Measure all 385 original GKR steps of a complete balanced stories42M T32 proof on the quiet Mac with 16 threads and the same lookup geometry as the H100 run
+  - Separate CPU round and fold arithmetic from masking, expansion and transcript work and retain host construction of the compact expansion map
+  - Validate a pinned-model proof and changed-pin rejection with the separately built verifier, reconcile the disjoint intervals and record the calibration in a ledger
