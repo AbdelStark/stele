@@ -1,0 +1,5 @@
+# E16-41 source-mask prefix review
+
+At `2b79f5f3`, the producer initializes the same keyed XOF with the same source id and context for witness, weight and shared sources. RFC-0013 A2 item 1 consumes three rectangles of accepted data masks before A5 item 1 draws claim masks. Each bulk read requests at most the remaining number of accepted words. Even when a word is rejected, the read ends before or exactly at the final required acceptance. The residual count falls by the number of accepted words, so the first unread byte matches scalar sampling.
+
+Commitment-lane reviewer `resident_actual` accepted the source change. Both `0x7fff_ffff` and `0xffff_ffff` reject. One test places both encodings at the boundary between blocks and verifies the entire raw suffix. A separate keyed-stream comparison checks 17 following M31 draws and 79 raw bytes. Both tests passed locally after the tests-first compile failure. The helper is private to the producer. It adds no public challenge, binding, allocation or protocol API. The reviewer did not rerun timing during calibration.
