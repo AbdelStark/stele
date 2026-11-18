@@ -5272,7 +5272,7 @@ tasks:
   - RFC-0013 A8
   skill: benchmark-runner
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40f-source-assembly
   acceptance:
@@ -5283,3 +5283,26 @@ tasks:
   - keep the candidate only if host assembly is at least twice as fast and complete GPU-command wall time is lower in every matched pair; otherwise revert the candidate and retain the failed hypothesis with validated ledgers
   - preserve root-only behavior and all existing measurement fields; no core backend, source interface, committed tensor, proof byte, challenge, dependency, complete-device-budget or ADR-127 GO change; source assembly alone cannot establish the whole-prover speed gate
   - obtain independent review and mandatory gates; this lane-V successor to E16-40d consumes only the already merged E16-40b material implementation, not the unmerged lookup, batch or inventory interfaces
+
+- id: E16-40h
+  epic: E16
+  title: Qualify research CUDA field helpers on canonical and raw lazy limbs
+  lane: V
+  depends:
+  - E16-36
+  rfc:
+  - RFC-0003 §1, §2, §6
+  - RFC-0014 §1, §5
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40h-lazy-field-parity
+  acceptance:
+  - reproduce actual research CUDA helper failures on raw limbs in [p,2p) before fixing the shared arithmetic; preserve every canonical-input result and fixed reduction order
+  - compare actual M31 add, subtract, multiply and negate, QM31 add, subtract, base multiply and multiply, and stored or embedded limbs with stele-field on one million deterministic cases including 0, 1, p-1, p and 2p-1
+  - run the actual helper source as host C++ in the ordinary research test and through an explicit required-CUDA test on H100; require canonical output limbs and reject absent CUDA, with no skipped-case success
+  - rerun the existing canonical masked-round and complete-source device comparisons for the changed helpers; retain exact case receipts and do not count skipped tests as parity
+  - keep all production crates, protocol bindings, proof bytes, challenges and dependencies unchanged; distinguish primitive helper qualification from kernel, complete source, whole-proof or complete-device-memory qualification; no performance or ADR-127 GO claim
+  - retain the already queued E16-40d and E16-40f source archives unchanged; this independent lane-V successor uses only the merged E16-36 field helpers and may not substitute its result for either queued campaign
+  - obtain independent review, required H100 parity evidence and mandatory gates in stack order before merge

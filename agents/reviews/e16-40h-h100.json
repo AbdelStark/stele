@@ -1,0 +1,56 @@
+{
+  "source": "87cae62494ebbb9337954fe60003eebbce563c75",
+  "archive_sha256": "d82bcc9f9a421d04234789c929a31bce1ad787624ad67b196156115778dcb2e1",
+  "capture_sha256": "2c74dc8cfeed26f67b29b7b97f7a63f6b2ffaa14595913a2f4288498d763f2cc",
+  "manifest_sha256": "2aa034957170a5087cf360b7ea756d2d90c746fe6d397c90d7fa2705e114a761",
+  "job": "6667",
+  "host": {
+    "hostname": "h100-nvl-1-1-cc",
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "job": "6667",
+    "cuda_visible_devices": "0"
+  },
+  "device": "name, uuid, driver_version, memory.total [MiB]\nNVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 570.211.01, 95830 MiB\n",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.90.0\nLLVM version: 20.1.8\n",
+  "binary_sha256": {
+    "source_material": "480cc34fb69cf22d91593f0aafd11637477f2d7b6ea64d6a98c20a924e942235",
+    "parity": "0d044970181dc20d8cfb7fb14dda69551717745fc0bec7be86da5121f3059a24",
+    "stele_masked_gpu_bench": "32f5e0a41b93307bc34680cd792d05f4b439d6f0fa5ee25d926e42c4ddc76e42"
+  },
+  "tests": {
+    "host-field": {
+      "stdout": "\nrunning 1 test\ntest field_cases::matches_reference_cuda_field_helpers_on_host ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.53s\n\n",
+      "stderr": ""
+    },
+    "device-field": {
+      "stdout": "\nrunning 1 test\ntest gpu::field_tests::matches_reference_raw_field_helpers_on_h100 ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 7.83s\n\n",
+      "stderr": "field_device_cases=1000000 seed=274877906945 device=NVIDIA H100 NVL\n"
+    },
+    "masked-rounds": {
+      "stdout": "\nrunning 1 test\ntest matches_reference_masked_rounds_on_device ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 43.19s\n\n",
+      "stderr": "bit-equal: relation 2^8 (case 1), 8 rounds\nbit-equal: gkr 2^8 (case 2), 8 rounds\nbit-equal: relation 2^12 (case 1), 12 rounds\nbit-equal: gkr 2^12 (case 2), 12 rounds\nbit-equal: relation 2^16 (case 1), 16 rounds\nbit-equal: gkr 2^16 (case 2), 16 rounds\nbit-equal: relation 2^20 (case 1), 20 rounds\nbit-equal: gkr 2^20 (case 2), 20 rounds\n"
+    },
+    "source-material": {
+      "stdout": "\nrunning 1 test\ntest matches_reference_complete_source_material_on_device ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 13.63s\n\n",
+      "stderr": "complete_source_device_cases=1000\n"
+    }
+  },
+  "scope": "Research component qualification at the pinned source; no full-proof GPU or performance claim."
+}
