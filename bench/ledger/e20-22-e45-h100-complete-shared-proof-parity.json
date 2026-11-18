@@ -46,8 +46,97 @@
   "kind": "micro",
   "model_config": {
     "actual_profile": "development byte 4 (balanced)",
-    "cpu_cores": 16,
     "cpu_reference_sha256": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
+    "cpu_threads": 16,
+    "cpu_topology": {
+      "core_groups": [
+        {
+          "core": 64,
+          "logical_cpus": [
+            64,
+            176
+          ],
+          "socket": 1
+        },
+        {
+          "core": 65,
+          "logical_cpus": [
+            65,
+            177
+          ],
+          "socket": 1
+        },
+        {
+          "core": 66,
+          "logical_cpus": [
+            66,
+            178
+          ],
+          "socket": 1
+        },
+        {
+          "core": 67,
+          "logical_cpus": [
+            67,
+            179
+          ],
+          "socket": 1
+        },
+        {
+          "core": 68,
+          "logical_cpus": [
+            68,
+            180
+          ],
+          "socket": 1
+        },
+        {
+          "core": 69,
+          "logical_cpus": [
+            69,
+            181
+          ],
+          "socket": 1
+        },
+        {
+          "core": 70,
+          "logical_cpus": [
+            70,
+            182
+          ],
+          "socket": 1
+        },
+        {
+          "core": 71,
+          "logical_cpus": [
+            71,
+            183
+          ],
+          "socket": 1
+        }
+      ],
+      "logical_cpus": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183
+      ],
+      "lscpu_sha256": "f979cdd46754a50556e035243add86d37db05f4e3e96f10bb09ec0628dcaab2f",
+      "physical_cores": 8,
+      "source": "h100-sxm-8-0 lscpu --parse=CPU,CORE,SOCKET,ONLINE"
+    },
     "evidence_location": "lucid-cluster:~/stele-codex/e20-22-optimized-27a27592/job-6961",
     "job": 6961,
     "plan": {
