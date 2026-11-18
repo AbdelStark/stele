@@ -24,3 +24,12 @@ other proof work are orchestration costs outside that stage comparison.
 Certificate and opening transcripts, row combinations and rank checks remain
 CPU work. Whole-prover speedup and CPU/GPU proof parity require a separate
 integrated run.
+
+Lucid Slurm job 6779 completed with exit 0 on an H100 NVL. The pinned CPU
+verifier accepted the expected model and rejected the wrong model for the
+21,411,006-byte proof. All five hiding source preparations and both visits per
+source were observed. The device reproduced every salted response and Merkle
+path for 1,570 queries. The exact source shapes and per-phase counters replayed
+from the original log. The raw evidence hashes, frozen binary and proof
+hashes, stage costs, pool peak and both verifier results are recorded in the
+[source visit ledger](../../bench/ledger/e16-40w-t32-source-visits-h100.json).
