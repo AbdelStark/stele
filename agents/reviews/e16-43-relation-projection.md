@@ -42,3 +42,7 @@ column claims and verifies source openings. The transcript, degrees, rank
 checks, profile, padded-domain semantics and soundness ledger retain their
 existing definitions. Full native controls, fixed proof bytes and matched
 stories42M measurements remain merge evidence for the intended tree.
+
+## Full proof measurements
+
+On three matched 16-thread M4 Max runs of stories42M T32, the median relation factor construction time fell from 11.832 s to 1.258 s. Median complete proof wall time fell from 265.73 s to 252.39 s. All three proofs passed the model-pinned verifier and the wrong-model control. The public evidence archive for the bounded implementation `02c4e0fb` has SHA-256 `59e1dcd3fcc0ef04c7afdbe8203fc3db7270b9ef561fc22f6924d0c45e444215`. The three candidate ledgers carry all stage samples and the proof hashes. [Baseline](../../bench/ledger/e16-42-dev-zk-stories42m-t32-mac-1.json) and [candidate](../../bench/ledger/e16-43-dev-zk-stories42m-t32-mac-0.json).
