@@ -11,6 +11,12 @@ def summarize(log):
     states=runpy.run_path(str(base/"t32-resident/test_memory.py"))["check_memory"](other)
     if source["immutable_message_visits"] != 5 or source["queries"] != 1570:
         raise ValueError("incomplete original uploads or queries")
+    if resident["batch_packing"]["message_bytes"] != 0:
+        raise ValueError("batch uploaded an original twice")
+    return dict(**resident, source=source, original_gkr_steps=len(states), **check_lifetimes(log))
+
+
+def check_lifetimes(log):
     live={}
     batches=[]
     binding={}
@@ -39,10 +45,7 @@ def summarize(log):
             batches.append((row["id"],i))
         elif set(live)!={0,1,2,3} or row["original_live"] != sum(live.values()):
             raise ValueError("GKR without all four original sources")
-    if live or batches != [(1265,0),(1266,1),(1267,2)] or total!=4_299_292_672:
+    if set(binding)!={0,1,2,3,1268} or live or batches != [(1265,0),(1266,1),(1267,2)] or total!=4_299_292_672:
         raise ValueError("incomplete original lifetime")
-    if resident["batch_packing"]["message_bytes"] != 0:
-        raise ValueError("batch uploaded an original twice")
-    return dict(**resident,source=source,original_uploads=len(binding),original_payload_bytes=total,
-                original_live_bytes_during_gkr=sum(binding[i] for i in range(4)),
-                original_gkr_steps=len(states))
+    return dict(original_uploads=len(binding), original_payload_bytes=total,
+                original_live_bytes_during_gkr=sum(binding[i] for i in range(4)))
