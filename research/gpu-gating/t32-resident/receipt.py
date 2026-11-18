@@ -7,19 +7,27 @@ import runpy
 def check_resident_steps(steps, children, retained):
     """Each lookup has one final leaf. All earlier steps have the same live tree."""
     expected = []
-    for index, (step, on_device, lookup, held) in enumerate(steps):
+    for index, (step, on_device, lookup, held, variables) in enumerate(steps):
         is_leaf = index + 1 == len(steps) or steps[index + 1][2] != lookup
         if held != (None if is_leaf else lookup):
             raise ValueError("resident lookup lifetime differs from the GKR schedule")
-        if on_device and not is_leaf:
-            expected.append((step, lookup))
-    if [(row["step"], row["id"]) for row in children] != expected:
+        if is_leaf:
+            # A non-first leaf has one selector coordinate. Its domain equals
+            # the number of leaf pairs in the complete root-first tree.
+            if retained[lookup] != 32 * ((2 << variables) - 1):
+                raise ValueError("resident tree size differs from the leaf geometry")
+        elif on_device:
+            first = index == 0 or steps[index - 1][2] != lookup
+            layer = variables if first else variables - 1
+            # RFC-0008 A7 emits both child sides for each p and q factor.
+            view_bytes = 4 * 32 * (2 << layer)
+            expected.append((step, lookup, 4, view_bytes))
+    if [(r["step"], r["id"], r["views"], r["view_bytes"]) for r in children] != expected:
         raise ValueError("missing or reordered resident child")
     if {row["id"] for row in children} != set(range(len(retained))):
         raise ValueError("missing qualified lookup")
     for row in children:
-        if (row["views"] <= 0 or row["view_bytes"] <= 0
-                or retained[row["id"]] != row["retained_bytes"]):
+        if retained[row["id"]] != row["retained_bytes"]:
             raise ValueError("incomplete resident layer view")
     return sum(r["views"] for r in children), sum(r["view_bytes"] for r in children)
 
@@ -51,7 +59,7 @@ def summarize(log):
                 raise ValueError("wrong tree release")
             seen=None
         if tag in ("t32_gkr_step","t32_gkr_skip"):
-            steps.append((vals["step"], tag == "t32_gkr_step", vals["lookup"], seen))
+            steps.append((vals["step"], tag == "t32_gkr_step", vals["lookup"], seen, vals["variables"]))
         else:
             rows[tag].append(vals)
     batch_names=("batch","cpu_weights","cpu_face","round","fold","finals")
