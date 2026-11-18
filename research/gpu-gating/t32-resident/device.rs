@@ -27,6 +27,7 @@ pub(super) fn build<'a>(
     child: &mut Option<Child>,
     id: usize,
     leaf: bool,
+    final_child: bool,
 ) -> Result<(DeviceMasked<'a>, ConstructionWork), Error> {
     TREE.with_borrow_mut(|hold| {
         if leaf {
@@ -35,7 +36,8 @@ pub(super) fn build<'a>(
         }
         let tree = hold.as_ref().expect("required resident tree");
         let retained = tree.bytes();
-        let final_child = tree.is_last_child(input.layer_variables);
+        assert_eq!(final_child, tree.is_last_child(input.layer_variables),
+                   "producer schedule and paired child width disagree");
         let built = if final_child {
             dev.build_gkr_last_child(input, id, hold.take().expect("final child owner"))
         } else {
@@ -95,8 +97,19 @@ fn observe(event: Event<'_>) {
             let memory = dev.memory_sample().expect("lookup CUDA pool");
             eprintln!("t32_selected kind={kind} id={id} normalize_ns={} wall_ns={} stage_ns={} upload_ns={} tree_ns={} top_ns={} download_ns={} assemble_ns={} h2d_bytes={} d2h_bytes={} buffers_bytes={} retained_bytes={} compare_ns={} compare_bytes={compared} pool_used_high={} pool_reserved_high={} total_bytes={}",normalize.as_nanos(),wall.as_nanos(),t.stage.as_nanos(),t.upload.as_nanos(),t.tree.as_nanos(),t.top.as_nanos(),t.download.as_nanos(),t.assemble.as_nanos(),t.upload_bytes,t.download_bytes,t.buffer_peak_bytes,t.retained_bytes,qualification.as_nanos(),memory.used_high,memory.reserved_high,memory.total);
         }
-        Event::Release(_id) => TREE.with_borrow(|slot| {
-            assert!(slot.is_none(), "a final GKR child retained the tree at the next leaf");
+        Event::Release(id, first) => TREE.with_borrow_mut(|slot| {
+            if first {
+                // A one-step lookup reads its original columns immediately.
+                let tree = slot.take().expect("single-step lookup owner");
+                tree.check(dev, id).unwrap();
+                let bytes = tree.bytes();
+                let now = Instant::now();
+                drop(tree);
+                dev.sync().unwrap();
+                eprintln!("t32_lookup_release id={id} retained_bytes={bytes} release_ns={}", now.elapsed().as_nanos());
+            } else {
+                assert!(slot.is_none(), "a final GKR child retained the tree at the next leaf");
+            }
         }),
     }
 }
