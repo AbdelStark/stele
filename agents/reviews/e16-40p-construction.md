@@ -96,3 +96,20 @@ documentation-link and diff checks passed. Logs are
 PR #401 has merged; PR #403 is the single branch running full CI. This interface
 remains draft until its turn for full workspace/native/ladder validation against
 current main and the intended merge tree. Its device consumer still waits for merge.
+
+## Native inventory repair
+
+Full CI1073 (`44249901696`) rejected the two new construction files because the
+native gate's exact reductions inventory had not been updated. No proof failed;
+the native gate stopped at file admission. Tests-first `7aa3adb8` adds each path
+to the missing-file controls; `bacd5a62` admits exactly
+`src/zk_gkr_construction.rs` and `tests/common/gkr_construction.rs`.
+The exact-set comparison and unreviewed-file rejection remain unchanged.
+
+Honest admission failed before the repair. The two focused inventory tests and
+all 16 field-source gate tests pass afterward. Logs:
+`stele-validation/e16-40p-{layout-red,layout-green,field-source-gate}.log`.
+Fresh `construction_inventory_spec_review` (owning lane P) and
+`construction_inventory_standards_review` (lane B) both PASS the pinned
+`1a6599b7...bacd5a62` delta, independently running the focused tests.
+Full CI must pass again on the resulting head and current-main merge tree.
