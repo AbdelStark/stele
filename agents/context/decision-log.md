@@ -4384,3 +4384,43 @@ the affected batch path at source `75302055`; provenance and exclusions are in
 inventory preparation failure for the candidate, not the remaining full prover
 or actual-size risk. Post-execution review and mandatory merge gates remain due;
 all three tasks stay in progress until their remaining acceptance is met.
+
+## ADR-138 — Reopen the development-tier resident GPU implementation on the measured E45 candidate (E16-40ag)
+
+ADR-127 requires a measured resident ceiling of at least 3× before opening
+a core backend task. The three verified stories42M byte-4, 32-token proofs
+on the M4 Max use E45 CPU source `da0da773`. Lucid job 6800 measured
+the actual source, lookup, GKR and ordinary batch operations on one H100
+NVL at source `323f6218`. All 385 GKR steps ran within the measured
+39,786,276,454-byte device budget while the original sources stayed live.
+
+| E45 CPU wall (s) | Projected resident (s) | Resident ratio | Projected cold (s) | Cold ratio |
+|---:|---:|---:|---:|---:|
+| 220.08 | 67.655 | 3.253× | 72.981 | 3.016× |
+| 221.23 | 67.215 | 3.291× | 72.541 | 3.050× |
+| 220.50 | 68.733 | 3.208× | 74.059 | 2.977× |
+
+The calculation replaces seven disjoint CPU intervals. It keeps the full
+masked relation and ordinary batch round costs, source certification,
+self-verification, and the rest of the original CPU wall. It charges the
+largest observed host remainders for GKR, source admission and batch setup,
+the actual device work and transfers, and the observed source lock wait.
+Cold operation adds a measured context and program setup. The third cold
+case falls below 3×. The two hosts have different CPUs. Each ratio is a
+projection for the measured workload and source revision. The inference
+proof that qualified the component measurements was CPU-authored.
+
+Decision proposed for independent review. All three resident projections
+clear ADR-127's threshold. Reopen the development-tier implementation on
+this E45-qualified source, through an interface-first task and an explicit
+field-kernel dependency amendment. Carry E45 or an equally qualified CPU
+baseline into the eventual merge tree. Keep the CPU default, the ordinary
+verifier, protocol bytes, transcript and index ownership. Charge all stages
+in the subsequent same-host end-to-end CPU and GPU benchmark. Release
+requires the actual parity gate, independently verified complete proofs
+and memory evidence. The broader E10-01 and E16-37 milestones retain
+their original acceptance criteria. This decision grants no profile promotion.
+
+Machine-readable evidence, input hashes, retained stages and per-sample charges
+are in [the projection](../../bench/ledger/e16-40ag-t32-resident-projection.json)
+and [the host calibration](../../bench/ledger/e16-40ag-t32-mac-source-batch-host.json).

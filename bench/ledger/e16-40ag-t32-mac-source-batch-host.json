@@ -1,0 +1,189 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "e388a1d3f86a71e0d6fd726e015d65b830906041",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "Apple M4 Max (48 GiB), 16 CPU threads",
+  "driver": "native",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "early_sources_per_proof": 2,
+    "ordinary_batches_per_proof": 3,
+    "proofs": 3,
+    "whole_process_peak_rss_bytes": 35476520960
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk",
+    "evidence_sha256": "0e8174c7d40401c41b881c08755bab7fce18a312a983afb36a08960983b67ddf",
+    "plan": {
+      "checked": "23..32",
+      "inputs": {
+        "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+        "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+        "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+        "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+      },
+      "lifetime_capacity": 8,
+      "lifetime_indices": [
+        0,
+        1,
+        2
+      ],
+      "profile": "dev-zk",
+      "stages": [
+        "sources_prepare",
+        "batch_face"
+      ],
+      "tokens": 32,
+      "workload": "dev/stories42m-t32"
+    },
+    "process": {
+      "build": [
+        "cargo",
+        "+1.90.0",
+        "build",
+        "--release",
+        "--locked",
+        "--offline",
+        "-p",
+        "stele-cli"
+      ],
+      "capture_sha256": "9831e0e273a4c74e970bec32de97ec3c5dfc0b0cb56e5c6361dc1f7bfef52ac7",
+      "cli_sha256": "36d2d42f202840c9102b0984d22ed29a29a301cf1540dc6061a53ccdd61c4f05",
+      "cpu": "hw.model: Mac16,5\nmachdep.cpu.brand_string: Apple M4 Max\nhw.memsize: 51539607552\nhw.physicalcpu: 16",
+      "input_sha256": {
+        "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+        "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+        "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+        "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+      },
+      "instrumentation": "e388a1d3f86a71e0d6fd726e015d65b830906041",
+      "instrumented_sha256": {
+        "stele-pcs/src/preparation.rs": "391894cc24cdf5820db2ad8f5ba2258973d5017b05c67791ef944625e6912102",
+        "stele-reductions/src/zk_claims.rs": "a824be92666fd91dca8d757119fc0edcce7ef67bc257e437a499be31b9d55d0f"
+      },
+      "operation_source": "da0da773c9a4db2dbc3907ebe0adec40594ee823",
+      "threads": 16,
+      "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+      "verifier_sha256": "bf163fa4c291cb8bef783e2c59794781cc0d6fdaa00ecbfb30847b2999162e29"
+    },
+    "sample_count": 3,
+    "samples": [
+      {
+        "evidence_sha256": {
+          "prove.command.json": "57cd7d85066b8841c57ed872ff974ab20e5a1c11ec25825be7d68a32e574ff10",
+          "prove.err": "13d1ed9a69d56f9259862c16b32757684c06f60faf4ee1cf78c5adc08ffec206",
+          "prove.time": "fdd1f7a7b8a3664c075951cf37a8321f6fb2128976efc9f026be3bcd583bd3d1",
+          "verify.command.json": "5a0b09b34e9627def36ce24ba822320de6ca48200438f7757858b1925169fa58",
+          "verify.out": "8554e1ab536a8e8bf384c24e3f5103aa7d466f0e9fa2422c06c31f4afe5321da",
+          "wrong.command.json": "d7de12cfcdac4ba707d77f98e4e1e9c93899e98fd649c51d2076ae5e75865acc",
+          "wrong.out": "fe68fcb728c17e629bf11816a11233a045533bb19f8626cf1026554b7c1cf32c"
+        },
+        "index": 0,
+        "load_before_thousandths": [
+          2801,
+          5762,
+          7513
+        ],
+        "peak_rss_bytes": 35462447104,
+        "proof_sha256": "ff6adb343c9554284e50c51459dea359c3287d007d55e6d09c259a6f1934c988",
+        "public_sha256": "1b16d8c4b2c779d41df24b11df581755df066bb766e4a5d37b997688795ac7e8",
+        "stages": {
+          "early_source_host_ns": 351319167,
+          "ordinary_batch_setup_host_ns": 68125
+        },
+        "wall_ns": 216670000000
+      },
+      {
+        "evidence_sha256": {
+          "prove.command.json": "aad2bbb8be51554b0314ac984cb5b3624a752710964c96b85291eae5077323e5",
+          "prove.err": "668ab43b946415132864b0207b09303b37b640a1589218d0f070ed686cf9ab2b",
+          "prove.time": "0f099052a91b6657b16f1ab1d765d2f612fda10643866af70d551e041bc73297",
+          "verify.command.json": "06800791b048552893ce21c06df0e20929e990276946949f7e1a8f5b8fd93b22",
+          "verify.out": "9c7d389c50e127a256a9213d9a4078bf5dca1f954e50868229388d93e9c10307",
+          "wrong.command.json": "daecb3ed3bda243e44b96f93373a8017331126f00f45d9ae4d9555d9dfa087e5",
+          "wrong.out": "d2244432db265bb1bd14a7f514e64c34b6d9c04dc78bfa6bc5b22b38945ee8cd"
+        },
+        "index": 1,
+        "load_before_thousandths": [
+          2976,
+          6888,
+          7847
+        ],
+        "peak_rss_bytes": 34768961536,
+        "proof_sha256": "ea5e7355fa68182ce988b2fbbc993c71380bd852a5e7fd6fe8bd4a5d729ffed1",
+        "public_sha256": "76ffbff490e6f81a3bda92e0f9fae6cc0758aa0296f6bf8762a225b4f28362f5",
+        "stages": {
+          "early_source_host_ns": 519251000,
+          "ordinary_batch_setup_host_ns": 70501
+        },
+        "wall_ns": 221230000000
+      },
+      {
+        "evidence_sha256": {
+          "prove.command.json": "3a3fa8aeea734941b7d8567f83c1278619a34e1d186f68a9e2381cfcbc0d4373",
+          "prove.err": "84f332a36528e068a051c01b397c9f45b6488fc9d2103a5764fd4133e94f3a28",
+          "prove.time": "a6ad2e9dcf88701bdc34eb6ade8d215215ff51403330c3f3bc450f7b4b731342",
+          "verify.command.json": "470bdb72100fd1009af2872d005f6d3d37c946447348861bd751b2a519d77fea",
+          "verify.out": "a0ebe94785464886eabd73e3891e8cd9d0aea1c506be3906a4e8d83b46492cdb",
+          "wrong.command.json": "3a899d21ef37df68f5eac053ef3fb5d3fb427f64cf5cd96a27e341e4fe04ccf2",
+          "wrong.out": "58c8f2a21494c026f3dd668a8d1fea83c2ef65d22276378d3f099008f408c3b0"
+        },
+        "index": 2,
+        "load_before_thousandths": [
+          2962,
+          6768,
+          7869
+        ],
+        "peak_rss_bytes": 35476520960,
+        "proof_sha256": "f9e1e690c5775238a5a2375d7506b1a5e15eb3cc04f992813fbc8dd0fb2942b5",
+        "public_sha256": "5c1fee89ca572b4578a82d73f6671569a5fc405ff52f7d1d488b013423ccba20",
+        "stages": {
+          "early_source_host_ns": 415929375,
+          "ordinary_batch_setup_host_ns": 67376
+        },
+        "wall_ns": 216090000000
+      }
+    ],
+    "unmodified_baseline": [
+      {
+        "commit": "da0da773c9a4db2dbc3907ebe0adec40594ee823",
+        "proof_sha256": "e98bcc6cfd882b532260f8c6489710eb345aaca2ddab4a1e291cdd9ec8735ed5",
+        "wall_ns": 220080000000
+      },
+      {
+        "commit": "da0da773c9a4db2dbc3907ebe0adec40594ee823",
+        "proof_sha256": "3cf9aad898735d6a1c8744f4c2513b016d52af6499a0302e18a7cbca30ced605",
+        "wall_ns": 221230000000
+      },
+      {
+        "commit": "da0da773c9a4db2dbc3907ebe0adec40594ee823",
+        "proof_sha256": "d72342b839db6e81f6880b9ab42d72292ff21950d2ca5dce13c51d0346e29987",
+        "wall_ns": 220500000000
+      }
+    ]
+  },
+  "note": "The micro record uses the schema profile for component measurements. The actual inference profile is development byte 4. Three serial CPU CLI proofs of the same T32 workload, at distinct indices of one fresh model commitment. The separately built ordinary verifier checks every proof and rejects its changed model pin. Early source host time includes shape and admission checks, lifetime history, checking the committed root and destruction of temporary encoding storage. Batch host time includes constructing the canonical instance and validating the Dense summand. Only the separately timed source encoding and Merkle construction, and copying the ordinary batch face, are deducted from their enclosing intervals.",
+  "plan_digest": "2e2844ef903d496c8a4c19eec35e13366483263c84e7390addba0997dcad8aba",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 216670000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "early_source_host_ns": 415929375,
+    "ordinary_batch_setup_host_ns": 68125
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-stories42m-t32-early-source-batch-host-m4"
+}

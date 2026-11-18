@@ -1,0 +1,176 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "725649bb054c7801a5ecaf47e599572619845c26",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "Apple M4 Max host calibration with Lucid NVIDIA H100 NVL stage measurements",
+  "driver": "570.211.01",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "cpu_proofs": 3,
+    "h100_component_runs": 1,
+    "ordinary_batches": 3,
+    "original_gkr_steps": 385
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk",
+    "input_ledger_sha256": {
+      "e16-40aa-t32-mac-gkr-calibration.json": "f6144abe8c61efcdddf403037623c09f139cde80c381ce43814b6968a325afeb",
+      "e16-40ac-t32-original-residency-h100.json": "2dd4dcf51c9e16e6c1529f718fb6aa3350a67d09d9bcd8839d56e4bd16f85e53",
+      "e16-40ag-t32-mac-source-batch-host.json": "d151033ba6fc6e351b8c33e8140ffaabc1294786340e5451d65504bb264ad260",
+      "e16-45-dev-zk-stories42m-t32-mac-0.json": "17344ed1894ab82968489945ec6375bc017b42a22ca22186610d3c846f9e0651",
+      "e16-45-dev-zk-stories42m-t32-mac-1.json": "418b0d22001aa6ab0b077bdb9a25f1cf333f03e9a75fa80d0ab0cc240fac5b44",
+      "e16-45-dev-zk-stories42m-t32-mac-2.json": "abc870e230a4d8d3818f4c4e6d87c8d26cb649f970f23d16e6a8ce0dbc1dc4c3"
+    },
+    "inputs": {
+      "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+      "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+      "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+      "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+    },
+    "original_public_archive_sha256": "165a8d0ac3cb7d2e321ba0f99a5ad3036cac856de3c3984619fac4a5a2822adf",
+    "plan": {
+      "checked": "23..32",
+      "inputs": {
+        "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+        "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+        "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+        "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+      },
+      "lifetime_capacity": 8,
+      "lifetime_index": 0,
+      "lookup_representation": "original M31 columns and public members",
+      "profile": "dev-zk",
+      "stages": [
+        "pinned_pcs_originals",
+        "lookup_columns_from_originals",
+        "periodic_gkr_with_live_originals",
+        "ordinary_batches_from_originals",
+        "selected_pcs_openings"
+      ],
+      "tokens": 32,
+      "workload": "dev/stories42m-t32"
+    },
+    "projection": {
+      "calibration_commit": "e825e390f17c4c4cb99b5bd3d7d2fa8a00540ae2",
+      "charges_ns": {
+        "gkr": 6990261540,
+        "lookup_rebuilds": 136584216,
+        "lookup_tops": 243285000,
+        "ordinary_batch_dense": 182717625,
+        "ordinary_batch_prepare": 5305404260,
+        "original_column_layout": 128464,
+        "source_lock_wait": 998533693,
+        "source_visits": 2522776450
+      },
+      "cpu_commit": "da0da773c9a4db2dbc3907ebe0adec40594ee823",
+      "h100_commit": "323f62184cf27aa3c51508c01b74b0ed2ec2af4a",
+      "measured_full_gpu_inference_proofs": 0,
+      "oracle_qualification_ns": 7309834231,
+      "samples": [
+        {
+          "calibrated_host_gkr_ns": 4671254484,
+          "calibrated_host_setup_ns": 519321501,
+          "cold_projected_ns": 72981200075,
+          "cold_reaches_three": true,
+          "cpu_ns": 220080000000,
+          "including_oracle_readbacks_ns": 74965101464,
+          "measured_h100_ns": 16379691248,
+          "replaced_laps_ns": {
+            "batch_face": 1996000000,
+            "batch_weights": 4515000000,
+            "gkr_factors": 25377000000,
+            "gkr_rounds": 98586000000,
+            "gkr_tree": 7876000000,
+            "sources_prepare": 28704000000,
+            "top_tree": 6941000000
+          },
+          "retained_cpu_ns": 46085000000,
+          "warm_projected_ns": 67655267233,
+          "warm_reaches_three": true
+        },
+        {
+          "calibrated_host_gkr_ns": 4671254484,
+          "calibrated_host_setup_ns": 519321501,
+          "cold_projected_ns": 72541200075,
+          "cold_reaches_three": true,
+          "cpu_ns": 221230000000,
+          "including_oracle_readbacks_ns": 74525101464,
+          "measured_h100_ns": 16379691248,
+          "replaced_laps_ns": {
+            "batch_face": 1602000000,
+            "batch_weights": 5633000000,
+            "gkr_factors": 25475000000,
+            "gkr_rounds": 101478000000,
+            "gkr_tree": 7428000000,
+            "sources_prepare": 27885000000,
+            "top_tree": 6084000000
+          },
+          "retained_cpu_ns": 45645000000,
+          "warm_projected_ns": 67215267233,
+          "warm_reaches_three": true
+        },
+        {
+          "calibrated_host_gkr_ns": 4671254484,
+          "calibrated_host_setup_ns": 519321501,
+          "cold_projected_ns": 74059200075,
+          "cold_reaches_three": false,
+          "cpu_ns": 220500000000,
+          "including_oracle_readbacks_ns": 76043101464,
+          "measured_h100_ns": 16379691248,
+          "replaced_laps_ns": {
+            "batch_face": 2520000000,
+            "batch_weights": 3604000000,
+            "gkr_factors": 25779000000,
+            "gkr_rounds": 98489000000,
+            "gkr_tree": 7559000000,
+            "sources_prepare": 27572000000,
+            "top_tree": 7814000000
+          },
+          "retained_cpu_ns": 47163000000,
+          "warm_projected_ns": 68733267233,
+          "warm_reaches_three": true
+        }
+      ],
+      "setup_calibration_commit": "e388a1d3f86a71e0d6fd726e015d65b830906041",
+      "whole_prover_type": "cross-host projection"
+    },
+    "qualification": "Same verified model configuration, request and shapes. The CPU wall is on the Mac. Device stage costs are from one Lucid H100 NVL run.",
+    "statement": {
+      "T": "32",
+      "checked": "23..32",
+      "cqis_id": "551b6f3e0a5518bf66dabd6c31dc9bbdf603684013f99322e7bdd78178ef3b14",
+      "next": "2654",
+      "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,29892"
+    }
+  },
+  "note": "The measured CPU wall and H100 operations are observed times. Only model_config.projection contains projected whole-prover times. CUDA setup is included once in each cold projection. The original full CPU relation and ordinary masked-batch rounds stay charged; the maximum separately calibrated host remainders cover GKR, early source admission/cleanup and ordinary batch instance setup. The enclosing large proof was CPU-authored and independently verified. The actual integrated H100 CLI benchmark and full CPU/H100 parity gate remain separate.",
+  "plan_digest": "3be6432cc9381a4fca99fb39fe7bf989a088081e6ab91ee5ec9c65ea2f86db6e",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 220500000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "gkr": 6990261540,
+    "lookup_rebuilds": 136584216,
+    "lookup_tops": 243285000,
+    "ordinary_batch_dense": 182717625,
+    "ordinary_batch_prepare": 5305404260,
+    "original_column_layout": 128464,
+    "source_lock_wait": 998533693,
+    "source_visits": 2522776450
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-stories42m-t32-resident-projection"
+}
