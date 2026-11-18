@@ -1,6 +1,6 @@
 //! RFC-0014 A3. Validated device construction spans. Each interval repeats within its period.
 //! The child layers remain borrowed to allow bounded transfer without duplicating complete layers.
-use super::{GkrConstruction, GkrFactor, GkrMask};
+use super::{GkrConstruction, GkrFactor, GkrMask, RelationConstruction, Term};
 use crate::{Field, M31, QM31 as K};
 use alloc::{vec, vec::Vec};
 use core::ops::Range;
@@ -360,7 +360,75 @@ fn axis_degree(factor: &GkrFactor<'_, K>, axis: usize, n: usize, half: usize) ->
     }
 }
 
+fn checked_terms(
+    n: usize,
+    degree: usize,
+    terms: &[Term<K>],
+    count: usize,
+    bound: impl Fn(usize, usize) -> usize,
+) -> Build<Vec<(K, Vec<u32>)>> {
+    if !(1..32).contains(&degree) || terms.is_empty() || count == 0 {
+        return Err("masked factor count or degree");
+    }
+    for term in terms {
+        if term.factors.len() > degree || term.factors.iter().any(|&i| i as usize >= count) {
+            return Err("masked term index or degree");
+        }
+        if (0..n).any(|axis| {
+            term.factors
+                .iter()
+                .map(|&i| bound(i as usize, axis))
+                .sum::<usize>()
+                > degree
+        }) {
+            return Err("declared degree below term bound");
+        }
+    }
+    Ok(terms
+        .iter()
+        .map(|t| (t.coefficient, t.factors.clone()))
+        .collect())
+}
+
 impl<'a> Plan<'a> {
+    /// RFC-0014 A4. The complete domain may broadcast a genuine projected input.
+    pub fn relation(input: &RelationConstruction<'a, K>) -> Build<Self> {
+        let n = input.num_vars as usize;
+        if !(1..=30).contains(&n) {
+            return Err("relation domain");
+        }
+        let len = domain(n)?;
+        let terms = checked_terms(
+            n,
+            input.degree,
+            &input.terms,
+            input.factors.len(),
+            |i, axis| match &input.factors[i].mask {
+                Some(m) if m.vanishing == axis => 2 + usize::from(m.coordinates.contains(&axis)),
+                _ => 1,
+            },
+        )?;
+        let factors = input
+            .factors
+            .iter()
+            .map(|f| {
+                if f.mask.as_ref().is_some_and(|m| m.vanishing >= n) {
+                    return Err("relation vanishing coordinate");
+                }
+                let values =
+                    TablePlan::single(column(len, 0..len as usize, f.values, &f.coordinates, 0)?);
+                let mask = f.mask.as_ref().map(|m| mask(len, m)).transpose()?;
+                Ok(FactorPlan { values, mask })
+            })
+            .collect::<Build<_>>()?;
+        Ok(Self {
+            len: len as usize,
+            degree: input.degree,
+            terms,
+            factors,
+        })
+    }
+
     pub fn new(input: &GkrConstruction<'a, K>) -> Build<Self> {
         let n = input.num_vars as usize;
         if n == 0
@@ -373,32 +441,13 @@ impl<'a> Plan<'a> {
         }
         let len = domain(n)?;
         let half = domain(input.layer_variables)?;
-        let terms: Vec<_> = input
-            .terms
-            .iter()
-            .map(|t| (t.coefficient, t.factors.clone()))
-            .collect();
-        if !(1..32).contains(&input.degree)
-            || terms.is_empty()
-            || terms
-                .iter()
-                .any(|(_, indices)| indices.iter().any(|&i| i as usize >= input.factors.len()))
-        {
-            return Err("GKR term index or degree");
-        }
-        for (_, indices) in &terms {
-            if indices.len() > input.degree
-                || (0..n).any(|axis| {
-                    indices
-                        .iter()
-                        .map(|&i| axis_degree(&input.factors[i as usize], axis, n, half as usize))
-                        .sum::<usize>()
-                        > input.degree
-                })
-            {
-                return Err("GKR degree below term bound");
-            }
-        }
+        let terms = checked_terms(
+            n,
+            input.degree,
+            &input.terms,
+            input.factors.len(),
+            |idx, axis| axis_degree(&input.factors[idx], axis, n, half as usize),
+        )?;
         let factors = input
             .factors
             .iter()

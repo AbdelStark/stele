@@ -1,6 +1,6 @@
 //! RFC-0014 A3. Scalar evaluation of the original masked multilinear factors.
 use super::plan::{Op, Plan, Span, TablePlan};
-use super::{GkrBackend, GkrConstruction};
+use super::{GkrBackend, GkrConstruction, RelationBackend, RelationConstruction};
 use crate::{Error, Field, Scalar, CM31, M31, QM31 as K};
 use alloc::vec::Vec;
 
@@ -104,10 +104,8 @@ pub struct State {
     factors: Vec<Factor>,
 }
 
-impl GkrBackend<K> for Scalar<K> {
-    type Gkr<'s> = State;
-    fn gkr_start(&self, input: &GkrConstruction<'_, K>) -> Result<State, Error> {
-        let plan = Plan::new(input).map_err(|_| Error::Shape)?;
+impl State {
+    fn from_plan(plan: Plan<'_>) -> Result<Self, Error> {
         let factors = plan
             .factors
             .iter()
@@ -131,6 +129,20 @@ impl GkrBackend<K> for Scalar<K> {
             factors,
         })
     }
+}
+
+impl RelationBackend<K> for Scalar<K> {
+    fn relation_start(&self, input: &RelationConstruction<'_, K>) -> Result<State, Error> {
+        State::from_plan(Plan::relation(input).map_err(|_| Error::Shape)?)
+    }
+}
+
+impl GkrBackend<K> for Scalar<K> {
+    type Gkr<'s> = State;
+    fn gkr_start(&self, input: &GkrConstruction<'_, K>) -> Result<State, Error> {
+        State::from_plan(Plan::new(input).map_err(|_| Error::Shape)?)
+    }
+
     fn gkr_round<'s>(s: &mut State) -> Result<Vec<K>, Error>
     where
         Self: 's,
