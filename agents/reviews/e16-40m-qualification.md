@@ -64,4 +64,7 @@ equality checked. [Repair receipt](e16-40m-machine-receipt-repair.json) records
 old/new pins, reviews and the preflight hash. No hardware evidence is claimed.
 
 Job 6733 was held while still unstarted, with zero runtime and no allocation.
-Release of that same job requires a fresh pin/held-state check; no resubmission.
+After both reviews, a live check verified every remote pin, the held state and
+absence of a run directory. The same job was released; readback remained pending,
+with zero runtime, no allocation and zero restarts. No resubmission occurred.
+The release readback hash is retained in the repair receipt.

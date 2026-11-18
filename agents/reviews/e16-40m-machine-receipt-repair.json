@@ -13,5 +13,13 @@
     "skipped": 0,
     "log_sha256": "13f17a0c2ca06bfbd796bc550caf9975ff8b10c8d931d31bc432354eaa18194a"
   },
-  "submission": "Release same held, unstarted job6733 after live pin/state check"
+  "submission": "Release same held, unstarted job6733 after live pin/state check",
+  "release": {
+    "job": "6733",
+    "state": "PENDING",
+    "elapsed": "00:00:00",
+    "allocation": null,
+    "restarts": 0,
+    "readback_sha256": "c3989478a305c496cc34e40adf805da49467f7b479ed6925c70fade61358a334"
+  }
 }
