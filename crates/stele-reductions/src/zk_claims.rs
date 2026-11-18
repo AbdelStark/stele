@@ -4390,10 +4390,13 @@ mod tests {
             final_values: vec![QM31::ONE, QM31::ONE],
             mask_final: QM31::ZERO,
         };
+        let mut called = false;
         let result = finish_batch(16, (sumcheck, vec![QM31::ZERO]), |_, _| {
-            panic!("opened before nonzero face check")
+            called = true;
+            Err(Error::Backend)
         });
         assert!(matches!(result, Err(Error::BatchPoint)));
+        assert!(!called);
     }
 
     #[test]
