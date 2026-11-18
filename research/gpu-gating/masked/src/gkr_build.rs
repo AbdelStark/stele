@@ -366,6 +366,64 @@ impl Plan {
 mod tests {
     use super::*;
     #[test]
+    fn matches_reference_construction_before_device_access() {
+        let mut input = Vec::new();
+        let mut expected = Vec::new();
+        for case in 0..24 {
+            crate::gkr_cases::observe(case, |step| {
+                let plan = Plan::new(&step.construction()?).unwrap();
+                let reference = step.reference()?;
+                assert_eq!(plan.len, 1 << reference.variables());
+                assert_eq!(plan.degree, reference.degree());
+                assert!(plan
+                    .terms
+                    .iter()
+                    .zip(reference.terms())
+                    .all(|((c, f), t)| *c == t.coefficient && *f == t.factors));
+                assert_eq!(plan.terms.len(), reference.terms().len());
+                assert_eq!(plan.factors.len(), reference.tables().count());
+                for ((f, (x, r)), v) in plan
+                    .factors
+                    .into_iter()
+                    .zip(reference.tables())
+                    .zip(reference.vanishing())
+                {
+                    assert_eq!(f.mask.as_ref().map(|(_, v)| *v), v);
+                    let ts = std::iter::once((f.values, x)).chain(f.mask.map(|(m, _)| (m, r)));
+                    for (t, values) in ts {
+                        input.extend([plan.len as u32, u32::from(t.base), t.spans.len() as u32]);
+                        for s in t.spans {
+                            input.extend([
+                                s.period,
+                                s.begin,
+                                s.end,
+                                s.op as u32,
+                                s.arg,
+                                s.shifts.len() as u32,
+                                s.data.len() as u32,
+                            ]);
+                            input.extend(s.shifts);
+                            input.extend(s.data);
+                        }
+                        for &x in values {
+                            let limbs = words(x);
+                            if t.base {
+                                assert_eq!(&limbs[1..], &[0; 3]);
+                            }
+                            expected.extend_from_slice(if t.base { &limbs[..1] } else { &limbs });
+                        }
+                    }
+                }
+                Ok(())
+            });
+        }
+        let code = format!("#include <cstdio>\n#include <vector>\n#define __device__\n#define __global__\n#define __forceinline__ inline\n{}\n#define GRID_STRIDE(i,n) for(u64 i=0;i<(n);++i)\n{}\n{}", crate::host_probe::helpers(), include_str!("gkr_build.cu"), include_str!("gkr_build_host.cuh"));
+        let actual = crate::host_probe::run(&code, &input);
+        assert_eq!(actual.len(), expected.len());
+        assert_eq!(actual.iter().zip(expected).position(|(a, b)| *a != b), None);
+    }
+
+    #[test]
     fn rejects_invalid_geometry_before_device_access() {
         let mut input = GkrConstruction {
             num_vars: 3,
