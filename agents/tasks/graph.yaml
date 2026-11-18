@@ -5798,3 +5798,18 @@ tasks:
   - Derive source identity at the actual production column origin for every implemented GKR gather; distinguish publics, masks and challenge-derived factors even if their values match
   - Check canonical and raw boundary statements and all 385 genuine T32 GKR round and final outputs on H100 against the CPU proof under the total allocation ceiling
   - Classify actual H2D input bytes by gathers, public tables, masks, selectors, Fiat–Shamir inputs and descriptors; reconstruct the charged total without counting borrowed data as a transfer
+- id: E16-40ag
+  epic: E16
+  title: Recompute the resident T32 prover ceiling from a complete original-source run
+  lane: V
+  depends: [E16-40z, E16-40aa, E16-40ac, E16-40ae]
+  rfc: [RFC-0014 §5 and A1, RFC-0018 A1]
+  skill: benchmark-runner
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40ag-resident-ceiling
+  acceptance:
+  - On three verified quiet-host stories42M T32 proofs, replace only the measured disjoint stage intervals, retain the measured GKR host remainder and charge source visits, batch packing, arithmetic, transfers and synchronization from the paired H100 capture
+  - Require the original source and memory receipts, all 385 authentic GKR steps, every lookup and ordinary batch, and the unchanged model controls; report cold and resident projections separately from an actual whole-prover measurement
+  - Record the measured ADR-127 reopening decision with its input ledgers, independent review and remaining backend, parity and dependency conditions
