@@ -5295,7 +5295,7 @@ tasks:
   - RFC-0014 §1, §5
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40h-lazy-field-parity
   acceptance:
@@ -5306,3 +5306,25 @@ tasks:
   - keep all production crates, protocol bindings, proof bytes, challenges and dependencies unchanged; distinguish primitive helper qualification from kernel, complete source, whole-proof or complete-device-memory qualification; no performance or ADR-127 GO claim
   - retain the already queued E16-40d and E16-40f source archives unchanged; this independent lane-V successor uses only the merged E16-36 field helpers and may not substitute its result for either queued campaign
   - obtain independent review, required H100 parity evidence and mandatory gates in stack order before merge
+
+- id: E16-40p
+  epic: E16
+  title: Expose borrowed production GKR factor construction inputs
+  lane: V
+  depends:
+  - E16-40g
+  rfc:
+  - RFC-0008 A7
+  - RFC-0014 §1, §4, §5, A1
+  skill: benchmark-runner
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40p-gkr-construction-interface
+  acceptance:
+  - extend the off-by-default GkrCase observer with borrowed original columns, layers, table rows and challenges plus small construction descriptors and mask blocks; do not materialize full factor, selector, tuple, owner or equality tables to expose these inputs
+  - preserve original domain, compact factor order, terms, coefficients, degree, coordinate and mask order for first, interior, simple and compact leaf steps; read compact terms from the actual production helper
+  - compare every reconstructed factor and mask with the production reference before folding, then every round and compact final on genuine observed proofs; cover heterogeneous members, multiple tuple coordinates, shifted and permuted reads, selectors, padding and both lifetime geometries, including a one-value near miss
+  - preserve validation, public aborts, proof bytes, transcript continuation, disclosure and callback-error behavior; inputs contain private witness material and are never public inventory or verifier inputs
+  - no core backend, CUDA, dependency, challenge, binding, commitment, protocol or performance change; construction descriptor and mask copies remain charged host work, and no whole-stage, device-memory or ADR-127 GO claim follows
+  - obtain owning lane P and independent standards review; keep default, bench, no_std and mandatory L0/L1 gates green in stack order; this reordered lane-V interface follows E16-40h and precedes E16-40i, consumes only the already merged E16-40g interface, and its device consumer waits for this interface to merge

@@ -3341,6 +3341,17 @@ where
         #[cfg(feature = "bench")]
         if let Some(observer) = observer.as_deref_mut() {
             let reference = || build(None);
+            let construct = || {
+                lookup::construction::inputs(
+                    &plan,
+                    step,
+                    run,
+                    layers,
+                    &data,
+                    &shared_message,
+                    &block_of,
+                )
+            };
             let route =
                 |values: &[K]| lookup::finals(&plan, step, run, &point, values).map(Into::into);
             observer(&gkr_bench::GkrCase {
@@ -3353,6 +3364,7 @@ where
                 finals: &truth,
                 routed: finals.clone().into(),
                 build: &reference,
+                construct: &construct,
                 route: &route,
             })?;
         }
@@ -3972,7 +3984,10 @@ mod batch_bench;
 #[cfg(feature = "bench")]
 pub mod bench {
     pub use super::batch_bench::BatchInputs;
-    pub use super::gkr_bench::{observe_gkr, GkrCase, GkrClaims};
+    pub use super::gkr_bench::{
+        observe_gkr, GkrCase, GkrClaims, GkrConstruction, GkrFactor, GkrMask, GkrMember,
+        GkrSelector,
+    };
     pub use super::lookup::bench::{LookupCase, LookupInputs, LookupTree};
     use super::{block_table, kappa, Factor, Occurrences};
     use alloc::vec::Vec;

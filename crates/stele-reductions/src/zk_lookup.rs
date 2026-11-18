@@ -54,6 +54,10 @@ use stele_sumcheck::Term;
 #[path = "zk_lookup_bench.rs"]
 pub(super) mod bench;
 
+#[cfg(feature = "bench")]
+#[path = "zk_gkr_construction.rs"]
+pub(super) mod construction;
+
 /// One member as planned: its padded variables, block offset in the lookup half,
 /// tuple reads as x-coordinates (MSB-first index into `x`), shifts and selector.
 struct MemberPlan {
