@@ -416,7 +416,7 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
             statement,
             length,
             window,
-            zk::BatchExecution::with_relations(&session),
+            zk::BatchExecution::with_sources(&session),
         );
         if result.is_ok() {
             let c = session.counts();
@@ -432,10 +432,13 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
                 c.relation_steps,c.relation_expected_rounds,c.relation_rounds,c.relation_folds,c.relation_finals,
                 c.relation_uploaded_bytes,c.relation_downloaded_bytes,c.relation_value_bytes,c.relation_mask_bytes,
                 c.relation_planned_peak_bytes,c.relation_observed_peak_bytes);
+            eprintln!("cuda_sources originals={} visits={} responses={} hashes={} h2d_bytes={} d2h_bytes={} host_salt_bytes={} observed_peak_bytes={}",
+                c.originals, c.source_visits, c.source_responses, c.source_hashes, c.source_uploaded_bytes,
+                c.source_downloaded_bytes, 32 * c.source_responses, c.source_observed_peak_bytes);
             if let Ok(m) = memory {
                 eprintln!(
                     "cuda_memory total_bytes={} outside_pool_bytes={} pool_high_bytes={} observed_peak_bytes={}",
-                    m.total, m.outside_pool, m.pool_high, c.observed_peak_bytes.max(c.relation_observed_peak_bytes).max(c.gkr_observed_peak_bytes)
+                    m.total, m.outside_pool, m.pool_high, c.observed_peak_bytes.max(c.relation_observed_peak_bytes).max(c.gkr_observed_peak_bytes).max(c.source_observed_peak_bytes)
                 );
             }
         }
