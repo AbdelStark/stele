@@ -5549,3 +5549,27 @@ tasks:
   - validate every source and destination bound before kernel access; compare initial values, each round and fold, compact finals and routing to genuine CPU steps across 1000 seeded statements on H100; reject malformed geometry and absent CUDA
   - record uploaded descriptor and input bytes separately from resident state; retain the ordinary CPU proof verifier, all bindings and the core backend decision under ADR-127
   - obtain independent review and the native and parity gates; large-model whole-stage performance and complete pipeline memory require separate measurements
+
+- id: E16-40s
+  epic: E16
+  title: Measure real T32 lookup trees and claim batches on H100
+  lane: V
+  depends:
+  - E16-40c
+  - E16-40i
+  - E16-40j
+  rfc:
+  - RFC-0008 A7
+  - RFC-0013 A5
+  - RFC-0014 §1, §5, A1
+  skill: benchmark-runner
+  crate: research
+  status: in_progress
+  agent: codex-integration
+  branch: task/E16-40s-t32-lookup-batch
+  acceptance:
+  - observe actual T32 lookup preparations, later tree rebuilds and ordinary claim batches during a complete verified stories42M dev-zk proof on a Lucid H100
+  - compare every tree and top and every dense batch round and final to the CPU reference at its genuine transcript challenges; record failure on errors and incomplete coverage
+  - charge cold context and compilation, host normalization and grouping, transfers, device construction and outputs; identify residual protocol work separately and preserve independent expected-model verification
+  - retain source and job provenance and the current Mac laps; no core binding, protocol change or integrated proof credit
+
