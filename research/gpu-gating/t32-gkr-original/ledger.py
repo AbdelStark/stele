@@ -33,7 +33,7 @@ def seeded_counts(raw):
                 "gkr/representations": 5456, "batch/parallel_pack_cases": 2000,
                 "batch/pinned_batch_owner_cases": 2000, "batch/batch_device_cases": 1000}
     assert all(observed[k] == v for k, v in required.items())
-    return observed
+    return {**observed, **SHARED["periodic_counts"](raw)}
 
 
 def ledger(archive, verified):

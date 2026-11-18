@@ -42,6 +42,13 @@ def clock_ns(gnu):
     return round(seconds * 1e9)
 
 
+def periodic_counts(raw):
+    marker = re.search(rb"periodic_rounds=(\d+) period_transitions=(\d+)", raw["machine/gkr.err"])
+    rounds, transitions = map(int, marker.groups())
+    assert rounds > transitions > 0
+    return dict(periodic_rounds=rounds, period_transitions=transitions)
+
+
 def ledger(archive, verified, *, seeded_counts=None):
     here = Path(__file__).resolve().parent
     repo = here.parents[2]
@@ -124,10 +131,7 @@ def ledger(archive, verified, *, seeded_counts=None):
             counters[f"gkr/{i}/{k}"] = steps[i][k]
     seeded = (seeded_counts(raw) if seeded_counts else
               dict(pcs=1000,batch_owners=2000,gkr=1000,gkr_steps=2728,gkr_representations=5456,
-                   canonical_original_lookups=1000,raw_original_lookups=1000))
-    m = re.search(rb"periodic_rounds=(\d+) period_transitions=(\d+)", raw["machine/gkr.err"])
-    seeded.update(periodic_rounds=int(m[1]),period_transitions=int(m[2]))
-    assert seeded["periodic_rounds"] > seeded["period_transitions"] > 0
+                   canonical_original_lookups=1000,raw_original_lookups=1000, **periodic_counts(raw)))
     plan = dict(z["model_config"]["plan"], stages=["pinned_pcs_originals","lookup_columns_from_originals",
                 "periodic_gkr_with_live_originals","ordinary_batches_from_originals","selected_pcs_openings"])
     model=dict(plan=plan,job=result["job"],workload=result["workload"],profile=result["profile"],affinity=result["affinity"],
