@@ -28,6 +28,7 @@ fn evaluate(table: &[QM31], point: &[QM31]) -> QM31 {
 
 #[test]
 fn matches_reference_original_dense_batches_and_finals() {
+    let mut checked = 0;
     for case in 0..1000usize {
         let backend = Scalar::<QM31>::new();
         let rows = 2 << (case % 2);
@@ -112,7 +113,9 @@ fn matches_reference_original_dense_batches_and_finals() {
             Scalar::dense_finals(&state).expect("valid reference fixture"),
             [evaluate(&w, &point), evaluate(&face, &point)]
         );
+        checked += 1;
     }
+    eprintln!("ordinary_scalar_cases={checked}");
 }
 
 #[test]

@@ -323,6 +323,29 @@ def development_surface(crate, name, actual, expected):
     return kept
 
 
+def scalar_kernel_surface(root, actual, expected):
+    """E20-11. Execute the independently reviewed scalar interface with CUDA still empty."""
+    name = 'stele-kernels'
+    directory = root / 'crates' / name
+    approved = json.loads((root / 'scripts/gates/scalar-kernel-sources.json').read_text())
+    files = {'Cargo.toml', 'ops.toml', 'src/lib.rs', 'src/scalar.rs', 'tests/dense.rs'}
+    if set(actual) != files or actual != approved or actual['Cargo.toml'] != expected['Cargo.toml']:
+        raise ValueError('parity: scalar kernel source differs from the admitted interface')
+    contract = tomllib.loads((directory / 'ops.toml').read_text())
+    methods = re.findall(r'^    fn (\w+)', (directory / 'src/lib.rs').read_text(), re.M)
+    if (contract != {'format': 1, 'family': 'ordinary_batch', 'operations': methods}
+            or methods != ['original', 'dense_batch', 'dense_round', 'dense_fold', 'dense_finals']):
+        raise ValueError('parity: scalar operation inventory disagrees with the interface')
+    result = subprocess.run(['cargo', 'test', '--locked', '--offline', '-p', name, '--test', 'dense',
+                             '--', '--nocapture'], cwd=root, text=True, capture_output=True)
+    tests = ('matches_reference_original_dense_batches_and_finals', 'rejects_stale_equal_geometry_and_invalid_state')
+    if (result.returncode or any('test ' + name + ' ... ok' not in result.stdout for name in tests)
+            or 'ordinary_scalar_cases=1000' not in result.stderr.splitlines()):
+        raise ValueError('parity: scalar operation tests or controls failed: ' + result.stderr[-1000:])
+    print('gate parity: scalar ordinary batch interface, 1000 cases; production CUDA remains empty')
+    return expected
+
+
 def bootstrap_guard(root, gate):
     """An absent implementation may pass; an unvalidated implementation may not."""
     baseline = json.loads((root / 'scripts/gates/bootstrap-sources.json').read_text())
@@ -331,6 +354,8 @@ def bootstrap_guard(root, gate):
         expected = baseline[f'stele-{name}']
         actual = {str(p.relative_to(crate)): hashlib.sha256(p.read_bytes()).hexdigest()
                   for p in crate.rglob('*') if p.is_file()}
+        if gate == 'parity' and name == 'kernels' and actual != expected:
+            actual = scalar_kernel_surface(root, actual, expected)
         if gate == 'digest' and name in DEVELOPMENT:
             actual = development_surface(crate, name, actual, expected)
         if name == 'verifier':
