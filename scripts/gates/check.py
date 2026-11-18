@@ -2124,7 +2124,8 @@ def masked_sumcheck_quarantine(root):
                'crates/stele-reductions/src/zk_claims.rs',
                # RFC-0014 A2: same checked shared-mask prover, field-only batch state.
                'crates/stele-reductions/src/zk_batch_backend.rs',
-               'crates/stele-reductions/src/zk_gkr_backend.rs', 'crates/stele-reductions/src/zk_source_backend.rs'}
+               'crates/stele-reductions/src/zk_gkr_backend.rs', 'crates/stele-reductions/src/zk_source_backend.rs',
+               'crates/stele-reductions/src/zk_lookup_backend.rs'}
     pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    for path in (root / directory).rglob('*.rs')
@@ -2159,7 +2160,7 @@ def standard_quarantine(root):
     # RFC-0013 A8 (E12-28): these may name `Policy::Two` for dev-zk hiding sources, which
     # resolve Development (proven: false) and stay on the development path (below); the
     # standard entry points resolve_pcs and Descriptor::standard stay forbidden there.
-    policy_two_only = {'crates/stele-pcs/examples/scalar_hiding_source.rs', 'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
+    policy_two_only = {'crates/stele-pcs/examples/scalar_hiding_source.rs', 'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-reductions/src/zk.rs', 'crates/stele-pcs/src/producer_tests.rs',
                        'crates/stele-reductions/tests/batch_bench.rs',
                        'crates/stele-prover/tests/development.rs'}
     pattern = re.compile(r'\bresolve_pcs\b|\bPolicy\s*::\s*Two\b|\bDescriptor\s*::\s*standard\b'
