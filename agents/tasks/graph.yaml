@@ -5135,6 +5135,26 @@ tasks:
   - reduce the source_messages stage on the E16-40o stories42M T32 Mac workload; measure the complete proof, request verification, wrong-model rejection and all source/transcript pins with every binding active
   - keep the change private to the producer and obtain independent review with mandatory gates; the CPU residual result alone does not reopen ADR-127
 
+- id: E16-42
+  epic: E16
+  title: Reduce claim routing and self-verification work on the CPU
+  lane: Z
+  depends:
+  - E16-24
+  rfc:
+  - RFC-0008 A7
+  - RFC-0013 A5 items 4 and 5
+  - RFC-0018 A1
+  skill: performance-engineer
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-42-claim-routing
+  acceptance:
+  - transfer ownership of GKR claim weights once while preserving claim order, transcript challenges, public finals and the mask rank checks
+  - compare the verifier's direct evaluation of sparse claim weights with its dense reference on ordinary and shared sources, covering duplicate positions, field-valued coefficients, invalid positions and the mask face
+  - compare the stories42M T32 claim-routing and self-verification stages with the immediate baseline on the same host and thread count, and keep pinned proof bytes and mandatory gates green
+
 - id: E16-40a
   epic: E16
   title: Separate development-ZK GPU-candidate CPU stage costs and shape inventory
