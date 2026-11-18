@@ -5828,3 +5828,19 @@ tasks:
   - Exercise authentic T32 relation factors including all large-domain instances through the fixed-code H100 masked round and fold operations with the ordinary transcript challenges
   - Check round polynomials and all final evaluations against the ordinary CPU prover and verify a device-produced relation subproof with its original bindings
   - Account for factor preparation, mask and descriptor transfers, device setup, synchronized releases, peak memory and measured small-domain crossover independently of CPU dispatch
+
+- id: E16-40ai
+  epic: E16
+  title: Borrow occurrence masks and shared layer blocks from their certified source messages
+  lane: V
+  depends: [E16-40ah]
+  rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-resident
+  branch: task/E16-40ai-original-mask-windows
+  acceptance:
+  - Derive occurrence, combined member, and shared layer mask windows from the exact original source ID, data-quadrant offset, limb count and scheduled layer side
+  - Compare every field word and all generated leaf, interior and mixed GKR round messages and finals against independent CPU values across 1000 genuine canonical and lazy seed families
+  - Replay all 385 T32 GKR steps with the four real original owners live and the actual lookup tree, zero private mask payload H2D, all public challenge and descriptor bytes charged, measured allocation limits and normal verifier controls
