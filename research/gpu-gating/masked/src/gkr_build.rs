@@ -331,41 +331,60 @@ fn factor(input: &GkrFactor<'_, K>, len: u32, half: u32, resident: bool) -> Buil
     Ok(FactorPlan { values, mask })
 }
 
+/// Explicit live bytes on the single CUDA stream. An allocation being replaced
+/// remains live through its kernel, then its free precedes the next allocation.
+pub(crate) struct Peak {
+    pub construction: usize,
+    pub fold: usize,
+}
+
 impl Plan {
-    /// Bound all explicit allocations for this step. Every M31 table can promote
-    /// to a half-length QM31 table; the old and new buffers overlap on that fold.
-    pub fn peak_bytes(&self, blocks: usize) -> Build<usize> {
+    pub fn peak(&self, blocks: usize) -> Build<Peak> {
         let len = self.len as u128;
-        let mut base = 0u128;
-        let mut ext = 0u128;
-        let mut staging = 0u128;
+        let table_bytes = |table: &TablePlan| len * if table.base { 4 } else { 16 };
+        let mut live = 0;
+        let mut construction = 0;
         for f in &self.factors {
-            for table in std::iter::once(&f.values).chain(f.mask.as_ref().map(|(t, _)| t)) {
-                if table.base {
-                    base += 1;
-                } else {
-                    ext += 1;
-                }
-                for s in &table.spans {
-                    staging = staging.max(4 * (s.data.len() as u128 + s.shifts.len() as u128));
+            for t in std::iter::once(&f.values).chain(f.mask.as_ref().map(|(t, _)| t)) {
+                live += table_bytes(t);
+                // gkr_table allocates its output before it uploads each individual span.
+                construction = construction.max(live);
+                for span in &t.spans {
+                    construction = construction.max(
+                        live + 4 * (span.data.len() as u128 + span.shifts.len() as u128),
+                    );
                 }
             }
         }
-        let initial = len * (4 * base + 16 * ext);
-        let retained = len * (8 * base + 16 * ext);
-        let transition = if base > 0 { 4 * len } else { 0 };
         let terms = self.terms.len() as u128;
-        let indices = self
-            .terms
-            .iter()
-            .map(|(_, t)| t.len() as u128)
-            .sum::<u128>()
-            .max(1);
-        let descriptors =
-            20 * self.factors.len() as u128 + 4 * (terms + 1 + indices) + 16 * terms.max(1);
+        let indices = self.terms.iter().map(|(_, t)| t.len() as u128).sum::<u128>().max(1);
+        let descriptors = 20 * self.factors.len() as u128 + 4 * (terms + 1 + indices)
+            + 16 * terms.max(1);
         let scratch = 16 * (self.degree as u128 + 1) * (blocks as u128 + 1);
-        usize::try_from((initial + staging).max(retained + transition + descriptors + scratch))
-            .map_err(|_| "GKR allocation bound")
+        live += descriptors + scratch;
+        construction = construction.max(live);
+        let mut fold = live;
+        // DeviceMasked::fold visits x then r. At coordinate zero a vanishing
+        // mask is consumed by fold_mask without a separate promotion. After
+        // round zero every surviving table is QM31 and folds in place.
+        let promote = |t: &TablePlan, live: &mut u128, high: &mut u128| {
+            if t.base {
+                *high = (*high).max(*live + 8 * len);
+                *live += 4 * len;
+            }
+        };
+        for f in &self.factors {
+            promote(&f.values, &mut live, &mut fold);
+            if let Some((mask, v)) = &f.mask {
+                if *v == 0 {
+                    live -= table_bytes(mask);
+                } else {
+                    promote(mask, &mut live, &mut fold);
+                }
+            }
+        }
+        let bytes = |n| usize::try_from(n).map_err(|_| "GKR allocation bound");
+        Ok(Peak { construction: bytes(construction)?, fold: bytes(fold)? })
     }
 
     pub fn new(input: &GkrConstruction<'_, K>) -> Build<Self> {
@@ -484,12 +503,23 @@ mod tests {
                 mask: Some((table(true, 0), 0)),
             }],
         };
-        // One ext table plus one promoted base table and its old base buffer.
-        // Two pointers, a flag, two offsets, one index, a coefficient, three nodes for a block and the output.
+        // A mask binding immediately is consumed without being promoted.
         let descriptors = 20 + 8 + 4 + 16 + 2 * 3 * 16;
-        assert_eq!(plan.peak_bytes(1).unwrap(), 128 + 64 + 32 + descriptors);
+        let first = plan.peak(1).unwrap();
+        assert_eq!(first.construction, 128 + 32 + descriptors);
+        assert_eq!(first.fold, first.construction);
+        plan.factors[0].mask.as_mut().unwrap().1 = 2;
+        assert_eq!(plan.peak(1).unwrap().fold, 128 + 32 + 64 + descriptors);
+        // Staging for x is gone before the mask output or scratch is allocated.
         plan.factors[0].values.spans[0].data.resize(150, 0);
-        assert_eq!(plan.peak_bytes(1).unwrap(), 128 + 32 + 600);
+        assert_eq!(plan.peak(1).unwrap().construction, 128 + 600);
+        // Live scheduling is sensitive to factor order. Releasing the first
+        // x's base mask before a later promotion saves the mask's whole table.
+        plan.factors[0].mask.as_mut().unwrap().1 = 0;
+        plan.factors.push(FactorPlan { values: table(true, 0), mask: None });
+        let released = plan.peak(1).unwrap().fold;
+        plan.factors.reverse();
+        assert_eq!(plan.peak(1).unwrap().fold, released + 32);
     }
 
     #[test]
