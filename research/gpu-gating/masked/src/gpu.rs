@@ -25,6 +25,8 @@ const KERNELS: &str = concat!(
     "\n",
     include_str!("batch.cu"),
     "\n",
+    include_str!("gkr_build.cu"),
+    "\n",
     include_str!("round.cuh"),
     "\n",
     include_str!("round.cu")
@@ -33,6 +35,10 @@ const THREADS: u32 = 256;
 
 #[path = "gpu_batch.rs"]
 pub mod batch;
+
+#[path = "gpu_gkr_build.rs"]
+mod gkr_build;
+pub use gkr_build::ConstructionWork;
 
 #[cfg(test)]
 #[path = "gpu_boundary_tests.rs"]
