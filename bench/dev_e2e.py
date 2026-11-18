@@ -255,6 +255,10 @@ def main():
             families.append('relation rounds')
         if 'sources_visits' in device:
             families.append('original hiding-source certificates and openings')
+        if 'lookup_tops' in device:
+            families.append('lookup trees and retained children')
+        if 'sources_original_h2d_bytes' in device:
+            families.append('the shared batch and its standalone mask certificate and opening')
         execution = 'CUDA supplied ' + ', '.join(families) + '.'
     ledger = {
         'schema_version': 1, 'kind': 'inference', 'workload': a.workload, 'commit': a.commit,
