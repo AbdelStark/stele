@@ -2387,7 +2387,8 @@ the ordinary verified T32 workload at development profile byte 4.
 
 ### A22 — Device-prepared material in balanced ZK inference
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-17.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-17.
+[Independent review](../../agents/reviews/e20-17-hiding-source-contract.md)
 
 Add RFC-0014 A5 to §7 and A19–A21's local byte-4 execution option. The normal
 proof producer may prepare and serve RFC-0010 A16 hiding-source material

@@ -4381,3 +4381,12 @@ factors and their checked projections. The existing A4 prover controls every
 transcript draw, and A5 retains authentication of the occurrence claims and
 mask opening. E20-16 must qualify all three stage families on complete proofs.
 [Independent acceptance](../reviews/e20-15-live-relation-contract.md)
+
+## ADR-143 — Prepare balanced hiding-source material on the selected device (E20-17)
+
+Accept RFC-0014 A5, RFC-0020 A13 and RFC-0026 A22 for development proofs.
+One proof-local original may support the first certificate tree, a reconstructed
+opening tree and its ordinary batch. The source context, lifetime state, model
+pin and transcript remain with the host. The existing PCS verifier authenticates
+each complete response. This admits implementation and qualification.
+[Independent lane Z review](../reviews/e20-17-hiding-source-contract.md)

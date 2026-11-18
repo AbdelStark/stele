@@ -249,7 +249,8 @@ existing dependency boundaries and complete proof gate.
 
 ### A13 — Producer-side Circle and Merkle buffer execution
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-17.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-17.
+[Independent review](../../agents/reviews/e20-17-hiding-source-contract.md)
 
 Add to A10–A12 the RFC-0014 A5 buffer operations over a proof-local original
 message. The kernel interface carries source geometry, the salt input, field

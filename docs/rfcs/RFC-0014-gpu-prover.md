@@ -263,7 +263,8 @@ The prior research measured the independently checked relation arithmetic.
 
 ### A5 — Prepare and open balanced hiding-source material on the selected device
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-17.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-17.
+[Independent review](../../agents/reviews/e20-17-hiding-source-contract.md)
 
 **Addition to A2–A4.** For the byte-4 proof, the selected backend can prepare
 the RFC-0010 A15 salted Circle columns and Merkle tree underlying each original
