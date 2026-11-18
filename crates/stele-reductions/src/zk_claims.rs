@@ -2353,10 +2353,24 @@ fn step_instance<K: ChallengeField>(step: &Step<K>, gammas: &[K]) -> Instance<K>
 // shortcut: replays the 3RC data-mask draws of `hiding_message`; share its stream if this shows in a profile.
 fn after_masks(seed: &[u8; 32], id: u64, rows: usize, width: usize) -> MaskStream {
     let mut stream = MaskStream::new(seed, SOURCE_MASK, id);
-    for _ in 0..3 * rows * width {
-        stream.m31();
-    }
+    skip_mask_prefix(3 * rows * width, |out| stream.fill(out));
     stream
+}
+
+/// RFC-0013 A2 item 1: read at most the remaining draw count, so the next byte
+/// is the start of the claim-mask stream even when the final chunk rejects a word.
+fn skip_mask_prefix(mut remaining: usize, mut fill: impl FnMut(&mut [u8])) {
+    let mut bytes = [0; 4096];
+    while remaining != 0 {
+        let words = remaining.min(bytes.len() / 4);
+        let batch = &mut bytes[..4 * words];
+        fill(batch);
+        let accepted = batch
+            .chunks_exact(4)
+            .filter(|w| u32::from_le_bytes([w[0], w[1], w[2], w[3]]) & 0x7fff_ffff != 0x7fff_ffff)
+            .count();
+        remaining -= accepted;
+    }
 }
 
 /// A claim source's message `M'` (A2 item 1): columns and claim masks as data,
@@ -4152,9 +4166,14 @@ mod tests {
             });
             let mut reference = words.iter();
             for _ in 0..wanted {
-                reference.find(|&&w| w & 0x7fff_ffff != 0x7fff_ffff).unwrap();
+                reference
+                    .find(|&&w| w & 0x7fff_ffff != 0x7fff_ffff)
+                    .unwrap();
             }
-            assert_eq!(&bytes[position..], &bytes[4 * (words.len() - reference.len())..]);
+            assert_eq!(
+                &bytes[position..],
+                &bytes[4 * (words.len() - reference.len())..]
+            );
         }
     }
 
