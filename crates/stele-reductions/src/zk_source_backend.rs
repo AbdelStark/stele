@@ -317,9 +317,8 @@ impl<K: ChallengeField + CodeField + Eq> Ready<'_, K> {
         result: (Proof<K>, Vec<K>),
         t: &mut Transcript<K>,
     ) -> Result<(Batch<K>, Vec<K>), Error> {
-        self.opening_visit(|| match self {
-            Self::Host(p) => finish_batch(id, p, verified, result, t),
-            Self::Device(p, _) => finish_batch(id, p, verified, result, t),
+        finish_batch(self.source().rows(), result, |point, value| {
+            self.open(t, verified, id, point, value)
         })
     }
     pub(super) fn open(
