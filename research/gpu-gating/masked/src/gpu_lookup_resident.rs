@@ -48,7 +48,16 @@ fn run_top(
     input: &LookupInputs<K>,
     stage_input: impl FnOnce(&mut Prepared),
 ) -> Result<([Vec<K>; 3], Timing), Error> {
-    let (p, tree, mut t) = start(dev, input, true, stage_input)?;
+    let (p, tree, t) = start(dev, input, true, stage_input)?;
+    finish_top(dev, p.top, tree, t)
+}
+
+pub(super) fn finish_top(
+    dev: &Device,
+    count: usize,
+    tree: super::Tree<'_>,
+    mut t: Timing,
+) -> Result<([Vec<K>; 3], Timing), Error> {
     let since = Instant::now();
     tree.divide()?;
     dev.sync()?;
@@ -56,7 +65,7 @@ fn run_top(
     let since = Instant::now();
     let pairs = dev
         .stream()
-        .clone_dtoh(&tree.pairs.slice(8 * (p.top - 1)..8 * (2 * p.top - 1)))?;
+        .clone_dtoh(&tree.pairs.slice(8 * (count - 1)..8 * (2 * count - 1)))?;
     let h = dev.stream().clone_dtoh(&tree.h)?;
     let flags = dev.stream().clone_dtoh(&tree.flags)?;
     dev.sync()?;
@@ -70,9 +79,9 @@ fn run_top(
         return Err(LookupError::DenominatorZero.into());
     }
     let mut top = [
-        Vec::with_capacity(p.top),
-        Vec::with_capacity(p.top),
-        Vec::with_capacity(p.top),
+        Vec::with_capacity(count),
+        Vec::with_capacity(count),
+        Vec::with_capacity(count),
     ];
     for (pair, ratio) in pairs.chunks_exact(8).zip(h.chunks_exact(4)) {
         top[0].push(element(&pair[..4])?);
@@ -100,15 +109,21 @@ fn run_resident<'a>(
     stage_input: impl FnOnce(&mut Prepared),
 ) -> Result<(Resident<'a>, Timing), Error> {
     let (p, tree, t) = start(dev, input, false, stage_input)?;
-    Ok((
-        Resident {
-            dev,
-            id,
-            leaves: p.leaves,
-            pairs: tree.pairs,
-        },
-        t,
-    ))
+    Ok((finish_resident(dev, id, p.leaves, tree), t))
+}
+
+pub(super) fn finish_resident<'a>(
+    dev: &'a Device,
+    id: usize,
+    leaves: usize,
+    tree: super::Tree<'a>,
+) -> Resident<'a> {
+    Resident {
+        dev,
+        id,
+        leaves,
+        pairs: tree.pairs,
+    }
 }
 
 #[cfg(test)]

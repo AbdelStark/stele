@@ -21,6 +21,8 @@ mod batch;
 mod batch_cases;
 #[cfg(test)]
 mod boundary_cases;
+#[cfg(any(test, feature = "cuda"))]
+pub mod compact_lookup;
 #[cfg(test)]
 mod field_cases;
 #[cfg(any(test, feature = "cuda"))]

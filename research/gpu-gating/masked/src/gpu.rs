@@ -23,6 +23,8 @@ const KERNELS: &str = concat!(
     "\n",
     include_str!("lookup.cu"),
     "\n",
+    include_str!("lookup_compact.cu"),
+    "\n",
     include_str!("batch.cu"),
     "\n",
     include_str!("gkr_build.cu"),
