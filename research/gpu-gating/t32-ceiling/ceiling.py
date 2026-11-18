@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import runpy
+import tarfile
 
 HERE = Path(__file__).resolve().parent
 REPLACED = ("sources_prepare", "top_prepare", "top_tree", "gkr_tree", "gkr_factors",
@@ -25,7 +26,30 @@ def project(cpu_ns, laps, host_gkr_ns, device_ns, cold_ns, qualification_ns):
                 warm_reaches_three=cpu_ns >= 3*warm, cold_reaches_three=cpu_ns >= 3*(warm+cold_ns))
 
 
-def calculate(mac, calibration, hardware, log, result):
+def capture(archive, expected_sha256):
+    if hashlib.sha256(archive.read_bytes()).hexdigest() != expected_sha256:
+        raise ValueError("wrong H100 evidence archive")
+    names = ("run/result.json", "run/prove.err", "run/verify.out", "run/wrong.out")
+    with tarfile.open(archive) as bundle:
+        def read(name):
+            member = bundle.getmember(name)
+            if not member.isfile() or not 0 < member.size < 40_000_000:
+                raise ValueError("unexpected public receipt")
+            return bundle.extractfile(member).read()
+        result, log, accepted, rejected = (read(n) for n in names)
+    checked = accepted.decode().splitlines()
+    if checked[-1] != "YES" or rejected.decode().splitlines()[-1] != "NO: model differs from --expect-model":
+        raise ValueError("missing verifier controls")
+    statement = {}
+    for key in ("cqis_id", "T", "tokens", "checked", "next"):
+        values = [line[len(key)+1:] for line in checked if line.startswith(key + " ")]
+        if len(values) != 1:
+            raise ValueError("missing public statement field " + key)
+        statement[key] = values[0]
+    return json.loads(result), log, statement
+
+
+def calculate(mac, calibration, hardware, log, result, statement):
     if result["profile"] != "dev-zk" or result["workload"] != "dev/stories42m-t32":
         raise ValueError("wrong original proof")
     h = hardware["model_config"]
@@ -65,6 +89,8 @@ def calculate(mac, calibration, hardware, log, result):
         m = r["model_config"]
         if (r["kind"] != "inference" or r["profile"] != "development" or not r["bindings_all_on"]
                 or r["workload"] != result["workload"] or m["profile_byte"] != 4 or m["threads"] != 16
+                or not calibration["device"].startswith(r["device"] + ",") or r["toolchain"] != calibration["toolchain"]
+                or {k: m["statement"][k] for k in statement} != statement
                 or m["evidence"]["input_hashes"] != original or m["statement"]["checked"] != "23..32"
                 or int(m["statement"]["T"]) != 32 or r["controls"]["passed"] < 1
                 or r["controls"]["failed"] != 0 or r["verifier_time_ns"]["rust"] <= 0):
@@ -78,12 +104,14 @@ def calculate(mac, calibration, hardware, log, result):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("hardware_ledger", "prove_log", "result", "mac_gkr_ledger"):
+    for name in ("hardware_ledger", "public_archive", "mac_gkr_ledger"):
         parser.add_argument(name, type=Path)
     parser.add_argument("cpu_ledgers", nargs=3, type=Path)
     args = parser.parse_args()
     def read(p):
         return json.loads(p.read_bytes())
+    hardware = read(args.hardware_ledger)
+    result, log, statement = capture(args.public_archive, hardware["model_config"]["evidence_sha256"])
     report = calculate([read(p) for p in args.cpu_ledgers], read(args.mac_gkr_ledger),
-                       read(args.hardware_ledger), args.prove_log.read_bytes(), read(args.result))
+                       hardware, log, result, statement)
     print(json.dumps(report, sort_keys=True, indent=2))
