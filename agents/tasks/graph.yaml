@@ -4331,6 +4331,38 @@ tasks:
   acceptance:
   - randomiser and mask-row counts are fields of the source context, zero by default
   - proof bytes with zero counts equal the bytes before this task (pinned)
+- id: E19-07
+  epic: E19
+  title: Specify producer-owned column material for byte-4 hiding sources
+  depends: []
+  rfc:
+  - RFC-0010 A9,A15,A16
+  - RFC-0013 A2,A4,A6,A8
+  skill: pcs-engineer
+  lane: C
+  crate: docs
+  status: in_progress
+  agent: codex-root
+  branch: task/E19-07-source-material-contract
+  acceptance:
+  - A16 defines exactly the material, its lifetime and the authority retained by existing certificate and opening consumers
+  - independent review checks query order, leaf domain, source identity, one-opening budget, lifetime history and pre-existing tamper controls
+- id: E19-08
+  epic: E19
+  title: Use selected columns in the checked hiding source producer
+  depends:
+  - E19-07
+  rfc:
+  - RFC-0010 A9,A15,A16
+  - RFC-0013 A2,A4,A6,A8
+  skill: pcs-engineer
+  lane: C
+  crate: stele-pcs
+  status: ready
+  acceptance:
+  - same verifier-owned source, certificate bytes, opening bytes, field record and transcript as CPU for honest material
+  - wrong root, changed sibling, wrong response size, exhausted lifetime and second opening reject under their specified checks
+  - old CPU callers retain borrowed responses, work counts and no_std support
 - id: E20-01
   epic: E20
   title: Typed small-value columns and base-field first rounds in the relation engine
@@ -4486,6 +4518,51 @@ tasks:
   - a development-tier amendment specifies one tree reduction over all instances of a check with shared challenges, one root pair and one multiplicity vector per instance, and states the pair round's error with its argument
   - prover and verifier; a control with one false instance among many is rejected at that instance's root equation
   - on L2b at B = 23 the lookup-proof bytes are at most twice those of the unsplit proof
+- id: E20-10
+  epic: E20
+  title: Admit the field-only ordinary batch interface for the byte-4 prover
+  lane: E
+  depends: []
+  rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
+  skill: rfc-author
+  crate: docs
+  status: done
+  agent: codex-integration
+  branch: task/E20-10-dev-zk-backend-contract
+  acceptance:
+  - Independent development-tier review of the field-only source, dense state, unchanged crypto authority, exact dependency edge and hardware gate
+  - Record the accepted contract in the index and decision log before implementing it
+
+- id: E20-11
+  epic: E20
+  title: Implement the scalar field backend interface for ordinary claim batches
+  lane: E
+  depends:
+  - E20-10
+  rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
+  skill: cuda-kernel-author
+  crate: stele-kernels
+  status: ready
+  acceptance:
+  - Field-only backend and scalar operation table check same-id stale-session owners, duplicate imports, bounds and MSB-first dense round and fold
+  - Match the genuine CPU geometry, all evaluations, repeated positions and edge values; reject incorrect state or owner before use
+  - Preserve the existing CPU proof and verifier dependency graph
+
+- id: E20-12
+  epic: E20
+  title: Prove byte-4 ordinary batches through the checked CUDA interface
+  lane: E
+  depends:
+  - E20-11
+  rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
+  skill: cuda-kernel-author
+  crate: stele-gpu+stele-reductions+stele-prover+stele-cli
+  status: ready
+  acceptance:
+  - The normal explicit GPU proof entry authors every selected ordinary batch through the checked A4 transcript and preserves CPU default and independent verification
+  - Mandatory hardware comparisons for 1000 seeded cases per implemented operation and 50 complete byte-identical proof pairs from pinned public fixtures
+  - Record whole T32 candidate timings, transfer and allocation lifetimes with every binding active; keep the calibrated reference and actual measured speed distinct
+
 - id: E21-01
   epic: E21
   title: RFC-0030 accepted; per-round ledger
@@ -5126,7 +5203,7 @@ tasks:
   - RFC-0018 A1
   skill: performance-engineer
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-qualify-full-path
   branch: task/E16-41-mask-stream-prefix
   acceptance:
@@ -5147,7 +5224,7 @@ tasks:
   - RFC-0018 A1
   skill: performance-engineer
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-42-claim-routing
   acceptance:
@@ -5378,7 +5455,7 @@ tasks:
   - RFC-0014 §1, §4, §5, A1
   skill: benchmark-runner
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40p-gkr-construction-interface
   acceptance:
@@ -5388,3 +5465,51 @@ tasks:
   - preserve validation, public aborts, proof bytes, transcript continuation, disclosure and callback-error behavior; inputs contain private witness material and are never public inventory or verifier inputs
   - no core backend, CUDA, dependency, challenge, binding, commitment, protocol or performance change; construction descriptor and mask copies remain charged host work, and no whole-stage, device-memory or ADR-127 GO claim follows
   - obtain owning lane P and independent standards review; keep default, bench, no_std and mandatory L0/L1 gates green in stack order; this reordered lane-V interface follows E16-40h and precedes E16-40i, consumes only the already merged E16-40g interface, and its device consumer waits for this interface to merge
+
+- id: E16-40i
+  epic: E16
+  title: Qualify production lookup trees and top division on the research GPU path
+  lane: V
+  depends:
+  - E16-40c
+  rfc:
+  - RFC-0003 §1, §2, §6
+  - RFC-0008 A7 items 2, 3 and implementation notes
+  - RFC-0014 §1, §4, §5, A1
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40i-lookup-tree
+  acceptance:
+  - answer whether the merged production LookupCase inputs support exact device leaf construction, every retained fraction-tree layer and top division; retire this part of the untested-GPU risk in docs/plan.md §9, concerning c_lu and T_misc without a speed claim
+  - prototype only in research/gpu-gating/masked under ADR-123; use production normalization and the actual LookupCase reference, preserving selectors, shifts, member and table padding, tuple order and DenominatorZero
+  - test before implementation; compare all returned canonical limbs with the production reference for 1000 seeded cases, including heterogeneous members and extension compression; feed raw lazy field limbs to each implemented kernel, not only the shared helpers; include zero-denominator, malformed-shape and one-multiplicity near-miss controls
+  - qualify the actual new QM31 inverse expression against stele-field for one million seeded canonical and lazy cases including 0, 1, p-1, p and 2p-1; explicit required-H100 execution may not pass by skipping cases or absent CUDA
+  - retain and return all layers and p/q/h; report operation input/output bytes and complete explicit device buffer overlap, separately from context, module and allocator overhead; expose phase timing without publishing performance numbers
+  - work budget is one bounded implementation and one H100 qualification campaign; stop on a device divergence, compile or allocation failure and report it before further GPU optimization; no production backend, binding, proof byte, challenge, dependency, complete-memory-budget or ADR-127 GO change
+  - obtain independent review, required H100 receipts and mandatory gates in stack order before merge; the consumer uses only the E16-40c interface already merged in main, and leaves the earlier queued source archives unchanged
+
+- id: E16-40j
+  epic: E16
+  title: Qualify production claim-batch table construction and resident dense rounds on CUDA
+  lane: V
+  depends:
+  - E16-40c
+  rfc:
+  - RFC-0013 A5 item 5
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0003 §1, §2
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40j-batch-tables
+  acceptance:
+  - answer whether the merged production BatchInputs reference can be matched by device weight accumulation and Y=0 face construction feeding the existing resident round/fold path; retire this part of the untested-GPU risk in docs/plan.md §9, concerning c_sc and T_misc without a speed claim
+  - use actual prepared hiding sources and production BatchInputs and Dense references; preserve repeated positions in claim order, the zero w=1 weight half, source row/column order, extension coefficients, empty claims and zero coefficients; keep the face M31 until its first fold
+  - write honest, near-miss and malformed-input tests before implementation; reject non-hiding sources, count mismatches and positions outside the data face even with zero weight; a one-value claim change must still fail the ordinary round-sum check
+  - qualify both actual construction kernels on 1000 seeded canonical and raw lazy cases including 0, 1, p-1, p and 2p-1, and compare all resident dense rounds and final values against production Dense; explicit required-H100 execution must fail without CUDA and never pass skipped cases
+  - expose staging and device build times, transfer bytes and complete explicit construction buffer overlap separately from round scratch, first base-field fold, retained capacities, context/module/allocator and whole-pipeline costs; source preparation, host grouping, compilation, downloads and authenticated openings cannot be omitted from later cost measurements
+  - work budget is one bounded implementation and one H100 qualification campaign; stop and report on device divergence, compile or allocation failure before further optimization; prototype only in research under ADR-123 and leave the earlier queued archives unchanged
+  - obtain independent review, required H100 receipts and mandatory gates in stack order before merge; no production interface, core backend, protocol binding, challenge, proof byte, external dependency, full masked-batch/proof parity, performance, complete-device-budget or ADR-127 GO change
