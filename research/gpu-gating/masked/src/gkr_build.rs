@@ -70,7 +70,18 @@ impl TablePlan {
     /// All other tables retain the full logical domain.
     pub(crate) fn storage_len(&self, domain: usize) -> usize {
         match self.spans.as_slice() {
-            [s] if matches!(s.op, Op::Block) => s.arg as usize,
+            [s] if !self.base
+                && matches!(s.op, Op::Block)
+                && s.begin == 0
+                && s.end == s.period
+                && s.arg.is_power_of_two()
+                && s.arg <= s.period
+                && s.period.is_power_of_two()
+                && domain.is_multiple_of(s.period as usize)
+                && s.data.len() == 4 + 2 * s.arg as usize =>
+            {
+                s.arg as usize
+            }
             _ => domain,
         }
     }
@@ -356,6 +367,13 @@ impl Plan {
         let mut live = 0;
         let mut construction = 0;
         for f in &self.factors {
+            if let Some((mask, _)) = &f.mask {
+                if f.values.storage_len(self.len) != self.len
+                    || mask.storage_len(self.len) != self.len
+                {
+                    return Err("masked cyclic GKR table");
+                }
+            }
             for t in std::iter::once(&f.values).chain(f.mask.as_ref().map(|(t, _)| t)) {
                 live += table_bytes(t);
                 // gkr_table allocates its output before it uploads each individual span.
@@ -541,6 +559,33 @@ mod tests {
         let released = plan.peak(1).unwrap().fold;
         plan.factors.reverse();
         assert_eq!(plan.peak(1).unwrap().fold, released + 32);
+    }
+
+    #[test]
+    fn accepts_only_complete_unmasked_cyclic_extension_blocks() {
+        let make = |p| {
+            TablePlan::single(span(8, 0..8, Op::Block, p, vec![0; 4 + 2 * p as usize]).unwrap())
+        };
+        assert_eq!(make(1).storage_len(16), 1);
+        assert_eq!(make(8).storage_len(8), 8);
+        let mut partial = make(2);
+        partial.spans[0].end = 7;
+        assert_eq!(partial.storage_len(16), 16);
+        let mut wrong = make(2);
+        wrong.base = true;
+        assert_eq!(wrong.storage_len(16), 16);
+        let mut plan = Plan {
+            len: 16,
+            degree: 2,
+            terms: vec![],
+            factors: vec![FactorPlan {
+                values: make(2),
+                mask: Some((make(2), 1)),
+            }],
+        };
+        assert!(plan.peak(1).is_err());
+        plan.factors[0].mask = None;
+        assert!(plan.peak(1).is_ok());
     }
 
     #[test]

@@ -10,7 +10,7 @@ pub(crate) const SEED: u64 = 0x40_2000_0001;
 pub(crate) const ELL: u8 = 3;
 pub(crate) const M: u8 = 9;
 
-fn source_seed(seed: u64) -> [u8; 32] {
+pub(crate) fn source_seed(seed: u64) -> [u8; 32] {
     let mut rng = Rng::new(seed);
     core::array::from_fn(|_| rng.next() as u8)
 }

@@ -86,6 +86,25 @@ fn build<'a>(
 ) -> Result<(DeviceMasked<'a>, Timing), Error> {
     let coefficients = vec![(K::from_i64(1), vec![0, 1])];
     let terms = crate::round::Terms::new(2, &coefficients, 3).map_err(Error::Shape)?;
+    // The two-factor dense state retains pointers, flags, two offsets,
+    // two term indices, a coefficient and fixed three-node round scratch.
+    let logical_tables = p
+        .len
+        .checked_mul(20)
+        .ok_or(Error::Shape("batch table bytes"))?;
+    let blocks = dev.grid(p.len / 2).grid_dim.0 as usize;
+    let round_descriptors_and_scratch = 72 + 48 * (blocks + 1);
+    let initial_round = logical_tables
+        .checked_add(round_descriptors_and_scratch)
+        .ok_or(Error::Shape("batch round bytes"))?;
+    let promotion = initial_round
+        .checked_add(p.len.checked_mul(8).ok_or(Error::Value)?)
+        .ok_or(Error::Value)?;
+    let construction = p
+        .upload_bytes()
+        .checked_add(logical_tables)
+        .ok_or(Error::Value)?;
+    dev.require_budget(construction.max(promotion))?;
     let start = Instant::now();
     let temporary = if original.is_some() {
         None

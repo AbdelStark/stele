@@ -118,6 +118,8 @@ fn matches_reference_borrowed_gkr_construction_on_h100() {
     assert!(available(), "required CUDA driver and NVRTC absent");
     let dev = Device::new().expect("CUDA device");
     assert!(dev.name.contains("H100"), "H100 required");
+    let mut repeated_rounds = 0;
+    let mut period_transitions = 0;
     let mut total = 0;
     let mut representations = 0;
     for case in 0..CASES {
@@ -140,6 +142,12 @@ fn matches_reference_borrowed_gkr_construction_on_h100() {
                     step.step
                 );
                 for point in step.point {
+                    for factor in &state.factors {
+                        if let Some(p) = factor.x.period(state.len) {
+                            repeated_rounds += 1;
+                            period_transitions += usize::from(p == state.len / 2);
+                        }
+                    }
                     assert_eq!(
                         state.round().unwrap(),
                         reference.round().unwrap(),
@@ -168,7 +176,8 @@ fn matches_reference_borrowed_gkr_construction_on_h100() {
             eprintln!("constructed_gkr_cases_passed={} steps={total}", case + 1);
         }
     }
+    assert!(period_transitions > 0 && repeated_rounds > period_transitions);
     assert_eq!(total, 2728);
     assert_eq!(representations, 2 * total);
-    eprintln!("constructed_gkr_statements={CASES} steps={total} representations={representations} device={}", dev.name);
+    eprintln!("periodic_rounds={repeated_rounds} period_transitions={period_transitions} constructed_gkr_statements={CASES} steps={total} representations={representations} device={}", dev.name);
 }
