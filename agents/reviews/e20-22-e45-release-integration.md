@@ -21,3 +21,17 @@ python3 -B -m unittest scripts.tests.test_field_source_gate.FieldSourcesLayoutTe
 The positive test passed. In an isolated checkout, replacing `index` by the number of preceding columns that share `c.source` made this same test fail at descriptor construction with `Statement`. For that mutation the global offsets vector receives a source-local ordinal. The field gate passed its positive and removal controls.
 
 Lucid job 6961 runs the normal H100 parity gate and conventional T32 proof on candidate `27a27592`, tree `ce4a363a93543a68df111f7613938eb050f211e4`. The validation composition includes exact A7 `92bfae2b` and CPU sources `02afacd9`. The release integration takes the reviewed changes through the ordinary selected PR gates.
+
+## Integration checks
+
+All commands below exited zero. Both Rust workspace suites and Clippy ran on the frozen production source `27a27592`. The native check also included the E16-45 inventory entry. The CI tool tests used the equivalent committed admission and its removal control. The focused interleaving test runs separately on `d84eb7e6`.
+
+| Command | Result | SHA-256 of the operator log |
+|---|---|---|
+| `cargo test --workspace --locked --offline` | 912 passing cases | `d5a1618221975c5b3c55f8d59701df48682ba65fdcaba1a806bf6ee72554adc1` |
+| `cargo test --workspace --all-features --locked --offline` | 978 passing cases | `951cc4e9387605b3cde9cb74dbaad38e2765b4fcbeac4b38a5306014ca843532` |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | Passed | `909d2a8a334fa9375149b97164088872409512d3df8e6f001f3c64b0a6fe2d7f` |
+| `scripts/gates/native.sh` | Executed coverage reached 78 of 120 catalog bindings and 150 of 246 catalog controls | `dea8d8867b7081f2e052ab62fd626e0c8493e4e5b8861945ce5564ad6b218663` |
+| `python3 scripts/ci_tests.py` | 119 passing cases | `6db7cecc356d689a39a1e798ed8ca802532686faebad16f3ac44171624c48933` |
+
+The H100 parity gate compared 50 distinct complete proof and public bundle pairs with the original independent manifest. The gate also verified the replay, changed-model pins and backend rejection controls. [Complete corpus ledger](../../bench/ledger/e20-22-e45-h100-complete-shared-proof-parity.json)
