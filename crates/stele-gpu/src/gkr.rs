@@ -4,7 +4,9 @@ use crate::gkr_build::{budget, factors, pointer, Work};
 use crate::packing::{canonical, words};
 use crate::{Cuda, Error};
 use cudarc::driver::{CudaSlice, LaunchConfig, PushKernelArg};
-use stele_kernels::gkr::{plan::Plan, GkrBackend, GkrConstruction};
+use stele_kernels::gkr::{
+    plan::Plan, GkrBackend, GkrConstruction, RelationBackend, RelationConstruction,
+};
 use stele_kernels::QM31;
 
 /// RFC-0003 §1 uses canonical inputs in the prover. The device differential also
@@ -33,9 +35,16 @@ pub(crate) struct Factor {
     pub mask: Option<(Table, usize)>,
 }
 
+#[derive(Clone, Copy)]
+enum Family {
+    Gkr,
+    Relation,
+}
+
 /// Device owners and transition state of one selected GKR sumcheck.
 pub struct Gkr<'s, 'd> {
     session: &'s Session<'d>,
+    family: Family,
     factors: Vec<Factor>,
     len: usize,
     axis: usize,
@@ -53,13 +62,8 @@ pub struct Gkr<'s, 'd> {
     fold_extra: usize,
 }
 
-impl<'d> GkrBackend<QM31> for Session<'d> {
-    type Gkr<'s>
-        = Gkr<'s, 'd>
-    where
-        Self: 's;
-    fn gkr_start<'s>(&'s self, input: &GkrConstruction<'_, QM31>) -> Result<Self::Gkr<'s>, Error> {
-        let p = Plan::new(input).map_err(|_| Error::Geometry)?;
+impl<'d> Session<'d> {
+    fn start_masked(&self, p: Plan<'_>, family: Family) -> Result<Gkr<'_, 'd>, Error> {
         let nodes = p.degree + 1;
         let terms = u32::try_from(p.terms.len()).map_err(|_| Error::Geometry)?;
         let n = p.factors.len();
@@ -92,6 +96,7 @@ impl<'d> GkrBackend<QM31> for Session<'d> {
         let stream = &device.stream;
         let state = Gkr {
             session: self,
+            family,
             factors,
             len: p.len,
             axis: 0,
@@ -112,15 +117,54 @@ impl<'d> GkrBackend<QM31> for Session<'d> {
         device.check_peak()?;
         let m = device.memory()?;
         self.record(|c| {
-            c.gkr_steps += 1;
-            c.gkr_expected_rounds += p.len.ilog2() as usize;
-            c.gkr_planned_peak_bytes = c.gkr_planned_peak_bytes.max(planned);
-            c.gkr_observed_peak_bytes = c.gkr_observed_peak_bytes.max(m.outside_pool + m.pool_high);
-            c.gkr_uploaded_bytes += work.uploaded;
             c.uploaded_bytes += work.uploaded;
-            c.gkr_layer_source_bytes += work.layer_bytes;
+            match family {
+                Family::Gkr => {
+                    c.gkr_steps += 1;
+                    c.gkr_expected_rounds += p.len.ilog2() as usize;
+                    c.gkr_planned_peak_bytes = c.gkr_planned_peak_bytes.max(planned);
+                    c.gkr_observed_peak_bytes =
+                        c.gkr_observed_peak_bytes.max(m.outside_pool + m.pool_high);
+                    c.gkr_uploaded_bytes += work.uploaded;
+                    c.gkr_layer_source_bytes += work.layer_bytes;
+                }
+                Family::Relation => {
+                    c.relation_steps += 1;
+                    c.relation_expected_rounds += p.len.ilog2() as usize;
+                    c.relation_planned_peak_bytes = c.relation_planned_peak_bytes.max(planned);
+                    c.relation_observed_peak_bytes = c
+                        .relation_observed_peak_bytes
+                        .max(m.outside_pool + m.pool_high);
+                    c.relation_uploaded_bytes += work.uploaded;
+                    c.relation_value_bytes += work.fields - work.masks;
+                    c.relation_mask_bytes += work.masks;
+                }
+            }
         });
         Ok(state)
+    }
+}
+
+impl<'d> RelationBackend<QM31> for Session<'d> {
+    fn relation_start<'s>(
+        &'s self,
+        input: &RelationConstruction<'_, QM31>,
+    ) -> Result<Self::Gkr<'s>, Error> {
+        self.start_masked(
+            Plan::relation(input).map_err(|_| Error::Geometry)?,
+            Family::Relation,
+        )
+    }
+}
+
+impl<'d> GkrBackend<QM31> for Session<'d> {
+    type Gkr<'s>
+        = Gkr<'s, 'd>
+    where
+        Self: 's;
+    fn gkr_start<'s>(&'s self, input: &GkrConstruction<'_, QM31>) -> Result<Self::Gkr<'s>, Error> {
+        let p = Plan::new(input).map_err(|_| Error::Geometry)?;
+        self.start_masked(p, Family::Gkr)
     }
     fn gkr_round<'s>(s: &mut Self::Gkr<'s>) -> Result<Vec<QM31>, Error>
     where
@@ -186,11 +230,20 @@ impl<'d> GkrBackend<QM31> for Session<'d> {
         let uploaded = 20 * xs.len() as u64;
         let downloaded = 16 * result.len() as u64;
         s.session.record(|c| {
-            c.gkr_rounds += 1;
-            c.gkr_uploaded_bytes += uploaded;
             c.uploaded_bytes += uploaded;
-            c.gkr_downloaded_bytes += downloaded;
             c.downloaded_bytes += downloaded;
+            match s.family {
+                Family::Gkr => {
+                    c.gkr_rounds += 1;
+                    c.gkr_uploaded_bytes += uploaded;
+                    c.gkr_downloaded_bytes += downloaded;
+                }
+                Family::Relation => {
+                    c.relation_rounds += 1;
+                    c.relation_uploaded_bytes += uploaded;
+                    c.relation_downloaded_bytes += downloaded;
+                }
+            }
         });
         s.phase = Phase::Fold;
         Ok(result)
@@ -223,11 +276,19 @@ impl<'d> GkrBackend<QM31> for Session<'d> {
         }
         device.check_peak()?;
         let m = device.memory()?;
-        s.session.record(|counts| {
-            counts.gkr_folds += 1;
-            counts.gkr_observed_peak_bytes = counts
-                .gkr_observed_peak_bytes
-                .max(m.outside_pool + m.pool_high);
+        s.session.record(|counts| match s.family {
+            Family::Gkr => {
+                counts.gkr_folds += 1;
+                counts.gkr_observed_peak_bytes = counts
+                    .gkr_observed_peak_bytes
+                    .max(m.outside_pool + m.pool_high);
+            }
+            Family::Relation => {
+                counts.relation_folds += 1;
+                counts.relation_observed_peak_bytes = counts
+                    .relation_observed_peak_bytes
+                    .max(m.outside_pool + m.pool_high);
+            }
         });
         s.len = half;
         s.axis += 1;
@@ -263,9 +324,17 @@ impl<'d> GkrBackend<QM31> for Session<'d> {
             bytes += 4 * n as u64;
         }
         s.session.record(|c| {
-            c.gkr_finals += 1;
-            c.gkr_downloaded_bytes += bytes;
             c.downloaded_bytes += bytes;
+            match s.family {
+                Family::Gkr => {
+                    c.gkr_finals += 1;
+                    c.gkr_downloaded_bytes += bytes;
+                }
+                Family::Relation => {
+                    c.relation_finals += 1;
+                    c.relation_downloaded_bytes += bytes;
+                }
+            }
         });
         Ok(result)
     }

@@ -20,5 +20,5 @@ pub use runtime::{Cuda, Error, Memory};
 #[cfg(all(test, feature = "cuda"))]
 mod gkr_tests;
 
-#[cfg(all(test, feature="cuda"))]
+#[cfg(all(test, feature = "cuda"))]
 mod relation_tests;

@@ -80,6 +80,8 @@ pub(crate) fn budget(p: &Plan<'_>, blocks: usize, indices: usize) -> Result<Budg
 pub(crate) struct Work {
     pub uploaded: u64,
     pub layer_bytes: u64,
+    pub fields: u64,
+    pub masks: u64,
 }
 
 fn layer(
@@ -126,6 +128,7 @@ fn layer(
     let bytes = 16 * width as u64;
     work.uploaded += bytes;
     work.layer_bytes += bytes;
+    work.fields += bytes;
     Ok(())
 }
 
@@ -173,6 +176,7 @@ fn table(device: &Cuda, t: TablePlan<'_>, len: usize, work: &mut Work) -> Result
         };
         let data = upload(&s.data)?;
         let shifts = upload(&s.shifts)?;
+        work.fields += size_of_val(s.data.as_slice()) as u64;
         work.uploaded += (size_of_val(s.data.as_slice()) + size_of_val(s.shifts.as_slice())) as u64;
         let ptr = |b: &Option<CudaSlice<u32>>| b.as_ref().map_or(0, |b| pointer(device, b));
         let data_ptr = ptr(&data);
@@ -213,10 +217,12 @@ pub(crate) fn factors(
     let mut factors = Vec::with_capacity(p.len());
     for f in p {
         let x = table(device, f.values, len, work)?;
+        let old = work.fields;
         let mask = match f.mask {
             Some((m, v)) => Some((table(device, m, len, work)?, v)),
             None => None,
         };
+        work.masks += work.fields - old;
         factors.push(Factor { x, mask });
     }
     Ok(factors)
