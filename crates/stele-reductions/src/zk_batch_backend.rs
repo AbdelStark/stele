@@ -13,12 +13,30 @@ use stele_sumcheck::{
 /// The ordinary batch execution selected for one proof attempt (RFC-0014 A2).
 /// The caller creates a fresh backend session, even on a reused device context.
 #[derive(Clone, Copy)]
-pub struct BatchExecution<'a, K>(&'a dyn Arithmetic<K>);
+pub struct BatchExecution<'a, K> {
+    batches: &'a dyn Arithmetic<K>,
+    gkr: Option<&'a dyn super::gkr_backend::Arithmetic<K>>,
+}
 
 impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
     /// Wrap the field session used for this proof attempt.
     pub fn new<B: Backend<K>>(session: &'a B) -> Self {
-        Self(session)
+        Self {
+            batches: session,
+            gkr: None,
+        }
+    }
+
+    /// Select both live GKR and ordinary batches for this proof attempt (RFC-0014 A3).
+    pub fn with_gkr<B: stele_kernels::gkr::GkrBackend<K>>(session: &'a B) -> Self {
+        Self {
+            batches: session,
+            gkr: Some(session),
+        }
+    }
+
+    pub(super) fn gkr(self) -> Option<&'a dyn super::gkr_backend::Arithmetic<K>> {
+        self.gkr
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -32,7 +50,8 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
         binding: &[u8],
         t: &mut Transcript<K>,
     ) -> Result<(masked::Proof<K>, Vec<K>), Error> {
-        self.0.prove(i, source, claims, gammas, mask, binding, t)
+        self.batches
+            .prove(i, source, claims, gammas, mask, binding, t)
     }
 }
 
