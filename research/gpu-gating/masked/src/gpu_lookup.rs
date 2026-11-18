@@ -6,6 +6,9 @@ use cudarc::driver::{CudaSlice, PushKernelArg};
 use std::time::{Duration, Instant};
 use stele_reductions::zk::claims::bench::{LookupInputs, LookupTree};
 
+#[path = "gpu_lookup_resident.rs"]
+pub mod select;
+
 #[cfg(test)]
 #[path = "gpu_lookup_tests.rs"]
 mod tests;
@@ -101,27 +104,37 @@ impl<'a> Tree<'a> {
     }
 }
 
+/// Build the tree down to the lowest consumed layer, retaining the device pairs.
+fn build<'a>(
+    dev: &'a Device,
+    p: &Prepared,
+    lowest: usize,
+) -> Result<(Tree<'a>, Duration, Duration), Error> {
+    let start = Instant::now();
+    let values = dev.stream().clone_htod(&p.values)?;
+    let selector = dev.stream().clone_htod(&p.selector)?;
+    let tree = Tree::new(dev, p)?;
+    dev.sync()?;
+    let upload = start.elapsed();
+    let start = Instant::now();
+    tree.leaf(&values, &selector, p)?;
+    let mut width = p.leaves / 2;
+    while width >= lowest {
+        tree.level(width)?;
+        width /= 2;
+    }
+    dev.sync()?;
+    let tree_time = start.elapsed();
+    Ok((tree, upload, tree_time))
+}
+
 /// Consume production-normalized inputs and return all canonical layers and p/q/h.
 /// No proof, commitment, transcript or core backend calls this research operation.
 pub fn prepare(dev: &Device, input: &LookupInputs<K>) -> Result<(LookupTree<K>, Timing), Error> {
     let start = Instant::now();
     let p = Prepared::new(input)?;
     let stage = start.elapsed();
-    let start = Instant::now();
-    let values = dev.stream().clone_htod(&p.values)?;
-    let selector = dev.stream().clone_htod(&p.selector)?;
-    let tree = Tree::new(dev, &p)?;
-    dev.sync()?;
-    let upload = start.elapsed();
-    let start = Instant::now();
-    tree.leaf(&values, &selector, &p)?;
-    let mut width = p.leaves / 2;
-    while width > 0 {
-        tree.level(width)?;
-        width /= 2;
-    }
-    dev.sync()?;
-    let tree_time = start.elapsed();
+    let (tree, upload, tree_time) = build(dev, &p, 1)?;
     let start = Instant::now();
     tree.divide()?;
     dev.sync()?;
