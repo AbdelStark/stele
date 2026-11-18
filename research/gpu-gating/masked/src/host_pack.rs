@@ -1,6 +1,6 @@
 //! RFC-0013 A5 item 5. Measure host preparations on the original ragged claims.
 //! Four alternating pairs run with one output live; exhaustive equality runs separately.
-use crate::batch::{pack, Prepared};
+use crate::batch::pack;
 use crate::{K, M31};
 use std::{hint::black_box, mem::size_of_val, time::Instant};
 use stele_reductions::{stele_pcs::Source, zk::claims::Claim};
@@ -55,7 +55,7 @@ pub fn compare(id: u64, descriptor: &[u8], message: &[M31], claims: &[Claim<K>],
         }
     }
     let source = Source::from_bytes(descriptor).unwrap();
-    let reference = Prepared::new(&source, message, claims, gammas).unwrap();
+    let (reference, _) = pack::<false>(&source, message, claims, gammas).unwrap();
     let (candidate, _) = pack::<true>(&source, message, claims, gammas).unwrap();
     assert!(
         reference.matches(&candidate),
