@@ -1,5 +1,8 @@
 //! RFC-0010 A9 §§1,6,9: canonical prover storage, with no verifier acceptance.
-use crate::{Error, Policy, Source};
+use crate::{
+    ColumnMaterial, ColumnResponse, Error, HidingUse, HostColumns, Policy, ProverWork, Source,
+};
+use alloc::borrow::Cow;
 use alloc::vec::Vec;
 use core::mem::size_of;
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -45,12 +48,10 @@ pub struct PreparedColumn<'a> {
 /// message[0] = M31::ZERO;
 /// let column = prepared.response(0);
 /// ```
-pub struct PreparedSource<'a, K: ChallengeField> {
+pub struct PreparedSource<'a, K: ChallengeField, M = HostColumns> {
     source: Source<K>,
     message: &'a [M31],
-    columns: Vec<u8>,
-    tree: merkle::Tree,
-    work: PreparationWork,
+    material: M,
     borrows: AtomicUsize,
     openings: AtomicUsize,
     mask_polynomial: bool,
@@ -204,19 +205,8 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         policy: Policy,
     ) -> Result<Self, Error> {
         let mut prepared = Self::hiding_with(id, ell, m, blowup, message, seed, usage, policy)?;
-        if !prepared.source.admits_lifetime(budget) {
-            return Err(Error::UnsupportedSource);
-        }
-        if revealed.len() >= budget {
-            return Err(Error::MaskBudget);
-        }
-        prepared.lifetime = Some((budget, revealed));
+        prepared.set_lifetime(budget, revealed)?;
         Ok(prepared)
-    }
-
-    /// The vectors a lifetime source revealed before this preparation.
-    pub(crate) fn revealed(&self) -> &[Vec<K>] {
-        self.lifetime.as_ref().map_or(&[], |(_, r)| r.as_slice())
     }
 
     /// Prepare the mask-polynomial source of RFC-0013 A4: a hiding source with
@@ -257,7 +247,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         usage: &mut HashUsage,
         policy: Policy,
     ) -> Result<Self, Error> {
-        if (1usize << ell) != 2 * K::DEGREE {
+        if 1usize.checked_shl(u32::from(ell)) != Some(2 * K::DEGREE) {
             return Err(Error::UnsupportedSource);
         }
         let mut prepared = Self::hiding_with(id, ell, m, blowup, message, seed, usage, policy)?;
@@ -381,17 +371,91 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             )
             .ok_or(Error::Capacity)?;
         let source = rebuild(tree.root())?;
-        Ok(Self {
-            source,
-            message,
+        let material = HostColumns {
+            descriptor: source.descriptor(),
             columns,
             tree,
             work,
+        };
+        Ok(Self::from_material(source, message, material))
+    }
+
+    /// Produce an individual response borrowing the existing scalar storage.
+    pub fn response(&self, index: u64) -> Result<PreparedColumn<'_>, Error> {
+        self.material.response(index)
+    }
+
+    /// Observed host preparation capacities.
+    pub fn work(&self) -> PreparationWork {
+        self.material.work
+    }
+}
+
+impl<'a, K: ChallengeField, M: ColumnMaterial> PreparedSource<'a, K, M> {
+    fn from_material(source: Source<K>, message: &'a [M31], material: M) -> Self {
+        Self {
+            source,
+            message,
+            material,
             borrows: AtomicUsize::new(0),
             openings: AtomicUsize::new(0),
             mask_polynomial: false,
             lifetime: None,
-        })
+        }
+    }
+
+    /// Prepare a balanced development hiding source from the exact physical message.
+    /// The factory observes the host-derived A15 context, seed and actual local hash
+    /// usage. The host retains all A2/A4/A6 row, rank and lifetime decisions.
+    #[allow(clippy::too_many_arguments)]
+    pub fn hiding_material<F>(
+        id: u64,
+        ell: u8,
+        m: u8,
+        message: &'a [M31],
+        seed: &[u8; 32],
+        purpose: HidingUse<K>,
+        usage: &mut HashUsage,
+        prepare: F,
+    ) -> Result<Self, Error>
+    where
+        F: FnOnce(&Source<K>, &'a [M31], &[u8; 32], &mut HashUsage) -> Result<M, Error>,
+    {
+        let context = |root| Source::<K>::hiding_with(id, ell, m, 2, root, Policy::Two);
+        let source = context([0; 32])?;
+        if source.rows().checked_mul(source.columns()) != Some(message.len()) {
+            return Err(Error::MessageShape);
+        }
+        if matches!(purpose, HidingUse::MaskPolynomial) && source.rows() / 2 != 2 * K::DEGREE {
+            return Err(Error::UnsupportedSource);
+        }
+        let material = prepare(&source, message, seed, usage)?;
+        if material.descriptor() != source.descriptor() {
+            return Err(Error::CertificateContext);
+        }
+        let mut result = Self::from_material(context(material.root())?, message, material);
+        match purpose {
+            HidingUse::Single => {}
+            HidingUse::MaskPolynomial => result.mask_polynomial = true,
+            HidingUse::Lifetime { budget, revealed } => result.set_lifetime(budget, revealed)?,
+        }
+        Ok(result)
+    }
+
+    fn set_lifetime(&mut self, budget: usize, revealed: Vec<Vec<K>>) -> Result<(), Error> {
+        if !self.source.admits_lifetime(budget) {
+            return Err(Error::UnsupportedSource);
+        }
+        if revealed.len() >= budget {
+            return Err(Error::MaskBudget);
+        }
+        self.lifetime = Some((budget, revealed));
+        Ok(())
+    }
+
+    /// The vectors a lifetime source revealed before this preparation.
+    pub(crate) fn revealed(&self) -> &[Vec<K>] {
+        self.lifetime.as_ref().map_or(&[], |(_, r)| r.as_slice())
     }
 
     /// Computed context/root; the verifier must still own and check its expected source.
@@ -432,21 +496,41 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             .saturating_mul(self.message.len())
     }
 
-    /// Produce a complete individual response without hashing or changing storage.
-    pub fn response(&self, index: u64) -> Result<PreparedColumn<'_>, Error> {
-        let siblings = self.tree.path(index).map_err(Error::Merkle)?;
-        // Tree checked index < N; construction checked N*width, so these offsets fit.
-        let width = self.source.descriptor().width as usize;
-        let offset = index as usize * width;
-        Ok(PreparedColumn {
-            payload: &self.columns[offset..offset + width],
-            siblings,
-        })
-    }
-
-    /// Non-authorizing preparation observations, including complete encoder scratch.
-    pub fn work(&self) -> PreparationWork {
-        self.work
+    /// Append exactly one drawn column and path; only the verifier authenticates their contents.
+    pub(crate) fn append_response(
+        &self,
+        index: u64,
+        proof: &mut Vec<u8>,
+        work: &mut ProverWork,
+    ) -> Result<(), Error> {
+        use crate::work::{add, bytes};
+        if index >= self.source.descriptor().count {
+            return Err(Error::Merkle(merkle::Error::InvalidIndex));
+        }
+        let (payload, siblings): ColumnResponse<'_> = self.material.selected(index)?;
+        if u64::try_from(payload.len()).ok() != Some(self.source.descriptor().width) {
+            return Err(Error::Merkle(merkle::Error::InvalidLeaf));
+        }
+        if siblings.len() != self.source.path_height() {
+            return Err(Error::Merkle(merkle::Error::InvalidPath));
+        }
+        let path_bytes = bytes(&siblings)?;
+        let col_bytes = match &payload {
+            Cow::Owned(buffer) => bytes(buffer)?,
+            Cow::Borrowed(_) => 0,
+        };
+        work.path_peak_bytes = work.path_peak_bytes.max(path_bytes);
+        work.peak_owned_bytes = work
+            .peak_owned_bytes
+            .max(add(bytes(proof)?, add(path_bytes, col_bytes)?)?);
+        work.responses = add(work.responses, 1)?;
+        work.column_bytes_copied = add(work.column_bytes_copied, payload.len())?;
+        proof.extend_from_slice(&payload);
+        for sibling in siblings {
+            work.path_bytes_copied = add(work.path_bytes_copied, sibling.len())?;
+            proof.extend_from_slice(&sibling);
+        }
+        Ok(())
     }
 }
 
@@ -478,7 +562,7 @@ mod tests {
         assert!(salt > 0);
         let mut stream = MaskStream::new(&seed, SOURCE_SALT, prepared.source.descriptor().id);
         let mut expected = alloc::vec![0u8; salt];
-        for leaf in prepared.columns.chunks_exact(width) {
+        for leaf in prepared.material.columns.chunks_exact(width) {
             stream.fill(&mut expected);
             assert_eq!(&leaf[..salt], expected.as_slice());
         }

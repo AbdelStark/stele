@@ -339,7 +339,7 @@ impl<K: ChallengeField> Source<K> {
         let p = self.parameters;
         self.hiding
             && budget >= 1
-            && self.rows / 2 >= (budget + 1).saturating_mul(K::DEGREE)
+            && self.rows / 2 >= budget.saturating_add(1).saturating_mul(K::DEGREE)
             && usize::from(p.certificate_queries)
                 .saturating_add(budget.saturating_mul(usize::from(p.opening_queries)))
                 < self.columns / 2
