@@ -35,3 +35,17 @@ All commands below exited zero. Both Rust workspace suites and Clippy ran on the
 | `python3 scripts/ci_tests.py` | 119 passing cases | `6db7cecc356d689a39a1e798ed8ca802532686faebad16f3ac44171624c48933` |
 
 The H100 parity gate compared 50 distinct complete proof and public bundle pairs with the original independent manifest. The gate also verified the replay, changed-model pins and backend rejection controls. [Complete corpus ledger](../../bench/ledger/e20-22-e45-h100-complete-shared-proof-parity.json)
+
+## Three-pair H100 confirmation
+
+Lucid job 6964 used one NVIDIA H100 SXM and the same pinned 16 CPU threads on eight physical cores for all six ordinary proofs. Each process used the same public Stories42M-T32 request and a distinct reservation under one fresh eight-proof model commitment. The Rust CPU-only verifier built from this candidate and the separately pinned older verifier each accepted every proof and rejected its changed model digest.
+
+| Pair | Order | CPU seconds | CUDA seconds | CPU/CUDA |
+|---|---|---:|---:|---:|
+| 1 | CUDA then CPU | [469.10](../../bench/ledger/e20-22-e45-dev-zk-stories42m-t32-h100-sxm-repeat-1-cpu.json) | [102.17](../../bench/ledger/e20-22-e45-dev-zk-stories42m-t32-h100-sxm-repeat-1-cuda.json) | 4.591× |
+| 2 | CPU then CUDA | [468.74](../../bench/ledger/e20-22-e45-dev-zk-stories42m-t32-h100-sxm-repeat-2-cpu.json) | [101.14](../../bench/ledger/e20-22-e45-dev-zk-stories42m-t32-h100-sxm-repeat-2-cuda.json) | 4.635× |
+| 3 | CUDA then CPU | [467.62](../../bench/ledger/e20-22-e45-dev-zk-stories42m-t32-h100-sxm-repeat-3-cpu.json) | [103.63](../../bench/ledger/e20-22-e45-dev-zk-stories42m-t32-h100-sxm-repeat-3-cuda.json) | 4.512× |
+
+Median proving times were **468.74 s on CPU** (range 467.62–469.10 s) and **102.17 s on CUDA** (range 101.14–103.63 s). The median paired wall-time ratio was **4.591×** (range 4.512–4.635×). The ratio of median times was 4.588×. These uninstrumented timings cover the prover process. Each ledger records the model commitment and both verifier processes separately.
+
+All three device proofs reached 32,800,374,784 bytes of charged physical peak on an 85,017,493,504-byte H100. Each 21,411,006-byte public proof contained 876 relations, 385 GKR steps and four batches. The positive receipts reconcile all five originals, ten visits, 1,570 responses and 1,456 retained lookup child views with the independently decoded proof. The 50-case fixed-seed corpus independently establishes byte parity.

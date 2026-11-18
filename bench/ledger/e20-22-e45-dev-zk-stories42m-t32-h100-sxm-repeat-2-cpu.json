@@ -1,0 +1,247 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "27a27592e6306afaa67153aa25aab06924ad43c4",
+  "controls": {
+    "failed": 0,
+    "passed": 2,
+    "total": 2
+  },
+  "device": "Intel(R) Xeon(R) Platinum 8480CL on h100-sxm-8-0",
+  "driver": "not-applicable",
+  "generated_tokens": 8,
+  "kernel_counters": {
+    "checked_positions": 9,
+    "commit_peak_rss_bytes": 36213125120,
+    "model_commitment_bytes": 638,
+    "prove_peak_rss_bytes": 88543133696,
+    "public_bytes": 243863,
+    "verify_peak_rss_bytes": 4731064320
+  },
+  "kind": "inference",
+  "model_config": {
+    "accounting_parser_sha256": "2e829125b43a037d15d93fbe8493f624844307770aed1fcbefcd9704cbdcd0a9",
+    "accounting_source": "ffb8700685ecc39e46ba842274ec51ff2232be01",
+    "allocation_sha256": "5e4289d6d55bf678455a3fe325900f29deba11f605fd1006946780860f856987",
+    "binary_sha256": "e29b3fc5d43c0e3abb2256dc4e41a59c18f8353f43884d80ba7f57fc36b3c4d9",
+    "campaign_manifest_sha256": "11f9a3f44fe46d6d1ebfe4fa9ce275da3ba15826ba1f0c54ae40d562c2bf0e0e",
+    "command": "stele commit-model --zk / prove-dev --zk / verify-dev --expect-model",
+    "complete_evidence": "lucid-cluster:~/stele-codex/e20-22-optimized-repeat-27a27592/job-6964/2",
+    "composition": [
+      "2b632c6ce67ed269d497ea0b85b9798633c64739",
+      "92bfae2b0ae3bb25a59e117f180d90a9a062511b",
+      "02afacd991a501f5908432f32f9a50450a9b0b40",
+      "f4f66361bde1e72b0adba6a7e3f8891926bf1225",
+      "ce4a363a93543a68df111f7613938eb050f211e4"
+    ],
+    "controls": {
+      "legacy-pin": "model differs from --expect-model",
+      "pin": "model differs from --expect-model"
+    },
+    "cpu_affinity": [
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      176,
+      177,
+      178,
+      179,
+      180,
+      181,
+      182,
+      183
+    ],
+    "cpu_topology": {
+      "core_groups": [
+        {
+          "core": 64,
+          "logical_cpus": [
+            64,
+            176
+          ],
+          "socket": 1
+        },
+        {
+          "core": 65,
+          "logical_cpus": [
+            65,
+            177
+          ],
+          "socket": 1
+        },
+        {
+          "core": 66,
+          "logical_cpus": [
+            66,
+            178
+          ],
+          "socket": 1
+        },
+        {
+          "core": 67,
+          "logical_cpus": [
+            67,
+            179
+          ],
+          "socket": 1
+        },
+        {
+          "core": 68,
+          "logical_cpus": [
+            68,
+            180
+          ],
+          "socket": 1
+        },
+        {
+          "core": 69,
+          "logical_cpus": [
+            69,
+            181
+          ],
+          "socket": 1
+        },
+        {
+          "core": 70,
+          "logical_cpus": [
+            70,
+            182
+          ],
+          "socket": 1
+        },
+        {
+          "core": 71,
+          "logical_cpus": [
+            71,
+            183
+          ],
+          "socket": 1
+        }
+      ],
+      "logical_cpus": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183
+      ],
+      "lscpu_sha256": "f979cdd46754a50556e035243add86d37db05f4e3e96f10bb09ec0628dcaab2f",
+      "physical_cores": 8,
+      "source": "h100-sxm-8-0 lscpu --parse=CPU,CORE,SOCKET,ONLINE"
+    },
+    "gpu_uuid": "GPU-50b1db84-500f-6403-1d61-6ebfc4d68a2a",
+    "host_context": "A7 plus E16-42 through E16-45 validation composition. Fresh model commitment with separate public proof indices on one dedicated H100 and 16 pinned CPU threads on eight physical cores. CPU-only verifier from the measured build and separately pinned older CPU verifier both checked expected and changed model. All six conventional proving processes are uninstrumented. Paired order is CUDA/CPU, CPU/CUDA, CUDA/CPU.",
+    "inputs": {
+      "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+      "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+      "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+      "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+    },
+    "job": 6964,
+    "legacy_verifier_sha256": "b16646342de292f1d4733b9ccb80cff4d857ea550cb522581453249a1feb77dc",
+    "matched_proof_sha256": "94751fb723c22b463be88e0f380cc4342d561d88dd26872ec49a5bc191363ea8",
+    "model": {
+      "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+      "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
+      "fidelity": "agents/reviews/e16-11-stories42m/fidelity.json",
+      "model_sha256": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+      "name": "llama2.c stories42M (MIT), converted by research/cqis-model-contract/stories42m.py",
+      "preparation_sha256": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+      "scales_sha256": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8",
+      "shape": {
+        "context": 1024,
+        "d": 512,
+        "head_width": 64,
+        "heads": 8,
+        "hidden": 1376,
+        "kv_heads": 8,
+        "layers": 8,
+        "vocabulary": 32000
+      },
+      "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
+    },
+    "model_commitment_sha256": "bc70f46e6d613d1fbfd5f81b6adda755bf3d3a184835fbcac7bc9b76fab8166b",
+    "ordered_backends": [
+      "cpu",
+      "cuda"
+    ],
+    "pair": 2,
+    "physical_host": "h100-sxm-8-0",
+    "previous_cpu_verifier_time_ns": 58810000000,
+    "profile_byte": 4,
+    "proof_index": 2,
+    "proof_sha256": "79e0b1698f7a1a78f3ee5fa1dbb69a5ae63d85edded0a380b3897b1fc4345f20",
+    "proofs": 8,
+    "public_receipt_sha256": {
+      "legacy-pin.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "legacy-pin.out": "00d09d283976994607fc5700ad5209fc040047fb5320a835215785b6fa5607ea",
+      "legacy-pin.time": "8f6ac5170cfd0b5294fd3407c6c917b3a7d7a3605c75e1bf3995af8ae4fb2309",
+      "legacy-verify.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "legacy-verify.out": "62b782502bd9d801a76ca1b241187280614c4fa26df59a97222abc785213a0cb",
+      "legacy-verify.time": "937fe82882d5fa9d705bab465830c93b516673a937617f712bc662727f2152b9",
+      "pin.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pin.out": "00d09d283976994607fc5700ad5209fc040047fb5320a835215785b6fa5607ea",
+      "pin.time": "6cdeb2c965b8cffd7a813ead29b574c9444dbfe3209b3734783a18737ba1ef93",
+      "proof.bin": "79e0b1698f7a1a78f3ee5fa1dbb69a5ae63d85edded0a380b3897b1fc4345f20",
+      "prove.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prove.out": "607df80aa5f65cebdcea1ddb80f46e39f379c152e850870292437f4868ecf284",
+      "prove.time": "7f1dd2d04f7c9b446b7ec188b58d724b1e153f15c3e2e4f90ca905d241f50580",
+      "public-sha256.json": "2e6b22f824a8187378f7b215cd536d0320ec801ffcaa85acfe924e96b0249020",
+      "public.bin": "8f14c699d6c3f0a7b6da896169a8f5ea8a45044eeb2406afc99a1249f2fa3195",
+      "result.json": "a0e323ca4afd7ffdb4fa41349c98adc2c317f9b0c56bd07654ed1d6eb6085c00",
+      "verify.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verify.out": "62b782502bd9d801a76ca1b241187280614c4fa26df59a97222abc785213a0cb",
+      "verify.time": "a73da5d7d1ce3acdbb0cc955bc8f007489534e63ae72ac547af5c248fbc30750"
+    },
+    "public_sha256": "8f14c699d6c3f0a7b6da896169a8f5ea8a45044eeb2406afc99a1249f2fa3195",
+    "scheduler": "6964|COMPLETED|0:0|00:40:19|h100-sxm-8-0|billing=16,cpu=16,gres/gpu:h100=1,gres/gpu=1,mem=160G,node=1",
+    "scheduler_sha256": "6b8dba827f00a1b6b41cd26939933286538ac4619ec0f19a93ab5308c1a6d856",
+    "source_manifest_sha256": "e806975842104d9cabe203ed7a529602099f70b23461ad4caa65267132c4bbd4",
+    "source_patch_sha256": "fb96b5a892e82c1f0865b24e474236a99f712f6714e14da5e5f16778f61a4f92",
+    "statement": {
+      "T": "32",
+      "checked": "23..32",
+      "cqis_id": "551b6f3e0a5518bf66dabd6c31dc9bbdf603684013f99322e7bdd78178ef3b14",
+      "model": "a83b29bd789047c1f7b5e64d0615dd2b54b4a5ea75ddfb9da0b7516563018330",
+      "next": "2654",
+      "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,29892"
+    },
+    "threads": 16,
+    "validation_tree": "ce4a363a93543a68df111f7613938eb050f211e4",
+    "verifier_sha256": "e29b3fc5d43c0e3abb2256dc4e41a59c18f8353f43884d80ba7f57fc36b3c4d9"
+  },
+  "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile byte 4 (balanced policy-2 hiding sources, RFC-0013 A8; RFC-0026 A9), development tier; zero knowledge is conditional and computational (seed-derived masks). The weights and the 1-D records (RFC-0013 A7) are committed once by commit-model as one published commitment for P = 8 proofs (A6), recorded as stage model_commitment_once and not part of the prove time. Prover time is the prove-dev --zk process wall time of proof index 2: Artifact decode, executor capture, plain check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; another proof against the same commitment also verifies. The control is verify-dev of a proof pinned to another model digest. Repeats, if any, are in model_config.host_context. Soundness ledger (verify-dev, E12-26): eps_interactive <= 731241032/p^4; worst round LU+ZD check 5, 2^-95.4, grinding 0 bits. CPU only, no GPU. Peak RSS is the GNU time -v maximum resident set size. Not a cost-model fit input.",
+  "plan_digest": "c995ecb82531efabc367b68363c102ceafb694e9f0f3aa371ba4e3f3a5a61de3",
+  "profile": "development",
+  "prompt_tokens": 24,
+  "proof_size_bytes": 21411006,
+  "prover_time_ns": 468740000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "model_commitment_once": 54780000000,
+    "prove_dev_wall": 468740000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 27130000000
+  },
+  "witness_recompute_ns": 0,
+  "workload": "dev/stories42m-t32"
+}
