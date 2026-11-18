@@ -5115,6 +5115,26 @@ tasks:
   - three proves under one commitment, each verified with --expect-model, each started at a 1-minute load below 3; prove, verify, peak footprint and proof bytes recorded; the wrong-model control rejected
   - bench/ledger entry, scoreboard, README and docs/development-e2e.md updated
 
+- id: E16-41
+  epic: E16
+  title: Accelerate the source-mask stream prefix on the CPU
+  lane: Z
+  depends:
+  - E16-24
+  rfc:
+  - RFC-0013 A2 item 1, A5 item 1
+  - RFC-0018 A1
+  skill: performance-engineer
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-qualify-full-path
+  branch: task/E16-41-mask-stream-prefix
+  acceptance:
+  - bulk-read the discarded data-mask prefix while preserving rejection sampling and the exact position of the next claim mask on witness, weight and shared sources
+  - compare the following raw stream bytes and M31 draws with the unchanged scalar sampler, including both rejected encodings and rejection at the buffer boundary
+  - reduce the source_messages stage on the E16-40o stories42M T32 Mac workload; measure the complete proof, request verification, wrong-model rejection and all source/transcript pins with every binding active
+  - keep the change private to the producer and obtain independent review with mandatory gates; the CPU residual result alone does not reopen ADR-127
+
 - id: E16-40a
   epic: E16
   title: Separate development-ZK GPU-candidate CPU stage costs and shape inventory
