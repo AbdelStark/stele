@@ -34,7 +34,7 @@ The submitted script's original node directive is superseded by the recorded
 scheduler override. No other user's allocation or reservation was changed.
 
 Current [pins](e16-40m-qualification-pins.json) SHA-256:
-`46eb856bade23cccb0d4906331484231ab69956270a832b63ab2b72e32413e6b`.
+`7878bd1e3f338a751d4af8bb77f52d27c8182e17b568cae1347d6f9cb732da93`.
 The replayable package, saved original pins, reviewed allocation record and
 preflight evidence are retained at
 `/Users/abdel/dev/stele-validation/e16-40m-qualification/`. Scheduler readbacks are
@@ -43,3 +43,28 @@ sibling `e16-40m-{held-allocation,allocation-override,released-allocation}.log`.
 Actual H100 qualification and mandatory current-main/intended-merge-tree gates
 remain pending. This supplies no integrated GPU proof, performance, complete
 pipeline-memory or ADR-127 GO credit.
+
+## Machine-metadata collision repaired before execution
+
+The CPU command labeled `host` writes `host.json`, which previously overwrote
+the machine metadata under the same name. The metadata now uses `machine.json`;
+all command receipts keep their existing names. No source, archive, kernel,
+command, corpus, process runner, scheduler script or deadline changed.
+
+Original capture/test/pins/review files are preserved locally and remotely in
+`before-machine-receipt-fix/`. The new regression exercises actual `capture.main`,
+writes the host command receipt through a synthetic runner, then raises. It
+checks both records and their hashes remain in the failed manifest. It failed
+against both original captures and passes after the filename fix.
+
+Fresh `machine_receipt_spec_review` (owning GPU) and
+`machine_receipt_standards_review` (lane B) both PASS this limited repair.
+Linux preflight passed all 8 capture controls without skips, with remote pin
+equality checked. [Repair receipt](e16-40m-machine-receipt-repair.json) records
+old/new pins, reviews and the preflight hash. No hardware evidence is claimed.
+
+Job 6733 was held while still unstarted, with zero runtime and no allocation.
+After both reviews, a live check verified every remote pin, the held state and
+absence of a run directory. The same job was released; readback remained pending,
+with zero runtime, no allocation and zero restarts. No resubmission occurred.
+The release readback hash is retained in the repair receipt.

@@ -1,0 +1,25 @@
+{
+  "reason": "Machine metadata host.json collided with the CPU host command receipt; writer changed to machine.json before any hardware execution.",
+  "old_pins_sha256": "46eb856bade23cccb0d4906331484231ab69956270a832b63ab2b72e32413e6b",
+  "pins_sha256": "7878bd1e3f338a751d4af8bb77f52d27c8182e17b568cae1347d6f9cb732da93",
+  "source_unchanged": "86d503b3edbc3379a5887d656b858c1e334d09fd",
+  "reviews": {
+    "spec": "machine_receipt_spec_review: PASS; exact filename-only capture repair, preserved pins and red/green real-entry regression",
+    "standards": "machine_receipt_standards_review: PASS; exact pin equality, unchanged source/corpus/deadlines, regression mutation rejection"
+  },
+  "linux_preflight": {
+    "controls": 8,
+    "passed": 8,
+    "skipped": 0,
+    "log_sha256": "13f17a0c2ca06bfbd796bc550caf9975ff8b10c8d931d31bc432354eaa18194a"
+  },
+  "submission": "Release same held, unstarted job6733 after live pin/state check",
+  "release": {
+    "job": "6733",
+    "state": "PENDING",
+    "elapsed": "00:00:00",
+    "allocation": null,
+    "restarts": 0,
+    "readback_sha256": "c3989478a305c496cc34e40adf805da49467f7b479ed6925c70fade61358a334"
+  }
+}
