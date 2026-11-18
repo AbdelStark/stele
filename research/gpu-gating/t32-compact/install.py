@@ -48,8 +48,8 @@ impl<K> LookupCase<K> {
     resident = masked / "resident_timing.rs"
     replace(resident, "gpu_lookup::select::{self, Resident}", "gpu_lookup::{compact as select, select::Resident}")
     replace(resident, "            input,\n", "            input,\n            beta,\n            alpha,\n")
-    replace(resident, "            let now = Instant::now();", """            let now = Instant::now();
-            let input = &crate::compact_lookup::Input::from_parts(input, beta, alpha);""")
+    replace(resident, "            let (t, qualification, compared, wall) =", """            let input = &crate::compact_lookup::Input::from_parts(input, beta, alpha);
+            let (t, qualification, compared, wall) =""")
     with (masked / "gpu_lookup_compact.rs").open("a") as f:
         f.write('\n#[cfg(test)] #[path="gpu_compact_lookup_fixture.rs"] mod fixture;\n')
     with (masked / "compact_lookup.rs").open("a") as f:
