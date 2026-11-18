@@ -4520,6 +4520,51 @@ tasks:
   - a development-tier amendment specifies one tree reduction over all instances of a check with shared challenges, one root pair and one multiplicity vector per instance, and states the pair round's error with its argument
   - prover and verifier; a control with one false instance among many is rejected at that instance's root equation
   - on L2b at B = 23 the lookup-proof bytes are at most twice those of the unsplit proof
+- id: E20-10
+  epic: E20
+  title: Admit the field-only ordinary batch interface for the byte-4 prover
+  lane: E
+  depends: []
+  rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
+  skill: rfc-author
+  crate: docs
+  status: done
+  agent: codex-integration
+  branch: task/E20-10-dev-zk-backend-contract
+  acceptance:
+  - Independent development-tier review of the field-only source, dense state, unchanged crypto authority, exact dependency edge and hardware gate
+  - Record the accepted contract in the index and decision log before implementing it
+
+- id: E20-11
+  epic: E20
+  title: Implement the scalar field backend interface for ordinary claim batches
+  lane: E
+  depends:
+  - E20-10
+  rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
+  skill: cuda-kernel-author
+  crate: stele-kernels
+  status: ready
+  acceptance:
+  - Field-only backend and scalar operation table check same-id stale-session owners, duplicate imports, bounds and MSB-first dense round and fold
+  - Match the genuine CPU geometry, all evaluations, repeated positions and edge values; reject incorrect state or owner before use
+  - Preserve the existing CPU proof and verifier dependency graph
+
+- id: E20-12
+  epic: E20
+  title: Prove byte-4 ordinary batches through the checked CUDA interface
+  lane: E
+  depends:
+  - E20-11
+  rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
+  skill: cuda-kernel-author
+  crate: stele-gpu+stele-reductions+stele-prover+stele-cli
+  status: ready
+  acceptance:
+  - The normal explicit GPU proof entry authors every selected ordinary batch through the checked A4 transcript and preserves CPU default and independent verification
+  - Mandatory hardware comparisons for 1000 seeded cases per implemented operation and 50 complete byte-identical proof pairs from pinned public fixtures
+  - Record whole T32 candidate timings, transfer and allocation lifetimes with every binding active; keep the calibrated reference and actual measured speed distinct
+
 - id: E21-01
   epic: E21
   title: RFC-0030 accepted; per-round ledger
