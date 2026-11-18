@@ -1,0 +1,7 @@
+# Whole-proof CPU reference on synthetic models
+
+The lane E review of `4258f579` traced each case from the seeded family-1 generator through the checked `zk::prove_next` call. Each synthetic model has one layer, width 64, four heads, a two-token greedy window and its own weight artifact. The model commitment and proof use distinct synthetic randomness domains. The in-memory persistence callback is scoped to a fresh single-use fixture. A separately built CLI pins the public model identity and verifies each proof under the balanced development-ZK profile.
+
+Lucid job 6780 completed with exit 0 on 12 CPU cores. It generated 50 distinct model identities and 50 distinct complete proof digests. The first case reproduced the complete public bundle and proof bytes, and changing its expected model identifier produced the named refusal. The stored JSON pins every fixture, public bundle and proof alongside both binary hashes. The measured source archive SHA-256 is `67de0c7ffae2cfecaed39a6d45fb80df2d668e3b21fe4816e821e964f5b15763`. The raw reference JSON SHA-256 is `8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd`. [Case records](../../research/gpu-gating/proof-corpus/cpu-reference.json)
+
+A GPU comparison must consume these independently recorded public bytes and proof bytes and demonstrate device computation in the candidate proof. This run contributes 50 CPU reference cases and zero GPU proof pairs.
