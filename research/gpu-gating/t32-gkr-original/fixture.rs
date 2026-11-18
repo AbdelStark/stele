@@ -86,3 +86,51 @@ fn matches_reference_original_gkr_gathers_on_h100() {
     assert!(combined > 0 && rounds > leaves && top_leaf > 0);
     eprintln!("original_gkr_statements={CASES} leaf_representations={leaves} raw_original_statements={CASES} top_leaf={top_leaf} compact={combined} rounds={rounds} controls=2");
 }
+
+#[test]
+fn matches_reference_original_gkr_provenance_before_device_access() {
+    use stele_reductions::zk::claims::bench::GkrFactor;
+    let mut genuine = 0;
+    let mut top = 0;
+    let mut one_level = 0;
+    for case in 0..32 {
+        observe(case, |step| {
+            let input = step.construction()?;
+            assert_eq!(input.factors.len(), input.column_origins.len());
+            one_level += usize::from(step.first && step.leaf);
+            for (factor, legs) in input.factors.iter().zip(&input.column_origins) {
+                let columns = match factor {
+                    GkrFactor::Column { values, .. } => vec![*values],
+                    GkrFactor::Combined { members, .. } => {
+                        members.iter().map(|m| m.values).collect()
+                    }
+                    _ => Vec::new(),
+                };
+                assert_eq!(columns.len(), legs.len());
+                for (column, leg) in columns.into_iter().zip(legs) {
+                    let Some([_, id, rows, cols, at, len]) = *leg else {
+                        assert!(step.first && matches!(factor, GkrFactor::Column { .. }));
+                        top += 1;
+                        continue;
+                    };
+                    assert!(step.leaf);
+                    let m = &step.original_messages[id];
+                    assert_eq!(m.len(), rows * cols);
+                    assert_eq!(column.len(), len);
+                    let width = cols / 2;
+                    for (j, &value) in column.iter().enumerate() {
+                        let p = at + j;
+                        assert_eq!(
+                            value,
+                            K::from_i64(i64::from(m[p / width * cols + p % width].as_u32()))
+                        );
+                    }
+                    genuine += 1;
+                }
+            }
+            Ok(())
+        });
+    }
+    assert!(genuine > 0 && top > 0);
+    eprintln!("host_gkr_original_cases=32 original_legs={genuine} top_legs={top} first_leaf_steps={one_level}");
+}
