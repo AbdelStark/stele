@@ -191,7 +191,14 @@ def main():
                   "--lib", "--test", "dense", "--", "--ignored", "--nocapture", "--test-threads=1"],
                  text=True, stdout=subprocess.PIPE)
     print(result.stdout, flush=True)
-    if not re.search(r"cuda_dense_cases=1000 rounds=[1-9]\d+ folds=[1-9]\d+ finals=1000", result.stdout) or "2 passed; 0 failed; 0 ignored" not in result.stdout or "cuda_dense_lazy_cases=1000" not in result.stdout:
+    required = ("device::tests::matches_reference_original_across_staging_chunks",
+                "device::tests::matches_reference_raw_lazy_device_boundaries",
+                "matches_reference_cuda_dense_batches", "rejects_foreign_source_and_invalid_dense_transitions")
+    completed = re.findall(r"^test (\S+) \.\.\. (?:[^\n]+\n)?ok$", result.stdout, flags=re.MULTILINE)
+    if (sorted(completed) != sorted(required)
+            or result.stdout.count("2 passed; 0 failed; 0 ignored") != 2
+            or not re.search(r"cuda_dense_cases=1000 rounds=([1-9]\d*) folds=\1 finals=1000", result.stdout)
+            or "cuda_dense_lazy_cases=1000" not in result.stdout):
         raise ValueError("required H100 operation comparisons or controls missing")
     if not re.search(r"cuda_gkr_cases=1000 raw_cuda_gkr_cases=1000 field_rounds=8000 field_folds=8000 field_finals=2000", result.stdout):
         raise ValueError("required H100 GKR comparisons or controls missing")
