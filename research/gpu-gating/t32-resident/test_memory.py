@@ -4,6 +4,18 @@ import sys
 import unittest
 
 
+def check_pool(row):
+    total = row["total_bytes"]
+    used, reserved = row["pool_used_high"], row["pool_reserved_high"]
+    if not 0 < used <= reserved <= total or used > total * 2 // 5:
+        raise ValueError("measured live pool exceeds budget")
+    outside = max(0, total - row["free_bytes"] - row["pool_reserved_bytes"])
+    # CUDA's pool high-water counters are cumulative. Separately add the
+    # sampled outside-pool occupancy to charge the observed context.
+    if outside + reserved > total * 2 // 5:
+        raise ValueError("measured reserved pool and context exceed budget")
+
+
 def check_memory(log):
     rows = {}
     for line in log.splitlines():
@@ -19,12 +31,7 @@ def check_memory(log):
         construction, fold = row["construction_bytes"], row["first_fold_bytes"]
         if not 0 < construction <= row["planned_bytes"] == max(construction, fold):
             raise ValueError("invalid GKR explicit peak")
-        total = row["total_bytes"]
-        outside = max(0, total - row["free_bytes"] - row["pool_reserved_bytes"])
-        # CUDA's pool high-water counters are cumulative. Adding current
-        # outside-pool occupancy conservatively charges the observed context.
-        if outside + row["pool_reserved_high"] > total * 2 // 5:
-            raise ValueError("measured device high water exceeds budget")
+        check_pool(row)
     if list(rows) != list(range(385)):
         raise ValueError("incomplete GKR memory qualification")
     interior, leaf = rows[96], rows[97]
@@ -37,6 +44,15 @@ def check_memory(log):
 
 
 class Memory(unittest.TestCase):
+    def test_rejects_live_and_reserved_high_waters_separately(self):
+        row = dict(total_bytes=100, pool_used_high=38, pool_reserved_high=39,
+                   pool_reserved_bytes=20, free_bytes=79)
+        check_pool(row)
+        with self.assertRaisesRegex(ValueError, "live pool"):
+            check_pool(dict(row, pool_used_high=41, pool_reserved_high=42))
+        with self.assertRaisesRegex(ValueError, "reserved pool and context"):
+            check_pool(dict(row, free_bytes=78))
+
     def test_rejects_fallback(self):
         with self.assertRaisesRegex(ValueError, "fallback"):
             check_memory("t32_gkr_skip step=96")
