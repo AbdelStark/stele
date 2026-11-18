@@ -1,9 +1,9 @@
-# E16-40n boundary qualification — prepared, not submitted
+# E16-40n boundary qualification — submitted
 
 Pinned source: `e192fe0b6d4ec604c4d8e922c187532049c8a5dc`.
 The [implementation reviews](e16-40n-implementation.md) and both fresh capture
-reviews pass. No E16-40n hardware job has been submitted. Submission waits for
-E16-40m's actual qualification and accepted evidence.
+reviews pass. Job **6772** was submitted after E16-40m's actual qualification
+evidence passed both independent reviews. Actual n evidence remains pending.
 
 Independent reviewers `boundary_capture_spec_review` and
 `boundary_capture_standards_review` verified every package hash and all 2,389
@@ -57,7 +57,8 @@ Linux preflight passed all 6 capture controls without skips, with remote pin
 equality checked. [Repair receipt](e16-40n-machine-receipt-repair.json) records
 old/new pins, reviews and the preflight hash. No hardware evidence is claimed.
 
-No job has been submitted; E16-40m qualification and accepted evidence still precede submission.
+This preparation preceded submission; the accepted E16-40m evidence and actual
+submission are recorded below.
 
 ## Terminal auditor prepared and independently reviewed
 
@@ -82,3 +83,22 @@ auditor; the standards reviewer also rejected a coherent GNU-wall overrun.
 auditor, red/green logs and review outcomes. Capture pins, source archive,
 commands and scheduler are unchanged. Actual execution, terminal collection and
 fresh hardware evidence review remain pending.
+
+## Strict GNU timing and submission
+
+The [GNU timer revision](e16-40n-gnu-time-audit.json) supersedes the auditor hashes
+above. Review of the sibling GKR auditor found that the shared parser could
+prefer appended BSD timing or the first of duplicate GNU fields. The auditor
+now rejects mixed formats and requires unique, anchored GNU wall/RSS fields.
+Four resealed mutation cases failed before this fix; all four auditor tests now
+pass. Fresh `gkr_terminal_spec_review` and `gkr_terminal_standards_review` approve
+the same limited fix in m/n/q and independently ran every package's tests.
+Capture, source, commands and package pins remain unchanged.
+
+Both fresh [E16-40m actual evidence reviews](e16-40m-h100-review.md) accepted job
+6733 before submission. Remote n pins were rechecked; no earlier run, campaign
+log or submitted-job record existed. The single submitted n job is **6772**;
+its readback confirms one H100, 16 CPUs, 64 GiB, the existing two-hour limit,
+feature constraint `h100|h100nvl`, zero requeues/restarts and the pinned campaign.
+`stele-validation/e16-40n-submission.log` retains that readback. Actual n terminal
+evidence, fresh review and mandatory merge gates remain pending.
