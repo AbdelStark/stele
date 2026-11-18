@@ -4273,7 +4273,7 @@ mod tests {
             for mut code in 0..choices.len().pow(ncoords as u32) {
                 let mut coords = Vec::new();
                 for _ in 0..ncoords {
-                    coords.push(choices[code % choices.len()].clone());
+                    coords.push(choices[code % choices.len()]);
                     code /= choices.len();
                 }
                 if [0, 1, 2].iter().any(|v| {
