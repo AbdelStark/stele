@@ -667,6 +667,36 @@ pub fn prove_window_profile(
         length,
         zk,
         Sources::CircleAll,
+        None,
+    )
+}
+
+/// Prove a balanced development-ZK window with RFC-0014 A2 ordinary batch execution.
+#[allow(clippy::too_many_arguments)]
+pub fn prove_window_with_backend(
+    model: &[u8],
+    preparation: &[u8],
+    scales: &[u8],
+    artifact: &[u8],
+    statement: Statement,
+    length: usize,
+    window: zk::Window<'_>,
+    backend: zk::BatchExecution<'_, K>,
+) -> Result<(Public, Statement, Vec<u8>), Error> {
+    if !matches!(&window, zk::Window::Prove { commitment, .. } if commitment.profile == zk::PROFILE_BALANCED)
+    {
+        return Err(Error::StatementMismatch);
+    }
+    prove_window_sources(
+        model,
+        preparation,
+        scales,
+        artifact,
+        statement,
+        length,
+        Some(window),
+        Sources::CircleAll,
+        Some(backend),
     )
 }
 
@@ -696,6 +726,7 @@ pub fn prove_window_development(
         length,
         None,
         sources,
+        None,
     )
 }
 
@@ -709,6 +740,7 @@ fn prove_window_sources(
     length: usize,
     zk: Option<zk::Window<'_>>,
     sources: Sources,
+    execution: Option<zk::BatchExecution<'_, K>>,
 ) -> Result<(Public, Statement, Vec<u8>), Error> {
     let m = Model::decode(model).map_err(|_| Error::StatementMismatch)?;
     let p = stele_reductions::stele_cqis::model::Preparation::decode(&m, preparation)
@@ -787,7 +819,7 @@ fn prove_window_sources(
                 index,
             } => {
                 public.commitment = alloc::vec![(commitment.root, Vec::new())];
-                let (proof, i) = zk::prove_next(
+                let (proof, i) = zk::prove_next_execution(
                     &public,
                     &mut executor,
                     &weights,
@@ -796,6 +828,7 @@ fn prove_window_sources(
                     commitment,
                     state,
                     persist,
+                    execution,
                 )?;
                 *index = i;
                 proof

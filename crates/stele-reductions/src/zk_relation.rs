@@ -417,11 +417,32 @@ pub fn prove_lifetime(
     lifetime: &Lifetime,
     model: ModelSecret<'_, K>,
 ) -> Result<(Proof<K>, Vec<K>), Error> {
+    prove_lifetime_execution(t, relation, values, seed, lifetime, model, None)
+}
+
+/// Prove with a fresh optional field session for the balanced ordinary batches (RFC-0014 A2).
+pub fn prove_lifetime_execution(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    seed: Seed,
+    lifetime: &Lifetime,
+    model: ModelSecret<'_, K>,
+    execution: Option<claims::BatchExecution<'_, K>>,
+) -> Result<(Proof<K>, Vec<K>), Error> {
     let layout = layout(relation)?;
     let columns = columns(&layout, relation, values)?;
     t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
         .map_err(|e| Error::Sumcheck(e.into()))?;
-    claims::prove_lifetime(&layout.statement, &columns, seed, t, lifetime, model)
+    claims::prove_lifetime_execution(
+        &layout.statement,
+        &columns,
+        seed,
+        t,
+        lifetime,
+        model,
+        execution,
+    )
 }
 
 /// [`verify`] against a lifetime weight source whose public root is `root`.

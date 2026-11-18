@@ -35,8 +35,8 @@ use stele_reductions::stele_ir::relation::{
     check, ColumnId, Identity, Kind, Range, Ref, Relation, Term as IdentityTerm, Values, Width,
 };
 use stele_reductions::zk::claims::{Lifetime, ModelSecret};
-pub use stele_reductions::zk::Seed;
 use stele_reductions::zk::{claims, relation as zk_relation};
+pub use stele_reductions::zk::{claims::BatchExecution, Seed};
 
 /// The RFC-0026 A9 profile byte of dev-zk on A5/A6/A7 sources.
 pub const PROFILE: u8 = 1;
@@ -284,11 +284,57 @@ pub fn prove_next(
     state: &mut ModelState,
     persist: &mut Persist<'_>,
 ) -> Result<(Vec<u8>, u32), Error> {
+    prove_next_execution(
+        public, executor, weights, statement, seed, commitment, state, persist, None,
+    )
+}
+
+/// Prove a balanced window using a fresh RFC-0014 A2 field session and the normal lifetime transaction.
+#[allow(clippy::too_many_arguments)]
+pub fn prove_next_with_backend(
+    public: &Public,
+    executor: &mut Executor<'_>,
+    weights: &Weights,
+    statement: &Statement,
+    seed: Seed,
+    commitment: &ModelCommitment,
+    state: &mut ModelState,
+    persist: &mut Persist<'_>,
+    backend: BatchExecution<'_, K>,
+) -> Result<(Vec<u8>, u32), Error> {
+    prove_next_execution(
+        public,
+        executor,
+        weights,
+        statement,
+        seed,
+        commitment,
+        state,
+        persist,
+        Some(backend),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn prove_next_execution(
+    public: &Public,
+    executor: &mut Executor<'_>,
+    weights: &Weights,
+    statement: &Statement,
+    seed: Seed,
+    commitment: &ModelCommitment,
+    state: &mut ModelState,
+    persist: &mut Persist<'_>,
+    execution: Option<BatchExecution<'_, K>>,
+) -> Result<(Vec<u8>, u32), Error> {
+    if execution.is_some() && commitment.profile != PROFILE_BALANCED {
+        return Err(Error::StatementMismatch);
+    }
     let prior = state.clone();
     let index = state.take(commitment)?;
     persist(state)?;
-    let result = prove(
-        public, executor, weights, statement, seed, commitment, state, index,
+    let result = prove_execution(
+        public, executor, weights, statement, seed, commitment, state, index, execution,
     )
     .and_then(|(proof, revealed)| {
         let mut laps = stele_reductions::parallel::Laps::start();
@@ -707,6 +753,23 @@ pub fn prove(
     state: &ModelState,
     index: u32,
 ) -> Result<(Vec<u8>, Vec<K>), Error> {
+    prove_execution(
+        public, executor, weights, statement, seed, commitment, state, index, None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prove_execution(
+    public: &Public,
+    executor: &mut Executor<'_>,
+    weights: &Weights,
+    statement: &Statement,
+    seed: Seed,
+    commitment: &ModelCommitment,
+    state: &ModelState,
+    index: u32,
+    execution: Option<BatchExecution<'_, K>>,
+) -> Result<(Vec<u8>, Vec<K>), Error> {
     if public.sources != relation::Sources::Expander {
         return Err(Error::StatementMismatch); // RFC-0026 A11: not a dev-zk input.
     }
@@ -731,13 +794,14 @@ pub fn prove(
         revealed: state.revealed.clone(),
         root: commitment.root,
     };
-    let (proof, revealed) = zk_relation::prove_lifetime(
+    let (proof, revealed) = zk_relation::prove_lifetime_execution(
         &mut t,
         &relation,
         &values,
         seed,
         &commitment.lifetime(index),
         model,
+        execution,
     )
     .map_err(engine)?;
     let digest = statement_digest(&input, &relation::digest(&relation));
