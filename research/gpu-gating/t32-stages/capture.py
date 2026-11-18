@@ -69,8 +69,13 @@ if __name__ == "__main__":
     import argparse
     import runpy
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gkr", action="store_true")
-    if parser.parse_args().gkr:
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--gkr", action="store_true")
+    mode.add_argument("--source", action="store_true")
+    args = parser.parse_args()
+    if args.source:
+        main(runpy.run_path(str(Path(__file__).resolve().parents[1] / "t32-source/receipt.py"))["summarize"])
+    elif args.gkr:
         main(runpy.run_path(str(Path(__file__).resolve().parents[1] / "t32-gkr/receipt.py"))["summarize"])
     else:
         main()

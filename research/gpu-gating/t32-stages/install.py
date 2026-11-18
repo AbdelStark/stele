@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 
-def install(root, gkr=False):
+def install(root, gkr=False, source=False):
     root = Path(root).resolve()
     if (root / ".git").exists():
         raise ValueError("instrument a disposable source archive")
@@ -18,7 +18,10 @@ def install(root, gkr=False):
             raise ValueError(f"unexpected source at {path}: {old[:70]}")
         file.write_text(text.replace(old, new))
 
-    if gkr:
+    if source:
+        import runpy
+        device = runpy.run_path(str(here.parent / "t32-source/install.py"))["install"](root, replace)
+    elif gkr:
         import runpy
         device = runpy.run_path(str(here.parent / "t32-gkr/install.py"))["install"](root, replace)
     else:
@@ -86,6 +89,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("root")
-    parser.add_argument("--gkr", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--gkr", action="store_true")
+    mode.add_argument("--source", action="store_true")
     args = parser.parse_args()
-    install(args.root, args.gkr)
+    install(args.root, args.gkr, args.source)
