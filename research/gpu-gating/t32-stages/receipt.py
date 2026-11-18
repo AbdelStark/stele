@@ -57,7 +57,12 @@ def summarize_batches(rows):
     }
     if any("runs" in b for b in batches):
         packing = runpy.run_path(str(Path(__file__).with_name("packing.py")))
-        summary["batch_packing"] = packing["summarize"](batches)
+        stats = packing["summarize"](batches)
+        for field in ("pool_used_high", "pool_reserved_high"):
+            stats[field + "_through_batches"] = max(r[field] for r in rows["finals"])
+        if not 0 < stats["pool_used_high_through_batches"] <= stats["pool_reserved_high_through_batches"]:
+            raise ValueError("invalid device allocator high water")
+        summary["batch_packing"] = stats
     schedule = []
     descriptors = 0
     for batch, final in zip(batches, rows["finals"]):
