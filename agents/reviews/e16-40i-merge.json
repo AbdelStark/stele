@@ -1,0 +1,30 @@
+{
+  "pr": 404,
+  "base": "7408dd578c277a751f0efd4eceb08cc707c2c1ae",
+  "head": "4e4cd66331a1db3f3ef9c697140373504863aaee",
+  "tree": "5d96489861abe97bb9155195fa484d71d0dcc028",
+  "tested_merge_ref": "b23fbd9aed49bb3ef5950e01f20e20d2cb091b54",
+  "run_id": 44281744815,
+  "run_attempt": 1,
+  "jobs": 84,
+  "success": 81,
+  "valid_unselected_skips": [
+    "gpu-parity",
+    "table-build",
+    "table-parity"
+  ],
+  "raw": {
+    "ci1097-run-final.json": "696e81fe9318fc2729e9d5f2813eedc50aa2a9f2413f8f8927db969c2f3a327c",
+    "ci1097-jobs-final.json": "d4972777f7dac21462ed205482c06e162f921fc8a0a9a9d80e214ade11efdc19"
+  },
+  "verified_checkout_logs": {
+    "plan": "4e5eeaa05116fe906d43b3f90fd684c0f338bc435319ffa78cce7029d8f4c961",
+    "native": "a54f62cab6c1a1dc3d2aad7dbb9f215ebf3bd2e601749814948d1a5e68ec7dbf",
+    "native-union": "8732a44d323bd74749b9354a8c39ee08a6e0be42fdacbd5d383fa5c6cafbd385",
+    "research (gpu-gating-masked)": "2a705496cc4fc2513e8dc9e74a501aee0be2c753910efcc8f81d31ba2593bc93",
+    "gates": "b19c2bfee4395b971f8a2a27cc2ad580ca48258fee2e790fc2828c36dfec0ee6"
+  },
+  "scope": "Current-main and intended-tree validation of statically selected research, native, native-union and aggregate gates.",
+  "merged": true,
+  "merge_commit": "970fe89422f5898e6d2a872b1904b14276db53e5"
+}
