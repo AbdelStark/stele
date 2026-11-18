@@ -24,9 +24,11 @@ fn matches_reference_lookup_parents_and_rejects_wrong_original() {
         for (i, x) in [1, 2, 3, 4, 2, 1, 0, 0].into_iter().enumerate() {
             physical[4 * (i / 2) + i % 2] = M31::from_i64(x);
         }
-        let owner = dev.original(geom, &physical).unwrap();
+        let owner = dev.original(geom, &physical).expect("valid lookup fixture");
         let other = Scalar::new();
-        let foreign = other.original(geom, &physical).unwrap();
+        let foreign = other
+            .original(geom, &physical)
+            .expect("valid lookup fixture");
         let multiplicity = Column {
             owner: 0,
             geometry: geom,
@@ -85,7 +87,8 @@ fn matches_reference_lookup_parents_and_rejects_wrong_original() {
             })
             .collect();
         assert_eq!(
-            dev.lookup_top(&input, &[&owner]).unwrap(),
+            dev.lookup_top(&input, &[&owner])
+                .expect("valid lookup fixture"),
             vec![merge(parents[0], parents[1]), merge(parents[2], parents[3])]
         );
         assert!(dev.lookup_top(&input, &[&foreign]).is_err());
