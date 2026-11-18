@@ -5392,7 +5392,8 @@ tasks:
   epic: E20
   title: Implement the scalar field backend interface for ordinary claim batches
   lane: E
-  depends: [E20-10]
+  depends:
+  - E20-10
   rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
   skill: cuda-kernel-author
   crate: stele-kernels
@@ -5406,7 +5407,8 @@ tasks:
   epic: E20
   title: Prove byte-4 ordinary batches through the checked CUDA interface
   lane: E
-  depends: [E20-11]
+  depends:
+  - E20-11
   rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
   skill: cuda-kernel-author
   crate: stele-gpu+stele-reductions+stele-prover+stele-cli
