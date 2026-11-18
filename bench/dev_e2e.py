@@ -156,8 +156,17 @@ def device_counters(stderr, verified, byte, driver, proof=None):
         source = {name.removeprefix('sources_'): value for name, value in fields.items() if name.startswith('sources_')}
         check_source_work(source, proof, verified, fields['total_bytes'] * 2 // 5, standalone=has_shared)
         if has_shared:
-            _, _, schedule, _, _ = proof_inventory(proof)
-            if (fields['batches'], fields['rounds']) != schedule or fields['sources_original_h2d_bytes'] > fields['h2d_bytes']:
+            relations, gkr, dense, _, _ = proof_inventory(proof)
+            rel_steps, rel_rounds, rel_nodes, rel_finals = relations
+            gkr_steps, gkr_rounds, gkr_nodes = gkr
+            if ((fields['relations_steps'], fields['relations_rounds']) != (rel_steps, rel_rounds)
+                    or fields['relations_d2h_bytes'] != 16 * (rel_nodes + rel_finals)):
+                raise ValueError('relation work differs from authenticated proof')
+            # A3 expands compact GKR finals on the host; every step returns at least one field.
+            if ((fields['gkr_steps'], fields['gkr_rounds']) != (gkr_steps, gkr_rounds)
+                    or fields['gkr_d2h_bytes'] < 16 * (gkr_nodes + gkr_steps)):
+                raise ValueError('GKR work differs from authenticated proof')
+            if (fields['batches'], fields['rounds']) != dense or fields['sources_original_h2d_bytes'] > fields['h2d_bytes']:
                 raise ValueError('shared device work differs from authenticated proof')
     if has_lookup:
         check_lookup_work({k.removeprefix('lookup_'): v for k, v in fields.items() if k.startswith('lookup_')}, verified, fields['total_bytes'] * 2 // 5)
