@@ -318,10 +318,11 @@ pub fn columns(
         let rows = &lookup.table[..valid];
         // Range tables map each canonical key directly to its multiplicity position.
         // Inspect the actual table: callers can modify Layout.statement after derivation.
-        let dense = rows
-            .iter()
-            .enumerate()
-            .all(|(i, row)| row.as_slice() == [i as i64]);
+        let dense = valid <= M31::MODULUS as usize
+            && rows
+                .iter()
+                .enumerate()
+                .all(|(i, row)| row.as_slice() == [i as i64]);
         let index = (!dense).then(|| {
             let mut index: Vec<(Vec<u32>, usize)> = rows
                 .iter()
