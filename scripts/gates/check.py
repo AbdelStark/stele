@@ -2121,7 +2121,9 @@ def masked_sumcheck_quarantine(root):
                'crates/stele-reductions/src/zk_claims.rs',
                # RFC-0014 A2: same checked shared-mask prover, field-only batch state.
                'crates/stele-reductions/src/zk_batch_backend.rs',
-               'crates/stele-reductions/src/zk_gkr_backend.rs', 'crates/stele-reductions/src/zk_source_backend.rs'}
+               'crates/stele-reductions/src/zk_gkr_backend.rs', 'crates/stele-reductions/src/zk_source_backend.rs',
+               # RFC-0014 A6: the private lookup adapter names the checked mask and proof types.
+               'crates/stele-reductions/src/zk_lookup_backend.rs'}
     pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    for path in (root / directory).rglob('*.rs')
