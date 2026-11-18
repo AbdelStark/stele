@@ -233,3 +233,15 @@ original expansion, masking challenges, transcript order, source authentication
 and claim routing. The CUDA mirror retains its existing dependency direction.
 No new Cargo edge, binding, challenge, cost claim or profile admission follows
 from this amendment alone. E20-14 validates the new normal-entry operations.
+
+### A12 — Field-only relation construction in a proof session
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-15.
+
+Extend A10–A11's authorized field interface with the RFC-0014 A4 relation
+constructor. The proof-local CUDA session may share A3's live masked
+arithmetic state. Report relation and GKR invocations separately. The
+reduction supplies the field tables and original mask blocks. The verifier,
+transcript and PCS have no dependency on the execution backend. No crate
+edge, protocol byte, ledger term or binding changes. E20-16 validates the
+existing dependency boundaries and complete proof gate.

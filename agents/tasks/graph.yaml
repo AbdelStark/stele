@@ -4567,6 +4567,34 @@ tasks:
   - Compare field round and fold values, expanded finals, complete selected GPU proof bytes and ordinary positive and tamper outcomes
   - Prove and verify the original T32 workload with all 385 device GKR steps and ordinary batches under the planned and measured device ceiling, reporting all actual transfers
 
+- id: E20-15
+  epic: E20
+  title: Admit live masked relation arithmetic in the checked development prover
+  lane: E
+  depends: [E20-14]
+  rfc: [RFC-0014 A4, RFC-0020 A12, RFC-0026 A21]
+  skill: rfc-author
+  crate: docs
+  status: in_progress
+  agent: codex-source-visits
+  branch: task/E20-15-live-relations-contract
+  acceptance:
+  - Independent review of projected inputs, mask and vanishing coordinates, declared degree, checked transcript and separately counted relation arithmetic
+
+- id: E20-16
+  epic: E20
+  title: Prove every balanced relation sumcheck through the live field backend
+  lane: E
+  depends: [E20-15]
+  rfc: [RFC-0014 A4, RFC-0020 A12, RFC-0026 A21]
+  skill: cuda-kernel-author
+  crate: stele-kernels+stele-reductions+stele-gpu+stele-cli
+  status: ready
+  acceptance:
+  - Borrow genuine projected columns and mask blocks or charge actual host preparation, retain the original checked transcript and authenticate all finals
+  - Compare 1000 seeded scalar and hardware cases per operation and reject malformed field inputs and one changed real device round
+  - Verify 50 full small-model CPU/CUDA byte pairs and original stories42M T32, reporting every relation, GKR and ordinary batch invocation, transfers and measured device memory
+
 - id: E21-01
   epic: E21
   title: RFC-0030 accepted; per-round ledger

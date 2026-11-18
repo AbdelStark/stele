@@ -213,3 +213,49 @@ both GKR and batch device calls present in the actual candidate. The original
 T32 reports all 385 GKR steps, ordinary verification and memory/transfer
 charges. No profile promotion. Target cost terms are `c_lu`, `c_sc` and
 `T_misc`. [Measured GKR operations](https://github.com/AbdelStark/stele/blob/ce366e0f/bench/ledger/e16-40af-t32-gkr-originals-h100.json)
+
+### A4 — Live field execution of balanced development-ZK relation sumchecks
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-15.
+
+**Addition to A2 and A3.** The balanced development prover may select a field
+backend for every RFC-0013 A5 relation sumcheck alongside the ordinary batches
+and LogUp-GKR steps. The reduction constructs the same instance and draws the
+same combination coefficients and free coordinates in their original order.
+It supplies the existing term coefficients, ordered factor indices, variable
+count and declared degree. Factors appear in instance order: the optional
+leading equality factor, each private occurrence, then each public input.
+
+Each factor supplies a field table and ordered MSB-first domain coordinates.
+The table has exactly one element per Boolean assignment of those coordinates;
+its value repeats over omitted variables. The caller may borrow the original
+column on a pure variable projection. It preserves the reference projection
+for fixed or transcript-derived coordinates, including contraction and shared
+free points. It may provide the resulting field table. A private occurrence
+also carries its original M31 mask block, its ordered coordinate indices and
+the vanishing variable. A public factor has no mask. The relation constructor
+checks dimensions, positions, mask extents, term references and declared
+degree before opening the state. It may share the A3 arithmetic for evaluating
+and folding these factors, including repeated factors within a term.
+
+The checked masked prover takes the device's ordered field evaluations,
+adds its ordinary mask, checks the running sum, absorbs the message and
+draws each challenge. The backend folds at that challenge and returns
+one final field per original factor. The reduction keeps every public-final
+check, vanishing and rank abort, occurrence claim, mask claim, ordered
+batch and authenticated opening. A device error aborts the attempt through
+the existing index reservation and restoration path. The complete driver
+executes all selected relation, GKR and ordinary batch invocations; host work
+on projection, masks, copies, elapsed time and peak allocation stays charged.
+The CPU default follows its existing path.
+
+**Soundness and controls.** No new round, degree, challenge, error line,
+column, lookup, opening or proof byte. Preserve NC-0909 through NC-0912,
+NC-0915 and NC-0916. Exercise one changed device round, malformed field
+geometry, missing mask limbs and out-of-range term or coordinate references.
+Require 1,000 seeded scalar/device comparisons per implemented operation,
+50 complete distinct small-model CPU/CUDA proof pairs with all three stage
+inventories, and a verified original stories42M T32 inference with actual
+transfer and A1 memory charges. Measure `c_sc` and `T_misc` on the named rung.
+The prior research measured the independently checked relation arithmetic.
+[Research evidence](https://github.com/AbdelStark/stele/blob/817a5059ba0375d1ee4ae3ad427e033533b197d2/bench/ledger/e16-40aj-h100-complete-proof-parity.json)
