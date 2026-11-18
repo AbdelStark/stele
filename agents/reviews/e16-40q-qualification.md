@@ -1,9 +1,10 @@
-# E16-40q source qualification — prepared, not submitted
+# E16-40q source qualification on H100
 
 Source `6034113f67ace10258b48c90e973db291a0a4d99`; implementation
 [reviews](e16-40q-resident-source.md) pass. Both fresh capture reviews approve
-preparation readiness. No E16-40q job has been submitted; accepted actual m then n
-qualification evidence must precede submission.
+preparation readiness. Job **6773** ran after acceptance of the E16-40m and
+E16-40n H100 results. It completed successfully on `h100-nvl-1-1-cc` with
+zero requeues or restarts.
 
 Independent `resident_capture_spec_review` (owning lane E) and
 `resident_capture_standards_review` (lane B) verified source/archive identity,
@@ -31,12 +32,12 @@ SHA-256 `dce701621736b0c94d20bcc5e7800212dc52724ba2a4b778fd8d0c4247a72cf4`.
 `f441c73f4790ff0eb3e818e79b2a64e68fa961d594347b0af71959d9b2564a9d`.
 Package and review receipt:
 `/Users/abdel/dev/stele-validation/e16-40q-qualification/`.
-An equal remote package is staged under `~/stele-codex/e16-40q-qualification`;
-no execution directory exists.
+The matching remote package and run directory are in
+`~/stele-codex/e16-40q-qualification`.
 
-Actual H100 evidence, fresh evidence review and mandatory gates on current main's
-intended merge tree remain required. This approval grants no GPU proof,
-performance, full device-memory or ADR-127 GO credit.
+The [H100 receipt](e16-40q-h100.json) records the six exact tests, binary hashes,
+resource measurements and evidence digests. Mandatory gates on current main's
+intended merge tree still precede merge.
 
 ## Terminal auditor readiness
 
@@ -47,8 +48,7 @@ both PASS at those hashes. Each independently ran the tests and checked the pins
 The approved E16-40n auditor is adapted only for this package's paths, pins,
 third binary, build flag and expected counters. Its strict timing, scheduler,
 manifest, archive and current-readback checks remain intact. Capture pins have
-not changed. This records readiness to audit a future completed job; it is not
-actual hardware evidence, and no terminal audit has been run on an actual archive.
+not changed. The terminal auditor revision below was used on the completed job.
 
 ## Strict GNU timing revision
 
@@ -59,6 +59,6 @@ now rejects mixed formats and requires unique, anchored GNU wall/RSS fields.
 Four resealed mutation cases failed before this fix; all four auditor tests now
 pass. Fresh `gkr_terminal_spec_review` and `gkr_terminal_standards_review` approve
 the same limited fix in m/n/q and independently ran every package's tests.
-Capture, source, commands and package pins remain unchanged. Actual m evidence
-has passed both reviews; q submission still waits for accepted actual n evidence
-from its single submitted job **6772**.
+The approved auditor verified all 46 evidence payloads from job 6773, including
+1,000 resident cases, 8,000 requested openings and 1,000 complete-source cases.
+Fresh [E16-40n reviews](e16-40n-h100-review.md) accepted job 6772 before this submission.
