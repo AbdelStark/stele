@@ -335,6 +335,31 @@ fn factor<'a>(input: &GkrFactor<'a, K>, len: u32, half: u32) -> Build<FactorPlan
     Ok(FactorPlan { values, mask })
 }
 
+// RFC-0013 A5 item 3. An input is multilinear except on its vanishing axis.
+// There the input is X + v(1-v)R, with one more degree if R depends on v.
+fn axis_degree(factor: &GkrFactor<'_, K>, axis: usize, n: usize, half: usize) -> usize {
+    match factor {
+        GkrFactor::Column { mask, .. } | GkrFactor::Layer { mask, .. }
+            if mask.vanishing == axis =>
+        {
+            2 + usize::from(mask.coordinates.contains(&axis))
+        }
+        GkrFactor::Combined { vanishing, members } if *vanishing == axis => {
+            let bit = 1usize << (n - 1 - axis);
+            // The compact mask repeats over the layer half. Inside that half
+            // both the low mask coordinates and the member interval may depend on v.
+            let dependent = bit < half
+                && members.iter().any(|m| {
+                    bit < m.mask.len()
+                        || m.range.start % (2 * bit) != 0
+                        || m.range.end % (2 * bit) != 0
+                });
+            2 + usize::from(dependent)
+        }
+        _ => 1,
+    }
+}
+
 impl<'a> Plan<'a> {
     pub fn new(input: &GkrConstruction<'a, K>) -> Build<Self> {
         let n = input.num_vars as usize;
@@ -360,6 +385,19 @@ impl<'a> Plan<'a> {
                 .any(|(_, indices)| indices.iter().any(|&i| i as usize >= input.factors.len()))
         {
             return Err("GKR term index or degree");
+        }
+        for (_, indices) in &terms {
+            if indices.len() > input.degree
+                || (0..n).any(|axis| {
+                    indices
+                        .iter()
+                        .map(|&i| axis_degree(&input.factors[i as usize], axis, n, half as usize))
+                        .sum::<usize>()
+                        > input.degree
+                })
+            {
+                return Err("GKR degree below term bound");
+            }
         }
         let factors = input
             .factors

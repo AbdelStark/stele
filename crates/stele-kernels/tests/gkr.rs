@@ -82,3 +82,56 @@ fn matches_reference_live_gkr_masked_rounds() {
         assert_eq!(Scalar::gkr_finals(&state).expect("finals"), eval(x, y));
     }
 }
+
+#[test]
+fn rejects_understated_degree_and_invalid_factor_geometry() {
+    let cpu = Scalar::<QM31>::new();
+    let local = [q(7), q(-1)];
+    let mask = |v| GkrMask {
+        values: vec![M31::ONE, M31::ONE],
+        coordinates: &[0],
+        vanishing: v,
+    };
+    let mut input = GkrConstruction {
+        num_vars: 1,
+        layer_variables: 1,
+        degree: 3,
+        factors: vec![GkrFactor::Column {
+            values: &local,
+            coordinates: vec![0],
+            mask: mask(0),
+        }],
+        terms: vec![Term {
+            coefficient: QM31::ONE,
+            factors: vec![0],
+        }],
+    };
+    assert!(cpu.gkr_start(&input).is_ok());
+    for degree in [0, 1, 2, 32] {
+        input.degree = degree;
+        assert!(cpu.gkr_start(&input).is_err());
+    }
+    input.degree = 3;
+    input.factors[0] = GkrFactor::Column {
+        values: &local,
+        coordinates: vec![0],
+        mask: mask(1),
+    };
+    assert!(cpu.gkr_start(&input).is_err());
+    input.factors[0] = GkrFactor::Equality {
+        point: &local[..1],
+        scale: QM31::ONE,
+        offset: 1,
+    };
+    assert!(cpu.gkr_start(&input).is_err());
+    input.factors[0] = GkrFactor::Equality {
+        point: &local[..1],
+        scale: QM31::ONE,
+        offset: 0,
+    };
+    input.terms[0].factors = vec![0, 0];
+    input.degree = 1;
+    assert!(cpu.gkr_start(&input).is_err());
+    input.degree = 2;
+    assert!(cpu.gkr_start(&input).is_ok());
+}

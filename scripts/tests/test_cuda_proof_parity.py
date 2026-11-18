@@ -16,3 +16,14 @@ class DeviceCounts(unittest.TestCase):
                     "3 3 7 7 6 3 432", "3 3 7 7 7 2 400", "3 3 7 7 7 3 431"):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 parity.hardware_counts(bad, 4)
+
+    def test_requires_gkr_folds_and_finals_against_pinned_proof(self):
+        expected = (5, 14, 58)
+        good = "5 14 14 14 5 256 1008 128 4096 5000"
+        self.assertEqual(parity.gkr_counts(good, expected), (5, 14))
+        for i, change in [(0, 4), (1, 13), (2, 13), (3, 13), (4, 4), (5, 0),
+                          (6, 1007), (7, 257), (8, 0), (9, 0)]:
+            with self.subTest(i=i), self.assertRaises(ValueError):
+                words = good.split()
+                words[i] = str(change)
+                parity.gkr_counts(" ".join(words), expected)
