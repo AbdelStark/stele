@@ -223,7 +223,8 @@ guards only with their implemented surface.
 
 ### A11 — Field-only GKR construction and masked arithmetic
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-13.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-13.
+[Independent lane Z review](../../agents/reviews/e20-13-live-gkr-contract.md)
 
 Extend A10's existing reductions-to-kernels edge to the field-only GKR
 construction and state operations in RFC-0014 A3. The kernels crate carries

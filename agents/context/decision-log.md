@@ -4360,3 +4360,14 @@ operation and complete proof pairs. A fresh T32 measurement establishes
 the actual whole-prover cost. No challenge, soundness line, proof byte,
 committed column or verifier dependency changes in this decision.
 [Independent acceptance](../reviews/e20-10-dev-zk-backend-contract.md)
+
+## ADR-140 — Admit live GKR arithmetic in the balanced development proof
+
+The E20-13 development-tier amendment accepts RFC-0014 A3, RFC-0020 A11 and
+RFC-0026 A20. The selected proof session computes GKR field-state construction,
+rounds, folds and compact finals. The existing A4 producer owns its transcript,
+and the reduction expands compact leaf outputs and authenticates all routed
+claims through the existing A7 flow. Every selected operation must complete on
+the selected backend. This decision introduces no new round, ledger line,
+commitment or proof byte. It grants implementation authority for E20-14.
+[Independent acceptance](../reviews/e20-13-live-gkr-contract.md)

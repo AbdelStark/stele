@@ -160,7 +160,8 @@ E20-03, E20-04, E20-10, E20-11 and E20-12.
 
 ### A3 — Live field execution of balanced dev-zk LogUp-GKR
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-13.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-13.
+[Independent lane Z review](../../agents/reviews/e20-13-live-gkr-contract.md)
 
 **Addition to A2, §§2 and 5.** An explicitly selected balanced dev-zk backend
 may produce each RFC-0008 A7 GKR step through the same proof-local field

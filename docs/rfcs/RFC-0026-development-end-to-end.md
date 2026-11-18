@@ -2362,7 +2362,8 @@ E20-12. Promotion remains governed by Workflow 10.
 
 ### A20 — Compute balanced dev-zk GKR field messages through a selected backend
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-13.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-13.
+[Independent lane Z review](../../agents/reviews/e20-13-live-gkr-contract.md)
 
 Extend A19's §7 execution option to the existing RFC-0008 A7 GKR field
 messages as specified by RFC-0014 A3. The full source-bound statement, wire
