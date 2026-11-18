@@ -94,32 +94,24 @@ pub(super) fn expected<K: ChallengeField + CodeField>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let (face, z) = point.split_first().ok_or(Error::Statement)?;
-    let n = (source.rows() / 2)
-        .checked_ilog2()
-        .ok_or(Error::Statement)?
-        + (source.columns() / 2)
-            .checked_ilog2()
-            .ok_or(Error::Statement)?;
-    if z.len() != n as usize || claims.len() != gammas.len() {
-        return Err(Error::Statement);
-    }
-    let mut total = zero::<K>();
-    for (claim, gamma) in claims.iter().zip(gammas) {
-        if claim.limbs != 1 && claim.limbs != dim::<K>() {
-            return Err(Error::Statement);
+    super::on_data_face(source, point, claims.len(), gammas.len(), |z| {
+        let mut total = zero::<K>();
+        for (claim, gamma) in claims.iter().zip(gammas) {
+            if claim.limbs != 1 && claim.limbs != dim::<K>() {
+                return Err(Error::Statement);
+            }
+            let len = width(claim.point.len())?;
+            let mut at = claim.at;
+            let mut value = shifted_eq(z, at, &claim.point)?;
+            for d in 1..claim.limbs {
+                at = at.checked_add(len).ok_or(Error::Statement)?;
+                value = value + basis::<K>(d)? * shifted_eq(z, at, &claim.point)?;
+            }
+            value = value + claim.mask_scale * shifted_eq(z, claim.mask_at, &claim.mask_point)?;
+            total = total + *gamma * value;
         }
-        let len = width(claim.point.len())?;
-        let mut at = claim.at;
-        let mut value = shifted_eq(z, at, &claim.point)?;
-        for d in 1..claim.limbs {
-            at = at.checked_add(len).ok_or(Error::Statement)?;
-            value = value + basis::<K>(d)? * shifted_eq(z, at, &claim.point)?;
-        }
-        value = value + claim.mask_scale * shifted_eq(z, claim.mask_at, &claim.mask_point)?;
-        total = total + *gamma * value;
-    }
-    Ok((K::from_i64(1) - *face) * total)
+        Ok(total)
+    })
 }
 
 #[cfg(test)]

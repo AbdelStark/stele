@@ -1683,13 +1683,14 @@ fn opening_point<K: ChallengeField>(point: &[K], ell: usize) -> Vec<K> {
     full
 }
 
-/// The verifier's `W'(ρ) = (1 − w*)·W̃(row*, col*)`, zero weight on `w = 1`.
-/// Linearity lets each claim accumulate against the same equality table before batching.
-fn expected_weight<K: ChallengeField>(
+/// A5 item 5 and NC-0915: all batch weight evaluators are zero on the mask face.
+/// Check the complete source point and one draw per claim before evaluating its data face.
+fn on_data_face<K: ChallengeField>(
     source: &Source<K>,
-    claims: &[Claim<K>],
-    gammas: &[K],
     point: &[K],
+    claims: usize,
+    coefficients: usize,
+    evaluate: impl FnOnce(&[K]) -> Result<K, Error>,
 ) -> Result<K, Error> {
     let (w, coordinates) = point.split_first().ok_or(Error::Statement)?;
     let dimension = (source.rows() / 2)
@@ -1698,19 +1699,32 @@ fn expected_weight<K: ChallengeField>(
         + (source.columns() / 2)
             .checked_ilog2()
             .ok_or(Error::Statement)?;
-    if coordinates.len() != dimension as usize || claims.len() != gammas.len() {
+    if coordinates.len() != dimension as usize || claims != coefficients {
         return Err(Error::Statement);
     }
-    let eq = stele_sumcheck::parallel::eq_table(coordinates).map_err(|_| Error::Statement)?;
-    let mut data = zero::<K>();
-    for (claim, gamma) in claims.iter().zip(gammas) {
-        let mut value = zero::<K>();
-        for (position, weight) in &claim.weights {
-            value = value + *eq.get(*position).ok_or(Error::Statement)? * *weight;
+    Ok((K::from_i64(1) - *w) * evaluate(coordinates)?)
+}
+
+/// The verifier's `W'(ρ) = (1 − w*)·W̃(row*, col*)`, zero weight on `w = 1`.
+/// Linearity lets each claim accumulate against the same equality table before batching.
+fn expected_weight<K: ChallengeField>(
+    source: &Source<K>,
+    claims: &[Claim<K>],
+    gammas: &[K],
+    point: &[K],
+) -> Result<K, Error> {
+    on_data_face(source, point, claims.len(), gammas.len(), |coordinates| {
+        let eq = stele_sumcheck::parallel::eq_table(coordinates).map_err(|_| Error::Statement)?;
+        let mut data = zero::<K>();
+        for (claim, gamma) in claims.iter().zip(gammas) {
+            let mut value = zero::<K>();
+            for (position, weight) in &claim.weights {
+                value = value + *eq.get(*position).ok_or(Error::Statement)? * *weight;
+            }
+            data = data + *gamma * value;
         }
-        data = data + *gamma * value;
-    }
-    Ok((K::from_i64(1) - *w) * data)
+        Ok(data)
+    })
 }
 
 /// Prove one A5 item-5 batch of `claims` on a hiding source, with its plain mask

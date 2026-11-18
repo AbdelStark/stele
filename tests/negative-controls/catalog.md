@@ -250,8 +250,8 @@ the actual hiding-source or masked-sumcheck verifier. NC-0906 is a producer refu
 not a verifier binding: a second opening reveals a third row combination, so the
 producer must refuse it. A reservation adds no coverage. E12-18 runs the controls
 for 0910 and 0911 through the composed `zk::claims` verifier, and those for 0909
-and 0915 through `claims::verify_batch`, the batch verifier that the composed
-verifier calls once per source (ADR-099). Each control fails when its check is
+and 0915 through `claims::verify_batch`. Its per-source sumcheck, data-face
+restriction and opening check are shared with the composed verifier (ADR-099). Each control fails when its check is
 removed. E12-19 runs the controls for 0913 and 0914 through the composed verifier
 on a lookup statement; each fails when its check is removed. The control for 0912
 remains for E12-14. E12-18 also adds
