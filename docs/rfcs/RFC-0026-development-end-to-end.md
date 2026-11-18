@@ -2343,3 +2343,18 @@ E16-10b executes the accepted contract through the mandatory harness. E16-10b
 is blocked on acceptance of A18. NC-1302 and NC-1306 are unchanged. This text
 neither supplies a production adversarial-producer interface nor uses the
 unmerged E16-10b1 interface. Promotion to `standard` or `treaty` is not granted.
+
+### A19 — Execution of balanced dev-zk ordinary batches
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-10.
+
+Add to §7: profile byte 4 may use the RFC-0014 A2 backend for its ordinary
+claim batches. This preserves the existing proof statement and cost claim.
+The caller selects a backend as an execution option. The proof format,
+commitments, profile selection and independent verifier are unaffected.
+Report measured performance on the actual rung with all checks enabled.
+
+Soundness, challenge counts, ledger error terms, cells, lookups, proof bytes
+and control IDs are unchanged. RFC-0014 A2 defines operation parity, normal
+verification and measured resource checks. Affected tasks are E20-11 and
+E20-12. Promotion remains governed by Workflow 10.
