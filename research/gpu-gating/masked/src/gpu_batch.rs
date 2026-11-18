@@ -56,16 +56,62 @@ pub fn prepare_message<'a>(
     let start = Instant::now();
     let p = Prepared::new(source, message, claims, gammas).ok_or(Error::Value)?;
     let stage = start.elapsed();
-    let (summand, mut timing) = build(dev, &p)?;
+    let (summand, mut timing) = build(dev, &p, None)?;
     timing.stage = stage;
     Ok((summand, p.claimed_sum, timing))
 }
 
-fn build<'a>(dev: &'a Device, p: &Prepared) -> Result<(DeviceMasked<'a>, Timing), Error> {
+/// Build the batch face from the identical on-device source that was certified.
+pub fn prepare_original<'a>(
+    dev: &'a Device,
+    source: &stele_reductions::stele_pcs::Source<K>,
+    owner: &super::OriginalMessage<'_>,
+    claims: &[Claim<K>],
+    gammas: &[K],
+) -> Result<(DeviceMasked<'a>, K, Timing), Error> {
+    let start = Instant::now();
+    let original = owner.words(dev, source.descriptor().id, source.rows(), source.columns())?;
+    let (p, _) = crate::batch::pack_with_message::<false>(source, None, claims, gammas)
+        .ok_or(Error::Value)?;
+    let stage = start.elapsed();
+    let (state, mut timing) = build(dev, &p, Some(original))?;
+    timing.stage = stage;
+    Ok((state, p.claimed_sum, timing))
+}
+
+fn build<'a>(
+    dev: &'a Device,
+    p: &Prepared,
+    original: Option<&cudarc::driver::CudaSlice<u32>>,
+) -> Result<(DeviceMasked<'a>, Timing), Error> {
     let coefficients = vec![(K::from_i64(1), vec![0, 1])];
     let terms = crate::round::Terms::new(2, &coefficients, 3).map_err(Error::Shape)?;
+    // The two-factor dense state retains pointers, flags, two offsets,
+    // two term indices, a coefficient and fixed three-node round scratch.
+    let logical_tables = p
+        .len
+        .checked_mul(20)
+        .ok_or(Error::Shape("batch table bytes"))?;
+    let blocks = dev.grid(p.len / 2).grid_dim.0 as usize;
+    let round_descriptors_and_scratch = 72 + 48 * (blocks + 1);
+    let initial_round = logical_tables
+        .checked_add(round_descriptors_and_scratch)
+        .ok_or(Error::Shape("batch round bytes"))?;
+    let promotion = initial_round
+        .checked_add(p.len.checked_mul(8).ok_or(Error::Value)?)
+        .ok_or(Error::Value)?;
+    let construction = p
+        .upload_bytes()
+        .checked_add(logical_tables)
+        .ok_or(Error::Value)?;
+    dev.require_budget(construction.max(promotion))?;
     let start = Instant::now();
-    let message = dev.stream.clone_htod(&p.message)?;
+    let temporary = if original.is_some() {
+        None
+    } else {
+        Some(dev.stream.clone_htod(&p.message)?)
+    };
+    let message = original.or(temporary.as_ref()).ok_or(Error::Value)?;
     let packed = dev.stream.clone_htod(&p.weights)?;
     let gammas = dev.stream.clone_htod(&p.gammas)?;
     let runs = dev.stream.clone_htod(&p.runs)?;
@@ -75,7 +121,7 @@ fn build<'a>(dev: &'a Device, p: &Prepared) -> Result<(DeviceMasked<'a>, Timing)
     dev.sync()?;
     let upload = start.elapsed();
     let start = Instant::now();
-    let mp = dev.ptr(&message);
+    let mp = dev.ptr(message);
     let wp = dev.ptr(&weights);
     let fp = dev.ptr(&face);
     let columns = p.columns as u64;
@@ -106,7 +152,7 @@ fn build<'a>(dev: &'a Device, p: &Prepared) -> Result<(DeviceMasked<'a>, Timing)
     unsafe { b.launch(dev.grid(p.len)) }?;
     dev.sync()?;
     let build = start.elapsed();
-    drop((message, packed, gammas, runs, offsets));
+    drop((temporary, packed, gammas, runs, offsets));
     let start = Instant::now();
     let factors = vec![
         Factor {

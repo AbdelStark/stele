@@ -20,7 +20,10 @@ def summarize(batches):
         weights = entries * 16
         gamma = claims * 16
         schedule = runs * 32 + (1 + (half + tile - 1) // tile) * 8
-        h2d = message + weights + gamma + schedule
+        if "original_bytes" in b and b["original_bytes"] != message:
+            raise ValueError("wrong resident batch message extent")
+        staged = 0 if "original_bytes" in b else message
+        h2d = staged + weights + gamma + schedule
         if b["index_ns"] > b["group_ns"]:
             raise ValueError("index timing exceeds its containing stage")
         if not claims or h2d != b["h2d_bytes"] or b["host_pack_bytes"] < h2d:
@@ -30,7 +33,7 @@ def summarize(batches):
         for key in ("positions", "runs", "run_checks", "index_ns", "group_ns", "upload_ns", "build_ns", "setup_ns"):
             totals[key] += b[key]
         for key, count in (("packed_weights_bytes", weights), ("gamma_bytes", gamma),
-                           ("schedule_bytes", schedule), ("message_bytes", message), ("h2d_bytes", h2d)):
+                           ("schedule_bytes", schedule), ("message_bytes", staged), ("h2d_bytes", h2d)):
             totals[key] += count
         for key in ("host_pack_bytes", "device_build_bytes"):
             totals["max_" + key] = max(totals["max_" + key], b[key])

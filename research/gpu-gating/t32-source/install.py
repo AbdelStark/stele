@@ -26,7 +26,4 @@ def install(root, replace):
         replace(path, call, "source_indices.push(index);\n        " + call)
         end = f"t.absorb(AbsorbLabel::{kind}Columns, &proof[start..])"
         replace(path, end, f"{owner}.observe_responses(ProofKind::{kind}, &source_indices, &proof[start..]);\n    " + end)
-    # The existing source preparation computes all simultaneous live buffer sizes
-    # before any device allocation. Compare them with the live CUDA pool.
-    replace("research/gpu-gating/masked/src/gpu_source.rs", "    // Upload.", "    dev.require_budget(buffer_peak_bytes)?;\n    // Upload.")
     return here / "device.rs"

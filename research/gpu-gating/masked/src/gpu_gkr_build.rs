@@ -205,6 +205,9 @@ impl Device {
         resident: Option<(usize, &Resident<'_>)>,
         work: &mut ConstructionWork,
     ) -> Result<Buf, Error> {
+        let physical = table.storage_len(len);
+        let cyclic = physical < len;
+        let len = physical;
         let words = len
             .checked_mul(if table.base { 1 } else { 4 })
             .filter(|n| *n <= isize::MAX as usize / 4)
@@ -215,6 +218,10 @@ impl Device {
         let dst = self.ptr(&out);
         let base = u32::from(table.base);
         for mut span in table.spans {
+            if cyclic {
+                span.period = span.arg;
+                span.end = span.arg;
+            }
             let width = span
                 .end
                 .checked_sub(span.begin)
