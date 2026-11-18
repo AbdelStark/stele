@@ -21,3 +21,7 @@ stele-prover = { path = "../stele-prover" }
 [[example]]
 name = "reject_cuda_round"
 required-features = ["cuda"]
+
+[[example]]
+name = "cuda_hiding_source"
+required-features = ["cuda"]

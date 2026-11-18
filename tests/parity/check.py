@@ -1,4 +1,5 @@
 """RFC-0014 A2/A3. Compare ordinary CUDA operations and both complete checked proof producers."""
+import filecmp
 import hashlib
 import json
 import os
@@ -28,6 +29,23 @@ def build(kind, dest, cuda=False, package="stele-cli"):
     if len(producers) != 1:
         raise ValueError("expected one independently built executable")
     shutil.copy2(producers[0], dest)
+
+
+def hiding_sources(work):
+    paths = []
+    for package, example, cuda in (("stele-pcs", "scalar_hiding_source", False),
+                                   ("stele-gpu", "cuda_hiding_source", True)):
+        binary = work / example
+        build(["--example", example], binary, cuda=cuda, package=package)
+        path = work / (example + ".bin")
+        with path.open("wb") as output:
+            result = run([binary], stdout=output, stderr=subprocess.PIPE, text=True)
+        if "hiding_source_cases=1000 selected_columns=4000" not in result.stderr.splitlines():
+            raise ValueError("incomplete hiding-source operation inventory")
+        paths.append(path)
+    if not paths[0].stat().st_size or not filecmp.cmp(*paths, shallow=False):
+        raise ValueError("CUDA hiding source root, column or Merkle path differed from CPU")
+    print("cuda_hiding_source_matches=1000 selected_columns=4000", flush=True)
 
 
 def proof_schedule(proof):
@@ -218,6 +236,7 @@ def main():
         raise ValueError("required relation arithmetic comparisons missing")
     with tempfile.TemporaryDirectory(prefix="stele-cuda-parity-") as tmp:
         work = Path(tmp)
+        hiding_sources(work)
         run(["uv", "run", "--locked", "--script", HERE / "fixtures.py", work / "fixtures"])
         build(["--bin", "stele"], work / "verifier")
         build(["--example", "parity_proof"], work / "cpu-prove")
