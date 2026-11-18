@@ -284,8 +284,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             (case, commitment, secret, mode)
         }
-        [case, commitment, secret, stage] if stage.as_os_str() == "source-root" => (case,commitment,secret,"source-root"),
-        [case, commitment, secret, stage] if stage.as_os_str() == "source-sibling" => (case,commitment,secret,"source-sibling"),
         _ => {
             return Err(
                 "expected first parity case, commitment, state and optional device control".into(),
