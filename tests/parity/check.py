@@ -1,6 +1,7 @@
 """RFC-0014 A2. Compare ordinary CUDA operations and both complete checked proof producers."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -17,8 +18,8 @@ def run(args, **kwargs):
     return subprocess.run(args, cwd=ROOT, check=True, **kwargs)
 
 
-def build(kind, dest, cuda=False):
-    args = ["cargo", "build", "--release", "--locked", "--offline", "-p", "stele-cli",
+def build(kind, dest, cuda=False, package="stele-cli"):
+    args = ["cargo", "build", "--release", "--locked", "--offline", "-p", package,
             "--no-default-features", "--message-format=json", *kind]
     if cuda:
         args += ["--features", "cuda"]
@@ -53,6 +54,32 @@ def verify(binary, case, identity, changed_model):
         if result.returncode != 1 or result.stdout.splitlines()[-1:] != ["NO: model differs from --expect-model"]:
             raise ValueError("wrong-model control failed")
     return int(m[1])
+
+
+def rejection_controls(work):
+    case = work / "fixtures" / "0"
+    arguments = [option for name in ("model", "preparation", "scales", "artifact")
+                 for option in ("--" + name, case / (name + ".bin"))]
+    public, proof = work / "absent-public", work / "absent-proof"
+    commitment, secret = work / "control-commitment", work / "control-secret"
+    common = [*arguments, "--length", "2", "--commitment", commitment, "--secret", secret]
+    run([work / "verifier", "commit-model", "--zk", *common, "--proofs", "1"], capture_output=True)
+    before = secret.read_bytes()
+    result = subprocess.run(
+        [work / "cuda-cli", "prove-dev", "--zk", *common, "--tokens", "1", "--public", public,
+         "--proof", proof, "--backend", "cuda"],
+        cwd=ROOT, env={**os.environ, "CUDA_VISIBLE_DEVICES": ""}, capture_output=True, text=True,
+    )
+    if (result.returncode != 2 or not result.stdout.startswith("NO: CUDA proving failed:")
+            or public.exists() or proof.exists() or secret.read_bytes() != before):
+        raise ValueError("unavailable CUDA did not fail before reservation and proof output")
+    print("rejected_unavailable_cuda=1 reservation_unchanged=1", flush=True)
+
+    result = run([work / "reject-round", case, commitment, secret], capture_output=True, text=True)
+    expected = "rejected_cuda_round=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1"
+    if result.stdout.splitlines()[-1:] != [expected]:
+        raise ValueError("genuine corrupted CUDA round did not reach the checked masked prover")
+    print(expected, flush=True)
 
 
 def compare(work, pins):
@@ -95,7 +122,14 @@ def main():
                   "--lib", "--test", "dense", "--", "--ignored", "--nocapture", "--test-threads=1"],
                  text=True, stdout=subprocess.PIPE)
     print(result.stdout, flush=True)
-    if not re.search(r"cuda_dense_cases=1000 rounds=[1-9]\d+ folds=[1-9]\d+ finals=1000", result.stdout) or "2 passed; 0 failed; 0 ignored" not in result.stdout or "cuda_dense_lazy_cases=1000" not in result.stdout:
+    required = ("device::tests::matches_reference_original_across_staging_chunks",
+                "device::tests::matches_reference_raw_lazy_device_boundaries",
+                "matches_reference_cuda_dense_batches", "rejects_foreign_source_and_invalid_dense_transitions")
+    completed = re.findall(r"^test (\S+) \.\.\. (?:[^\n]+\n)?ok$", result.stdout, flags=re.MULTILINE)
+    if (sorted(completed) != sorted(required)
+            or result.stdout.count("2 passed; 0 failed; 0 ignored") != 2
+            or not re.search(r"cuda_dense_cases=1000 rounds=([1-9]\d*) folds=\1 finals=1000", result.stdout)
+            or "cuda_dense_lazy_cases=1000" not in result.stdout):
         raise ValueError("required H100 operation comparisons or controls missing")
     with tempfile.TemporaryDirectory(prefix="stele-cuda-parity-") as tmp:
         work = Path(tmp)
@@ -103,6 +137,9 @@ def main():
         build(["--bin", "stele"], work / "verifier")
         build(["--example", "parity_proof"], work / "cpu-prove")
         build(["--example", "parity_proof"], work / "cuda-prove", cuda=True)
+        build(["--bin", "stele"], work / "cuda-cli", cuda=True)
+        build(["--example", "reject_cuda_round"], work / "reject-round", cuda=True, package="stele-gpu")
+        rejection_controls(work)
         for name in ("cpu", "cuda"):
             run([work / (name + "-prove"), work / "fixtures", work / name, name])
         batches, rounds = compare(work, pinned)

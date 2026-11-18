@@ -14,3 +14,10 @@ cuda = ["dep:cudarc"]
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+stele-prover = { path = "../stele-prover" }
+
+[[example]]
+name = "reject_cuda_round"
+required-features = ["cuda"]
