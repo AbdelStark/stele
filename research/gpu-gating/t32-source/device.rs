@@ -34,8 +34,10 @@ fn visit(input: Visit<'_>) {
     );
     let before = dev.memory_sample().expect("device memory before visit");
     let outside = (before.total - before.free).saturating_sub(before.reserved);
+    let prepare_start = now();
     let (resident, mut time) =
         prepare_resident(dev, &shape, input.message).expect("bounded source preparation");
+    let prepare_ns = now() - prepare_start;
     assert!(resident.root() == input.root, "source root differs");
     let width = usize::try_from(source.descriptor().width).expect("column width");
     let depth = source.codeword_len().ilog2() as usize;
@@ -62,10 +64,12 @@ fn visit(input: Visit<'_>) {
         );
         compare_ns += now() - comparison;
     }
+    let release_start = now();
     drop(resident);
     dev.sync().expect("release resident source");
+    let release_ns = now() - release_start;
     let after = dev.memory_sample().expect("device memory after release");
     assert_eq!(after.used, before.used);
     let stop = now();
-    eprintln!("t32_source id={} opening={} rows={} cols={} queries={} h2d={} d2h={} response_bytes={} retained={} peak={} device_total={} reserved_high={} used_high={} outside_pool={} start={start} stop={stop} observe_ns={compare_ns} cpu_start={} cpu_stop={}", input.id, u8::from(input.opening), input.rows, input.cols, input.indices.len(), time.upload_bytes,time.download_bytes,input.responses.len(),time.retained_bytes,time.buffer_peak_bytes,after.total,after.reserved_high,after.used_high,outside,input.cpu_start,input.cpu_stop);
+    eprintln!("t32_source id={} opening={} rows={} cols={} queries={} h2d={} d2h={} response_bytes={} retained={} peak={} device_total={} reserved_high={} used_high={} outside_pool={} prepare_ns={prepare_ns} release_ns={release_ns} upload_ns={} encode_ns={} merkle_ns={} download_ns={} assemble_ns={} start={start} stop={stop} observe_ns={compare_ns} cpu_start={} cpu_stop={}", input.id, u8::from(input.opening), input.rows, input.cols, input.indices.len(), time.upload_bytes,time.download_bytes,input.responses.len(),time.retained_bytes,time.buffer_peak_bytes,after.total,after.reserved_high,after.used_high,outside,time.upload.as_nanos(),time.encode.as_nanos(),time.merkle.as_nanos(),time.download.as_nanos(),time.assemble.as_nanos(),input.cpu_start,input.cpu_stop);
 }

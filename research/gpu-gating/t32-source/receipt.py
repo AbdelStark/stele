@@ -50,7 +50,9 @@ def summarize(log):
                 and 0 < row["used_high"] <= row["reserved_high"]
                 and row["reserved_high"] + row["outside_pool"] <= row["device_total"] * 2 // 5):
             raise ValueError("incorrect or over-budget device memory")
-        if row["stop"] - row["start"] <= row["observe_ns"]:
+        prepare = sum(row[key] for key in ("upload_ns", "encode_ns", "merkle_ns"))
+        charged = sum(row[key] for key in ("prepare_ns", "release_ns", "download_ns", "assemble_ns"))
+        if row["prepare_ns"] < prepare or row["stop"] - row["start"] < charged + row["observe_ns"]:
             raise ValueError("incorrect device interval")
         visits[id_][row["opening"]] = row
     if (len(cold) != 1 or cold[0] <= 0 or set(preparations) != set(rows_expected)
