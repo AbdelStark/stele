@@ -5,3 +5,7 @@ operations = ["original", "dense_batch", "dense_round", "dense_fold", "dense_fin
 
 [gkr]
 operations = ["gkr_start", "gkr_round", "gkr_fold", "gkr_finals"]
+
+[relation]
+constructor = "relation_start"
+arithmetic = ["gkr_round", "gkr_fold", "gkr_finals"]

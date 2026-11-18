@@ -57,18 +57,24 @@ def proof_schedule(proof):
             width = count()
             take(16 * width)
             values += width
-        take(16 * count() + 16)  # original finals and mask final
-        return n, values
+        finals = count()
+        take(16 * finals + 16)  # original finals and mask final
+        return n, values, finals
 
     for _ in range(2):  # original sources and certificates
         for _ in range(count()):
             take(count())
-    for _ in range(count()):
-        sumcheck()  # ordinary relations
+    relations = count()
+    rel_rounds = rel_nodes = rel_finals = 0
+    for _ in range(relations):
+        n, values, finals = sumcheck()
+        rel_rounds += n
+        rel_nodes += values
+        rel_finals += finals
     steps = count()
     rounds = evaluations = 0
     for _ in range(steps):
-        n, width = sumcheck()
+        n, width, _ = sumcheck()
         rounds += n
         evaluations += width
     batches = count()
@@ -76,7 +82,17 @@ def proof_schedule(proof):
     for _ in range(batches):
         batch_rounds += sumcheck()[0]
         take(count())  # source opening
-    return steps, rounds, evaluations, batches, batch_rounds
+    return (relations, rel_rounds, rel_nodes, rel_finals), (steps, rounds, evaluations), (batches, batch_rounds)
+
+
+def relation_counts(text, schedule):
+    steps, planned, rounds, folds, finals, upload, download, values, masks, budget, peak = map(int, text.split())
+    count, nrounds, nodes, fields = schedule
+    if (count <= 0 or nrounds < count or (steps, finals) != (count, count)
+            or (planned, rounds, folds) != (nrounds,) * 3 or download != 16 * (nodes + fields)
+            or min(values, masks, budget, peak) <= 0 or values + masks > upload):
+        raise ValueError("device relation calls disagree with the authenticated proof schedule")
+    return steps, rounds
 
 
 def gkr_counts(text, expected):
@@ -104,15 +120,15 @@ def verify(binary, case, identity, changed_model):
     if lines[-1:] != ["YES"] or "proof index 0 of 1" not in lines:
         raise ValueError("ordinary verifier rejected or used a different index")
     [audited] = [s for s in lines if s.startswith("dev-zk: ")]
-    m = re.fullmatch(r"dev-zk: \d+ relation instances, (\d+) GKR steps, (\d+) batches, (\d+) proof bytes", audited)
-    if m is None or int(m[3]) != (case / "proof.bin").stat().st_size:
+    m = re.fullmatch(r"dev-zk: (\d+) relation instances, (\d+) GKR steps, (\d+) batches, (\d+) proof bytes", audited)
+    if m is None or int(m[4]) != (case / "proof.bin").stat().st_size:
         raise ValueError("missing verified batch inventory")
     if changed_model:
         argv[-1] = ("1" if identity[0] == "0" else "0") + identity[1:]
         result = subprocess.run(argv, capture_output=True, text=True, cwd=ROOT)
         if result.returncode != 1 or result.stdout.splitlines()[-1:] != ["NO: model differs from --expect-model"]:
             raise ValueError("wrong-model control failed")
-    return int(m[1]), int(m[2])
+    return int(m[1]), int(m[2]), int(m[3])
 
 
 def rejection_controls(work):
@@ -143,6 +159,7 @@ def rejection_controls(work):
 
 def compare(work, pins):
     total_batches = total_rounds = total_steps = total_gkr_rounds = 0
+    total_relations = total_relation_rounds = 0
     for i in [*range(50), "replay"]:
         index = 0 if i == "replay" else i
         row = pins["reference_cases"][index]
@@ -159,22 +176,25 @@ def compare(work, pins):
         expected = verify(work / "verifier", cpu, identity, i == 0)
         if verify(work / "verifier", gpu, identity, i == 0) != expected:
             raise ValueError("different verifier inventories")
-        steps, gkr_rounds, evaluations, selected, batch_rounds = proof_schedule((cpu / "proof.bin").read_bytes())
-        if expected != (steps, selected + 1):
+        rel_schedule, (steps, gkr_rounds, evaluations), (selected, batch_rounds) = proof_schedule((cpu / "proof.bin").read_bytes())
+        if expected != (rel_schedule[0], steps, selected + 1):
             raise ValueError("decoded schedule and independent verifier disagree")
-        dense, gkr = (gpu / "device.txt").read_text().splitlines()
-        batches, rounds = hardware_counts(dense, expected[1])
+        dense, gkr, relations = (gpu / "device.txt").read_text().splitlines()
+        batches, rounds = hardware_counts(dense, expected[2])
         if rounds != batch_rounds:
             raise ValueError("device batch rounds differ from the reference proof")
         gkr_counts(gkr, (steps, gkr_rounds, evaluations))
+        nrel, rel_rounds = relation_counts(relations, rel_schedule)
         print(json.dumps(dict(case=i, model=identity, proof_sha256=row["proof_sha256"],
-                              selected_batches=batches, device_rounds=rounds, gkr_steps=steps, gkr_rounds=gkr_rounds)), flush=True)
+                              selected_batches=batches, device_rounds=rounds, gkr_steps=steps, gkr_rounds=gkr_rounds, relations=nrel, relation_rounds=rel_rounds)), flush=True)
         if i != "replay":
             total_batches += batches
             total_rounds += rounds
+            total_relations += nrel
+            total_relation_rounds += rel_rounds
             total_steps += steps
             total_gkr_rounds += gkr_rounds
-    return total_batches, total_rounds, total_steps, total_gkr_rounds
+    return total_batches, total_rounds, total_steps, total_gkr_rounds, total_relations, total_relation_rounds
 
 
 def main():
@@ -194,6 +214,8 @@ def main():
         raise ValueError("required H100 operation comparisons or controls missing")
     if not re.search(r"cuda_gkr_cases=1000 raw_cuda_gkr_cases=1000 field_rounds=8000 field_folds=8000 field_finals=2000", result.stdout):
         raise ValueError("required H100 GKR comparisons or controls missing")
+    if "cuda_relation_cases=1000 raw_cuda_relation_cases=1000 field_rounds=8000 field_folds=8000 field_finals=2000" not in result.stdout:
+        raise ValueError("required relation arithmetic comparisons missing")
     with tempfile.TemporaryDirectory(prefix="stele-cuda-parity-") as tmp:
         work = Path(tmp)
         run(["uv", "run", "--locked", "--script", HERE / "fixtures.py", work / "fixtures"])
@@ -205,8 +227,8 @@ def main():
         rejection_controls(work)
         for name in ("cpu", "cuda"):
             run([work / (name + "-prove"), work / "fixtures", work / name, name])
-        batches, rounds, steps, gkr_rounds = compare(work, pinned)
-    print(f"cuda_complete_byte_matches=50 selected_batches={batches} device_rounds={rounds} gkr_steps={steps} gkr_rounds={gkr_rounds} replay=0 changed_model=0", flush=True)
+        batches, rounds, steps, gkr_rounds, relations, relation_rounds = compare(work, pinned)
+    print(f"cuda_complete_byte_matches=50 selected_batches={batches} device_rounds={rounds} gkr_steps={steps} gkr_rounds={gkr_rounds} relations={relations} relation_rounds={relation_rounds} replay=0 changed_model=0", flush=True)
 
 
 if __name__ == "__main__":
