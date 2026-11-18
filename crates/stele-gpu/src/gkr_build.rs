@@ -111,7 +111,11 @@ fn layer(
                 values[2 * i + s.arg as usize / 2][s.arg as usize % 2],
             ));
         }
-        device.complete_transfer(device.stream.memcpy_htod(&staging, &mut output.slice_mut(4*start..4*end)))?;
+        device.complete_transfer(
+            device
+                .stream
+                .memcpy_htod(&staging, &mut output.slice_mut(4 * start..4 * end)),
+        )?;
     }
     for start in (width..len).step_by(width) {
         let (first, mut later) = output.split_at_mut(4 * start);
@@ -149,7 +153,9 @@ fn table(device: &Cuda, t: TablePlan<'_>, len: usize, work: &mut Work) -> Result
             if w.is_empty() {
                 Ok(None)
             } else {
-                device.complete_transfer(device.stream.clone_htod(w)).map(Some)
+                device
+                    .complete_transfer(device.stream.clone_htod(w))
+                    .map(Some)
             }
         };
         let data = upload(&s.data)?;

@@ -5,7 +5,7 @@ use crate::packing::{canonical, words};
 use crate::{Cuda, Error};
 use cudarc::driver::{CudaSlice, LaunchConfig, PushKernelArg};
 use stele_kernels::gkr::{plan::Plan, GkrBackend, GkrConstruction};
-use stele_kernels::{Field, QM31};
+use stele_kernels::QM31;
 
 pub(crate) struct Table {
     pub data: CudaSlice<u32>,
@@ -166,9 +166,10 @@ impl<'d> GkrBackend<QM31> for Session<'d> {
                 shared_mem_bytes: 0,
             })
         }?;
-        let mut downloaded_nodes=vec![[0u32;4];s.nodes];
-        device.complete_transfer(stream.memcpy_dtoh(&s.out,&mut downloaded_nodes))?;
-        let result = downloaded_nodes.into_iter()
+        let mut downloaded_nodes = vec![[0u32; 4]; s.nodes];
+        device.complete_transfer(stream.memcpy_dtoh(&s.out, &mut downloaded_nodes))?;
+        let result = downloaded_nodes
+            .into_iter()
             .map(canonical)
             .collect::<Result<Vec<_>, _>>()?;
         let uploaded = 20 * xs.len() as u64;
@@ -236,11 +237,15 @@ impl<'d> GkrBackend<QM31> for Session<'d> {
                 return Err(Error::Geometry);
             }
             let n = if f.x.base { 1 } else { 4 };
-            let mut raw=[0u32;4];
-            let device=s.session.device;
-            device.complete_transfer(device.stream.memcpy_dtoh(&f.x.data.slice(..n),&mut raw[..n]))?;
+            let mut raw = [0u32; 4];
+            let device = s.session.device;
+            device.complete_transfer(
+                device
+                    .stream
+                    .memcpy_dtoh(&f.x.data.slice(..n), &mut raw[..n]),
+            )?;
             result.push(if f.x.base {
-                canonical([raw[0],0,0,0])?
+                canonical([raw[0], 0, 0, 0])?
             } else {
                 canonical(raw)?
             });
