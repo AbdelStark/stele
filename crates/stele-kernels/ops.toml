@@ -9,3 +9,6 @@ operations = ["gkr_start", "gkr_round", "gkr_fold", "gkr_finals"]
 [relation]
 constructor = "relation_start"
 arithmetic = ["gkr_round", "gkr_fold", "gkr_finals"]
+
+[hiding_source]
+operations = ["prepare_columns", "selected_column"]

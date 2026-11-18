@@ -82,7 +82,13 @@ impl Cuda {
             ..Default::default()
         };
         let ptx = compile_ptx_with_opts(
-            concat!(include_str!("dense.cu"), "\n", include_str!("gkr.cu")),
+            concat!(
+                include_str!("dense.cu"),
+                "\n",
+                include_str!("gkr.cu"),
+                "\n",
+                include_str!("hiding.cu")
+            ),
             options,
         )
         .map_err(|error| Error::Compile(error.to_string()))?;

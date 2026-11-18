@@ -9,6 +9,12 @@ use stele_kernels::{Backend, SourceGeometry, WeightedClaim, M31, QM31};
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Counts {
     pub originals: usize,
+    pub source_visits: usize,
+    pub source_responses: usize,
+    pub source_hashes: u64,
+    pub source_uploaded_bytes: u64,
+    pub source_downloaded_bytes: u64,
+    pub source_observed_peak_bytes: usize,
     pub batches: usize,
     pub observed_peak_bytes: usize,
     pub expected_rounds: usize,
@@ -71,6 +77,19 @@ pub struct Original<'s, 'd> {
     geometry: SourceGeometry,
     words: CudaSlice<u32>,
 }
+impl Original<'_, '_> {
+    pub(crate) fn checked_words(
+        &self,
+        session: &Session<'_>,
+        geometry: SourceGeometry,
+    ) -> Result<&CudaSlice<u32>, Error> {
+        if !std::ptr::eq(session, self.session) || geometry != self.geometry {
+            return Err(Error::Source);
+        }
+        Ok(&self.words)
+    }
+}
+
 enum Face {
     Base(CudaSlice<u32>),
     Ext(CudaSlice<[u32; 4]>),
