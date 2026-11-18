@@ -4177,6 +4177,34 @@ mod tests {
         }
     }
 
+    #[test]
+    fn matches_reference_sparse_batch_weight() {
+        let q = |n| basis::<QM31>(1).unwrap() + QM31::from_i64(n);
+        for ell in [3, 4] {
+            let source = Source::<QM31>::hiding(0, ell, MIN_M, BLOWUP, [0; 32]).unwrap();
+            let last = (source.rows() / 2) * (source.columns() / 2) - 1;
+            let claims = [
+                Claim { weights: vec![(0, q(2)), (last, q(3)), (0, q(5))], value: q(7) },
+                Claim { weights: vec![(last, q(11)), (2, q(13))], value: q(17) },
+                Claim { weights: vec![], value: q(19) },
+            ];
+            let gammas = [q(23), q(29), q(31)];
+            let table = weight_table(&source, &claims, &gammas).unwrap();
+            let mut point: Vec<_> = (0..table.len().ilog2()).map(|i| q(i64::from(i))).collect();
+            for w in [QM31::from_i64(0), QM31::from_i64(1), q(37)] {
+                point[0] = w;
+                let eq = stele_poly::eq_table(&point).unwrap();
+                let dense = eq.iter().zip(&table).fold(zero::<QM31>(), |s,(a,b)| s + *a * *b);
+                assert_eq!(expected_weight(&source, &claims, &gammas, &point), Ok(dense));
+            }
+            assert_eq!(expected_weight(&source, &[], &[], &point), Ok(zero::<QM31>()));
+            assert_eq!(expected_weight(&source, &claims, &gammas[..2], &point), Err(Error::Statement));
+            assert_eq!(expected_weight(&source, &claims, &gammas, &point[1..]), Err(Error::Statement));
+            let bad = Claim { weights: vec![(last + 1, q(41))], value: q(43) };
+            assert_eq!(expected_weight(&source, &[bad], &[zero::<QM31>()], &point), Err(Error::Statement));
+        }
+    }
+
     /// E12-26: the ledger's integer log2 and its round security, rounded toward the
     /// larger error; the eight-layer byte-4 LU and witness tensor rounds.
     #[test]
