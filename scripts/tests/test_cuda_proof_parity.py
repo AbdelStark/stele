@@ -10,12 +10,22 @@ spec.loader.exec_module(parity)
 
 
 class DeviceCounts(unittest.TestCase):
-    def test_requires_all_authenticated_ordinary_batches_and_their_rounds(self):
-        self.assertEqual(parity.hardware_counts("3 3 7 7 7 3 432", 4), (3, 7))
-        for bad in ("0 0 0 0 0 0 0", "2 2 7 7 7 2 400", "3 3 7 6 6 3 384",
-                    "3 3 7 7 6 3 432", "3 3 7 7 7 2 400", "3 3 7 7 7 3 431"):
-            with self.subTest(bad=bad), self.assertRaises(ValueError):
-                parity.hardware_counts(bad, 4)
+    def test_requires_the_full_authenticated_batch_schedule(self):
+        batches, originals = 4, 5
+        good = [originals, batches, 7, 7, 7, batches, 464]
+
+        def check(row):
+            return parity.hardware_counts(" ".join(map(str, row)), batches, originals)
+
+        self.assertEqual(check(good), (4, 7))
+        for i, value in [(0, 4), (1, 3), (2, 6), (3, 6), (4, 6), (5, 3), (6, 463)]:
+            changed = good.copy()
+            changed[i] = value
+            with self.subTest(index=i), self.assertRaises(ValueError):
+                check(changed)
+        # A self-consistent three-batch receipt omits the authenticated fourth batch.
+        with self.assertRaises(ValueError):
+            check([originals, 3, 6, 6, 6, 3, 384])
 
     def test_requires_gkr_folds_and_finals_against_pinned_proof(self):
         expected = (5, 14, 58)
