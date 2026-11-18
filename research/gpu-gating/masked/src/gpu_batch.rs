@@ -71,8 +71,12 @@ pub fn prepare_original<'a>(
 ) -> Result<(DeviceMasked<'a>, K, Timing), Error> {
     let start = Instant::now();
     let original = owner.words(dev, source.descriptor().id, source.rows(), source.columns())?;
-    let (p, _) = crate::batch::pack_with_message::<false>(source, None, claims, gammas)
-        .ok_or(Error::Value)?;
+    let (p, _) = if crate::batch::multi_gib_weights(claims) {
+        crate::batch::pack_with_message::<true>(source, None, claims, gammas)
+    } else {
+        crate::batch::pack_with_message::<false>(source, None, claims, gammas)
+    }
+    .ok_or(Error::Value)?;
     let stage = start.elapsed();
     let (state, mut timing) = build(dev, &p, Some(original))?;
     timing.stage = stage;

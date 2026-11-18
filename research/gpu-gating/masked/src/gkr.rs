@@ -1,5 +1,8 @@
 //! RFC-0008 A7 / RFC-0014 §5: stage genuine compact factors and check every final.
 //! Host construction/expansion is explicit; observer values never enter a proof.
+/// Original source views in the producing factor's member order.
+pub type ColumnOrigin = Vec<Option<[usize; 6]>>;
+
 use crate::{round::Terms, FactorSpec, Shape, Source, K, M31};
 use stele_reductions::zk::claims::bench::{GkrCase, Masked};
 
