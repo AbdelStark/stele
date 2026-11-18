@@ -5750,3 +5750,19 @@ tasks:
   - Upload each actual hiding-source message once through pinned staging and borrow validated source owners for selected authenticated responses and the ordinary batch face
   - Qualify 1000 seeded canonical/raw cases and the complete T32 source, lookup, GKR and batch schedule with normal/wrong-model verification, exact identity/transfer charges and physically measured simultaneous memory below 40 percent
   - Evaluate the identity and address geometry of GKR and lookup original columns and leave any remaining host uploads explicit
+
+- id: E16-40ad
+  epic: E16
+  title: Produce bound masked sumcheck subproofs with device-authored round messages
+  lane: V
+  depends: [E16-40j, E16-40l]
+  rfc: [RFC-0013 A4, RFC-0014 §5]
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40ad-device-bound-sumcheck
+  acceptance:
+  - Drive the public checked masked prover with a research CUDA summand so every polynomial and final comes from the H100 before the host transcript draws the next challenge
+  - Compare complete masked subproofs, certificate and opening bytes and transcript continuation on synthetic inputs; use the ordinary verifier and discharge its ordered input evaluations directly
+  - Reject a changed round using the ordinary verifier and distinguish this component from the 50 required inference proof comparisons
