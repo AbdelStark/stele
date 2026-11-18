@@ -20,8 +20,16 @@ mod field_cases;
 #[cfg(feature = "cuda")]
 pub mod gpu;
 #[cfg(feature = "cuda")]
+pub mod gpu_lookup;
+#[cfg(feature = "cuda")]
 pub mod gpu_source;
+#[cfg(test)]
+mod host_probe;
 pub mod inventory;
+#[cfg(any(test, feature = "cuda"))]
+pub mod lookup;
+#[cfg(test)]
+mod lookup_cases;
 pub mod source;
 
 /// The challenge field.

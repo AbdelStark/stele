@@ -5338,7 +5338,7 @@ tasks:
   - RFC-0014 §1, §4, §5, A1
   skill: benchmark-runner
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40p-gkr-construction-interface
   acceptance:
@@ -5348,3 +5348,27 @@ tasks:
   - preserve validation, public aborts, proof bytes, transcript continuation, disclosure and callback-error behavior; inputs contain private witness material and are never public inventory or verifier inputs
   - no core backend, CUDA, dependency, challenge, binding, commitment, protocol or performance change; construction descriptor and mask copies remain charged host work, and no whole-stage, device-memory or ADR-127 GO claim follows
   - obtain owning lane P and independent standards review; keep default, bench, no_std and mandatory L0/L1 gates green in stack order; this reordered lane-V interface follows E16-40h and precedes E16-40i, consumes only the already merged E16-40g interface, and its device consumer waits for this interface to merge
+
+- id: E16-40i
+  epic: E16
+  title: Qualify production lookup trees and top division on the research GPU path
+  lane: V
+  depends:
+  - E16-40c
+  rfc:
+  - RFC-0003 §1, §2, §6
+  - RFC-0008 A7 items 2, 3 and implementation notes
+  - RFC-0014 §1, §4, §5, A1
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40i-lookup-tree
+  acceptance:
+  - answer whether the merged production LookupCase inputs support exact device leaf construction, every retained fraction-tree layer and top division; retire this part of the untested-GPU risk in docs/plan.md §9, concerning c_lu and T_misc without a speed claim
+  - prototype only in research/gpu-gating/masked under ADR-123; use production normalization and the actual LookupCase reference, preserving selectors, shifts, member and table padding, tuple order and DenominatorZero
+  - test before implementation; compare all returned canonical limbs with the production reference for 1000 seeded cases, including heterogeneous members and extension compression; feed raw lazy field limbs to each implemented kernel, not only the shared helpers; include zero-denominator, malformed-shape and one-multiplicity near-miss controls
+  - qualify the actual new QM31 inverse expression against stele-field for one million seeded canonical and lazy cases including 0, 1, p-1, p and 2p-1; explicit required-H100 execution may not pass by skipping cases or absent CUDA
+  - retain and return all layers and p/q/h; report operation input/output bytes and complete explicit device buffer overlap, separately from context, module and allocator overhead; expose phase timing without publishing performance numbers
+  - work budget is one bounded implementation and one H100 qualification campaign; stop on a device divergence, compile or allocation failure and report it before further GPU optimization; no production backend, binding, proof byte, challenge, dependency, complete-memory-budget or ADR-127 GO change
+  - obtain independent review, required H100 receipts and mandatory gates in stack order before merge; the consumer uses only the E16-40c interface already merged in main, and leaves the earlier queued source archives unchanged
