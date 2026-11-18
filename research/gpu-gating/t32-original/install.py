@@ -19,6 +19,12 @@ def install(root):
     device=masked/"t32_timing.rs"
     replace(device,"static DEVICE:",'#[path="source_timing.rs"] mod pcs;\n#[path="originals.rs"] pub(crate) mod originals;\nstatic DEVICE:')
     replace(device,"    resident::install();","    pcs::install();\n    resident::install();")
+    replace(device,"    let m = dev.memory_sample()", """    let original_live = originals::with_originals(|owners| {
+        assert!(owners.keys().copied().eq(0..4), "wrong originals held across GKR");
+        owners.values().map(crate::gpu::OriginalMessage::bytes).sum::<usize>()
+    });
+    let m = dev.memory_sample()""")
+    replace(device,"construction_bytes={} first_fold_bytes=", "original_live={original_live} construction_bytes={} first_fold_bytes=")
     shutil.copyfile(here/"originals.rs",root/masked/"originals.rs")
     visit=pcs.read_text()
     a=visit.index("use crate::")

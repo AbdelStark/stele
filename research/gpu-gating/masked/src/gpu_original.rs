@@ -1,5 +1,7 @@
 //! RFC-0013 A5 and RFC-0014 A1: one immutable M' device allocation per hiding source.
 use super::{Device, Error};
+#[cfg(test)]
+use crate::Field;
 use crate::M31;
 use cudarc::driver::CudaSlice;
 
@@ -19,6 +21,28 @@ impl<'d> OriginalMessage<'d> {
         rows: usize,
         columns: usize,
         message: &[M31],
+    ) -> Result<Self, Error> {
+        Self::upload_words(dev, id, rows, columns, message, 0)
+    }
+
+    #[cfg(test)]
+    pub(super) fn upload_raw(
+        dev: &'d Device,
+        id: u64,
+        rows: usize,
+        columns: usize,
+        message: &[M31],
+    ) -> Result<Self, Error> {
+        Self::upload_words(dev, id, rows, columns, message, M31::MODULUS)
+    }
+
+    fn upload_words(
+        dev: &'d Device,
+        id: u64,
+        rows: usize,
+        columns: usize,
+        message: &[M31],
+        lift: u32,
     ) -> Result<Self, Error> {
         if !rows.is_power_of_two()
             || !columns.is_power_of_two()
@@ -42,7 +66,7 @@ impl<'d> OriginalMessage<'d> {
             for (j, value) in chunk.iter().enumerate() {
                 // SAFETY: the staging event has completed. j < tile, and this
                 // unique mutable borrow initializes the word before the copy.
-                unsafe { dst.add(j).write(value.as_u32()) };
+                unsafe { dst.add(j).write(value.as_u32() + lift) };
             }
             dev.stream
                 .memcpy_htod(&staging, &mut words.slice_mut(i * tile..(i + 1) * tile))?;
@@ -72,5 +96,51 @@ impl<'d> OriginalMessage<'d> {
     }
     pub fn bytes(&self) -> usize {
         4 * self.words.len()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        batch_cases, gpu_source,
+        source::{material, Shape},
+    };
+    #[test]
+    #[ignore = "requires an explicitly allocated H100"]
+    fn matches_reference_original_source_responses_on_h100() {
+        let dev = Device::new().expect("CUDA device");
+        assert!(dev.name.contains("H100"));
+        for case in 0..batch_cases::CASES {
+            let seed = batch_cases::SEED + 2 * case as u64;
+            let message = batch_cases::message(seed);
+            let shape = Shape {
+                id: 73,
+                ell: batch_cases::ELL,
+                m: batch_cases::M,
+                seed: batch_cases::source_seed(seed),
+            };
+            let expected = material(&shape, &message).unwrap();
+            let source = shape.source().unwrap();
+            for raw in [false, true] {
+                let upload = if raw {
+                    OriginalMessage::upload_raw
+                } else {
+                    OriginalMessage::upload
+                };
+                let owner =
+                    upload(&dev, shape.id, source.rows(), source.columns(), &message).unwrap();
+                let (state, mut timing) =
+                    gpu_source::prepare_from_original(&dev, &shape, &owner).unwrap();
+                assert_eq!(state.root(), expected.root());
+                let end = (source.codeword_len() - 1) as u64;
+                for index in [0, seed & end, end] {
+                    let (leaf, path) = expected.response(index).unwrap();
+                    let got = state.response(index, &mut timing).unwrap();
+                    assert_eq!((got.0.as_slice(), got.1), (leaf, path));
+                }
+            }
+        }
+        eprintln!("pinned_pcs_cases=1000 representations=2000 responses=6000");
     }
 }

@@ -37,7 +37,7 @@ def summarize(log):
             if live.get(i)!=row["original_bytes"]:
                 raise ValueError("ordinary batch lacks its certified original")
             batches.append((row["id"],i))
-        elif set(live)!={0,1,2,3}:
+        elif set(live)!={0,1,2,3} or row["original_live"] != sum(live.values()):
             raise ValueError("GKR without all four original sources")
     if live or batches != [(1265,0),(1266,1),(1267,2)] or total!=4_299_292_672:
         raise ValueError("incomplete original lifetime")
