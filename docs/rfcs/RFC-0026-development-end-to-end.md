@@ -2346,7 +2346,8 @@ unmerged E16-10b1 interface. Promotion to `standard` or `treaty` is not granted.
 
 ### A19 — Execution of balanced dev-zk ordinary batches
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-10.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-10.
+[Independent lane Z review](../../agents/reviews/e20-10-dev-zk-backend-contract.md)
 
 Add to §7: profile byte 4 may use the RFC-0014 A2 backend for its ordinary
 claim batches. This preserves the existing proof statement and cost claim.

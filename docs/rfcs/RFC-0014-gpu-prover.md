@@ -86,7 +86,8 @@ changes. Affected tasks: E3-05 and downstream GPU planning/streaming work.
 
 ### A2 — Development-profile resident field backend
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-10.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-10.
+[Independent lane Z review](../../agents/reviews/e20-10-dev-zk-backend-contract.md)
 
 **Motivation.** ADR-138 qualifies implementation on the measured E45 CPU
 path. Any claim about its speed on different CPU code requires an equally

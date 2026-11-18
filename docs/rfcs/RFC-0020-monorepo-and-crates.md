@@ -199,7 +199,8 @@ does not change an executable allowlist or complete top-level artifact ownership
 
 ### A10 — Development-profile field backend dependency
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E20-10.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-10.
+[Independent lane Z review](../../agents/reviews/e20-10-dev-zk-backend-contract.md)
 
 Add to §2 for RFC-0014 A2: `stele-reductions` may depend directly on
 `stele-kernels` for its field-only backend trait, operation descriptions and

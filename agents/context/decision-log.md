@@ -4342,3 +4342,21 @@ eight CLI verdicts and checked the unchanged public and pre-opening bytes;
 the standards reviewer checked source/patch/artifact hashes and ran the plain
 checker tests. NC-1308 remains `todo`; accepted text is not execution credit.
 Required catalog, native and current-main merge-tree gates remain mandatory.
+
+## ADR-139 — Admit a field-only backend for ordinary balanced development-ZK batches (E20-10)
+
+ADR-138 qualified the development-tier implementation study on the E45 CPU
+path. A CUDA implementation will enter through the same checked masked
+prover, model lifetime and authenticated opening as the CPU. Its first
+field-only operation family belongs in `stele-kernels`. Its scalar backend
+defines the reference operation results. A fresh proof session owns the exact
+source message. Device construction, round, fold and final evaluations can
+supply fields while the reduction retains transcript and verifier authority.
+[Qualified implementation decision](https://github.com/AbdelStark/stele/blob/b711bd764c294cea3ea3c98d1ef63f106fad3ca3/agents/context/decision-log.md#adr-138--reopen-the-development-tier-resident-gpu-implementation-on-the-measured-e45-candidate-e16-40ag)
+
+The development-tier path of Workflow 02 accepts RFC-0014 A2, RFC-0020
+A10 and RFC-0026 A19. The mandatory hardware gate covers every selected
+operation and complete proof pairs. A fresh T32 measurement establishes
+the actual whole-prover cost. No challenge, soundness line, proof byte,
+committed column or verifier dependency changes in this decision.
+[Independent acceptance](../reviews/e20-10-dev-zk-backend-contract.md)
