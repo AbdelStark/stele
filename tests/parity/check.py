@@ -193,10 +193,12 @@ def main():
     print(result.stdout, flush=True)
     required = ("device::tests::matches_reference_original_across_staging_chunks",
                 "device::tests::matches_reference_raw_lazy_device_boundaries",
-                "matches_reference_cuda_dense_batches", "rejects_foreign_source_and_invalid_dense_transitions")
+                "gkr_tests::matches_reference_cuda_gkr", "matches_reference_cuda_dense_batches",
+                "rejects_foreign_source_and_invalid_dense_transitions")
     completed = re.findall(r"^test (\S+) \.\.\. (?:[^\n]+\n)?ok$", result.stdout, flags=re.MULTILINE)
     if (sorted(completed) != sorted(required)
-            or result.stdout.count("2 passed; 0 failed; 0 ignored") != 2
+            or result.stdout.count("2 passed; 0 failed; 0 ignored") != 1
+            or result.stdout.count("3 passed; 0 failed; 0 ignored") != 1
             or not re.search(r"cuda_dense_cases=1000 rounds=([1-9]\d*) folds=\1 finals=1000", result.stdout)
             or "cuda_dense_lazy_cases=1000" not in result.stdout):
         raise ValueError("required H100 operation comparisons or controls missing")

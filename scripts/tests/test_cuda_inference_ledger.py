@@ -23,3 +23,16 @@ class DeviceLedger(unittest.TestCase):
                                          (self.receipt.replace('folds=69', 'folds=0'), self.verified, '580')]:
             with self.subTest(stderr=stderr, verified=verified, driver=driver), self.assertRaises(ValueError):
                 device_counters(stderr, verified, 4, driver)
+
+    def test_requires_verified_gkr_steps_and_live_peak(self):
+        row = ('cuda_gkr steps=385 expected_rounds=900 rounds=900 folds=900 finals=385 '
+               'h2d_bytes=12345 d2h_bytes=48000 streamed_layer_bytes=9000 planned_peak_bytes=370 '
+               'observed_peak_bytes=399')
+        capture = self.receipt.replace('cuda_memory', row + '\ncuda_memory')
+        values = device_counters(capture, self.verified, 4, '580')
+        self.assertEqual((values['gkr_steps'], values['gkr_observed_peak_bytes']), (385, 399))
+        for left, right in [('steps=385', 'steps=384'), ('folds=900', 'folds=899'),
+                            ('planned_peak_bytes=370', 'planned_peak_bytes=401'),
+                            ('bytes=399', 'bytes=401'), ('bytes=9000', 'bytes=13000')]:
+            with self.subTest(left=left), self.assertRaises(ValueError):
+                device_counters(capture.replace(left, right), self.verified, 4, '580')
