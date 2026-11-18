@@ -518,6 +518,24 @@ class ClosedStackedGateTests(unittest.TestCase):
                 run.assert_not_called()
             path.write_bytes(saved)
 
+    def test_rejects_broadened_field_backend_authority(self):
+        crate = self.root / 'crates/stele-reductions'
+        adapter = crate / 'src/zk_batch_backend.rs'
+        manifest = crate / 'Cargo.toml'
+        for path, old, new in (
+            (adapter, 'pub(super) fn prove(', 'pub fn prove('),
+            (adapter, 'masked::prove(i, dense', 'masked::prove_unchecked(i, dense'),
+            (manifest, 'stele-kernels = { path = "../stele-kernels" }', 'stele-gpu = { path = "../stele-gpu" }'),
+        ):
+            original = path.read_text()
+            self.assertEqual(original.count(old), 1)
+            path.write_text(original.replace(old, new))
+            with mock.patch.object(gate.subprocess, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'not wired'):
+                    gate.field_sources(self.root)
+                run.assert_not_called()
+            path.write_text(original)
+
     def test_rejects_unreviewed_api_conversions_and_dependencies(self):
         for name in ('src/requant.rs', 'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt',
                      'src/requant_constraints.rs', 'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt',

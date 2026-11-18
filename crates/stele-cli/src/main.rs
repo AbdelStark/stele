@@ -425,8 +425,8 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
                 c.originals, c.batches, c.rounds, c.folds, c.finals, c.uploaded_bytes, c.downloaded_bytes);
             if let Ok(m) = memory {
                 eprintln!(
-                    "cuda_memory total_bytes={} outside_pool_bytes={} pool_high_bytes={}",
-                    m.total, m.outside_pool, m.pool_high
+                    "cuda_memory total_bytes={} outside_pool_bytes={} pool_high_bytes={} observed_peak_bytes={}",
+                    m.total, m.outside_pool, m.pool_high, c.observed_peak_bytes
                 );
             }
         }
