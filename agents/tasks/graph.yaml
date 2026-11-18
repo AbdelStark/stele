@@ -5685,3 +5685,19 @@ tasks:
   - consume original base-field columns, member ranges and selectors, public table rows and multiplicity, and account all input preparation and explicit transfers
   - compare canonical and lazy device values to original lookup trees and selected tops in 1000 seeded cases, including malformed geometry, zero denominator and single-value controls
   - retain resident child ownership, budget preflight and original CPU comparisons through the complete verified stories42M T32 proof; compare the same lookup visits against E16-40u
+
+- id: E16-40z
+  epic: E16
+  title: Schedule final child ownership and GKR promotions under the device budget
+  lane: V
+  depends: [E16-40y]
+  rfc: [RFC-0008 A7, RFC-0014 §5 and A1]
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-resident
+  branch: task/E16-40z-gkr-memory-schedule
+  acceptance:
+  - Bound construction and first-fold live allocations in factor order, with actual mask consumption, scratch, staging and stream-ordered frees
+  - Release a final child owner after synced factor construction and before promotions with a checked last layer
+  - Compare 1000 seeded canonical/raw statements and all rounds and finals; measure all 385 T32 steps without skips under the device budget with the real lookup tree
