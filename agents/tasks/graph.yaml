@@ -5263,7 +5263,7 @@ tasks:
   - RFC-0008 A7
   skill: performance-engineer
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-source-visits
   branch: task/E16-44-multiplicity
   acceptance:
