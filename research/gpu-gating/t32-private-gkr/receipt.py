@@ -26,3 +26,26 @@ def summarize(log):
     sums["qualification_ns"]=sum(r["qualification_ns"] for r in actual)
     result["private_gkr_views"]=sums
     return result
+
+
+def compare_reference(log, prior):
+    """Require each borrowed limb extent to match the corresponding AF physical DMA."""
+    def rows(text, tag):
+        return [dict((k,int(v)) for k,v in (s.split("=") for s in line.split()[1:]))
+                for line in text.splitlines() if line.startswith(tag+" ")]
+    views, old, new = rows(log,"gkr_private"), rows(prior,"gkr_inputs"), rows(log,"gkr_inputs")
+    if len(views) != 385 or len(old) != 385 or len(new) != 385:
+        raise ValueError("incomplete AF comparison")
+    removed=0
+    for v,prev,now in zip(views,old,new):
+        if v["step"]!=prev["step"] or now["step"]!=prev["step"] or now["lookup"]!=prev["lookup"]:
+            raise ValueError("different original GKR statement")
+        if v["mask_bytes"]!=prev["mask"] or v["block_bytes"]!=prev["block_mask"]:
+            raise ValueError("private view did not replace the observed prior copy")
+        if any(now[k]!=prev[k] for k in ("block_challenge", "column", "coordinates", "descriptors",
+                "equality", "layer", "selector", "table", "table_challenge", "terms")):
+            raise ValueError("different non-mask GKR copy")
+        if now["inputs"]+v["mask_bytes"]+v["block_bytes"]!=prev["inputs"]:
+            raise ValueError("GKR private H2D reconciliation")
+        removed+=v["mask_bytes"]+v["block_bytes"]
+    return removed
