@@ -15,7 +15,7 @@ def digest(path):
         return hashlib.file_digest(f, "sha256").hexdigest()
 
 
-def main():
+def main(summarize_log=summarize):
     os.umask(0o077)
     root = Path.home() / "stele-codex"
     source = Path.cwd()
@@ -59,11 +59,18 @@ def main():
         raise ValueError("ordinary verifier or wrong-model control failed")
     if any(line not in proved.splitlines() for line in ("profile dev-zk","T 32","checked 23..32","next 2654","proof 21411006 bytes")):
         raise ValueError("unexpected T32 workload")
-    summary=summarize((work / "prove.err").read_text())
+    summary=summarize_log((work / "prove.err").read_text())
     result={"job":os.environ["SLURM_JOB_ID"],"profile":"dev-zk","workload":"dev/stories42m-t32","affinity":sorted(os.sched_getaffinity(0)),"inputs":pins,"cli_sha256":digest(cli),"verifier_sha256":expected_verifier,"proof_sha256":digest(work / "proof.bin"),"public_sha256":digest(work / "public.bin"),"stages":summary}
     (work / "result.json").write_text(json.dumps(result,indent=2)+"\n")
     print(json.dumps(result,indent=2))
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    import runpy
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gkr", action="store_true")
+    if parser.parse_args().gkr:
+        main(runpy.run_path(str(Path(__file__).resolve().parents[1] / "t32-gkr/receipt.py"))["summarize"])
+    else:
+        main()
