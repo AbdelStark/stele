@@ -4754,9 +4754,7 @@ tasks:
   skill: soundness-auditor
   crate: docs+stele-reductions
   lane: V
-  status: in_progress
-  agent: codex-live-gkr
-  branch: task/E20-20-live-lookup-trees
+  status: ready
   acceptance:
   - RFC-0030 Accepted through the full Workflow 02 path with the compilation theorem and constants cited; Q12 closed in RFC-0019. If the Q12 amendments of task E12-22 are Accepted first, they are the law; RFC-0030 is then re-based on them and keeps the per-family ledger report, the plan validation and the treaty field
   - formal/security-accounting.md states the round-by-round error of each family in RFC-0030 §2 with its state function

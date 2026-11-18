@@ -62,9 +62,9 @@ class DeviceLedger(unittest.TestCase):
         def dense(n):
             return bytes(16) + u32(n) + (u32(3) + bytes(48)) * n + u32(2) + bytes(48)
         original = source(0, 4)
-        standalone = source(1, 4)
+        standalone = source(3, 4)
         proof = (b'stele-dev-zk-v1' + bytes(64) + u32(1) + blob(original) + u32(1) + blob(b'c')
-                 + u32(0) * 3 + blob(standalone) + blob(b'c') + dense(13) + blob(b'o') + blob(b'o'))
+                 + u32(1) + dense(3) + u32(1) + dense(2) + u32(0) + blob(standalone) + blob(b'c') + dense(13) + blob(b'o') + blob(b'o'))
         report = '\n'.join(f'PCS\t{label}\trow exponent 4, policy Two, q_c/q_o 222/92, k_t 0, k_q 16, 1 opening(s);'
                            for label in ['shared mask source', 'shared batch mask source'])
         expected = source_work(proof, report, standalone=True)
@@ -76,9 +76,29 @@ class DeviceLedger(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 check_source_work(dict(good, **{key:good[key]-1}), proof, report, 400, standalone=True)
         for changed in [proof[:-1], proof+b'x', proof.replace(standalone, original),
-                        proof.replace(dense(13), dense(12)), proof.replace(standalone, source(1, 5))]:
+                        proof.replace(dense(13), dense(12)), proof.replace(standalone, source(3, 5))]:
             with self.assertRaises(ValueError):
                 source_work(changed, report, standalone=True)
+
+        # A7 authenticates the shared batch and the earlier device families together.
+        report += ('\ndev-zk: 1 relation instances, 1 GKR steps, 1 batches, 4197 proof bytes'
+                   '\nLU\tcheck 0\tlookup\nSC\tcheck 0 step 0\tGKR')
+        source_counts = ' '.join(f'{k}={v}' for k, v in good.items())
+        stderr = ('cuda originals=2 batches=1 rounds=13 folds=13 finals=1 h2d_bytes=140000 d2h_bytes=656\n'
+                  'cuda_gkr steps=1 expected_rounds=2 rounds=2 folds=2 finals=1 h2d_bytes=64 '
+                  'd2h_bytes=112 streamed_layer_bytes=0 planned_peak_bytes=360 observed_peak_bytes=380\n'
+                  'cuda_relations steps=1 expected_rounds=3 rounds=3 folds=3 finals=1 h2d_bytes=96 '
+                  'd2h_bytes=176 value_bytes=32 mask_bytes=48 planned_peak_bytes=355 observed_peak_bytes=375\n'
+                  f'cuda_sources {source_counts}\n'
+                  'cuda_lookup tops=1 rebuilds=0 child_views=0 child_released=0 h2d_bytes=64 d2h_bytes=256 '
+                  'planned_peak_bytes=300 observed_peak_bytes=360\n'
+                  'cuda_memory total_bytes=1000 outside_pool_bytes=50 pool_high_bytes=300 observed_peak_bytes=370')
+        self.assertEqual(device_counters(stderr, report, 4, '580', proof)['batches'], 1)
+        for old, new in [('expected_rounds=3 rounds=3 folds=3', 'expected_rounds=2 rounds=2 folds=2'),
+                         ('expected_rounds=2 rounds=2 folds=2', 'expected_rounds=1 rounds=1 folds=1'),
+                         ('d2h_bytes=176', 'd2h_bytes=160'), ('d2h_bytes=112', 'd2h_bytes=96')]:
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                device_counters(stderr.replace(old, new), report, 4, '580', proof)
 
     def test_requires_each_original_visit_and_selected_response(self):
         # One original plus the shared source. The verifier derives the query schedule.
