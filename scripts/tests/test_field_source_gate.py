@@ -30,10 +30,11 @@ class FieldSourcesLayoutTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'layout admitted'):
                 gate.field_sources(self.root)
 
-    def test_rejects_missing_or_unreviewed_benchmark_files(self):
+    def test_rejects_missing_or_unreviewed_reductions_files(self):
         crate = self.root / 'crates/stele-reductions'
         with mock.patch.object(gate, 'requant_fixtures') as fixtures:
-            for name in ('src/zk_lookup_bench.rs', 'src/zk_batch_bench.rs',
+            for name in ('src/zk_occurrence_weight.rs',
+                         'src/zk_lookup_bench.rs', 'src/zk_batch_bench.rs',
                          'tests/lookup_bench.rs', 'tests/batch_bench.rs',
                          'src/zk_gkr_bench.rs', 'tests/gkr_bench.rs',
                          'src/zk_gkr_construction.rs', 'tests/common/gkr_construction.rs'):
