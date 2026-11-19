@@ -1,6 +1,9 @@
-//! RFC-0018 §1 — benchmark ledger validation; no performance measurement is implied.
+//! RFC-0018 §1, A1, A2 — benchmark ledger validation and scoreboard generation (task E17-02).
 #![forbid(unsafe_code)]
 mod json;
+mod legacy_rungs;
+pub mod scoreboard;
+pub use scoreboard::{is_valid_rung, render_scoreboard, workload_rung, RUNGS};
 use serde_json::{Map, Value};
 
 /// Maximum serialized ledger size; validation retains the JSON parser's depth limit.
@@ -97,12 +100,14 @@ pub fn validate_ledger(bytes: &[u8]) -> Result<(), String> {
     {
         return Err("development record needs an inference dev/ workload".into());
     }
+    // RFC-0018 §2, A2: standard and treaty inference records name W1..W8 or a ladder rung L0..L6.
     if inference
         && !development
         && !matches!(
             workload,
             "W1" | "W2" | "W3" | "W4" | "W5" | "W6" | "W7" | "W8"
         )
+        && !is_valid_rung(workload)
     {
         return Err("unknown inference workload".into());
     }
@@ -114,11 +119,23 @@ pub fn validate_ledger(bytes: &[u8]) -> Result<(), String> {
     for key in ["toolchain", "device", "driver", "note"] {
         text(&value[key])?;
     }
-    if value["model_config"]
+    let model_config = value["model_config"]
         .as_object()
-        .is_none_or(|map| map.is_empty())
-    {
-        return Err("model_config must be a nonempty object".into());
+        .filter(|map| !map.is_empty())
+        .ok_or("model_config must be a nonempty object")?;
+    if let Some(rung) = model_config.get("rung") {
+        if !inference {
+            return Err("micro record cannot carry model_config.rung".into());
+        }
+        let rung = text(rung)?;
+        if !is_valid_rung(rung) {
+            return Err("unknown ladder rung in model_config.rung".into());
+        }
+        if !development && workload_rung(workload) != Some(rung) {
+            return Err("model_config.rung disagrees with workload rung".into());
+        }
+    } else if development && !legacy_rungs::is_pre_e17_02_record(bytes) {
+        return Err("development record requires model_config.rung".into());
     }
     // RFC-0018 A1: the statement (model, `T`, tokens, checked range) is in `model_config`.
     if development {
