@@ -1,0 +1,63 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "36b825f7ddab00dead9ddd1ae30b44ec52d56263",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-22afdccc-aafa-3402-5002-3636ec6a5f0e, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "canonical_cases": 1000,
+    "device_finals": 2000,
+    "device_folds": 8000,
+    "device_rounds": 8000,
+    "raw_lazy_cases": 1000,
+    "whole_proof_pairs": 0
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk byte 4",
+    "commit": "36b825f7ddab00dead9ddd1ae30b44ec52d56263",
+    "evidence_location": "lucid-cluster:~/stele-codex/e20-14-gkr-device/36b825f7/job-6931",
+    "executable_sha256": "fddeecd1e1ef03a3be6a063a1332708880542863589cab4425acd157209f382b",
+    "job": 6931,
+    "plan": {
+      "canonical_cases": 1000,
+      "lazy_cases": 1000,
+      "profile": "dev-zk byte 4",
+      "selected": "masked GKR arithmetic"
+    },
+    "public_receipt_sha256": {
+      "allocation.txt": "36611885568dfc18a9473000fdfe3aa0ed661d72964d56861d842d67c59e0557",
+      "binary.sha256": "6e338f463d696b0d06fd182c0ba19f91f7e703b058257882a31dffd388ac0a8a",
+      "device.txt": "68776bfaacb1c0bc4c3670216d20eac5df105872dc60800f90a32412bed20e68",
+      "test.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test.out": "f179ea0e6ba02bcbc3c6917b9a4c6385ef196d6553c85370764229e5e54da928",
+      "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3"
+    },
+    "slurm_receipt_sha256": "509ecd2f4f0b3587065de32d991e0c5de0c5e7623b5e0312d0274b7c86b7968b",
+    "source_patch_base": "2b632c6c",
+    "source_patch_sha256": "6507b7ba794fbb9daaa1c0dc724972ae1a1dd45ab93c6da631e3cc1844b10f8d"
+  },
+  "note": "All eight GKR factor variants occur in each input. The unit executable compares every device round and compact final with the scalar field implementation and checks index and phase rejection. It exercises canonical and raw lazy limbs through construction, masks and folds. Runtime is the Rust test harness elapsed time to its reported precision.",
+  "plan_digest": "98010921b6e4c488208a6077203c18698b9f44f45116963d6c9b760dd8839409",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 3990000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "canonical_and_lazy_field_differential": 3990000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-gkr-device-operations"
+}

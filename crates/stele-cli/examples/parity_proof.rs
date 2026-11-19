@@ -101,20 +101,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 request.clone(),
                 2,
                 window,
-                zk::BatchExecution::new(&session),
+                zk::BatchExecution::with_gkr(&session),
             );
             let c = session.counts();
             fs::write(
                 dest.join("device.txt"),
                 format!(
-                    "{} {} {} {} {} {} {}\n",
+                    "{} {} {} {} {} {} {}\n{} {} {} {} {} {} {} {} {} {}\n",
                     c.originals,
                     c.batches,
                     c.expected_rounds,
                     c.rounds,
                     c.folds,
                     c.finals,
-                    c.downloaded_bytes
+                    c.downloaded_bytes - c.gkr_downloaded_bytes,
+                    c.gkr_steps,
+                    c.gkr_expected_rounds,
+                    c.gkr_rounds,
+                    c.gkr_folds,
+                    c.gkr_finals,
+                    c.gkr_uploaded_bytes,
+                    c.gkr_downloaded_bytes,
+                    c.gkr_layer_source_bytes,
+                    c.gkr_planned_peak_bytes,
+                    c.gkr_observed_peak_bytes,
                 ),
             )?;
             result

@@ -33,6 +33,8 @@
 use super::{basis, prove_at, verify_with, Error, Seed, BLOWUP, MIN_M};
 #[path = "zk_batch_backend.rs"]
 mod backend;
+#[path = "zk_gkr_backend.rs"]
+mod gkr_backend;
 use crate::relation::Line;
 use alloc::string::{String, ToString};
 use alloc::vec;
@@ -3392,69 +3394,96 @@ where
                 expand,
             })
         };
-        let mut summand = build(ghost)?;
-        if let Some(Forgery::Substitute(Substitute::Pad(_), delta)) = substituted {
-            let z = lookup::pad_factor(step, &plan.lookups[l]).ok_or(Error::Statement)?;
-            substitute(
-                &mut summand.factors,
-                &summand.terms.clone(),
-                z,
-                K::from_i64(delta),
+        let (proof, point, truth, mu) = if let Some(backend) = execution.and_then(|e| e.gkr()) {
+            if forgery.is_some() {
+                return Err(Error::Statement);
+            }
+            let construction = lookup::construction::inputs(
+                &plan,
+                step,
+                run,
+                layers,
+                &data,
+                &shared_message,
+                &block_of,
             )?;
-        }
-        // The substitute's honest twin, folded at the same point after the proof:
-        // the producer routes the true finals (claims are equal, publics differ).
-        let twin = substituted.map(|_| build(None)).transpose()?;
-        let tweak = match forgery {
-            Some(Forgery::Layer(x)) if x == g => lookup::first_layer(step),
-            Some(Forgery::Final(x, input)) if x == g => Some(input),
-            _ => None,
-        };
-        let here = tweak.is_some();
-        detail.lap("zk/detail/gkr_factors");
-        summand.profile(if step.is_leaf() {
-            "gkr_leaf"
-        } else if step.is_first() {
-            "gkr_first"
-        } else {
-            "gkr_interior"
-        });
-        detail.lap("zk/detail/gkr_setup");
-        let (proof, point, truth, mu) = if forgery == Some(Forgery::Block(g)) {
-            let lambda = i.terms[1].coefficient;
-            let summand = Perturb {
-                inner: summand,
-                lambda,
+            let expand = |point: &[K], compact: &[K]| {
+                lookup::field_finals(&plan, step, &data, &block_of, point, compact)
             };
+            detail.lap("zk/detail/gkr_factors");
+            detail.lap("zk/detail/gkr_setup");
             let (proof, point) =
-                masked::prove(&i, summand, &masks[index], &binding, t).map_err(Error::Sumcheck)?;
-            let mut truth = proof.final_values.clone();
-            let shift = Perturb::<K>::shift(&truth, lambda)?;
-            truth[2] = truth[2] - K::from_i64(1);
-            truth[4] = truth[4] + shift;
+                backend.prove(&i, &construction, &masks[index], &binding, t, &expand)?;
+            detail.lap("zk/detail/gkr_rounds");
+            let truth = proof.final_values.clone();
             let mu = proof.mask_final;
             (proof, point, truth, mu)
         } else {
-            masked_instance(
-                &i,
-                step.degree,
-                summand,
-                &masks[index],
-                &binding,
-                here,
-                tweak,
-                t,
-            )?
-        };
-        detail.lap("zk/detail/gkr_rounds");
-        let truth = match twin {
-            Some(mut twin) => {
-                for c in &point {
-                    twin.fold(*c).map_err(Error::Sumcheck)?;
-                }
-                twin.final_values().map_err(Error::Sumcheck)?
+            let mut summand = build(ghost)?;
+            if let Some(Forgery::Substitute(Substitute::Pad(_), delta)) = substituted {
+                let z = lookup::pad_factor(step, &plan.lookups[l]).ok_or(Error::Statement)?;
+                substitute(
+                    &mut summand.factors,
+                    &summand.terms.clone(),
+                    z,
+                    K::from_i64(delta),
+                )?;
             }
-            None => truth,
+            // The substitute's honest twin, folded at the same point after the proof:
+            // the producer routes the true finals (claims are equal, publics differ).
+            let twin = substituted.map(|_| build(None)).transpose()?;
+            let tweak = match forgery {
+                Some(Forgery::Layer(x)) if x == g => lookup::first_layer(step),
+                Some(Forgery::Final(x, input)) if x == g => Some(input),
+                _ => None,
+            };
+            let here = tweak.is_some();
+            detail.lap("zk/detail/gkr_factors");
+            summand.profile(if step.is_leaf() {
+                "gkr_leaf"
+            } else if step.is_first() {
+                "gkr_first"
+            } else {
+                "gkr_interior"
+            });
+            detail.lap("zk/detail/gkr_setup");
+            let (proof, point, truth, mu) = if forgery == Some(Forgery::Block(g)) {
+                let lambda = i.terms[1].coefficient;
+                let summand = Perturb {
+                    inner: summand,
+                    lambda,
+                };
+                let (proof, point) = masked::prove(&i, summand, &masks[index], &binding, t)
+                    .map_err(Error::Sumcheck)?;
+                let mut truth = proof.final_values.clone();
+                let shift = Perturb::<K>::shift(&truth, lambda)?;
+                truth[2] = truth[2] - K::from_i64(1);
+                truth[4] = truth[4] + shift;
+                let mu = proof.mask_final;
+                (proof, point, truth, mu)
+            } else {
+                masked_instance(
+                    &i,
+                    step.degree,
+                    summand,
+                    &masks[index],
+                    &binding,
+                    here,
+                    tweak,
+                    t,
+                )?
+            };
+            detail.lap("zk/detail/gkr_rounds");
+            let truth = match twin {
+                Some(mut twin) => {
+                    for c in &point {
+                        twin.fold(*c).map_err(Error::Sumcheck)?;
+                    }
+                    twin.final_values().map_err(Error::Sumcheck)?
+                }
+                None => truth,
+            };
+            (proof, point, truth, mu)
         };
         lookup::aborts(step, run, &point)?;
         let finals = lookup::finals(&plan, step, run, &point, &truth)?;
@@ -4653,16 +4682,74 @@ mod tests {
     #[test]
     fn matches_reference_ordinary_batch_execution_and_rejects_stale_session() {
         let (statement, columns) = lookup_case();
+        check_live_execution(&statement, &columns);
+    }
+
+    #[test]
+    fn matches_reference_live_gkr_single_level_and_expanded_aliased_members() {
+        // Each original tuple leg reads the same column. Two members share both
+        // legs; a single member has a first-and-leaf step. Both require the
+        // original padded-table obligation at the transcript's final point.
+        for count in [1, 2] {
+            let member = Member {
+                vars: 3,
+                tuple: vec![
+                    Read {
+                        column: 0,
+                        vars: vec![0, 1, 2]
+                    };
+                    2
+                ],
+                shifts: vec![-3, 4],
+                selector: Some(Public {
+                    values: vec![1, 0],
+                    vars: vec![0],
+                }),
+            };
+            let statement = Statement::<QM31> {
+                sources: 1,
+                columns: vec![
+                    Column {
+                        source: 0,
+                        log_len: 3,
+                    },
+                    Column {
+                        source: 0,
+                        log_len: 2,
+                    },
+                ],
+                relations: Vec::new(),
+                lookups: vec![Lookup {
+                    members: vec![member; count],
+                    multiplicity: 1,
+                    table: vec![vec![-2, 5], vec![-1, 6], vec![0, 0], vec![0, 0]],
+                    valid: 2,
+                }],
+            };
+            let columns = vec![
+                (0..8).map(|i| M31::from_i64(1 + i % 2)).collect(),
+                [2 * count as i64, 2 * count as i64, 0, 0]
+                    .map(M31::from_i64)
+                    .to_vec(),
+            ];
+            let plan = plan(&statement).expect("lookup plan");
+            assert_eq!(plan.gkr.len(), count);
+            assert!(plan.gkr[0].is_first());
+            assert!(plan.gkr[count - 1].is_leaf());
+            check_live_execution(&statement, &columns);
+        }
+    }
+
+    fn check_live_execution(statement: &Statement<QM31>, columns: &[Vec<M31>]) {
         let lifetime = Lifetime {
             geometry: Geometry::Balanced,
             source: 0,
             proofs: 2,
             index: 0,
-            blocks: occurrence_counts(&statement).expect("occurrences"),
+            blocks: occurrence_counts(statement).expect("occurrences"),
         };
         let model_seed = [17; 32];
-        let root =
-            lifetime_root(&statement, &columns, &lifetime, &model_seed).expect("source root");
+        let root = lifetime_root(statement, columns, &lifetime, &model_seed).expect("source root");
         let model = || ModelSecret {
             seed: &model_seed,
             revealed: Vec::new(),
@@ -4672,8 +4759,8 @@ mod tests {
         let session = stele_kernels::Scalar::<QM31>::new();
         let produce = |execution| {
             prove_lifetime_execution(
-                &statement,
-                &columns,
+                statement,
+                columns,
                 Seed::new([81; 32]),
                 &mut transcript(),
                 &lifetime,
@@ -4682,11 +4769,16 @@ mod tests {
             )
         };
         let (reference, previously_revealed) = produce(None).expect("CPU reference");
+        let complete_session = stele_kernels::Scalar::<QM31>::new();
+        let (all_stages, all_revealed) = produce(Some(BatchExecution::with_gkr(&complete_session)))
+            .expect("live GKR field execution");
+        assert_eq!(encode(&reference), encode(&all_stages));
+        assert_eq!(previously_revealed, all_revealed);
         let (candidate, revealed) =
             produce(Some(BatchExecution::new(&session))).expect("field execution");
         assert_eq!(encode(&reference), encode(&candidate));
         assert_eq!(revealed, previously_revealed);
-        verify_lifetime(&statement, Some(&lifetime), &candidate, &mut transcript())
+        verify_lifetime(statement, Some(&lifetime), &candidate, &mut transcript())
             .expect("ordinary verification");
         assert_eq!(
             produce(Some(BatchExecution::new(&session))),

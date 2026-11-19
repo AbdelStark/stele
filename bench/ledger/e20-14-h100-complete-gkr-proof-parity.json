@@ -1,0 +1,76 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "0e74fac5dfd7ec4d6da37de543e05b6086b14bdd",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-5874fc48-5c81-c7f8-ea07-ca3a19cbc8eb, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "changed_gkr_round_rejections": 1,
+    "changed_model_rejections": 2,
+    "changed_ordinary_round_rejections": 1,
+    "complete_byte_matches": 50,
+    "distinct_models": 50,
+    "gkr_finals": 10800,
+    "gkr_folds": 97350,
+    "gkr_rounds": 97350,
+    "gkr_steps": 10800,
+    "ordinary_batches": 150,
+    "ordinary_finals": 150,
+    "ordinary_folds": 2550,
+    "ordinary_rounds": 2550,
+    "replays": 1,
+    "unavailable_device_rejections": 1,
+    "verified_proofs": 102
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "development byte 4 (balanced)",
+    "cpu_cores": 16,
+    "job": 6935,
+    "plan": {
+      "context": 16,
+      "cpu_manifest": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
+      "heads": 4,
+      "hidden": 128,
+      "layers": 1,
+      "models": 50,
+      "positions": 2,
+      "profile": "dev-zk byte 4",
+      "selected": "ordinary masked dense batches and every masked GKR step",
+      "vocabulary": 256,
+      "width": 64
+    },
+    "public_archive_sha256": "f5900d1f9d2c3a7e94ed4e3795a241613348443bf06804f92eb514230045ea1c",
+    "public_receipt_sha256": {
+      "allocation.txt": "6edcf6c31be998ab1068a44e182a42a82ea1eec51688bdd4255477b00c129dfc",
+      "device.txt": "668e005bd1e8d43c9a58f2c8c148a5ee2c72e2ba5cabbb62bca854c80635bd7d",
+      "parity.err": "b15f789a355b8f24f708b2304dc95680dbadc6d6885ad08e99d632cd81b175b6",
+      "parity.out": "332baa569b1dfc420c3f528336fbec9faf920528a92a2c035cdbeb8212ea19c1",
+      "parity.time": "237b8f2a7c61251427d204974bc66f1ab26d9ca7561f205ee19120013c3de298"
+    },
+    "source_patch_sha256": "d2374d8098373dcaf44ae591365accc67e72ad98166a9a6367025f53a6a24359"
+  },
+  "note": "This micro ledger records a development-tier parity campaign. The standard-valued micro schema field grants no security or promotion. Wall time covers compilation, isolated device differentials, input generation, two checked provers, CPU verifier and rejection controls. Both producers matched pinned public and proof bytes for fifty distinct models plus one deterministic replay. Device operation totals exclude the replay. The three backend failure controls and two wrong-model controls are separately named. No inference throughput is derived from campaign wall time.",
+  "plan_digest": "a4220ab8643bb4147da14646805076bb2b4284933ddff7baaf0f16a1080b3e6e",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 581420000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "complete_gate": 581420000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-complete-gkr-proof-parity"
+}

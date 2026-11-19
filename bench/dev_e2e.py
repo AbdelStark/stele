@@ -83,17 +83,21 @@ def zk_ledger(verify):
 
 def device_counters(stderr, verified, byte, driver):
     """Tie the reported ordinary device work to the independently verified batch count."""
-    lines = [line for line in stderr.splitlines() if line.startswith(('cuda ', 'cuda_memory '))]
+    lines = [line for line in stderr.splitlines() if line.startswith(('cuda ', 'cuda_gkr ', 'cuda_memory '))]
+    has_gkr = any(line.startswith('cuda_gkr ') for line in lines)
+    prefixes = ('cuda ', 'cuda_gkr ', 'cuda_memory ') if has_gkr else ('cuda ', 'cuda_memory ')
     if not driver and not lines:
         return {}
-    if not driver or byte != 4 or len(lines) != 2:
+    if not driver or byte != 4 or len(lines) != len(prefixes):
         raise ValueError('CUDA ledger requires a driver, byte 4, and both prover counter lines')
     fields = {}
-    for line, prefix in zip(lines, ('cuda ', 'cuda_memory ')):
+    for line, prefix in zip(lines, prefixes):
         if not line.startswith(prefix):
             raise ValueError('unexpected CUDA counters')
         for entry in line[len(prefix):].split():
             name, value = entry.split('=')
+            if prefix == 'cuda_gkr ':
+                name = 'gkr_' + name
             if name in fields or not re.fullmatch(r'[0-9]+', value):
                 raise ValueError('invalid CUDA counter')
             fields[name] = int(value)
@@ -101,11 +105,23 @@ def device_counters(stderr, verified, byte, driver):
                 'total_bytes', 'outside_pool_bytes', 'pool_high_bytes'}
     if not required <= fields.keys():
         raise ValueError('missing CUDA work or memory counters')
-    batches = re.search(r'^dev-zk: \d+ relation instances, \d+ GKR steps, (\d+) batches,', verified, re.M)
-    if batches is None or not (0 < fields['originals'] == fields['batches'] == fields['finals'] == int(batches[1]) - 1
+    batches = re.search(r'^dev-zk: \d+ relation instances, (\d+) GKR steps, (\d+) batches,', verified, re.M)
+    if batches is None or not (0 < fields['originals'] == fields['batches'] == fields['finals'] == int(batches[2]) - 1
                                and 0 < fields['rounds'] == fields['folds'] and fields['h2d_bytes'] > 0
                                and fields['d2h_bytes'] == 48 * fields['rounds'] + 32 * fields['finals']):
         raise ValueError('CUDA work differs from the verified ordinary batches')
+    if has_gkr:
+        expected = {'gkr_' + name for name in ('steps', 'expected_rounds', 'rounds', 'folds', 'finals',
+                     'h2d_bytes', 'd2h_bytes', 'streamed_layer_bytes', 'planned_peak_bytes', 'observed_peak_bytes')}
+        if not expected <= fields.keys() or not (
+                0 < fields['gkr_steps'] == fields['gkr_finals'] == int(batches[1])
+                and fields['gkr_steps'] <= fields['gkr_expected_rounds'] == fields['gkr_rounds'] == fields['gkr_folds']
+                and 0 <= fields['gkr_streamed_layer_bytes'] <= fields['gkr_h2d_bytes']
+                and min(fields['gkr_h2d_bytes'], fields['gkr_d2h_bytes']) > 0
+                and fields['gkr_d2h_bytes'] % 16 == 0
+                and 0 < min(fields['gkr_planned_peak_bytes'], fields['gkr_observed_peak_bytes'])
+                and max(fields['gkr_planned_peak_bytes'], fields['gkr_observed_peak_bytes']) <= fields['total_bytes'] * 2 // 5):
+            raise ValueError('CUDA GKR work or memory differs from the verified schedule')
     peak = fields['outside_pool_bytes'] + fields['pool_high_bytes']
     if not 0 < max(peak, fields.get('observed_peak_bytes', 0)) <= fields['total_bytes'] * 2 // 5:
         raise ValueError('CUDA memory exceeds RFC-0014 A1')

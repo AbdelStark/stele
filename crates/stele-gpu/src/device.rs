@@ -17,11 +17,21 @@ pub struct Counts {
     pub finals: usize,
     pub uploaded_bytes: u64,
     pub downloaded_bytes: u64,
+    pub gkr_steps: usize,
+    pub gkr_expected_rounds: usize,
+    pub gkr_rounds: usize,
+    pub gkr_folds: usize,
+    pub gkr_finals: usize,
+    pub gkr_uploaded_bytes: u64,
+    pub gkr_downloaded_bytes: u64,
+    pub gkr_layer_source_bytes: u64,
+    pub gkr_planned_peak_bytes: usize,
+    pub gkr_observed_peak_bytes: usize,
 }
 
 /// The source registry lasts for exactly one proof attempt.
 pub struct Session<'d> {
-    device: &'d Cuda,
+    pub(crate) device: &'d Cuda,
     ids: RefCell<Vec<u64>>,
     counts: Cell<Counts>,
 }
@@ -39,7 +49,7 @@ impl Session<'_> {
     pub fn counts(&self) -> Counts {
         self.counts.get()
     }
-    fn record(&self, update: impl FnOnce(&mut Counts)) {
+    pub(crate) fn record(&self, update: impl FnOnce(&mut Counts)) {
         let mut counts = self.counts.get();
         update(&mut counts);
         self.counts.set(counts);
@@ -55,7 +65,7 @@ enum Face {
     Ext(CudaSlice<[u32; 4]>),
 }
 #[derive(Clone, Copy, PartialEq)]
-enum Phase {
+pub(crate) enum Phase {
     Round,
     Fold,
     Poisoned,

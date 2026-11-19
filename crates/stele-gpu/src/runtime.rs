@@ -81,8 +81,11 @@ impl Cuda {
             },
             ..Default::default()
         };
-        let ptx = compile_ptx_with_opts(include_str!("dense.cu"), options)
-            .map_err(|error| Error::Compile(error.to_string()))?;
+        let ptx = compile_ptx_with_opts(
+            concat!(include_str!("dense.cu"), "\n", include_str!("gkr.cu")),
+            options,
+        )
+        .map_err(|error| Error::Compile(error.to_string()))?;
         let module = ctx.load_module(ptx)?;
         let stream = ctx.default_stream();
         Ok(Self {
