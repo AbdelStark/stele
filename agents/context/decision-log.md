@@ -4370,3 +4370,14 @@ certificate and opening verifiers authenticate the bytes. Rebuilding material
 preserves the authenticated context and lifetime opening budget. This decision
 introduces no new wire bytes, committed columns, challenge or verifier dependency.
 [Lane E soundness review](../reviews/e19-07-source-material.md)
+
+## ADR-140 — Admit live GKR arithmetic in the balanced development proof
+
+The E20-13 development-tier amendment accepts RFC-0014 A3, RFC-0020 A11 and
+RFC-0026 A20. The selected proof session computes GKR field-state construction,
+rounds, folds and compact finals. The existing A4 producer owns its transcript,
+and the reduction expands compact leaf outputs and authenticates all routed
+claims through the existing A7 flow. Every selected operation must complete on
+the selected backend. This decision introduces no new round, ledger line,
+commitment or proof byte. It grants implementation authority for E20-14.
+[Independent acceptance](../reviews/e20-13-live-gkr-contract.md)
