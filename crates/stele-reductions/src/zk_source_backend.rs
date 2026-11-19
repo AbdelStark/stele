@@ -17,11 +17,16 @@ use stele_sumcheck::{
     Instance,
 };
 
+#[path = "zk_lookup_backend.rs"]
+mod lookup;
+pub(super) use lookup::TreeFactory;
+
 pub(super) trait Factory<K> {
     fn begin(&self) -> Rc<dyn Sources<'_, K> + '_>;
 }
 
 pub(super) trait Sources<'s, K> {
+    fn trees(&self) -> Option<&dyn lookup::Trees<K>>;
     fn import(
         &self,
         source: &Source<K>,
@@ -60,7 +65,8 @@ struct Original<'s, B: HidingBackend + 's> {
 
 struct Registry<'s, B: HidingBackend + 's> {
     backend: &'s B,
-    originals: RefCell<Vec<Original<'s, B>>>,
+    originals: Rc<RefCell<Vec<Original<'s, B>>>>,
+    trees: Option<alloc::boxed::Box<dyn lookup::Trees<QM31> + 's>>,
     active: RefCell<Option<(u64, B::Columns<'s>)>>,
 }
 
@@ -68,13 +74,17 @@ impl<B: HidingBackend> Factory<QM31> for B {
     fn begin(&self) -> Rc<dyn Sources<'_, QM31> + '_> {
         Rc::new(Registry {
             backend: self,
-            originals: RefCell::default(),
+            originals: Rc::default(),
+            trees: None,
             active: RefCell::default(),
         })
     }
 }
 
 impl<'s, B: HidingBackend> Sources<'s, QM31> for Registry<'s, B> {
+    fn trees(&self) -> Option<&dyn lookup::Trees<QM31>> {
+        self.trees.as_deref()
+    }
     fn import(
         &self,
         source: &Source<QM31>,

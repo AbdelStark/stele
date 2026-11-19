@@ -329,7 +329,7 @@ def scalar_kernel_surface(root, actual, expected):
     directory = root / 'crates' / name
     approved = json.loads((root / 'scripts/gates/scalar-kernel-sources.json').read_text())
     files = {'Cargo.toml', 'ops.toml', 'src/lib.rs', 'src/scalar.rs', 'tests/dense.rs',
-             'src/gkr.rs', 'src/gkr/plan.rs', 'src/gkr/scalar.rs', 'tests/gkr.rs', 'tests/relation.rs', 'src/hiding.rs'}
+             'src/gkr.rs', 'src/gkr/plan.rs', 'src/gkr/scalar.rs', 'tests/gkr.rs', 'tests/relation.rs', 'src/hiding.rs', 'src/lookup.rs', 'src/lookup_scalar.rs', 'tests/lookup.rs'}
     if set(actual) != files or actual != approved or actual['Cargo.toml'] != expected['Cargo.toml']:
         raise ValueError('parity: scalar kernel source differs from the admitted interface')
     contract = tomllib.loads((directory / 'ops.toml').read_text())
@@ -339,18 +339,21 @@ def scalar_kernel_surface(root, actual, expected):
     gkr = re.findall(r'^    fn (\w+)', prior, re.M)
     relation = re.findall(r'^    fn (\w+)', added, re.M)
     hiding = re.findall(r'^    fn (\w+)', (directory / 'src/hiding.rs').read_text(), re.M)
+    lookup = re.findall(r'^    fn (\w+)', (directory / 'src/lookup.rs').read_text().split('pub trait LookupBackend', 1)[1], re.M)
     if (contract != {'format': 1, 'family': 'ordinary_batch', 'operations': methods, 'gkr': {'operations': gkr},
-                     'relation': {'constructor': 'relation_start', 'arithmetic': gkr[1:]}, 'hiding_source': {'operations': hiding}}
+                     'relation': {'constructor': 'relation_start', 'arithmetic': gkr[1:]}, 'hiding_source': {'operations': hiding}, 'lookup': {'operations': lookup}}
+            or lookup != ['lookup_top', 'lookup_tree', 'lookup_gkr']
             or hiding != ['prepare_columns', 'selected_column']
             or relation != ['relation_start']
             or gkr != ['gkr_start', 'gkr_round', 'gkr_fold', 'gkr_finals']
             or methods != ['original', 'dense_batch', 'dense_round', 'dense_fold', 'dense_finals']):
         raise ValueError('parity: scalar operation inventory disagrees with the interface')
-    result = subprocess.run(['cargo', 'test', '--locked', '--offline', '-p', name, '--test', 'dense', '--test', 'gkr', '--test', 'relation',
+    result = subprocess.run(['cargo', 'test', '--locked', '--offline', '-p', name, '--test', 'dense', '--test', 'gkr', '--test', 'relation', '--test', 'lookup',
                              '--', '--nocapture'], cwd=root, text=True, capture_output=True)
     tests = ('matches_reference_original_dense_batches_and_finals', 'rejects_stale_equal_geometry_and_invalid_state',
              'matches_reference_live_gkr_masked_rounds', 'rejects_understated_degree_and_invalid_factor_geometry',
-             'rejects_relation_geometry_degree_and_mask_extent', 'matches_reference_projected_relation_rounds_and_finals')
+             'rejects_relation_geometry_degree_and_mask_extent', 'matches_reference_projected_relation_rounds_and_finals',
+             'matches_reference_lookup_parents_and_rejects_wrong_original')
     if (result.returncode or any('test ' + name + ' ... ok' not in result.stdout for name in tests)
             or 'ordinary_scalar_cases=1000' not in result.stderr.splitlines()
             or 'projected_relation_scalar_cases=1000' not in result.stderr.splitlines()):
@@ -764,7 +767,7 @@ def field_sources(root):
                # RFC-0013 A5: masked claims, zero-sums and per-source batches.
                'src/zk_claims.rs', 'src/zk_occurrence_weight.rs', 'tests/zk_claims.rs',
                # RFC-0014 A2 and RFC-0020 A10: field-only ordinary batch adapter.
-               'src/zk_batch_backend.rs', 'src/zk_source_backend.rs', 'src/zk_gkr_backend.rs', 'src/zk_gkr_expand.rs', 'src/zk_projected_relations.rs',
+               'src/zk_batch_backend.rs', 'src/zk_source_backend.rs', 'src/zk_lookup_backend.rs', 'src/zk_lookup_input.rs', 'src/zk_gkr_backend.rs', 'src/zk_gkr_expand.rs', 'src/zk_projected_relations.rs',
                # RFC-0008 A7: ZK-GKR over the A5 trees.
                'src/zk_lookup.rs', 'tests/zk_lookup.rs',
                # E16-40c: reviewed, opt-in production lookup and claim-batch references.
@@ -832,8 +835,8 @@ def field_sources(root):
     interface = re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', body)
     adapter_closed = (interface == [('pub', 'struct', 'BatchExecution'), ('pub', 'fn', 'new'),
                                     ('pub', 'fn', 'with_gkr'), ('pub', 'fn', 'with_relations'),
-                                    ('pub(super)', 'fn', 'relations'), ('pub(super)', 'fn', 'gkr'),
-                                    ('pub(super)', 'fn', 'prove'), ('pub', 'fn', 'with_sources'),
+                                    ('pub(super)', 'fn', 'begin_sources'), ('pub(super)', 'fn', 'relations'), ('pub(super)', 'fn', 'gkr'),
+                                    ('pub(super)', 'fn', 'prove'), ('pub', 'fn', 'with_lookup'), ('pub', 'fn', 'with_sources'),
                                     ('pub(super)', 'fn', 'prove_original')]
                       and re.findall(r'\bmasked\s*::\s*(prove\w*)\s*\(', body) == ['prove'])
     # A5 delegates only field material. The reductions adapter checks the rebuilt root,
@@ -841,19 +844,27 @@ def field_sources(root):
     path = crate / 'src/zk_source_backend.rs'
     source_adapter = re.sub(r'//[^\n]*', '', path.read_text()) if path.is_file() else ''
     source_api = re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', source_adapter)
-    adapter_closed = (adapter_closed and source_api == [
+    adapter_closed = (adapter_closed and source_api == [('pub(super)', 'use', 'lookup')] + [
         ('pub(super)', kind, name) for kind, name in (
             ('trait', 'Factory'), ('trait', 'Sources'), ('struct', 'Selected'), ('type', 'Session'),
             ('enum', 'Ready'), ('type', 'Certified'), ('fn', 'prepare'), ('fn', 'source'), ('fn', 'face'),
             ('fn', 'finish'), ('fn', 'open'), ('fn', 'host_certificates'))]
         and 'if root != entry.root {' in source_adapter and 'let certificate = certify(&p);' in source_adapter)
+    path = crate / 'src/zk_lookup_backend.rs'
+    tree_adapter = re.sub(r'//[^\n]*', '', path.read_text()) if path.is_file() else ''
+    tree_api = re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', tree_adapter)
+    adapter_closed = (adapter_closed and tree_api == [
+        ('pub(in crate::zk::claims)', 'trait', 'TreeFactory'),
+        ('pub(in crate::zk::claims)', 'trait', 'Trees')]
+        and tree_adapter.count('prove_fields::<_, B>(') == 1
+        and not re.search(r'\bmasked\s*::\s*prove',tree_adapter))
     gkr_adapter = crate / 'src/zk_gkr_backend.rs'
     body = re.sub(r'//[^\n]*', '', gkr_adapter.read_text()) if gkr_adapter.is_file() else ''
     # The field backend returns polynomials and compact finals. Reduction-owned
     # code must enter exactly the existing bound masked prover.
     adapter_closed = (adapter_closed
                       and re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', body)
-                      == [('pub(super)', 'trait', 'Arithmetic'), ('pub(super)', 'trait', 'Relations')]
+                      == [('pub(super)', 'type', 'Expand'), ('pub(super)', 'trait', 'Arithmetic'), ('pub(super)', 'trait', 'Relations'), ('pub(super)', 'fn', 'prove_fields')]
                       and re.findall(r'\bmasked\s*::\s*(prove\w*)\s*\(', body) == ['prove'])
     projected = crate / 'src/zk_projected_relations.rs'
     body = re.sub(r'//[^\n]*', '', projected.read_text()) if projected.is_file() else ''
@@ -2128,7 +2139,9 @@ def masked_sumcheck_quarantine(root):
                'crates/stele-reductions/src/zk_claims.rs',
                # RFC-0014 A2: same checked shared-mask prover, field-only batch state.
                'crates/stele-reductions/src/zk_batch_backend.rs',
-               'crates/stele-reductions/src/zk_gkr_backend.rs', 'crates/stele-reductions/src/zk_source_backend.rs'}
+               'crates/stele-reductions/src/zk_gkr_backend.rs', 'crates/stele-reductions/src/zk_source_backend.rs',
+               # RFC-0014 A6: the private lookup adapter names the checked mask and proof types.
+               'crates/stele-reductions/src/zk_lookup_backend.rs'}
     pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    for path in (root / directory).rglob('*.rs')

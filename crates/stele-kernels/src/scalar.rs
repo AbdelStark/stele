@@ -157,3 +157,6 @@ impl<K: Field> Backend<K> for Scalar<K> {
         Ok([state.weights[0], state.face[0]])
     }
 }
+
+#[path = "lookup_scalar.rs"]
+mod lookup;

@@ -138,7 +138,9 @@ impl Cuda {
                 "\n",
                 include_str!("gkr.cu"),
                 "\n",
-                include_str!("hiding.cu")
+                include_str!("hiding.cu"),
+                "\n",
+                include_str!("lookup.cu")
             ),
             options,
         )

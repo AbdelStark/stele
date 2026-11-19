@@ -150,7 +150,12 @@ fn mask<'a>(len: u32, m: &GkrMask<'_>) -> Build<(TablePlan<'a>, usize)> {
     ))
 }
 
-fn factor<'a>(input: &GkrFactor<'a, K>, len: u32, half: u32) -> Build<FactorPlan<'a>> {
+fn factor<'a>(
+    input: &GkrFactor<'a, K>,
+    len: u32,
+    half: u32,
+    retained: Option<(usize, Option<&'a [[K; 2]]>)>,
+) -> Build<FactorPlan<'a>> {
     let all = 0..len as usize;
     let layer = 0..half as usize;
     let (values, mask) = match input {
@@ -208,6 +213,30 @@ fn factor<'a>(input: &GkrFactor<'a, K>, len: u32, half: u32) -> Build<FactorPlan
             TablePlan::single(column(len, all, values, coordinates, 0)?),
             Some(mask(len, m)?),
         ),
+        GkrFactor::RetainedLayer {
+            layer: level,
+            component,
+            side,
+            mask: m,
+        } => {
+            let (expected, host) = retained.ok_or("GKR missing lookup tree")?;
+            if *level != expected
+                || *component > 1
+                || *side > 1
+                || host.is_some_and(|v| v.len() != 2 * half as usize)
+            {
+                return Err("GKR retained layer geometry");
+            }
+            let mut child = span(
+                half,
+                layer,
+                Op::Layer,
+                (2 * side + component) as u32,
+                vec![],
+            )?;
+            child.layer = host;
+            (TablePlan::single(child), Some(mask(len, m)?))
+        }
         GkrFactor::Layer {
             values,
             component,
@@ -339,7 +368,9 @@ fn factor<'a>(input: &GkrFactor<'a, K>, len: u32, half: u32) -> Build<FactorPlan
 // There the input is X + v(1-v)R, with one more degree if R depends on v.
 fn axis_degree(factor: &GkrFactor<'_, K>, axis: usize, n: usize, half: usize) -> usize {
     match factor {
-        GkrFactor::Column { mask, .. } | GkrFactor::Layer { mask, .. }
+        GkrFactor::Column { mask, .. }
+        | GkrFactor::Layer { mask, .. }
+        | GkrFactor::RetainedLayer { mask, .. }
             if mask.vanishing == axis =>
         {
             2 + usize::from(mask.coordinates.contains(&axis))
@@ -430,6 +461,40 @@ impl<'a> Plan<'a> {
     }
 
     pub fn new(input: &GkrConstruction<'a, K>) -> Build<Self> {
+        Self::gkr(input, None)
+    }
+
+    pub fn retained(
+        input: &GkrConstruction<'a, K>,
+        level: usize,
+        host: Option<&'a [[K; 2]]>,
+    ) -> Build<Self> {
+        let projections: Vec<_> = input
+            .factors
+            .iter()
+            .filter_map(|f| match f {
+                GkrFactor::RetainedLayer {
+                    side, component, ..
+                } => Some((*component, *side)),
+                _ => None,
+            })
+            .collect();
+        if projections != [(0, 0), (0, 1), (1, 0), (1, 1)]
+            || input.layer_variables.checked_add(1) != Some(level)
+            || input
+                .factors
+                .iter()
+                .any(|f| matches!(f, GkrFactor::Layer { .. }))
+        {
+            return Err("GKR retained child order");
+        }
+        Self::gkr(input, Some((level, host)))
+    }
+
+    fn gkr(
+        input: &GkrConstruction<'a, K>,
+        retained: Option<(usize, Option<&'a [[K; 2]]>)>,
+    ) -> Build<Self> {
         let n = input.num_vars as usize;
         if n == 0
             || n > 30
@@ -451,7 +516,7 @@ impl<'a> Plan<'a> {
         let factors = input
             .factors
             .iter()
-            .map(|f| factor(f, len, half))
+            .map(|f| factor(f, len, half, retained))
             .collect::<Build<_>>()?;
         Ok(Self {
             len: len as usize,

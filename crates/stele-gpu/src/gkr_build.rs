@@ -41,6 +41,7 @@ fn storage(table: &TablePlan<'_>, len: usize) -> usize {
 
 pub(crate) struct Budget {
     pub peak: usize,
+    pub construction: usize,
     pub fold_extra: usize,
 }
 pub(crate) fn budget(p: &Plan<'_>, blocks: usize, indices: usize) -> Result<Budget, Error> {
@@ -84,6 +85,7 @@ pub(crate) fn budget(p: &Plan<'_>, blocks: usize, indices: usize) -> Result<Budg
         }
     }
     Ok(Budget {
+        construction: usize::try_from(peak.max(installed)).map_err(|_| Error::Budget)?,
         peak: usize::try_from(peak.max(fold)).map_err(|_| Error::Budget)?,
         fold_extra: usize::try_from(fold - installed).map_err(|_| Error::Budget)?,
     })
@@ -145,7 +147,13 @@ fn layer(
     Ok(())
 }
 
-fn table(device: &Cuda, t: TablePlan<'_>, len: usize, work: &mut Work) -> Result<Table, Error> {
+fn table(
+    device: &Cuda,
+    t: TablePlan<'_>,
+    len: usize,
+    work: &mut Work,
+    child: Option<&CudaSlice<u32>>,
+) -> Result<Table, Error> {
     let count = storage(&t, len);
     let mut output = device
         .stream
@@ -169,7 +177,26 @@ fn table(device: &Cuda, t: TablePlan<'_>, len: usize, work: &mut Work) -> Result
             if t.base || count != len {
                 return Err(Error::Geometry);
             }
-            layer(device, &s, len, &mut output, work)?;
+            if let Some(tree) = child {
+                let width = u64::from(s.period);
+                let entries = len as u64;
+                if s.layer.is_some() || s.arg >= 4 || (tree.len() as u64) < 8 * (4 * width - 1) {
+                    return Err(Error::Geometry);
+                }
+                let kernel = device.kernel("lookup_child")?;
+                let mut launch = device.stream.launch_builder(&kernel);
+                launch
+                    .arg(tree)
+                    .arg(&mut output)
+                    .arg(&width)
+                    .arg(&s.arg)
+                    .arg(&entries);
+                // SAFETY: the checked nonleaf level occupies pair slots [2w-1,4w-1);
+                // this authenticated tree outlives the synchronized factor construction.
+                unsafe { launch.launch(device.grid(len)) }?;
+            } else {
+                layer(device, &s, len, &mut output, work)?;
+            }
             continue;
         }
         // Only a low-bit Block can have a native period shorter than its defining
@@ -228,13 +255,14 @@ pub(crate) fn factors(
     p: Vec<stele_kernels::gkr::plan::FactorPlan<'_>>,
     len: usize,
     work: &mut Work,
+    child: Option<&CudaSlice<u32>>,
 ) -> Result<Vec<Factor>, Error> {
     let mut factors = Vec::with_capacity(p.len());
     for f in p {
-        let x = table(device, f.values, len, work)?;
+        let x = table(device, f.values, len, work, child)?;
         let old = work.fields;
         let mask = match f.mask {
-            Some((m, v)) => Some((table(device, m, len, work)?, v)),
+            Some((m, v)) => Some((table(device, m, len, work, None)?, v)),
             None => None,
         };
         work.masks += work.fields - old;

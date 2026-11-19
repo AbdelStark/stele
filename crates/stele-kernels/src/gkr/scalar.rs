@@ -105,7 +105,7 @@ pub struct State {
 }
 
 impl State {
-    fn from_plan(plan: Plan<'_>) -> Result<Self, Error> {
+    pub(crate) fn from_plan(plan: Plan<'_>) -> Result<Self, Error> {
         let factors = plan
             .factors
             .iter()

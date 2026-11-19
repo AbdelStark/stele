@@ -14,6 +14,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(ROOT / "bench"))
 from hiding_source_counts import check_source_work
+from lookup_tree_counts import FIELDS as LOOKUP_FIELDS, check_lookup_work
 
 REFERENCE_SHA256 = "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd"
 
@@ -179,9 +180,10 @@ def rejection_controls(work):
             raise ValueError("changed CUDA round did not reach the checked masked prover")
         print(expected, flush=True)
 
-    for stage in ("source-root", "source-sibling"):
+    for stage in ("source-root", "source-sibling", "lookup-denominator"):
         result = run([work / "reject-round", case, commitment, secret, stage], capture_output=True, text=True)
-        expected = f"rejected_cuda_{stage}=RootMismatch injected=1 reservation_restored=1"
+        cause = "DenominatorZero" if stage == "lookup-denominator" else "RootMismatch"
+        expected = f"rejected_cuda_{stage}={cause} injected=1 reservation_restored=1"
         if result.stdout.splitlines()[-1:] != [expected] or secret.read_bytes() != before:
             raise ValueError("changed CUDA source material did not reject and roll back")
         print(expected, flush=True)
@@ -209,10 +211,14 @@ def compare(work, pins):
         rel_schedule, (steps, gkr_rounds, evaluations), (selected, batch_rounds) = proof_schedule((cpu / "proof.bin").read_bytes())
         if expected != (rel_schedule[0], steps, selected + 1):
             raise ValueError("decoded schedule and independent verifier disagree")
-        dense, gkr, relations, source = (gpu / "device.txt").read_text().splitlines()
+        dense, gkr, relations, source, lookup = (gpu / "device.txt").read_text().splitlines()
         keys = ("originals", "visits", "responses", "hashes", "h2d_bytes", "d2h_bytes",
                 "host_salt_bytes", "observed_peak_bytes", "total_bytes")
         fields = dict(zip(keys, map(int, source.split()), strict=True))
+        lookup_fields = dict(zip(LOOKUP_FIELDS, map(int, lookup.split()), strict=True))
+        lookup_counts = check_lookup_work(lookup_fields, report, fields["total_bytes"] * 2 // 5)
+        if int(gkr.split()[7]) != 0:
+            raise ValueError("host child layers were uploaded during retained lookup execution")
         work_counts = check_source_work(fields, (cpu / "proof.bin").read_bytes(), report, fields["total_bytes"] * 2 // 5)
         batches, rounds = hardware_counts(dense, expected[2], work_counts["originals"])
         if rounds != batch_rounds:
@@ -220,7 +226,7 @@ def compare(work, pins):
         gkr_counts(gkr, (steps, gkr_rounds, evaluations))
         nrel, rel_rounds = relation_counts(relations, rel_schedule)
         print(json.dumps(dict(case=i, model=identity, proof_sha256=row["proof_sha256"],
-                              selected_batches=batches, device_rounds=rounds, gkr_steps=steps, gkr_rounds=gkr_rounds, relations=nrel, relation_rounds=rel_rounds, source_work=work_counts)), flush=True)
+                              selected_batches=batches, device_rounds=rounds, gkr_steps=steps, gkr_rounds=gkr_rounds, relations=nrel, relation_rounds=rel_rounds, source_work=work_counts, lookup_work=lookup_counts)), flush=True)
         if i != "replay":
             total_visits += work_counts["visits"]
             total_responses += work_counts["responses"]
@@ -248,11 +254,12 @@ def main():
     print(result.stdout, flush=True)
     required = ("device::tests::matches_reference_original_across_staging_chunks",
                 "device::tests::matches_reference_raw_lazy_device_boundaries",
-                "gkr_tests::matches_reference_cuda_gkr", "relation_tests::matches_reference_cuda_relations",
+                "lookup_tests::matches_reference_cuda_lookup", "gkr_tests::matches_reference_cuda_gkr", "relation_tests::matches_reference_cuda_relations",
                 "matches_reference_cuda_dense_batches", "rejects_foreign_source_and_invalid_dense_transitions")
     completed = re.findall(r"^test (\S+) \.\.\. (?:[^\n]+\n)?ok$", result.stdout, flags=re.MULTILINE)
-    if (sorted(completed) != sorted(required)
-            or "4 passed; 0 failed; 0 ignored" not in result.stdout or "2 passed; 0 failed; 0 ignored" not in result.stdout
+    if ("cuda_lookup_cases=1000 raw_cuda_lookup_cases=1000 complete_trees=2000 checked_child_views=24000 last_child_releases=2000" not in result.stdout
+            or sorted(completed) != sorted(required)
+            or "5 passed; 0 failed; 0 ignored" not in result.stdout or "2 passed; 0 failed; 0 ignored" not in result.stdout
             or not re.search(r"cuda_dense_cases=1000 rounds=([1-9]\d*) folds=\1 finals=1000", result.stdout)
             or "cuda_dense_lazy_cases=1000" not in result.stdout):
         raise ValueError("required H100 operation comparisons or controls missing")

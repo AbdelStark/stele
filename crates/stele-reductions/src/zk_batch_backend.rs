@@ -15,7 +15,8 @@ use stele_sumcheck::{
 #[derive(Clone, Copy)]
 pub struct BatchExecution<'a, K> {
     batches: &'a dyn Arithmetic<K>,
-    pub(super) sources: Option<&'a dyn super::source_backend::Factory<K>>,
+    sources: Option<&'a dyn super::source_backend::Factory<K>>,
+    trees: Option<&'a dyn super::source_backend::TreeFactory<K>>,
     gkr: Option<&'a dyn super::gkr_backend::Arithmetic<K>>,
     relations: Option<&'a dyn super::gkr_backend::Relations<K>>,
 }
@@ -26,6 +27,7 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
         Self {
             batches: session,
             sources: None,
+            trees: None,
             gkr: None,
             relations: None,
         }
@@ -36,6 +38,7 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
         Self {
             batches: session,
             sources: None,
+            trees: None,
             gkr: Some(session),
             relations: None,
         }
@@ -46,9 +49,16 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
         Self {
             batches: session,
             sources: None,
+            trees: None,
             gkr: Some(session),
             relations: Some(session),
         }
+    }
+
+    pub(super) fn begin_sources(self) -> Option<super::source_backend::Session<'a, K>> {
+        self.trees
+            .map(|session| session.begin_trees())
+            .or_else(|| self.sources.map(|session| session.begin()))
     }
 
     pub(super) fn relations(self) -> Option<&'a dyn super::gkr_backend::Relations<K>> {
@@ -76,6 +86,15 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
 }
 
 impl<'a> BatchExecution<'a, stele_kernels::QM31> {
+    /// Select lookup trees and all earlier field and source operations on one proof session (A6).
+    pub fn with_lookup<B: stele_kernels::lookup::LookupBackend + stele_kernels::HidingBackend>(
+        session: &'a B,
+    ) -> Self {
+        let mut execution = Self::with_relations(session);
+        execution.trees = Some(session);
+        execution
+    }
+
     /// Use the same proof-local originals for hiding-source visits and ordinary batches (A5).
     pub fn with_sources<B>(session: &'a B) -> Self
     where

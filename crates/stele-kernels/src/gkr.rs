@@ -3,7 +3,7 @@ use crate::{Backend, Field, M31};
 use alloc::vec::Vec;
 use core::ops::Range;
 pub mod plan;
-mod scalar;
+pub(crate) mod scalar;
 
 /// One term in compact factor order.
 pub struct Term<K> {
@@ -116,6 +116,13 @@ pub enum GkrFactor<'a, K> {
         /// Zero or one, the child coordinate.
         side: usize,
         /// Child's half of its layer mask block.
+        mask: GkrMask<'a>,
+    },
+    /// A6. One of the four original children of level `layer`, held by an authenticated lookup tree.
+    RetainedLayer {
+        layer: usize,
+        component: usize,
+        side: usize,
         mask: GkrMask<'a>,
     },
     /// One when the half-domain index is below `2^variables`, else zero.

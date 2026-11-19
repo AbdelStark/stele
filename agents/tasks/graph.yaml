@@ -4704,7 +4704,9 @@ tasks:
   - RFC-0008 A7
   skill: cuda-kernel-author
   crate: stele-kernels+stele-reductions+stele-gpu+stele-cli
-  status: ready
+  status: done
+  agent: codex-live-gkr
+  branch: task/E20-20-live-lookup-trees
   acceptance:
   - Compare ordered tops and every consumed child against the original CPU lookup across seeded canonical and raw controls, including selected, shifted and aliased members
   - Produce 50 pinned ordinary CPU/CUDA byte-identical complete proofs and the balanced T32 with independent positive and wrong-model verification and all earlier live stages
