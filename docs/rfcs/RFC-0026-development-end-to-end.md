@@ -2370,3 +2370,17 @@ messages as specified by RFC-0014 A3. The full source-bound statement, wire
 bytes, public checks, challenge schedule, lifetime admission, soundness ledger
 and independent verification remain those of profile byte 4. E20-14 reports
 actual device participation, full proof parity and charged T32 resources.
+
+### A21 — Execute balanced development-ZK relation fields on the selected backend
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-15.
+[Independent review](../../agents/reviews/e20-15-live-relation-contract.md)
+
+Extend §7 and A19–A20's local execution option to the RFC-0013 A5 relations.
+The explicit combined backend computes all relation round evaluations, folds
+and final fields alongside the A7 GKR and ordinary batch fields. A4's
+checked sumcheck and A5's occurrence routing, rank and copy checks run in
+their original transcript order. The public bundle, committed statement,
+source material, proof bytes, lifetime reservation and verification rules
+remain identical. E20-16 exercises 50 complete CPU/CUDA proof pairs and
+the ordinary verified T32 workload at development profile byte 4.
