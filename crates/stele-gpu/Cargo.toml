@@ -7,7 +7,21 @@ description = "Stele — stele-gpu (see RFC-0014)"
 
 [dependencies]
 stele-kernels = { path = "../stele-kernels" }
-stele-prover = { path = "../stele-prover" }
+cudarc = { version = "=0.19.10", default-features = false, features = ["std", "driver", "nvrtc", "dynamic-loading", "cuda-12040"], optional = true }
+
+[features]
+cuda = ["dep:cudarc"]
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+stele-prover = { path = "../stele-prover" }
+
+[[example]]
+name = "reject_cuda_round"
+required-features = ["cuda"]
+
+[[example]]
+name = "cuda_hiding_source"
+required-features = ["cuda"]

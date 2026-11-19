@@ -18,6 +18,8 @@ proof's files under the names above (its index, from `verify.out`, is recorded),
 `pin.out` (a proof pinned to another model digest, the one control). It records the commitment as stage `model_commitment_once`, not part
 of the prove time. `controls.log` is not read.
 
+For an integrated CUDA run, pass `--cuda-driver VERSION` with the `prove.err` from that process.
+
 `--rung` names the ladder rung of RFC-0027 §3 and is written to `model_config.rung`
 (RFC-0018 A2).
 
@@ -31,6 +33,9 @@ import json
 from pathlib import Path
 import re
 import subprocess
+
+from hiding_source_counts import proof_inventory, check_source_work
+from lookup_tree_counts import check_lookup_work
 
 
 def gnu_time(path):
@@ -62,7 +67,7 @@ ZK_NOTE = ('RFC-0026 development tier (RFC-0018 A1): no security level, FS unpro
            'prove-dev --zk process wall time of proof index {index}: Artifact decode, executor capture, plain '
            'check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; another '
            'proof against the same commitment also verifies. The control is verify-dev of a proof pinned to '
-           'another model digest. Repeats, if any, are in model_config.host_context.{ledger} CPU only, no GPU. '
+           'another model digest. Repeats, if any, are in model_config.host_context.{ledger} {execution} '
            'Peak RSS is the {timer} maximum resident set size. Not a cost-model fit input.')
 # RFC-0013 A8: byte 4 is balanced policy-2 hiding sources; byte 1 is A5's.
 ZK_SOURCES = {1: 'RFC-0013 A5 sources', 4: 'balanced policy-2 hiding sources, RFC-0013 A8'}
@@ -78,6 +83,101 @@ def zk_ledger(verify):
             f'{worst.group(1)}, {worst.group(2)}, grinding {worst.group(3)} bits.')
 
 
+
+def device_counters(stderr, verified, byte, driver, proof=None):
+    """Check the reported execution families against the independent verifier and memory limit."""
+    lines = [line for line in stderr.splitlines() if line.startswith(('cuda ', 'cuda_'))]
+    has_gkr = any(line.startswith('cuda_gkr ') for line in lines)
+    has_relations = any(line.startswith('cuda_relations ') for line in lines)
+    has_sources = any(line.startswith('cuda_sources ') for line in lines)
+    has_lookup = any(line.startswith('cuda_lookup ') for line in lines)
+    if has_lookup and not has_sources:
+        raise ValueError('selected lookup execution requires original source owners')
+    if has_sources and not has_relations:
+        raise ValueError('selected CUDA sources require combined relation execution')
+    if has_relations and not has_gkr:
+        raise ValueError('selected CUDA relations require the combined GKR execution')
+    prefixes = ['cuda '] + (['cuda_gkr '] if has_gkr else []) + (['cuda_relations '] if has_relations else []) + (['cuda_sources '] if has_sources else []) + (['cuda_lookup '] if has_lookup else []) + ['cuda_memory ']
+    if not driver and not lines:
+        return {}
+    if not driver or byte != 4 or len(lines) != len(prefixes):
+        raise ValueError('CUDA ledger requires a driver, byte 4, and both prover counter lines')
+    fields = {}
+    for line, prefix in zip(lines, prefixes):
+        if not line.startswith(prefix):
+            raise ValueError('unexpected CUDA counters')
+        for entry in line[len(prefix):].split():
+            name, value = entry.split('=')
+            if prefix in ('cuda_gkr ', 'cuda_relations ', 'cuda_sources ', 'cuda_lookup '):
+                name = prefix.removeprefix('cuda_').strip() + '_' + name
+            if name in fields or not re.fullmatch(r'[0-9]+', value):
+                raise ValueError('invalid CUDA counter')
+            fields[name] = int(value)
+    required = {'originals', 'batches', 'rounds', 'folds', 'finals', 'h2d_bytes', 'd2h_bytes',
+                'total_bytes', 'outside_pool_bytes', 'pool_high_bytes'}
+    if not required <= fields.keys():
+        raise ValueError('missing CUDA work or memory counters')
+    batches = re.search(r'^dev-zk: (?P<relations>\d+) relation instances, (?P<gkr>\d+) GKR steps, (?P<batches>\d+) batches,', verified, re.M)
+    has_shared = 'sources_original_h2d_bytes' in fields
+    if has_shared and not has_lookup:
+        raise ValueError('selected shared batch requires the full balanced execution')
+    if batches is None or not (0 < fields['batches'] == fields['finals'] == int(batches['batches']) - int(not has_shared)
+                               and fields['originals'] == (fields.get('sources_originals') if has_sources else fields['batches'])
+                               and 0 < fields['rounds'] == fields['folds'] and fields['h2d_bytes'] > 0
+                               and fields['d2h_bytes'] == 48 * fields['rounds'] + 32 * fields['finals']):
+        raise ValueError('CUDA work differs from the verified ordinary batches')
+    if has_gkr:
+        expected = {'gkr_' + name for name in ('steps', 'expected_rounds', 'rounds', 'folds', 'finals',
+                     'h2d_bytes', 'd2h_bytes', 'streamed_layer_bytes', 'planned_peak_bytes', 'observed_peak_bytes')}
+        if not expected <= fields.keys() or not (
+                0 < fields['gkr_steps'] == fields['gkr_finals'] == int(batches['gkr'])
+                and fields['gkr_steps'] <= fields['gkr_expected_rounds'] == fields['gkr_rounds'] == fields['gkr_folds']
+                and 0 <= fields['gkr_streamed_layer_bytes'] <= fields['gkr_h2d_bytes']
+                and min(fields['gkr_h2d_bytes'], fields['gkr_d2h_bytes']) > 0
+                and fields['gkr_d2h_bytes'] % 16 == 0
+                and 0 < min(fields['gkr_planned_peak_bytes'], fields['gkr_observed_peak_bytes'])
+                and max(fields['gkr_planned_peak_bytes'], fields['gkr_observed_peak_bytes']) <= fields['total_bytes'] * 2 // 5):
+            raise ValueError('CUDA GKR work or memory differs from the verified schedule')
+    if has_relations:
+        required = {'relations_' + k for k in ('steps', 'rounds', 'expected_rounds', 'folds', 'finals',
+                    'h2d_bytes', 'd2h_bytes', 'value_bytes', 'mask_bytes', 'planned_peak_bytes', 'observed_peak_bytes')}
+        if not required <= fields.keys() or not (
+                0 < fields['relations_steps'] == fields['relations_finals'] == int(batches['relations'])
+                and fields['relations_steps'] <= fields['relations_expected_rounds'] == fields['relations_rounds'] == fields['relations_folds']
+                and min(fields['relations_value_bytes'], fields['relations_mask_bytes'], fields['relations_d2h_bytes']) > 0
+                and fields['relations_value_bytes'] + fields['relations_mask_bytes'] <= fields['relations_h2d_bytes']
+                and fields['relations_d2h_bytes'] % 16 == 0
+                and 0 < min(fields['relations_planned_peak_bytes'], fields['relations_observed_peak_bytes'])
+                and max(fields['relations_planned_peak_bytes'], fields['relations_observed_peak_bytes']) <= fields['total_bytes'] * 2 // 5):
+            raise ValueError('CUDA relation work or memory differs from the verified schedule')
+    if has_sources:
+        if proof is None:
+            raise ValueError('CUDA sources require the independently verified proof')
+        source = {name.removeprefix('sources_'): value for name, value in fields.items() if name.startswith('sources_')}
+        check_source_work(source, proof, verified, fields['total_bytes'] * 2 // 5, standalone=has_shared)
+        if has_shared:
+            relations, gkr, dense, _, _ = proof_inventory(proof)
+            rel_steps, rel_rounds, rel_nodes, rel_finals = relations
+            gkr_steps, gkr_rounds, gkr_nodes = gkr
+            if ((fields['relations_steps'], fields['relations_rounds']) != (rel_steps, rel_rounds)
+                    or fields['relations_d2h_bytes'] != 16 * (rel_nodes + rel_finals)):
+                raise ValueError('relation work differs from authenticated proof')
+            # A3 expands compact GKR finals on the host; every step returns at least one field.
+            if ((fields['gkr_steps'], fields['gkr_rounds']) != (gkr_steps, gkr_rounds)
+                    or fields['gkr_d2h_bytes'] < 16 * (gkr_nodes + gkr_steps)):
+                raise ValueError('GKR work differs from authenticated proof')
+            if (fields['batches'], fields['rounds']) != dense or fields['sources_original_h2d_bytes'] > fields['h2d_bytes']:
+                raise ValueError('shared device work differs from authenticated proof')
+    if has_lookup:
+        check_lookup_work({k.removeprefix('lookup_'): v for k, v in fields.items() if k.startswith('lookup_')}, verified, fields['total_bytes'] * 2 // 5)
+        if fields['gkr_streamed_layer_bytes'] != 0:
+            raise ValueError('retained GKR layers transferred from host')
+    peak = fields['outside_pool_bytes'] + fields['pool_high_bytes']
+    if not 0 < max(peak, fields.get('observed_peak_bytes', 0)) <= fields['total_bytes'] * 2 // 5:
+        raise ValueError('CUDA memory exceeds RFC-0014 A1')
+    return fields
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('run', type=Path)
@@ -90,7 +190,10 @@ def main():
     p.add_argument('--counters', type=Path, help='JSON object of extra unsigned integer counters')
     p.add_argument('--rung', help='ladder rung, for example L1 or L2a (RFC-0018 A2)')
     p.add_argument('--zk', action='store_true', help='a dev-zk run against a published model commitment')
+    p.add_argument('--cuda-driver', help='observed driver version for a CUDA development proof')
     a = p.parse_args()
+    if a.cuda_driver and not a.zk:
+        p.error('--cuda-driver requires --zk')
     run = a.run
     assert (run / 'verify.out').read_text().splitlines()[-1] == 'YES', 'NotAccepted'
     assert (run / 'prove.out').read_text().splitlines()[-1] == 'PROOF WRITTEN', 'NotProved'
@@ -127,8 +230,13 @@ def main():
         plan.update(command='stele commit-model --zk / prove-dev --zk / verify-dev --expect-model',
                     profile_byte=byte, proofs=proofs,
                     proof_index=int(re.search(r'^proof index (\d+) of', (run / 'verify.out').read_text(), re.M).group(1)))
+        log = run / 'prove.err'
+        verified = (run / 'verify.out').read_text()
+        device = device_counters(log.read_text() if log.exists() else '', verified, byte, a.cuda_driver, proof)
+        if device:
+            plan['backend'] = 'cuda'
         extra_counters = {'commit_peak_rss_bytes': commit_rss,
-                          'model_commitment_bytes': (run / 'model.commit').stat().st_size}
+                          'model_commitment_bytes': (run / 'model.commit').stat().st_size, **device}
     if a.rung:
         plan['rung'] = a.rung
     counters = {'prove_peak_rss_bytes': prove_rss, 'verify_peak_rss_bytes': verify_rss,
@@ -138,9 +246,23 @@ def main():
         assert isinstance(extra, dict) and not set(extra) & set(counters), 'CounterNames'
         assert all(type(v) is int and v >= 0 for v in extra.values()), 'CounterValues'
         counters.update(extra)
+    execution = 'CPU only, no GPU.'
+    if a.cuda_driver:
+        families = ['ordinary masked batches']
+        if 'gkr_steps' in device:
+            families.append('GKR rounds')
+        if 'relations_steps' in device:
+            families.append('relation rounds')
+        if 'sources_visits' in device:
+            families.append('original hiding-source certificates and openings')
+        if 'lookup_tops' in device:
+            families.append('lookup trees and retained children')
+        if 'sources_original_h2d_bytes' in device:
+            families.append('the shared batch and its standalone mask certificate and opening')
+        execution = 'CUDA supplied ' + ', '.join(families) + '.'
     ledger = {
         'schema_version': 1, 'kind': 'inference', 'workload': a.workload, 'commit': a.commit,
-        'toolchain': a.toolchain, 'device': a.device, 'driver': 'not-applicable',
+        'toolchain': a.toolchain, 'device': a.device, 'driver': a.cuda_driver or 'not-applicable',
         'model_config': dict(plan, proof_sha256=hashlib.sha256(proof).hexdigest(),
                              public_sha256=hashlib.sha256(public).hexdigest(),
                              controls={c: reason for c, reason in controls}, host_context=a.host_context),
@@ -154,7 +276,7 @@ def main():
         'controls': {'total': len(controls), 'passed': len(controls), 'failed': 0},
         'note': ZK_NOTE.format(timer=timer, byte=plan['profile_byte'], sources=ZK_SOURCES[plan['profile_byte']],
                                proofs=plan['proofs'], index=plan['proof_index'],
-                               ledger=zk_ledger((run / 'verify.out').read_text())) if a.zk else ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '
+                               ledger=zk_ledger(verified), execution=execution) if a.zk else ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '
                  'no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight '
                  'commitment, executor capture (witness), plain check and proof; the witness is not timed '
                  'separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact '

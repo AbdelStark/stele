@@ -4343,6 +4343,82 @@ the standards reviewer checked source/patch/artifact hashes and ran the plain
 checker tests. NC-1308 remains `todo`; accepted text is not execution credit.
 Required catalog, native and current-main merge-tree gates remain mandatory.
 
+## ADR-139 — Admit a field-only backend for ordinary balanced development-ZK batches (E20-10)
+
+ADR-138 qualified the development-tier implementation study on the E45 CPU
+path. A CUDA implementation will enter through the same checked masked
+prover, model lifetime and authenticated opening as the CPU. Its first
+field-only operation family belongs in `stele-kernels`. Its scalar backend
+defines the reference operation results. A fresh proof session owns the exact
+source message. Device construction, round, fold and final evaluations can
+supply fields while the reduction retains transcript and verifier authority.
+[Qualified implementation decision](https://github.com/AbdelStark/stele/blob/b711bd764c294cea3ea3c98d1ef63f106fad3ca3/agents/context/decision-log.md#adr-138--reopen-the-development-tier-resident-gpu-implementation-on-the-measured-e45-candidate-e16-40ag)
+
+The development-tier path of Workflow 02 accepts RFC-0014 A2, RFC-0020
+A10 and RFC-0026 A19. The mandatory hardware gate covers every selected
+operation and complete proof pairs. A fresh T32 measurement establishes
+the actual whole-prover cost. No challenge, soundness line, proof byte,
+committed column or verifier dependency changes in this decision.
+[Independent acceptance](../reviews/e20-10-dev-zk-backend-contract.md)
+
+## ADR-141 — Retain selected column material at the producer (E19-07)
+
+Status: Accepted for balanced development proofs. The producer may hold the
+encoded message and Merkle tree on its chosen device. The ordinary transcript
+requests the salted column and sibling path at each derived index. The same
+certificate and opening verifiers authenticate the bytes. Rebuilding material
+preserves the authenticated context and lifetime opening budget. This decision
+introduces no new wire bytes, committed columns, challenge or verifier dependency.
+[Lane E soundness review](../reviews/e19-07-source-material.md)
+
+## ADR-140 — Admit live GKR arithmetic in the balanced development proof
+
+The E20-13 development-tier amendment accepts RFC-0014 A3, RFC-0020 A11 and
+RFC-0026 A20. The selected proof session computes GKR field-state construction,
+rounds, folds and compact finals. The existing A4 producer owns its transcript,
+and the reduction expands compact leaf outputs and authenticates all routed
+claims through the existing A7 flow. Every selected operation must complete on
+the selected backend. This decision introduces no new round, ledger line,
+commitment or proof byte. It grants implementation authority for E20-14.
+[Independent acceptance](../reviews/e20-13-live-gkr-contract.md)
+
+## ADR-142 — Admit live relation sumchecks in balanced development proofs
+
+The development-tier review accepts RFC-0014 A4, RFC-0020 A12 and RFC-0026 A21.
+The field session may execute every relation alongside GKR and ordinary batches.
+Each relation constructor receives original ordered private and public field
+factors and their checked projections. The existing A4 prover controls every
+transcript draw, and A5 retains authentication of the occurrence claims and
+mask opening. E20-16 must qualify all three stage families on complete proofs.
+[Independent acceptance](../reviews/e20-15-live-relation-contract.md)
+
+## ADR-143 — Prepare balanced hiding-source material on the selected device (E20-17)
+
+Accept RFC-0014 A5, RFC-0020 A13 and RFC-0026 A22 for development proofs.
+One proof-local original may support the first certificate tree, a reconstructed
+opening tree and its ordinary batch. The source context, lifetime state, model
+pin and transcript remain with the host. The existing PCS verifier authenticates
+each complete response. This admits implementation and qualification.
+[Independent lane Z review](../reviews/e20-17-hiding-source-contract.md)
+
+### ADR-144 — Retain balanced lookup child layers on the selected device
+
+RFC-0014 A6, RFC-0020 A14 and RFC-0026 A23 admit proof-local original inputs
+for top construction and retained A7 child access in the development prover.
+The host keeps top division, the zero-denominator abort, transcript and original
+claim authority. The last nonleaf can release the tree before folding. E20-20
+qualifies the complete proof and total peak device memory.
+[Review](../reviews/e20-19-lookup-tree-ownership.md)
+
+## ADR-145 — Bind the final shared batch to its device arithmetic and mask source
+
+RFC-0014 A7, RFC-0020 A15 and RFC-0026 A24 admit A2's dense operation for
+the balanced shared claims and A5's material operation for its standalone
+two-block mask source. The host retains the certificate, both different
+opening contexts, Fiat–Shamir and all aborts. This extends the selected
+operations of byte 4. E20-22 qualifies the complete route.
+[Independent lane C review](../reviews/e20-21-shared-batch.md)
+
 ## ADR-137: Carry failed production-shape GPU preparation into a fixed-code research successor (task E16-40l)
 
 Context: E16-40d job 6685 timed out after starting production shape 9.

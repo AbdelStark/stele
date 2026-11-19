@@ -54,9 +54,14 @@ use stele_sumcheck::Term;
 #[path = "zk_lookup_bench.rs"]
 pub(super) mod bench;
 
-#[cfg(feature = "bench")]
+#[path = "zk_lookup_input.rs"]
+pub(super) mod source_input;
+
 #[path = "zk_gkr_construction.rs"]
 pub(super) mod construction;
+#[path = "zk_gkr_expand.rs"]
+mod device_expand;
+pub(super) use device_expand::field_finals;
 
 /// One member as planned: its padded variables, block offset in the lookup half,
 /// tuple reads as x-coordinates (MSB-first index into `x`), shifts and selector.
@@ -725,7 +730,10 @@ pub(super) fn top<K: ChallengeField>(
     lp: &LookupPlan,
     layers: &[Vec<[K; 2]>],
 ) -> Result<[Vec<K>; 3], Error> {
-    let layer = &layers[lp.k0];
+    top_pairs(&layers[lp.k0])
+}
+
+pub(super) fn top_pairs<K: ChallengeField>(layer: &[[K; 2]]) -> Result<[Vec<K>; 3], Error> {
     let mut h = Vec::new();
     for [p, q] in layer {
         h.push(*p * q.inverse().ok_or(Error::DenominatorZero)?);
@@ -863,23 +871,7 @@ impl<K: ChallengeField> Expand<K> {
                     block,
                     v,
                     u,
-                } => {
-                    let x =
-                        stele_sumcheck::parallel::eq_table(&column_point(coords, &self.point, &[]))
-                            .map_err(|_| Error::Statement)?;
-                    let at: Vec<K> = u.iter().map(|q| self.point[*q]).collect();
-                    let r =
-                        stele_sumcheck::parallel::eq_table(&at).map_err(|_| Error::Statement)?;
-                    let data = column
-                        .iter()
-                        .zip(&x)
-                        .fold(zero::<K>(), |s, (a, b)| s + *a * *b);
-                    let mask = block
-                        .iter()
-                        .zip(&r)
-                        .fold(zero::<K>(), |s, (a, b)| s + element::<K>(*a) * *b);
-                    Ok(data + kappa(self.point[*v]) * mask)
-                }
+                } => device_expand::member(&self.point, column, coords, block, *v, u),
             })
             .collect()
     }
@@ -1182,8 +1174,8 @@ fn combined<K: ChallengeField + CodeField>(
 /// source, and the layer values `[[p(0), p(1)], [q(0), q(1)]]`. Public finals are
 /// checked (`ClaimMismatch`).
 #[derive(Clone)]
-pub(super) struct Finals<K> {
-    pub(super) claims: Vec<(usize, Claim<K>)>,
+pub(super) struct Finals<K, C = Claim<K>> {
+    pub(super) claims: Vec<(usize, C)>,
     pub(super) blocks: Vec<Claim<K>>,
     pub(super) layers: [[K; 2]; 2],
 }
@@ -1196,6 +1188,22 @@ pub(super) fn finals<K: ChallengeField + CodeField + Eq>(
     point: &[K],
     finals: &[K],
 ) -> Result<Finals<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    finals_with(plan, step, run, point, finals, |o, value| {
+        occurrence_claim(plan, o, point, &[], value)
+    })
+}
+
+pub(super) fn finals_with<K: ChallengeField + CodeField + Eq, C>(
+    plan: &Plan<K>,
+    step: &GkrStep,
+    run: &Run<K>,
+    point: &[K],
+    finals: &[K],
+    route: impl Fn(&Occurrence, K) -> Result<(usize, C), Error>,
+) -> Result<Finals<K, C>, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
@@ -1252,8 +1260,7 @@ where
                 continue;
             }
             Gin::Top(o) | Gin::Leaf(o) => {
-                out.claims
-                    .push(occurrence_claim(plan, o, point, &[], *value)?);
+                out.claims.push(route(o, *value)?);
                 continue;
             }
             Gin::Layer { poly, t, .. } => {
@@ -1324,7 +1331,7 @@ pub(super) fn advance<K: ChallengeField + CodeField>(
     step: &GkrStep,
     run: &mut Run<K>,
     point: &[K],
-    layers: &Finals<K>,
+    layers: [[K; 2]; 2],
     t: &mut Transcript<K>,
 ) -> Result<(), Error> {
     if step.leaf {
@@ -1332,8 +1339,7 @@ pub(super) fn advance<K: ChallengeField + CodeField>(
     }
     let tstar = draw(t, ChallengeLabel::FractionFold)?;
     let u: Vec<K> = step.y.iter().map(|j| point[*j]).collect();
-    for poly in 0..2 {
-        let [a, b] = layers.layers[poly];
+    for (poly, [a, b]) in layers.into_iter().enumerate() {
         run.claims[poly] = a + tstar * (b - a);
         let k = kappa(point[step.xo + poly]);
         run.incoming[poly] = (k, u.clone());

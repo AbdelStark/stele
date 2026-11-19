@@ -1,0 +1,183 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "27a27592e6306afaa67153aa25aab06924ad43c4",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-50b1db84-500f-6403-1d61-6ebfc4d68a2a, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "changed_lookup_denominator_rejections": 1,
+    "changed_model_rejections": 2,
+    "changed_root_rejections": 2,
+    "changed_round_rejections": 4,
+    "changed_sibling_rejections": 2,
+    "complete_byte_matches": 50,
+    "device_rounds": 3450,
+    "distinct_models": 50,
+    "gkr_rounds": 97350,
+    "gkr_steps": 10800,
+    "lookup_child_released": 1050,
+    "lookup_child_views": 39000,
+    "lookup_d2h_bytes": 268800,
+    "lookup_h2d_bytes": 175366800,
+    "lookup_rebuilds": 1050,
+    "lookup_tops": 1050,
+    "relation_rounds": 46550,
+    "relations": 8850,
+    "replays": 1,
+    "selected_batches": 200,
+    "shared_rounds": 900,
+    "source_d2h_bytes": 67840000,
+    "source_h2d_bytes": 36951000,
+    "source_hashes": 14745100,
+    "source_host_salt_bytes": 2512000,
+    "source_original_h2d_bytes": 635699200,
+    "source_originals": 250,
+    "source_responses": 78500,
+    "source_visits": 500,
+    "unavailable_device_rejections": 1,
+    "verified_proofs": 102
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "development byte 4 (balanced)",
+    "cpu_reference_sha256": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
+    "cpu_threads": 16,
+    "cpu_topology": {
+      "core_groups": [
+        {
+          "core": 64,
+          "logical_cpus": [
+            64,
+            176
+          ],
+          "socket": 1
+        },
+        {
+          "core": 65,
+          "logical_cpus": [
+            65,
+            177
+          ],
+          "socket": 1
+        },
+        {
+          "core": 66,
+          "logical_cpus": [
+            66,
+            178
+          ],
+          "socket": 1
+        },
+        {
+          "core": 67,
+          "logical_cpus": [
+            67,
+            179
+          ],
+          "socket": 1
+        },
+        {
+          "core": 68,
+          "logical_cpus": [
+            68,
+            180
+          ],
+          "socket": 1
+        },
+        {
+          "core": 69,
+          "logical_cpus": [
+            69,
+            181
+          ],
+          "socket": 1
+        },
+        {
+          "core": 70,
+          "logical_cpus": [
+            70,
+            182
+          ],
+          "socket": 1
+        },
+        {
+          "core": 71,
+          "logical_cpus": [
+            71,
+            183
+          ],
+          "socket": 1
+        }
+      ],
+      "logical_cpus": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183
+      ],
+      "lscpu_sha256": "f979cdd46754a50556e035243add86d37db05f4e3e96f10bb09ec0628dcaab2f",
+      "physical_cores": 8,
+      "source": "h100-sxm-8-0 lscpu --parse=CPU,CORE,SOCKET,ONLINE"
+    },
+    "evidence_location": "lucid-cluster:~/stele-codex/e20-22-optimized-27a27592/job-6961",
+    "job": 6961,
+    "plan": {
+      "context": 16,
+      "cpu_manifest": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
+      "heads": 4,
+      "hidden": 128,
+      "layers": 1,
+      "models": 50,
+      "positions": 2,
+      "profile": "dev-zk byte 4",
+      "selected": "all four batches, five hiding originals, masked relations, masked GKR and retained lookup trees",
+      "vocabulary": 256,
+      "width": 64
+    },
+    "public_receipt_sha256": {
+      "allocation.txt": "2a977ef1b3bfa82a9b3ea56a2d5375f60aba37b1cce592200bffbb37b9afaa05",
+      "device.txt": "dcbc9a7b6f7feb046248dc61e116a096760441997b62d4ee5b1e6b12e3c14020",
+      "parity.err": "6d8917b1dc696cd7c4f5980ae703c5bfaf3e2a7a7045a9abbd54b99c986b8f70",
+      "parity.out": "7ce68fc8cbd4d919787d39f0aeef4511a8f6e3a64e57099ed93f4bdef048ed25",
+      "parity.time": "22c58d5843528c40cba9797e58032503bd7588609b59e5acf8691ce7da099378"
+    },
+    "source_manifest_sha256": "e806975842104d9cabe203ed7a529602099f70b23461ad4caa65267132c4bbd4",
+    "source_patch_sha256": "fb96b5a892e82c1f0865b24e474236a99f712f6714e14da5e5f16778f61a4f92",
+    "source_tree": "ce4a363a93543a68df111f7613938eb050f211e4"
+  },
+  "note": "Development-tier A2\u2013A7 whole-proof comparison against independently pinned original CPU proof bytes for 50 distinct models and one replay. CUDA supplies all four batch sumchecks, all masked relation/GKR rounds, both original hiding-source visits and lookup tree arithmetic. The independently derived per-proof inventory checks completed device work. Aggregate operation and transfer counts exclude the replay. Original H2D bytes are a subset of the existing aggregate device-upload count. The timed parity step includes compilation, operation comparisons, explicit rollback controls, CPU and GPU proof generation and independent verification.",
+  "plan_digest": "ba89982990a5930c7458f0a3319d1b28fe646bf78d05011ce1d5f3e4d334dcdc",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 637690000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "complete_parity_gate": 637690000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-complete-shared-proof-parity-with-e45"
+}

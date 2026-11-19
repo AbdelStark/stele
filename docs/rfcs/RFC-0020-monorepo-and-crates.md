@@ -196,3 +196,96 @@ borrow caller-owned actual certificates and completed range objects. No source
 cache, callback, generic Reduction trait or new dependency edge is introduced.
 E7-01f updates exact API/registry guards and actual native evidence; this contract
 does not change an executable allowlist or complete top-level artifact ownership.
+
+### A10 — Development-profile field backend dependency
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-10.
+[Independent lane Z review](../../agents/reviews/e20-10-dev-zk-backend-contract.md)
+
+Add to §2 for RFC-0014 A2: `stele-reductions` may depend directly on
+`stele-kernels` for its field-only backend trait, operation descriptions and
+scalar implementations. `stele-kernels` keeps its sole production dependency
+on `stele-field`. It accepts borrowed fields, checked sizes and source-local
+positions, and has no PCS, sumcheck or transcript dependency. The caller's
+`Summand` adapter belongs in `stele-reductions`. The existing
+`stele-prover` orchestration can expose that interface to its caller through
+its existing reductions edge. `stele-cli` may select the opt-in `stele-gpu`
+implementation. Only `stele-gpu` loads the CUDA driver and NVRTC via its
+optional, pinned runtime-loaded cudarc dependency. Missing libraries or a
+required operation failure return an explicit error. CPU and verifier builds
+with default features or no default features must work without CUDA. The
+verifier has no dependency on the proving backend.
+
+Soundness, cells, lookups, honest bytes and protocol controls are unchanged.
+The edge authorizes the field execution described in RFC-0014 A2 and has no
+measured cost by itself. E20-11 and E20-12 must update exact dependency
+guards only with their implemented surface.
+
+### A11 — Field-only GKR construction and masked arithmetic
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-13.
+[Independent lane Z review](../../agents/reviews/e20-13-live-gkr-contract.md)
+
+Extend A10's existing reductions-to-kernels edge to the field-only GKR
+construction and state operations in RFC-0014 A3. The kernels crate carries
+field data, geometry, term indices and masks. The reduction owns compact-to-
+original expansion, masking challenges, transcript order, source authentication
+and claim routing. The CUDA mirror retains its existing dependency direction.
+No new Cargo edge, binding, challenge, cost claim or profile admission follows
+from this amendment alone. E20-14 validates the new normal-entry operations.
+
+### A12 — Field-only relation construction in a proof session
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-15.
+[Independent review](../../agents/reviews/e20-15-live-relation-contract.md)
+
+Extend A10–A11's authorized field interface with the RFC-0014 A4 relation
+constructor. The proof-local CUDA session may share A3's live masked
+arithmetic state. Report relation and GKR invocations separately. The
+reduction supplies the field tables and original mask blocks. The verifier,
+transcript and PCS have no dependency on the execution backend. No crate
+edge, protocol byte, ledger term or binding changes. E20-16 validates the
+existing dependency boundaries and complete proof gate.
+
+### A13 — Producer-side Circle and Merkle buffer execution
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-17.
+[Independent review](../../agents/reviews/e20-17-hiding-source-contract.md)
+
+Add to A10–A12 the RFC-0014 A5 buffer operations over a proof-local original
+message. The kernel interface carries source geometry, the salt input, field
+limbs and digest bytes. Its implementations may prepare, release and rebuild
+the actual encoding and provide one selected column and sibling path. The
+production CPU reference remains the existing PCS producer. The integration
+adapter uses the byte-4 producer's existing primitive dependencies; the
+kernels and CUDA crates acquire no PCS, verifier or transcript dependency.
+The verifier acquires no accelerator dependency. No protocol byte, binding
+or error term changes. E20-18 qualifies the selected operations.
+
+### A14 — Field-only lookup construction and retained child access
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-19.
+[Independent review](../../agents/reviews/e20-19-lookup-tree-ownership.md)
+
+Add RFC-0014 A6's lookup input, top operation, retained tree and GKR child
+construction to the proof-local field interface in `stele-kernels`. Reuse the
+same original owners introduced by A13. The reduction derives physical
+provenance, public geometry, actual draws and exactly which four child
+projections each nonleaf reads. A backend implementation performs arithmetic
+and owns its buffers. The caller handles the checked denominator and every
+transcript and verifier obligation. The existing crate edges suffice.
+
+### A15 — Reuse the field interfaces for the final shared batch
+
+Status: Accepted (development tier under RFC-0027 §2). Task E20-21.
+[Independent review](../../agents/reviews/e20-21-shared-batch.md)
+
+The checked reduction may compose A10's degree-two dense operations with
+A13's source operations for RFC-0014 A7. Its shared weight and data face use
+the existing shared original in the proof-local registry. The standalone
+mask source is imported once with its own ID and the original A4 two-block
+message. The reduction passes the mask-polynomial purpose to the A16 host
+constructor and derives the two openings, their order and all functionals.
+This composition uses the existing field-only crate interfaces. The scalar
+reference, default feature graph and independent verifier remain as specified
+in A10–A14.

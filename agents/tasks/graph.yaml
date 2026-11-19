@@ -4331,6 +4331,40 @@ tasks:
   acceptance:
   - randomiser and mask-row counts are fields of the source context, zero by default
   - proof bytes with zero counts equal the bytes before this task (pinned)
+- id: E19-07
+  epic: E19
+  title: Specify producer-owned column material for byte-4 hiding sources
+  depends: []
+  rfc:
+  - RFC-0010 A9,A15,A16
+  - RFC-0013 A2,A4,A6,A8
+  skill: pcs-engineer
+  lane: C
+  crate: docs
+  status: done
+  agent: codex-root
+  branch: task/E19-07-source-material-contract
+  acceptance:
+  - A16 defines exactly the material, its lifetime and the authority retained by existing certificate and opening consumers
+  - independent review checks query order, leaf domain, source identity, one-opening budget, lifetime history and pre-existing tamper controls
+- id: E19-08
+  epic: E19
+  title: Use selected columns in the checked hiding source producer
+  depends:
+  - E19-07
+  rfc:
+  - RFC-0010 A9,A15,A16
+  - RFC-0013 A2,A4,A6,A8
+  skill: pcs-engineer
+  lane: C
+  crate: stele-pcs
+  status: done
+  agent: codex-root
+  branch: task/E19-08-source-material
+  acceptance:
+  - same verifier-owned source, certificate bytes, opening bytes, field record and transcript as CPU for honest material
+  - wrong root, changed sibling, wrong response size, exhausted lifetime and second opening reject under their specified checks
+  - old CPU callers retain borrowed responses, work counts and no_std support
 - id: E20-01
   epic: E20
   title: Typed small-value columns and base-field first rounds in the relation engine
@@ -4486,6 +4520,230 @@ tasks:
   - a development-tier amendment specifies one tree reduction over all instances of a check with shared challenges, one root pair and one multiplicity vector per instance, and states the pair round's error with its argument
   - prover and verifier; a control with one false instance among many is rejected at that instance's root equation
   - on L2b at B = 23 the lookup-proof bytes are at most twice those of the unsplit proof
+- id: E20-10
+  epic: E20
+  title: Admit the field-only ordinary batch interface for the byte-4 prover
+  lane: E
+  depends: []
+  rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
+  skill: rfc-author
+  crate: docs
+  status: done
+  agent: codex-integration
+  branch: task/E20-10-dev-zk-backend-contract
+  acceptance:
+  - Independent development-tier review of the field-only source, dense state, unchanged crypto authority, exact dependency edge and hardware gate
+  - Record the accepted contract in the index and decision log before implementing it
+
+- id: E20-11
+  epic: E20
+  title: Implement the scalar field backend interface for ordinary claim batches
+  lane: E
+  depends:
+  - E20-10
+  rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
+  skill: cuda-kernel-author
+  crate: stele-kernels
+  status: done
+  agent: codex-integration
+  branch: task/E20-11-dense-field-backend
+  acceptance:
+  - Field-only backend and scalar operation table check same-id stale-session owners, duplicate imports, bounds and MSB-first dense round and fold
+  - Match the genuine CPU geometry, all evaluations, repeated positions and edge values; reject incorrect state or owner before use
+  - Preserve the existing CPU proof and verifier dependency graph
+
+- id: E20-12
+  epic: E20
+  title: Prove byte-4 ordinary batches through the checked CUDA interface
+  lane: E
+  depends:
+  - E20-11
+  rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
+  skill: cuda-kernel-author
+  crate: stele-gpu+stele-reductions+stele-prover+stele-cli
+  status: done
+  agent: codex-root
+  branch: task/E20-12-cuda-prover
+  acceptance:
+  - The normal explicit GPU proof entry authors every selected ordinary batch through the checked A4 transcript and preserves CPU default and independent verification
+  - Mandatory hardware comparisons for 1000 seeded cases per implemented operation and 50 complete byte-identical proof pairs from pinned public fixtures
+  - Record whole T32 candidate timings, transfer and allocation lifetimes with every binding active; keep the calibrated reference and actual measured speed distinct
+
+- id: E20-13
+  epic: E20
+  title: Admit live GKR arithmetic under the checked dev-zk proof entry
+  lane: E
+  depends:
+  - E20-12
+  rfc: [RFC-0014 A3, RFC-0020 A11, RFC-0026 A20]
+  skill: rfc-author
+  crate: docs
+  status: done
+  agent: codex-integration
+  branch: task/E20-13-live-gkr-contract
+  acceptance:
+  - Review construction, compact-to-original expansion, unchanged A7 masking and transcript, source geometry and total memory accounting independently
+
+- id: E20-14
+  epic: E20
+  title: Author each balanced dev-zk GKR round with the selected field backend
+  lane: E
+  depends:
+  - E20-13
+  rfc: [RFC-0014 A3, RFC-0020 A11, RFC-0026 A20]
+  skill: cuda-kernel-author
+  crate: stele-kernels+stele-reductions+stele-gpu+stele-prover+stele-cli
+  status: done
+  agent: codex-integration
+  branch: task/E20-14-live-gkr
+  acceptance:
+  - Construct compact and ordinary factors from genuine operands without running the reference dense sumcheck in the selected path
+  - Compare field round and fold values, expanded finals, complete selected GPU proof bytes and ordinary positive and tamper outcomes
+  - Prove and verify the original T32 workload with all 385 device GKR steps and ordinary batches under the planned and measured device ceiling, reporting all actual transfers
+
+- id: E20-15
+  epic: E20
+  title: Admit live masked relation arithmetic in the checked development prover
+  lane: E
+  depends:
+  - E20-14
+  rfc: [RFC-0014 A4, RFC-0020 A12, RFC-0026 A21]
+  skill: rfc-author
+  crate: docs
+  status: done
+  agent: codex-source-visits
+  branch: task/E20-15-live-relations-contract
+  acceptance:
+  - Independent review of projected inputs, mask and vanishing coordinates, declared degree, checked transcript and separately counted relation arithmetic
+
+- id: E20-16
+  epic: E20
+  title: Prove every balanced relation sumcheck through the live field backend
+  lane: E
+  depends:
+  - E20-15
+  rfc: [RFC-0014 A4, RFC-0020 A12, RFC-0026 A21]
+  skill: cuda-kernel-author
+  crate: stele-kernels+stele-reductions+stele-gpu+stele-cli
+  status: done
+  agent: codex-source-visits
+  branch: task/E20-16-live-relations
+  acceptance:
+  - Borrow genuine projected columns and mask blocks or charge actual host preparation, retain the original checked transcript and authenticate all finals
+  - Compare 1000 seeded scalar and hardware cases per operation and reject malformed field inputs and one changed real device round
+  - Verify 50 full small-model CPU/CUDA byte pairs and original stories42M T32, reporting every relation, GKR and ordinary batch invocation, transfers and measured device memory
+
+- id: E20-17
+  epic: E20
+  title: Specify resident Circle preparation and selected hiding-source responses
+  depends:
+  - E20-15
+  rfc:
+  - RFC-0014 A5
+  - RFC-0020 A13
+  - RFC-0026 A22
+  skill: cuda-kernel-author
+  crate: docs
+  lane: E
+  status: done
+  agent: codex-root
+  branch: task/E20-17-hiding-source-contract
+  acceptance:
+  - specify one original import per proof/source, the two visits and root comparison, queried fields and paths, reference and authenticated producer ownership
+  - independent commitment or ZK lane and soundness review of memory, lifetime, query order and controls
+- id: E20-18
+  epic: E20
+  title: Produce balanced inference source commitments and selected responses on CUDA
+  depends:
+  - E20-16
+  - E20-17
+  rfc:
+  - RFC-0014 A5
+  - RFC-0010 A16
+  - RFC-0013 A8
+  skill: cuda-kernel-author
+  crate: stele-kernels+stele-gpu+stele-reductions+stele-cli
+  lane: E
+  status: done
+  agent: codex-root
+  branch: task/E20-18-live-source-material
+  acceptance:
+  - seeded operation parity against the existing host preparation for Circle, salted leaves, roots and complete individual paths, with malformed owner and index controls
+  - after the E19-08 selected-material interface lands, normal byte-4 CUDA proofs certify and open all original sources, reusing each original and charging every preparation, transferred byte and peak
+  - full pinned CPU/H100 proof pairs include device source, relation, LogUp-GKR and ordinary batch work and a T32 run with all source visits and independent verification
+- id: E20-19
+  epic: E20
+  title: Specify live balanced lookup tops and retained GKR child access
+  lane: E
+  depends:
+  - E20-17
+  rfc:
+  - RFC-0014 A6
+  - RFC-0020 A14
+  - RFC-0026 A23
+  - RFC-0008 A7
+  skill: rfc-author
+  crate: docs
+  status: done
+  agent: codex-live-gkr
+  branch: task/E20-19-lookup-tree-contract
+  acceptance:
+  - Review original data-quadrant provenance, authenticated top and denominator order, retained tree ownership, last-child release and same-proof geometry controls
+
+- id: E20-20
+  epic: E20
+  title: Build balanced lookup tops and retain the actual child layers on device
+  lane: E
+  depends:
+  - E20-18
+  - E20-19
+  rfc:
+  - RFC-0014 A6
+  - RFC-0020 A14
+  - RFC-0026 A23
+  - RFC-0008 A7
+  skill: cuda-kernel-author
+  crate: stele-kernels+stele-reductions+stele-gpu+stele-cli
+  status: done
+  agent: codex-live-gkr
+  branch: task/E20-20-live-lookup-trees
+  acceptance:
+  - Compare ordered tops and every consumed child against the original CPU lookup across seeded canonical and raw controls, including selected, shifted and aliased members
+  - Produce 50 pinned ordinary CPU/CUDA byte-identical complete proofs and the balanced T32 with independent positive and wrong-model verification and all earlier live stages
+  - Report actual top, rebuild, resident child and total memory counters, transfers and same-host whole-proof costs
+
+- id: E20-21
+  epic: E20
+  title: Specify the live balanced shared batch and standalone mask source
+  lane: E
+  depends:
+  - E20-20
+  rfc: [RFC-0014 A7, RFC-0020 A15, RFC-0026 A24, RFC-0013 A4/A5]
+  skill: rfc-author
+  crate: docs
+  status: done
+  agent: codex-source-visits
+  branch: task/E20-21-shared-batch-contract
+  acceptance:
+  - Independently review the fifth original, two-block opening purpose, shared dense arithmetic, transcript order, source reuse and transactional aborts
+
+- id: E20-22
+  epic: E20
+  title: Produce the final shared batch and standalone mask material on the selected device
+  lane: E
+  depends:
+  - E20-21
+  rfc: [RFC-0014 A7, RFC-0020 A15, RFC-0026 A24, RFC-0013 A4/A5]
+  skill: cuda-kernel-author
+  crate: stele-reductions+stele-cli
+  status: done
+  agent: codex-source-visits
+  branch: task/E20-22-shared-batch
+  acceptance:
+  - Compare 50 pinned complete CPU and selected proofs including all sources and batch families, deterministic replay and independent verifier outcomes
+  - Reject altered shared round, standalone root, standalone sibling, two-block rank or owner, and restore the original reservation after device failure
+  - Account for all five sources and four batches on genuine T32 with independent geometry, realized device counters, A1 peak and paired same-host proof time
+
 - id: E21-01
   epic: E21
   title: RFC-0030 accepted; per-round ledger
@@ -5115,6 +5373,104 @@ tasks:
   - three proves under one commitment, each verified with --expect-model, each started at a 1-minute load below 3; prove, verify, peak footprint and proof bytes recorded; the wrong-model control rejected
   - bench/ledger entry, scoreboard, README and docs/development-e2e.md updated
 
+- id: E16-41
+  epic: E16
+  title: Accelerate the source-mask stream prefix on the CPU
+  lane: Z
+  depends:
+  - E16-24
+  rfc:
+  - RFC-0013 A2 item 1, A5 item 1
+  - RFC-0018 A1
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-qualify-full-path
+  branch: task/E16-41-mask-stream-prefix
+  acceptance:
+  - bulk-read the discarded data-mask prefix while preserving rejection sampling and the exact position of the next claim mask on witness, weight and shared sources
+  - compare the following raw stream bytes and M31 draws with the unchanged scalar sampler, including both rejected encodings and rejection at the buffer boundary
+  - reduce the source_messages stage on the E16-40o stories42M T32 Mac workload; measure the complete proof, request verification, wrong-model rejection and all source/transcript pins with every binding active
+  - keep the change private to the producer and obtain independent review with mandatory gates; the CPU residual result alone does not reopen ADR-127
+
+- id: E16-42
+  epic: E16
+  title: Reduce claim routing and self-verification work on the CPU
+  lane: Z
+  depends:
+  - E16-24
+  rfc:
+  - RFC-0008 A7
+  - RFC-0013 A5 items 4 and 5
+  - RFC-0018 A1
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E16-42-claim-routing
+  acceptance:
+  - transfer ownership of GKR claim weights once while preserving claim order, transcript challenges, public finals and the mask rank checks
+  - compare the verifier's direct evaluation of sparse claim weights with its dense reference on ordinary and shared sources, covering duplicate positions, field-valued coefficients, invalid positions and the mask face
+  - compare the stories42M T32 claim-routing and self-verification stages with the immediate baseline on the same host and thread count, and keep pinned proof bytes and mandatory gates green
+
+- id: E16-43
+  epic: E16
+  title: Fold fixed and free relation coordinates before broadcasting domain tables
+  lane: Z
+  depends:
+  - E16-24
+  rfc:
+  - RFC-0013 A5 item 2
+  - RFC-0026 A6, A9
+  - RFC-0008 A7
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E16-43-relation-projection
+  acceptance:
+  - reduce the work of constructing a masked relation factor from a column under fixed bits, free challenges and permuted or broadcast domain variables; preserve the GKR caller
+  - compare every result of the projection with an independent multilinear evaluation over mixed coordinates, Boolean and extension points, padding, scalars and permutations
+  - measure the same stories42M T32 relation-factors lap and total prover time on the same host and threads; preserve pinned proof bytes and negative controls
+
+- id: E16-44
+  epic: E16
+  title: Count dev-zk lookup multiplicities with one canonical key per point
+  lane: Z
+  depends:
+  - E12-14
+  rfc:
+  - RFC-0026 A3 and A9
+  - RFC-0008 A7
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-source-visits
+  branch: task/E16-44-multiplicity
+  acceptance:
+  - reuse validated references and canonical tuple keys while preserving fixed, permuted and selected reads, missing rows, duplicate canonical entries and padding
+  - count dense singleton ranges directly, checking the actual public table and preserving signed shifts and field values
+  - compare complete column vectors on original T32 work, record matched CPU timings and three quiet-start Mac proofs with expected-model and wrong-model checks
+
+- id: E16-45
+  epic: E16
+  title: Measure and reduce dev-zk source claim verification work
+  lane: Z
+  depends:
+  - E16-44
+  rfc:
+  - RFC-0013 A5 and A6
+  - RFC-0026 A9
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-source-visits
+  branch: task/E16-45-verifier-weights
+  acceptance:
+  - measure occurrence routing and sparse expected-weight evaluation on a verified original T32 proof before choosing the implementation
+  - preserve source-local offsets, input rejection, public claim encoding, every transcript challenge and existing independent checks
+  - compare reference and candidate on the same original proof and qualify a material optimization with original CPU proofs
+
 - id: E16-40a
   epic: E16
   title: Separate development-ZK GPU-candidate CPU stage costs and shape inventory
@@ -5318,7 +5674,7 @@ tasks:
   - RFC-0014 §1, §4, §5, A1
   skill: benchmark-runner
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40p-gkr-construction-interface
   acceptance:
@@ -5341,7 +5697,7 @@ tasks:
   - RFC-0014 §1, §4, §5, A1
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40i-lookup-tree
   acceptance:

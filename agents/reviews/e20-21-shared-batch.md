@@ -1,0 +1,5 @@
+# E20-21 shared batch and standalone mask source
+
+Lane C reviewed proposed contract b7a2dc0d against the host A4 layout, two-block derivation, column weights, proof and verification paths and the A16 mask-polynomial purpose. The ordinary shared batch binds its ordered claims and coefficients to its two-factor instance. The standalone source binds the mask before the first round. Its data rows, degree-two column nodes, zero padding, row coefficients and later shared-source opening match the established A4/A5 composition.
+
+The host preserves the nonzero mask coefficient, both exclusions on the last coordinate and the separate nonzero face-point check. A7 adds no challenge, degree loss, verifier input or profile promotion. Lane C requested that the general contract describe the standalone source by role and that separate controls change its rebuilt root and a selected sibling. Both changes are included. The named T32 run must account for all five original sources under A1 while each real opening and batch runs. Accepted for development-tier implementation and qualification.

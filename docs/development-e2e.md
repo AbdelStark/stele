@@ -210,7 +210,9 @@ target/release/stele commit-model --zk \
   --model /tmp/dev-e2e/model.bin --preparation /tmp/dev-e2e/preparation.bin \
   --scales /tmp/dev-e2e/scales.bin --artifact /tmp/dev-e2e/artifact.bin \
   --length 16 --proofs 8 \
-  --commitment /tmp/dev-e2e/zk-model.bin --secret /tmp/dev-e2e/zk-model.secret
+  --commitment /tmp/dev-e2e/zk-model.bin --secret /tmp/dev-e2e/zk-model.secret \
+  > /tmp/dev-e2e/zk-commit.txt
+model_digest=$(awk '$1 == "model" {print $2}' /tmp/dev-e2e/zk-commit.txt)
 target/release/stele prove-dev --zk \
   --model /tmp/dev-e2e/model.bin --preparation /tmp/dev-e2e/preparation.bin \
   --scales /tmp/dev-e2e/scales.bin --artifact /tmp/dev-e2e/artifact.bin \
@@ -218,8 +220,34 @@ target/release/stele prove-dev --zk \
   --commitment /tmp/dev-e2e/zk-model.bin --secret /tmp/dev-e2e/zk-model.secret \
   --public /tmp/dev-e2e/zk-public.bin --proof /tmp/dev-e2e/zk-proof.bin
 target/release/stele verify-dev --public /tmp/dev-e2e/zk-public.bin \
-  --proof /tmp/dev-e2e/zk-proof.bin --expect-model <model digest from commit-model>
+  --proof /tmp/dev-e2e/zk-proof.bin --expect-model "$model_digest"
 ```
+
+### Prove a balanced development window on an H100
+
+On the allocated H100, the CUDA build loads the NVIDIA driver and NVRTC at runtime. The example uses the fixture and balanced commitment above, spends its next proof index, and writes the GPU output to new files. A separately built CPU CLI verifies the proof against the commitment owner's model digest.
+
+```sh
+cargo build --release --locked -p stele-cli --target-dir target/cpu
+cargo build --release --locked -p stele-cli --features cuda --target-dir target/cuda
+model_digest=$(awk '$1 == "model" {print $2}' /tmp/dev-e2e/zk-commit.txt)
+target/cuda/release/stele prove-dev --zk --backend cuda \
+  --model /tmp/dev-e2e/model.bin --preparation /tmp/dev-e2e/preparation.bin \
+  --scales /tmp/dev-e2e/scales.bin --artifact /tmp/dev-e2e/artifact.bin \
+  --tokens 1 --length 16 \
+  --commitment /tmp/dev-e2e/zk-model.bin --secret /tmp/dev-e2e/zk-model.secret \
+  --public /tmp/dev-e2e/cuda-public.bin --proof /tmp/dev-e2e/cuda-proof.bin
+target/cpu/release/stele verify-dev --public /tmp/dev-e2e/cuda-public.bin \
+  --proof /tmp/dev-e2e/cuda-proof.bin --expect-model "$model_digest"
+```
+
+The GPU constructs the salted Circle commitments, returns authenticated columns, builds lookup trees and keeps their child layers on-device. It computes each masked relation and GKR sumcheck and every degree-two batch, including the final shared batch. The host constructs the witness, owns the transcript, checks rounds, derives the opening functionals, and verifies the result before committing the proof index. The CPU CLI above uses the byte-4 reference verifier. The independent registered verifier described earlier handles byte 5.
+
+The CUDA prover writes work and physical memory counters to stderr. Run `scripts/gates/parity.sh` on an allocated H100 to compare the complete public inputs and proofs for 50 pinned CPU cases and exercise the fault controls. [Complete H100 parity and fault controls](../bench/ledger/e20-22-h100-complete-shared-proof-parity.json)
+
+The CUDA prover computes the top pairs from the committed source messages and keeps one rebuilt lookup tree on the device while GKR consumes its child layers. The checked prover still verifies top denominators and derives each challenge from the original transcript. The original A6 qualification preceded the CPU optimizations in E16-42 through E16-45. On its balanced Stories42M T32 proof, 21 rebuilt trees supplied 1,456 child projections. The same-host CUDA and CPU runs took 186.38 and 553.02 seconds at distinct reserved indices, and each passed the pinned verifier. The seeded parity corpus checks byte equality at equal inputs and seeds. [H100 T32](../bench/ledger/e20-20-dev-zk-stories42m-t32-h100-cuda.json) · [CPU T32](../bench/ledger/e20-20-dev-zk-stories42m-t32-h100-cpu.json) · [Complete-proof parity](../bench/ledger/e20-20-h100-complete-lookup-proof-parity.json)
+
+On the public stories42M checkpoint, the 24-token prompt below checks nine greedy choices at positions 23 through 31. To run it on the H100, use the same CUDA prover and CPU verifier as above, set the commitment and proof length to 32, and pass `--checked 23..32` to the prover. On one Lucid H100 SXM with 16 pinned CPU threads across eight cores, three paired runs had a median proving time of 102.17 s on CUDA and 468.74 s on CPU. The median paired speedup was 4.59×. Each proof was 21,411,006 bytes and both CPU verifier builds accepted all six. [Run order, native ledgers and peak device memory](../agents/reviews/e20-22-e45-release-integration.md#three-pair-h100-confirmation)
 
 Eight-layer window, `T = 64`, one Apple laptop, one run each, back to back
 (`bench/ledger/e12-14-synthetic-8layer-mac.json` and

@@ -5,7 +5,7 @@
 //!                    --proofs N --commitment OUT --secret OUT [--zk-profile 4|1]
 //! stele prove-dev --model M --preparation P --scales S --artifact A --tokens 1,2,3,4 [--length T]
 //!                 [--checked R..E] [--next Y] --public OUT --proof OUT
-//!                 [--zk --commitment FILE --secret FILE]
+//!                 [--zk --commitment FILE --secret FILE [--backend cpu|cuda]]
 //! stele verify-dev --public FILE --proof FILE [--expect-model HEX]
 //! stele plan-digest --public FILE --entry OUT
 //! stele verify-registered --public FILE --proof FILE --relation FILE --trusted-entry FILE
@@ -54,7 +54,7 @@ const USAGE: &str = "usage: stele commit-model --zk --model M --preparation P --
 --artifact A --length T --proofs N --commitment OUT --secret OUT [--zk-profile 4|1] | \
 stele prove-dev --model M --preparation P --scales S --artifact A \
 --tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT \
-[--dev-profile 3|5 [--relation OUT] | --zk --commitment FILE --secret FILE] | \
+[--dev-profile 3|5 [--relation OUT] | --zk --commitment FILE --secret FILE [--backend cpu|cuda]] | \
 stele verify-dev --public FILE --proof FILE [--expect-model HEX] [--admit] | \
 stele plan-digest --public FILE --entry OUT | \
 stele verify-registered --public FILE --proof FILE --relation FILE --trusted-entry FILE \
@@ -359,6 +359,28 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     let (secret, _ownership) = lock_secret(get(o, "secret")?)?;
     // Read and validate every input before the index is taken (RFC-0013 A6 item 5).
     let commitment = zk::ModelCommitment::decode(&read(get(o, "commitment")?)?).map_err(reject)?;
+    let require_cuda = match o.get("backend").copied().unwrap_or("cpu") {
+        "cpu" => false,
+        "cuda" if commitment.profile == zk::PROFILE_BALANCED => true,
+        "cuda" => {
+            return Err(usage(
+                "the CUDA backend requires balanced development profile 4",
+            ))
+        }
+        _ => return Err(usage("--backend expects cpu or cuda")),
+    };
+    #[cfg(feature = "cuda")]
+    let device = if require_cuda {
+        Some(stele_gpu::Cuda::new().map_err(|e| usage(e.to_string()))?)
+    } else {
+        None
+    };
+    #[cfg(not(feature = "cuda"))]
+    if require_cuda {
+        return Err(usage(
+            "the CUDA backend requires a build with --features cuda",
+        ));
+    }
     let bytes =
         std::fs::read(&secret).map_err(|e| usage(format!("read {}: {e}", secret.display())))?;
     let mut state = zk::ModelState::decode(&bytes).map_err(reject)?;
@@ -383,6 +405,51 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
         persist: &mut persist,
         index: &mut index,
     };
+    #[cfg(feature = "cuda")]
+    let proved = if let Some(device) = &device {
+        let session = device.session();
+        let result = stele_prover::development::prove_window_with_backend(
+            &m,
+            &p,
+            &s,
+            &a,
+            statement,
+            length,
+            window,
+            zk::BatchExecution::with_shared(&session),
+        );
+        if result.is_ok() {
+            let c = session.counts();
+            let memory = device.memory();
+            eprintln!("cuda originals={} batches={} rounds={} folds={} finals={} h2d_bytes={} d2h_bytes={}",
+                c.originals, c.batches, c.rounds, c.folds, c.finals, c.uploaded_bytes - c.gkr_uploaded_bytes - c.relation_uploaded_bytes - c.lookup_uploaded_bytes,
+                c.downloaded_bytes - c.gkr_downloaded_bytes - c.relation_downloaded_bytes - c.lookup_downloaded_bytes);
+            eprintln!("cuda_gkr steps={} expected_rounds={} rounds={} folds={} finals={} h2d_bytes={} d2h_bytes={} streamed_layer_bytes={} planned_peak_bytes={} observed_peak_bytes={}",
+                c.gkr_steps, c.gkr_expected_rounds, c.gkr_rounds, c.gkr_folds, c.gkr_finals,
+                c.gkr_uploaded_bytes, c.gkr_downloaded_bytes, c.gkr_layer_source_bytes,
+                c.gkr_planned_peak_bytes, c.gkr_observed_peak_bytes);
+            eprintln!("cuda_relations steps={} expected_rounds={} rounds={} folds={} finals={} h2d_bytes={} d2h_bytes={} value_bytes={} mask_bytes={} planned_peak_bytes={} observed_peak_bytes={}",
+                c.relation_steps,c.relation_expected_rounds,c.relation_rounds,c.relation_folds,c.relation_finals,
+                c.relation_uploaded_bytes,c.relation_downloaded_bytes,c.relation_value_bytes,c.relation_mask_bytes,
+                c.relation_planned_peak_bytes,c.relation_observed_peak_bytes);
+            eprintln!("cuda_sources originals={} original_h2d_bytes={} visits={} responses={} hashes={} h2d_bytes={} d2h_bytes={} host_salt_bytes={} observed_peak_bytes={}",
+                c.originals, c.original_uploaded_bytes, c.source_visits, c.source_responses, c.source_hashes, c.source_uploaded_bytes,
+                c.source_downloaded_bytes, 32 * c.source_responses, c.source_observed_peak_bytes);
+            eprintln!("cuda_lookup tops={} rebuilds={} child_views={} child_released={} h2d_bytes={} d2h_bytes={} planned_peak_bytes={} observed_peak_bytes={}",
+                c.lookup_tops,c.lookup_rebuilds,c.lookup_child_views,c.lookup_child_released,
+                c.lookup_uploaded_bytes,c.lookup_downloaded_bytes,c.lookup_planned_peak_bytes,c.lookup_observed_peak_bytes);
+            if let Ok(m) = memory {
+                eprintln!(
+                    "cuda_memory total_bytes={} outside_pool_bytes={} pool_high_bytes={} observed_peak_bytes={}",
+                    m.total, m.outside_pool, m.pool_high, c.observed_peak_bytes.max(c.relation_observed_peak_bytes).max(c.gkr_observed_peak_bytes).max(c.source_observed_peak_bytes).max(c.lookup_observed_peak_bytes)
+                );
+            }
+        }
+        result
+    } else {
+        prove_window_profile(&m, &p, &s, &a, statement, length, Some(window))
+    };
+    #[cfg(not(feature = "cuda"))]
     let proved = prove_window_profile(&m, &p, &s, &a, statement, length, Some(window));
     saved?;
     let (public, statement, proof) = proved.map_err(reject)?;
@@ -526,7 +593,7 @@ fn main() -> ExitCode {
             ]
             .concat();
             if zk {
-                allowed.extend(["commitment", "secret"]);
+                allowed.extend(["commitment", "secret", "backend"]);
             } else {
                 allowed.extend(["dev-profile", "relation"]);
             }

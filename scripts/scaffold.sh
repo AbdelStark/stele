@@ -15,12 +15,12 @@ stele-code|RFC-0010 §3|stele-field stele-simd|no
 stele-pcs|RFC-0010|stele-code stele-field stele-hash stele-poly|no
 stele-cqis|RFC-0004|stele-field|no
 stele-ir|RFC-0005|stele-cqis|no
-stele-reductions|RFC-0007 RFC-0008 RFC-0009 RFC-0017|stele-field stele-hash stele-sumcheck stele-gkr stele-lookup stele-pcs stele-ir stele-cqis stele-poly|no
+stele-reductions|RFC-0007 RFC-0008 RFC-0009 RFC-0017|stele-field stele-kernels stele-hash stele-sumcheck stele-gkr stele-lookup stele-pcs stele-ir stele-cqis stele-poly|no
 stele-proof|RFC-0016 §1|stele-field|no
 stele-prover|RFC-0007 §4 RFC-0014 §4|stele-reductions stele-proof|no
 stele-verifier|RFC-0016|stele-field stele-hash|no
 stele-kernels|RFC-0014 §2|stele-field|no
-stele-gpu|RFC-0014|stele-kernels stele-prover|yes
+stele-gpu|RFC-0014 A2|stele-kernels|yes
 stele-dist|RFC-0015|stele-gpu|no
 stele-passport|RFC-0011|stele-pcs stele-cqis stele-wrapper|no
 stele-wrapper|RFC-0016 §5|stele-verifier|no
@@ -33,6 +33,30 @@ echo "$CRATES" | grep -v '^$' | while IFS='|' read -r name rfc deps uns; do
   mkdir -p "$d/src"
   depl=""; for x in $deps; do depl="$depl$x = { path = \"../$x\" }\n"; done
   printf '[package]\nname = "%s"\nversion = "0.1.0"\nedition = "2021"\nlicense = "Apache-2.0"\ndescription = "Stele — %s (see %s)"\n\n[dependencies]\n%b\n[lints]\nworkspace = true\n' "$name" "$name" "$rfc" "$depl" > "$d/Cargo.toml"
+  if [ "$name" = "stele-cli" ]; then
+    cat >> "$d/Cargo.toml" <<'CUDA'
+[dependencies.stele-gpu]
+path = "../stele-gpu"
+optional = true
+
+[features]
+cuda = ["dep:stele-gpu", "stele-gpu/cuda"]
+CUDA
+  elif [ "$name" = "stele-gpu" ]; then
+    cat >> "$d/Cargo.toml" <<'CUDA'
+[dependencies.cudarc]
+version = "=0.19.10"
+optional = true
+default-features = false
+features = ["std", "driver", "nvrtc", "dynamic-loading", "cuda-12040"]
+
+[features]
+cuda = ["dep:cudarc"]
+
+[dev-dependencies.stele-prover]
+path = "../stele-prover"
+CUDA
+  fi
   if [ "$uns" = "yes" ]; then forbid='// unsafe allowed in this crate: every block carries a // SAFETY: comment (agents/guardrails/code.md)'; else forbid='#![forbid(unsafe_code)]'; fi
   case "$name" in
     stele-field|stele-hash|stele-pcs|stele-reductions|stele-proof|stele-verifier) forbid="$forbid

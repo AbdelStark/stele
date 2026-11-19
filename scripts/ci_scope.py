@@ -57,8 +57,12 @@ def scopes(paths):
     selected = [name for name, needed in (('native', native), ('stacked', stacked), ('model', bool(model_paths))) if needed]
     selection = 'all' if broad else '-'.join(selected) or 'none'
     return {
-        'gpu': any(path.startswith((b'crates/stele-gpu/', b'crates/stele-kernels/'))
-                   for path in paths),
+        'gpu': any(path.startswith((b'crates/stele-gpu/', b'crates/stele-kernels/', b'tests/parity/'))
+                   or path in (b'crates/stele-reductions/src/zk_claims.rs', b'crates/stele-reductions/src/zk_relation.rs',
+                               b'crates/stele-cli/examples/parity_proof.rs', b'crates/stele-cli/src/main.rs',
+                               b'crates/stele-cli/Cargo.toml', b'crates/stele-prover/src/development.rs',
+                               b'crates/stele-prover/src/development/zk.rs', b'crates/stele-reductions/src/zk_batch_backend.rs',
+                               b'scripts/gates/parity.sh') for path in paths),
         'tables': bool(shared) or routing or any(path.startswith((b'crates/stele-field/', b'crates/stele-poly/',
                                                 b'crates/stele-simd/', b'crates/stele-cqis/'))
                                 for path in paths),

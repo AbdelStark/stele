@@ -1,0 +1,87 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "72593eb10b5d7863a6a68ea1fdc1ee11b0da7440",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-1e01ce17-cb36-727c-aa41-de5f146e9a22, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "changed_lookup_denominator_rejections": 1,
+    "changed_model_rejections": 2,
+    "changed_round_rejections": 3,
+    "changed_source_rejections": 2,
+    "complete_byte_matches": 50,
+    "device_rounds": 2550,
+    "distinct_models": 50,
+    "gkr_rounds": 97350,
+    "gkr_steps": 10800,
+    "lookup_child_released": 1050,
+    "lookup_child_views": 39000,
+    "lookup_d2h_bytes": 268800,
+    "lookup_h2d_bytes": 175366800,
+    "lookup_observed_peak_bytes": 621674496,
+    "lookup_planned_peak_bytes": 588120064,
+    "lookup_rebuilds": 1050,
+    "lookup_tops": 1050,
+    "relation_rounds": 46550,
+    "relations": 8850,
+    "replays": 1,
+    "selected_batches": 150,
+    "source_d2h_bytes": 60803200,
+    "source_h2d_bytes": 34885600,
+    "source_hashes": 13926000,
+    "source_host_salt_bytes": 2009600,
+    "source_originals": 200,
+    "source_responses": 62800,
+    "source_visits": 400,
+    "unavailable_device_rejections": 1,
+    "verified_proofs": 102
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk byte 4 balanced",
+    "composition": [
+      "f7648e8eb3334f3c89562a37141b6c3157149389",
+      "a40ca474b1dcece92a0d536edb149167118818ea",
+      "72593eb10b5d7863a6a68ea1fdc1ee11b0da7440",
+      "671e5a6dd4affc48c3518f27ff5f5032f0405bac"
+    ],
+    "job": 6954,
+    "plan": {
+      "cpu_reference_sha256": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
+      "models": 50,
+      "profile": "development byte 4 balanced",
+      "selected": "original hiding sources, live relations, resident lookup tops/child GKR and ordinary dense batches"
+    },
+    "public_receipt_sha256": {
+      "allocation.txt": "9315f7f3308a2c41380a2b7488418de501bd35622e5481a363a0cda05045de5d",
+      "device.txt": "8ea27b6054f79f6207c915bcea83a31a868476a7d77ef9162efea244239a88aa",
+      "parity.err": "ba28874571a7f79665443aa6d05e501ca8a60345640bfecb29ba06faa9337115",
+      "parity.out": "c7f4ce7cfbaa7d5a42c215fd398de9adbf0331725ad7dc0e6099d2ac2f9d5d03",
+      "parity.time": "dd8e67ade23d574016d862ac8cbf39463d842bbde07b26f58d75595b7ff98b05"
+    },
+    "source_patch_sha256": "daba96cd879a06dfe3b60bac3af9b113baa6852466f9d57da6587715f2f44996"
+  },
+  "note": "Development-tier comparison under fixed model and proof seeds. CPU and CUDA producers both match every independently pinned public/proof byte for 50 distinct models and one deterministic replay. The CPU verifier checks all 102 proof artifacts. Lookup call counts use the verified per-lookup step groups. The normal selected GKR reports zero host layer payload bytes. Field/material operations and complete proof CPU/device counters exclude the replay, with peak bytes reported as the maximum observed value. Campaign wall includes building, fixture generation, all operation gates and negative controls. This micro schema field does not assign a security level.",
+  "plan_digest": "c5f0e22cb67fa72e33ea642bfb096e48455dbe464bca87b06600c59cd6041c11",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 640260000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "complete_gate": 640260000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-complete-lookup-proof-parity"
+}

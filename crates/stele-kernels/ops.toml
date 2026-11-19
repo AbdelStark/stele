@@ -1,0 +1,17 @@
+# RFC-0014 A2. Transitions in the field-only ordinary batch interface.
+format = 1
+family = "ordinary_batch"
+operations = ["original", "dense_batch", "dense_round", "dense_fold", "dense_finals"]
+
+[gkr]
+operations = ["gkr_start", "gkr_round", "gkr_fold", "gkr_finals"]
+
+[relation]
+constructor = "relation_start"
+arithmetic = ["gkr_round", "gkr_fold", "gkr_finals"]
+
+[hiding_source]
+operations = ["prepare_columns", "selected_column"]
+
+[lookup]
+operations = ["lookup_top", "lookup_tree", "lookup_gkr"]

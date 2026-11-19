@@ -31,10 +31,20 @@
 //! relations, GKR steps, batches and the shared batch; every mask stream is
 //! therefore used once per proof.
 use super::{basis, prove_at, verify_with, Error, Seed, BLOWUP, MIN_M};
+#[path = "zk_batch_backend.rs"]
+mod backend;
+#[path = "zk_source_backend.rs"]
+pub(super) mod source_backend;
+use source_backend::Ready;
+#[path = "zk_gkr_backend.rs"]
+mod gkr_backend;
+#[path = "zk_projected_relations.rs"]
+mod projected_relations;
 use crate::relation::Line;
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
+pub use backend::BatchExecution;
 use core::fmt;
 use stele_field::{Inverse, Serialize, M31};
 use stele_hash::mask::{MaskStream, SOURCE_MASK};
@@ -48,6 +58,8 @@ use stele_sumcheck::{Dense, Instance, Reduction, Summand, Term};
 
 #[path = "zk_lookup.rs"]
 mod lookup;
+#[path = "zk_occurrence_weight.rs"]
+mod occurrence_weight;
 
 #[cfg(feature = "bench")]
 #[path = "zk_gkr_bench.rs"]
@@ -706,12 +718,10 @@ struct PlanColumn {
     limbs: usize,
 }
 
-/// A claim source's layout: `R = 2^ell`, `C = 2^m`, each column's offset and its
-/// first block's offset.
+/// A claim source's layout: `R = 2^ell`, `C = 2^m`.
 struct Layout {
     ell: u8,
     m: u8,
-    offsets: Vec<(usize, usize)>,
 }
 
 struct Plan<K> {
@@ -719,7 +729,8 @@ struct Plan<K> {
     steps: Vec<Step<K>>,
     lookups: Vec<lookup::LookupPlan>,
     gkr: Vec<lookup::GkrStep>,
-    /// Per column: (offset, first block offset) in its source; per source: (ell, m).
+    /// Source-local (column offset, first block offset), in global column order.
+    offsets: Vec<(usize, usize)>,
     layouts: Vec<Layout>,
     /// Sources with at least one claim, in order.
     batched: Vec<usize>,
@@ -1419,14 +1430,7 @@ fn plan_with<K: ChallengeField + CodeField>(
         if m >= 30 {
             return Err(Error::Statement);
         }
-        layouts.push(Layout {
-            ell,
-            m,
-            offsets: Vec::new(),
-        });
-    }
-    for (x, offset) in columns.iter().zip(offsets) {
-        layouts[x.source].offsets.push(offset);
+        layouts.push(Layout { ell, m });
     }
     let batched: Vec<usize> = (0..sources)
         .filter(|&source| {
@@ -1473,6 +1477,7 @@ fn plan_with<K: ChallengeField + CodeField>(
         lookups: lookup_plans,
         gkr,
         layouts,
+        offsets,
         batched,
         masks,
         shared_offsets,
@@ -1484,15 +1489,6 @@ fn plan_with<K: ChallengeField + CodeField>(
         reserved,
         lifetime: lifetime.cloned(),
     })
-}
-
-/// The column's position within its source's `offsets`.
-fn slot<K>(plan: &Plan<K>, column: usize) -> usize {
-    let source = plan.columns[column].source;
-    plan.columns[..column]
-        .iter()
-        .filter(|x| x.source == source)
-        .count()
 }
 
 /// A column point: its `Var` coordinates at `ρ`, its `Free` ones at `free`.
@@ -1521,21 +1517,27 @@ where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     let column = plan.columns[occurrence.column];
-    let (at, blocks) = plan.layouts[column.source].offsets[slot(plan, occurrence.column)];
-    let x = stele_poly::eq_table(&column_point(&occurrence.coords, point, free))
+    let (at, blocks) = plan.offsets[occurrence.column];
+    let x = stele_sumcheck::parallel::eq_table(&column_point(&occurrence.coords, point, free))
         .map_err(|_| Error::Statement)?;
     let u: Vec<K> = occurrence.u.iter().map(|q| point[*q]).collect();
     let r = stele_poly::eq_table(&u).map_err(|_| Error::Statement)?;
     let k = kappa(point[occurrence.v]);
     let first = blocks + occurrence.block * dim::<K>();
     let len = 1usize << column.log_len;
+    let capacity = x
+        .len()
+        .checked_mul(column.limbs)
+        .and_then(|n| n.checked_add(r.len()))
+        .ok_or(Error::Statement)?;
     let mut weights = Vec::new();
-    for d in 0..column.limbs {
-        let e = if column.limbs == 1 {
-            K::from_i64(1)
-        } else {
-            basis::<K>(d)?
-        };
+    weights
+        .try_reserve_exact(capacity)
+        .map_err(|_| Error::Statement)?;
+    // RFC-0013 A5: the first limb uses the unit basis element, including base columns.
+    weights.extend(x.iter().enumerate().map(|(p, w)| (at + p, *w)));
+    for d in 1..column.limbs {
+        let e = basis::<K>(d)?;
         weights.extend(
             x.iter()
                 .enumerate()
@@ -1649,6 +1651,18 @@ fn batch_instance<K: ChallengeField>(
     claims: &[Claim<K>],
     gammas: &[K],
 ) -> Instance<K> {
+    let claimed_sum = claims
+        .iter()
+        .zip(gammas)
+        .fold(zero::<K>(), |s, (c, g)| s + *g * c.value);
+    batch_instance_sum(id, source, claimed_sum)
+}
+
+fn batch_instance_sum<K: ChallengeField>(
+    id: u64,
+    source: &Source<K>,
+    claimed_sum: K,
+) -> Instance<K> {
     let num_vars = source.rows().trailing_zeros() + source.columns().trailing_zeros() - 1;
     Instance {
         id,
@@ -1658,15 +1672,14 @@ fn batch_instance<K: ChallengeField>(
             coefficient: K::from_i64(1),
             factors: vec![0, 1],
         }],
-        claimed_sum: claims
-            .iter()
-            .zip(gammas)
-            .fold(zero::<K>(), |s, (c, g)| s + *g * c.value),
+        claimed_sum,
     }
 }
 
 /// `M̃'` on the face `Y = 0`, over `(w, row, col)`.
-fn face<K: ChallengeField>(prepared: &PreparedSource<'_, K>) -> Vec<K> {
+fn face<K: ChallengeField>(
+    prepared: &PreparedSource<'_, K, impl stele_pcs::ColumnMaterial>,
+) -> Vec<K> {
     let columns = prepared.source().columns();
     prepared
         .message()
@@ -1682,21 +1695,48 @@ fn opening_point<K: ChallengeField>(point: &[K], ell: usize) -> Vec<K> {
     full
 }
 
+/// A5 item 5 and NC-0915: all batch weight evaluators are zero on the mask face.
+/// Check the complete source point and one draw per claim before evaluating its data face.
+fn on_data_face<K: ChallengeField>(
+    source: &Source<K>,
+    point: &[K],
+    claims: usize,
+    coefficients: usize,
+    evaluate: impl FnOnce(&[K]) -> Result<K, Error>,
+) -> Result<K, Error> {
+    let (w, coordinates) = point.split_first().ok_or(Error::Statement)?;
+    let dimension = (source.rows() / 2)
+        .checked_ilog2()
+        .ok_or(Error::Statement)?
+        + (source.columns() / 2)
+            .checked_ilog2()
+            .ok_or(Error::Statement)?;
+    if coordinates.len() != dimension as usize || claims != coefficients {
+        return Err(Error::Statement);
+    }
+    Ok((K::from_i64(1) - *w) * evaluate(coordinates)?)
+}
+
 /// The verifier's `W'(ρ) = (1 − w*)·W̃(row*, col*)`, zero weight on `w = 1`.
-// shortcut: O(R·C) dense evaluation; a succinct eq-sum per claim when sources grow.
+/// Linearity lets each claim accumulate against the same equality table before batching.
 fn expected_weight<K: ChallengeField>(
     source: &Source<K>,
     claims: &[Claim<K>],
     gammas: &[K],
     point: &[K],
 ) -> Result<K, Error> {
-    let table = weight_table(source, claims, gammas)?;
-    let eq = stele_poly::eq_table(&point[1..]).map_err(|_| Error::Statement)?;
-    let data = eq
-        .iter()
-        .zip(&table)
-        .fold(zero::<K>(), |s, (e, w)| s + *e * *w);
-    Ok((K::from_i64(1) - point[0]) * data)
+    on_data_face(source, point, claims.len(), gammas.len(), |coordinates| {
+        let eq = stele_sumcheck::parallel::eq_table(coordinates).map_err(|_| Error::Statement)?;
+        let mut data = zero::<K>();
+        for (claim, gamma) in claims.iter().zip(gammas) {
+            let mut value = zero::<K>();
+            for (position, weight) in &claim.weights {
+                value = value + *eq.get(*position).ok_or(Error::Statement)? * *weight;
+            }
+            data = data + *gamma * value;
+        }
+        Ok(data)
+    })
 }
 
 /// Prove one A5 item-5 batch of `claims` on a hiding source, with its plain mask
@@ -1741,21 +1781,26 @@ pub fn prove_weighted<K: ChallengeField + CodeField + Eq>(
     detail.lap("zk/detail/batch_face");
     let (sumcheck, point) = masked::prove(&i, dense, mask, binding, t).map_err(Error::Sumcheck)?;
     detail.lap("zk/detail/batch_rounds");
-    // A5 item 4: w* = 0 leaves the opening without mask-row weight.
+    finish_batch(prepared.source().rows(), (sumcheck, point), |p, value| {
+        prepared
+            .opening_point(t, verified, id, p, value)
+            .map(|o| o.0)
+            .map_err(|f| Error::Pcs(f.cause))
+    })
+}
+
+fn finish_batch<K: ChallengeField + Eq>(
+    rows: usize,
+    (sumcheck, point): (masked::Proof<K>, Vec<K>),
+    open: impl FnOnce(&[K], K) -> Result<Vec<u8>, Error>,
+) -> Result<(Batch<K>, Vec<K>), Error> {
+    let mut detail = stele_sumcheck::parallel::Laps::start();
+    // A5 item 4: reject the unmasked face before preparing or querying its opening tree.
     if point[0] == zero::<K>() {
         return Err(Error::BatchPoint);
     }
-    let ell = prepared.source().rows().trailing_zeros() as usize - 1;
-    let opening = prepared
-        .opening_point(
-            t,
-            verified,
-            id,
-            &opening_point(&point, ell),
-            sumcheck.final_values[1],
-        )
-        .map_err(|f| Error::Pcs(f.cause))?
-        .0;
+    let ell = rows.trailing_zeros() as usize - 1;
+    let opening = open(&opening_point(&point, ell), sumcheck.final_values[1])?;
     detail.lap("zk/detail/batch_opening");
     Ok((Batch { sumcheck, opening }, point))
 }
@@ -1774,13 +1819,39 @@ pub fn verify_batch<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    verify_batch_using(
+        id,
+        verified,
+        claims.iter().map(|c| c.value),
+        batch,
+        binding,
+        t,
+        |source, gammas, point| expected_weight(source, claims, gammas, point),
+    )
+}
+
+fn verify_batch_using<K: ChallengeField + CodeField + Eq>(
+    id: u64,
+    verified: &VerifiedCertificate<K>,
+    values: impl ExactSizeIterator<Item = K>,
+    batch: &Batch<K>,
+    binding: &[u8],
+    t: &mut Transcript<K>,
+    weight: impl FnOnce(&Source<K>, &[K], &[K]) -> Result<K, Error>,
+) -> Result<masked::Reduction<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let source = verified.record().source();
-    let gammas = coefficients(t, claims.len())?;
-    let i = batch_instance(id, source, claims, &gammas);
+    let gammas = coefficients(t, values.len())?;
+    let claimed_sum = values
+        .zip(&gammas)
+        .fold(zero::<K>(), |sum, (v, g)| sum + *g * v);
+    let i = batch_instance_sum(id, source, claimed_sum);
     let result =
         masked::verify_degree(&i, 2, &batch.sumcheck, binding, t).map_err(Error::Sumcheck)?;
     let point = &result.reduction.point;
-    if result.reduction.claims[0].1 != expected_weight(source, claims, &gammas, point)? {
+    if result.reduction.claims[0].1 != weight(source, &gammas, point)? {
         return Err(Error::Sumcheck(
             stele_sumcheck::Error::FinalEvaluationMismatch,
         ));
@@ -2199,41 +2270,76 @@ fn bit(index: usize, var: usize, n: usize) -> usize {
 /// `x̂` over the domain: the column at its `Free` coordinates, broadcast over the
 /// variables it does not read.
 fn domain_table<K: ChallengeField>(column: &[K], coords: &[Coord], free: &[K], n: usize) -> Vec<K> {
-    let len = coords.len();
-    let mut partial = vec![zero::<K>(); 1 << n];
-    let mut read = 0usize;
-    for c in coords {
-        if let Coord::Var(q) = c {
-            read |= 1 << (n - 1 - q);
-        }
-    }
-    for (index, value) in column.iter().enumerate() {
-        let mut weight = K::from_i64(1);
-        let mut target = 0usize;
-        for (j, c) in coords.iter().enumerate() {
-            let b = bit(index, j, len);
-            match c {
-                Coord::Var(q) => target |= b << (n - 1 - q),
-                Coord::Free(i) => {
-                    weight = weight
-                        * if b == 1 {
-                            free[*i]
-                        } else {
-                            K::from_i64(1) - free[*i]
-                        }
-                }
-                Coord::Fixed(bit) => {
-                    if b != usize::from(*bit) {
-                        weight = zero::<K>();
-                    }
-                }
+    use alloc::borrow::Cow;
+    // At a fixed assignment of the read variables, only the free axes vary.
+    // Interpolate directly on that subcube; never allocate a half-column.
+    fn interpolate<K: ChallengeField>(column: &[K], offset: usize, free: &[(usize, K)]) -> K {
+        match free.split_first() {
+            None => column[offset],
+            Some((&(stride, z), rest)) => {
+                let low = interpolate(column, offset, rest);
+                let high = interpolate(column, offset | stride, rest);
+                low + z * (high - low)
             }
         }
-        partial[target] = partial[target] + weight * *value;
     }
-    (0..1usize << n)
-        .map(|index| partial[index & read])
-        .collect()
+
+    let mut vars = Vec::new();
+    let mut source_bits = Vec::new();
+    let mut free_axes = Vec::new();
+    let mut fixed = 0;
+    for (j, coord) in coords.iter().enumerate() {
+        let shift = coords.len() - 1 - j;
+        match coord {
+            Coord::Var(q) => {
+                vars.push(*q);
+                source_bits.push(shift);
+            }
+            Coord::Fixed(b) => fixed |= usize::from(*b) << shift,
+            Coord::Free(q) => free_axes.push((1 << shift, free[*q])),
+        }
+    }
+    let table = if vars.len() == coords.len() {
+        Cow::Borrowed(column)
+    } else {
+        let mut projected = vec![zero::<K>(); 1 << vars.len()];
+        stele_sumcheck::parallel::for_each_chunk_weighted(
+            &mut projected,
+            1 << free_axes.len(),
+            |start, chunk| {
+                for (i, value) in (start..).zip(chunk) {
+                    let offset = source_bits
+                        .iter()
+                        .enumerate()
+                        .fold(fixed, |at, (j, shift)| {
+                            at | (bit(i, j, vars.len()) << shift)
+                        });
+                    *value = interpolate(column, offset, &free_axes);
+                }
+            },
+        );
+        Cow::Owned(projected)
+    };
+    let len = 1 << n;
+    let Some(&last) = vars.last() else {
+        return vec![table[0]; len];
+    };
+    let contiguous = vars.windows(2).all(|pair| pair[1] == pair[0] + 1);
+    if contiguous && table.len() == len {
+        return table.into_owned();
+    }
+    let mut out = vec![zero::<K>(); len];
+    stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+        for (i, value) in (start..).zip(chunk) {
+            let index = if contiguous {
+                (i >> (n - 1 - last)) & (table.len() - 1)
+            } else {
+                vars.iter().fold(0, |index, q| (index << 1) | bit(i, *q, n))
+            };
+            *value = table[index];
+        }
+    });
+    out
 }
 
 /// `r̂(X) = r̃_x(a, X_u)` over the domain.
@@ -2258,7 +2364,7 @@ impl<K: ChallengeField + CodeField> Plan<K> {
     /// An occurrence's claim-mask block, read from its source's message.
     fn block(&self, messages: &[&[M31]], o: &Occurrence) -> Vec<M31> {
         let source = self.columns[o.column].source;
-        let (_, blocks) = self.layouts[source].offsets[slot(self, o.column)];
+        let (_, blocks) = self.offsets[o.column];
         let width = 1usize << self.layouts[source].m;
         let first = blocks + o.block * dim::<K>();
         (first..first + dim::<K>())
@@ -2353,10 +2459,24 @@ fn step_instance<K: ChallengeField>(step: &Step<K>, gammas: &[K]) -> Instance<K>
 // shortcut: replays the 3RC data-mask draws of `hiding_message`; share its stream if this shows in a profile.
 fn after_masks(seed: &[u8; 32], id: u64, rows: usize, width: usize) -> MaskStream {
     let mut stream = MaskStream::new(seed, SOURCE_MASK, id);
-    for _ in 0..3 * rows * width {
-        stream.m31();
-    }
+    skip_mask_prefix(3 * rows * width, |out| stream.fill(out));
     stream
+}
+
+/// RFC-0013 A2 item 1: read at most the remaining draw count, so the next byte
+/// is the start of the claim-mask stream even when the final chunk rejects a word.
+fn skip_mask_prefix(mut remaining: usize, mut fill: impl FnMut(&mut [u8])) {
+    let mut bytes = [0; 4096];
+    while remaining != 0 {
+        let words = remaining.min(bytes.len() / 4);
+        let batch = &mut bytes[..4 * words];
+        fill(batch);
+        let accepted = batch
+            .chunks_exact(4)
+            .filter(|w| u32::from_le_bytes([w[0], w[1], w[2], w[3]]) & 0x7fff_ffff != 0x7fff_ffff)
+            .count();
+        remaining -= accepted;
+    }
 }
 
 /// A claim source's message `M'` (A2 item 1): columns and claim masks as data,
@@ -2378,14 +2498,15 @@ fn source_message<K: ChallengeField + CodeField>(
         .iter()
         .enumerate()
         .filter(|(_, c)| c.source == source);
-    for ((index, column), (at, blocks)) in members.zip(&layout.offsets) {
+    for (index, column) in members {
+        let (at, blocks) = plan.offsets[index];
         let len = 1usize << column.log_len;
         for (p, value) in columns[index].iter().enumerate() {
             for (d, limb) in limbs(*value)?.into_iter().take(column.limbs).enumerate() {
                 x[at + d * len + p] = limb;
             }
         }
-        for value in &mut x[*blocks..*blocks + plan.reserved[index] * dim::<K>()] {
+        for value in &mut x[blocks..blocks + plan.reserved[index] * dim::<K>()] {
             let drawn = stream.m31();
             if claim_masks {
                 *value = drawn;
@@ -2425,8 +2546,8 @@ fn shared_message<K: ChallengeField + CodeField>(
     stele_pcs::hiding_message(plan.shared_id(), ell, m, &x, seed).map_err(Error::Pcs)
 }
 
-fn certify<K: ChallengeField + CodeField>(
-    prepared: &PreparedSource<'_, K>,
+pub(super) fn certify<K: ChallengeField + CodeField>(
+    prepared: &PreparedSource<'_, K, impl stele_pcs::ColumnMaterial>,
 ) -> Result<(Vec<u8>, VerifiedCertificate<K>), Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
@@ -2931,6 +3052,7 @@ where
         claim_masks,
         forgery,
         lifetime,
+        None,
         #[cfg(feature = "bench")]
         None,
     )
@@ -2946,11 +3068,16 @@ fn prove_observed<K: ChallengeField + CodeField + Eq>(
     claim_masks: bool,
     forgery: Option<Forgery>,
     lifetime: Option<(&Lifetime, ModelSecret<'_, K>)>,
+    execution: Option<BatchExecution<'_, K>>,
     #[cfg(feature = "bench")] mut observer: Option<&mut gkr_bench::Observer<'_, K>>,
 ) -> Result<(Proof<K>, Option<Vec<K>>), Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    #[cfg(feature = "bench")]
+    if execution.is_some() && observer.is_some() {
+        return Err(Error::Statement);
+    }
     let plan = plan_with(statement, lifetime.as_ref().map(|(l, _)| *l))?;
     let (life_source, model) = match lifetime {
         Some((l, secret)) => (Some(l.source), Some(secret)),
@@ -2985,8 +3112,9 @@ where
         .collect();
     let early = plan.early();
     // A6: the lifetime source is rebuilt from the model seed, every proof alike.
-    let seed_of = |s: usize| match (&model, life_source) {
-        (Some(m), Some(l)) if l == s => m.seed,
+    let model_seed = model.as_ref().map(|m| m.seed);
+    let seed_of = |s: usize| match (model_seed, life_source) {
+        (Some(model_seed), Some(l)) if l == s => model_seed,
         _ => seed,
     };
     // Independent per source; built concurrently, kept in source order (E16-24).
@@ -3001,6 +3129,13 @@ where
         .iter()
         .map(|(id, n, degree)| Mask::plain(seed, *id, *n, *degree).map_err(Error::Sumcheck))
         .collect::<Result<Vec<_>, _>>()?;
+    // The registry may borrow the two late messages until its originals have been released.
+    #[allow(clippy::needless_late_init)]
+    let (top_message, shared_message);
+    let registry = execution.and_then(BatchExecution::begin_sources);
+    if registry.is_some() && plan.policy() != Policy::Two {
+        return Err(Error::Statement);
+    }
     let hiding = |id: u64, (ell, m): (u8, u8), message| {
         PreparedSource::<K>::hiding_with(
             id,
@@ -3053,17 +3188,45 @@ where
     // E16-33: one source at a time. Each encoding is already parallel inside, and two
     // large sources encoded together doubled the transient peak.
     let mut detail = stele_sumcheck::parallel::Laps::start();
-    let mut prepared = (0..early).map(prepare).collect::<Result<Vec<_>, _>>()?;
-    detail.lap("zk/detail/sources_prepare");
+    let early_sources = if let Some(registry) = &registry {
+        let mut sources = Vec::with_capacity(early);
+        for (s, message) in messages.iter().enumerate() {
+            let layout = &plan.layouts[s];
+            let (purpose, expected) = match (model.as_ref(), &plan.lifetime) {
+                (Some(m), Some(l)) if l.source == s => (
+                    stele_pcs::HidingUse::Lifetime {
+                        budget: l.proofs,
+                        revealed: revealed.clone(),
+                    },
+                    Some(m.root),
+                ),
+                _ => (stele_pcs::HidingUse::Single, None),
+            };
+            sources.push(source_backend::prepare(
+                registry,
+                plan.source_id(s),
+                (layout.ell, layout.m),
+                message,
+                seed_of(s),
+                purpose,
+                expected,
+            )?);
+        }
+        sources
+    } else {
+        let host = (0..early).map(prepare).collect::<Result<Vec<_>, _>>()?;
+        detail.lap("zk/detail/sources_prepare");
+        source_backend::host_certificates(host)?
+    };
+    let mut prepared = Vec::new();
     let mut sources = Vec::new();
     let mut certificates = Vec::new();
     let mut verified = Vec::new();
-    let certified = stele_sumcheck::parallel::map(prepared.len(), |i| certify(&prepared[i]));
-    for (p, c) in prepared.iter().zip(certified) {
-        let (certificate, v) = c?;
+    for (p, (certificate, v)) in early_sources {
         sources.push(p.source().bytes().to_vec());
         certificates.push(certificate);
         verified.push(v);
+        prepared.push(p);
     }
     detail.lap("zk/detail/sources_certify");
     let fail = |e: stele_hash::Error| Error::Sumcheck(e.into());
@@ -3072,6 +3235,10 @@ where
         .map_err(fail)?;
     // RFC-0008 A7 items 1–3: β and α after the multiplicities, then the top. Only the
     // top is kept: each tree is rebuilt, identically, for its own GKR steps (E16-33).
+    let trees = registry.as_ref().and_then(|r| r.trees());
+    let descriptors = trees
+        .map(|_| lookup::source_input::descriptors(&plan, columns))
+        .transpose()?;
     let mut runs = Vec::new();
     for (l, lp) in plan.lookups.iter().enumerate() {
         let mut detail = stele_sumcheck::parallel::Laps::start();
@@ -3079,10 +3246,15 @@ where
         let beta = t.challenge(ChallengeLabel::LookupBeta).map_err(fail)?;
         let alpha = t.challenge(ChallengeLabel::LookupAlpha).map_err(fail)?;
         detail.lap("zk/detail/top_prefix");
-        let layers = lookup::tree(lp, &data, beta, alpha);
-        detail.lap("zk/detail/top_tree");
-        let [p, q, mut h] = lookup::top(lp, &layers)?;
-        drop(layers);
+        let [p, q, mut h] = if let (Some(trees), Some(descriptors)) = (trees, &descriptors) {
+            let pairs = trees.top(&descriptors[l].input(beta, alpha))?;
+            detail.lap("zk/detail/top_tree");
+            lookup::top_pairs(&pairs)?
+        } else {
+            let layers = lookup::tree(lp, &data, beta, alpha);
+            detail.lap("zk/detail/top_tree");
+            lookup::top(lp, &layers)?
+        };
         detail.lap("zk/detail/top_values");
         if forgery == Some(Forgery::Ratio(l)) {
             let total = h.iter().fold(zero::<K>(), |s, v| s + *v);
@@ -3093,34 +3265,54 @@ where
     }
     laps.lap("zk/logup_trees_and_tops");
     let mut detail = stele_sumcheck::parallel::Laps::start();
-    let top_message = if plan.lookups.is_empty() {
+    top_message = if plan.lookups.is_empty() {
         Vec::new()
     } else {
         source_message(&plan, early, &data, seed, claim_masks)?
     };
-    let shared_message = self::shared_message(&plan, &masks, seed, claim_masks)?;
+    shared_message = self::shared_message(&plan, &masks, seed, claim_masks)?;
     detail.lap("zk/detail/top_messages");
-    let (top, shared) = stele_sumcheck::parallel::join(
-        || {
-            (!plan.lookups.is_empty()).then(|| {
-                let layout = &plan.layouts[early];
-                hiding(plan.source_id(early), (layout.ell, layout.m), &top_message)
+    let top = (!plan.lookups.is_empty()).then(|| {
+        let layout = &plan.layouts[early];
+        (
+            plan.source_id(early),
+            (layout.ell, layout.m),
+            top_message.as_slice(),
+        )
+    });
+    let shared = (plan.shared_id(), plan.shared, shared_message.as_slice());
+    let late = if let Some(registry) = &registry {
+        top.into_iter()
+            .chain(core::iter::once(shared))
+            .map(|(id, dims, message)| {
+                source_backend::prepare(
+                    registry,
+                    id,
+                    dims,
+                    message,
+                    seed,
+                    stele_pcs::HidingUse::Single,
+                    None,
+                )
             })
-        },
-        || hiding(plan.shared_id(), plan.shared, &shared_message),
-    );
-    if let Some(top) = top {
-        prepared.push(top?);
-    }
-    prepared.push(shared?);
-    detail.lap("zk/detail/top_prepare");
-    let certified =
-        stele_sumcheck::parallel::map(prepared.len() - early, |i| certify(&prepared[early + i]));
-    for (p, c) in prepared[early..].iter().zip(certified) {
-        let (certificate, v) = c?;
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        let (top, shared) = stele_sumcheck::parallel::join(
+            || top.map(|(id, dims, message)| hiding(id, dims, message)),
+            || hiding(shared.0, shared.1, shared.2),
+        );
+        let host = top
+            .into_iter()
+            .chain(core::iter::once(shared))
+            .collect::<Result<Vec<_>, _>>()?;
+        detail.lap("zk/detail/top_prepare");
+        source_backend::host_certificates(host)?
+    };
+    for (p, (certificate, v)) in late {
         sources.push(p.source().bytes().to_vec());
         certificates.push(certificate);
         verified.push(v);
+        prepared.push(p);
     }
     t.absorb(AbsorbLabel::FieldSources, &sources[early..].concat())
         .map_err(fail)?;
@@ -3139,60 +3331,73 @@ where
         let gammas = step_draws(t, step)?;
         let free = draws(t, step.label, step.draws)?;
         detail.lap("zk/detail/relation_prefix");
-        let n = step.num_vars as usize;
-        let mut factors = Vec::new();
-        if step.eq.is_some() {
-            factors.push(Factor {
-                x: eq_input(&step.tau(&free), n)?,
-                r: Vec::new(),
-                v: None,
-            });
-        }
-        for o in &step.occurrences {
-            factors.push(Factor {
-                x: domain_table(&data[o.column], &o.coords, &free, n),
-                r: block_table(&block_of(o), &o.u, n),
-                v: Some(o.v),
-            });
-        }
-        for p in &step.publics {
-            factors.push(Factor {
-                x: domain_table(&p.values, &p.coords, &free, n),
-                r: Vec::new(),
-                v: None,
-            });
-        }
         let i = step_instance(step, &gammas);
-        if let Some(Forgery::Substitute(Substitute::Shared(x), delta)) = forgery {
-            if x == j {
-                if step.eq.is_none() {
+        let (proof, point, truth, mu) =
+            if let Some(backend) = execution.and_then(|b| b.relations()) {
+                if forgery.is_some() {
                     return Err(Error::Statement);
                 }
-                substitute(&mut factors, &i.terms, 0, K::from_i64(delta))?;
-            }
-        }
-        let summand = Occurrences {
-            factors,
-            terms: i.terms.clone(),
-            degree: step.degree,
-            num_vars: step.num_vars,
-            bound: 0,
-            expand: None,
-        };
-        let here = forgery == Some(Forgery::Relation(j))
-            || plan
-                .lookups
-                .iter()
-                .enumerate()
-                .any(|(l, lp)| forgery == Some(Forgery::Ratio(l)) && lp.identity == Some(j));
-        detail.lap("zk/detail/relation_factors");
-        summand.profile("relation");
-        detail.lap("zk/detail/relation_setup");
-        let (proof, point, truth, mu) = if forgery == Some(Forgery::Unchecked(j)) {
-            unchecked(&i, summand, &masks[j], &binding, t)?
-        } else {
-            masked_instance(&i, step.degree, summand, &masks[j], &binding, here, None, t)?
-        };
+                let mut prepared = projected_relations::prepare(step, &data, &free, &block_of)?;
+                let input = projected_relations::construction(&mut prepared, &i, step.degree);
+                detail.lap("zk/detail/relation_factors");
+                detail.lap("zk/detail/relation_setup");
+                let (proof, point) = backend.prove_relation(&i, &input, &masks[j], &binding, t)?;
+                let truth = proof.final_values.clone();
+                let mu = proof.mask_final;
+                (proof, point, truth, mu)
+            } else {
+                let n = step.num_vars as usize;
+                let mut factors = Vec::new();
+                if step.eq.is_some() {
+                    factors.push(Factor {
+                        x: eq_input(&step.tau(&free), n)?,
+                        r: Vec::new(),
+                        v: None,
+                    });
+                }
+                for o in &step.occurrences {
+                    factors.push(Factor {
+                        x: domain_table(&data[o.column], &o.coords, &free, n),
+                        r: block_table(&block_of(o), &o.u, n),
+                        v: Some(o.v),
+                    });
+                }
+                for p in &step.publics {
+                    factors.push(Factor {
+                        x: domain_table(&p.values, &p.coords, &free, n),
+                        r: Vec::new(),
+                        v: None,
+                    });
+                }
+                if let Some(Forgery::Substitute(Substitute::Shared(x), delta)) = forgery {
+                    if x == j {
+                        if step.eq.is_none() {
+                            return Err(Error::Statement);
+                        }
+                        substitute(&mut factors, &i.terms, 0, K::from_i64(delta))?;
+                    }
+                }
+                let summand = Occurrences {
+                    factors,
+                    terms: i.terms.clone(),
+                    degree: step.degree,
+                    num_vars: step.num_vars,
+                    bound: 0,
+                    expand: None,
+                };
+                let here = forgery == Some(Forgery::Relation(j))
+                    || plan.lookups.iter().enumerate().any(|(l, lp)| {
+                        forgery == Some(Forgery::Ratio(l)) && lp.identity == Some(j)
+                    });
+                detail.lap("zk/detail/relation_factors");
+                summand.profile("relation");
+                detail.lap("zk/detail/relation_setup");
+                if forgery == Some(Forgery::Unchecked(j)) {
+                    unchecked(&i, summand, &masks[j], &binding, t)?
+                } else {
+                    masked_instance(&i, step.degree, summand, &masks[j], &binding, here, None, t)?
+                }
+            };
         detail.lap("zk/detail/relation_rounds");
         let first = step.first();
         for (k, o) in step.occurrences.iter().enumerate() {
@@ -3217,12 +3422,21 @@ where
     // reads precede the appended tops, so it is the same tree), and dropped before
     // the leaf step, the largest, which reads no layer. Proof bytes are unchanged.
     let mut tree: Option<(usize, Vec<Vec<[K; 2]>>)> = None;
+    let mut resident_lookup = None;
     for (g, step) in plan.gkr.iter().enumerate() {
         let mut detail = stele_sumcheck::parallel::Laps::start();
         let index = plan.steps.len() + g;
         let l = step.lookup_index();
         if step.is_leaf() {
             tree = None;
+            if resident_lookup.is_some() {
+                return Err(Error::Backend);
+            }
+        } else if let (Some(trees), Some(descriptors)) = (trees, &descriptors) {
+            if resident_lookup != Some(l) {
+                trees.rebuild(&descriptors[l].input(runs[l].beta, runs[l].alpha))?;
+                resident_lookup = Some(l);
+            }
         } else if tree.as_ref().map(|(at, _)| *at) != Some(l) {
             drop(tree.take()); // the previous tree goes before the next is built
             let lp = &plan.lookups[l];
@@ -3272,69 +3486,118 @@ where
                 expand,
             })
         };
-        let mut summand = build(ghost)?;
-        if let Some(Forgery::Substitute(Substitute::Pad(_), delta)) = substituted {
-            let z = lookup::pad_factor(step, &plan.lookups[l]).ok_or(Error::Statement)?;
-            substitute(
-                &mut summand.factors,
-                &summand.terms.clone(),
-                z,
-                K::from_i64(delta),
+        let (proof, point, truth, mu) = if let Some(backend) = execution.and_then(|e| e.gkr()) {
+            if forgery.is_some() {
+                return Err(Error::Statement);
+            }
+            let construction = lookup::construction::inputs(
+                &plan,
+                step,
+                run,
+                trees.is_none().then_some(layers),
+                &data,
+                &shared_message,
+                &block_of,
             )?;
-        }
-        // The substitute's honest twin, folded at the same point after the proof:
-        // the producer routes the true finals (claims are equal, publics differ).
-        let twin = substituted.map(|_| build(None)).transpose()?;
-        let tweak = match forgery {
-            Some(Forgery::Layer(x)) if x == g => lookup::first_layer(step),
-            Some(Forgery::Final(x, input)) if x == g => Some(input),
-            _ => None,
-        };
-        let here = tweak.is_some();
-        detail.lap("zk/detail/gkr_factors");
-        summand.profile(if step.is_leaf() {
-            "gkr_leaf"
-        } else if step.is_first() {
-            "gkr_first"
-        } else {
-            "gkr_interior"
-        });
-        detail.lap("zk/detail/gkr_setup");
-        let (proof, point, truth, mu) = if forgery == Some(Forgery::Block(g)) {
-            let lambda = i.terms[1].coefficient;
-            let summand = Perturb {
-                inner: summand,
-                lambda,
+            let expand = |point: &[K], compact: &[K]| {
+                lookup::field_finals(&plan, step, &data, &block_of, point, compact)
             };
-            let (proof, point) =
-                masked::prove(&i, summand, &masks[index], &binding, t).map_err(Error::Sumcheck)?;
-            let mut truth = proof.final_values.clone();
-            let shift = Perturb::<K>::shift(&truth, lambda)?;
-            truth[2] = truth[2] - K::from_i64(1);
-            truth[4] = truth[4] + shift;
+            detail.lap("zk/detail/gkr_factors");
+            detail.lap("zk/detail/gkr_setup");
+            let (proof, point) = if let (Some(trees), Some(descriptors), false) =
+                (trees, &descriptors, step.is_leaf())
+            {
+                let last = plan
+                    .gkr
+                    .get(g + 1)
+                    .is_some_and(|next| next.lookup_index() == l && next.is_leaf());
+                let result = trees.prove(
+                    descriptors[l].input(run.beta, run.alpha).key,
+                    last,
+                    &i,
+                    &construction,
+                    &masks[index],
+                    &binding,
+                    t,
+                    &expand,
+                )?;
+                if last {
+                    resident_lookup = None;
+                }
+                result
+            } else {
+                backend.prove(&i, &construction, &masks[index], &binding, t, &expand)?
+            };
+            detail.lap("zk/detail/gkr_rounds");
+            let truth = proof.final_values.clone();
             let mu = proof.mask_final;
             (proof, point, truth, mu)
         } else {
-            masked_instance(
-                &i,
-                step.degree,
-                summand,
-                &masks[index],
-                &binding,
-                here,
-                tweak,
-                t,
-            )?
-        };
-        detail.lap("zk/detail/gkr_rounds");
-        let truth = match twin {
-            Some(mut twin) => {
-                for c in &point {
-                    twin.fold(*c).map_err(Error::Sumcheck)?;
-                }
-                twin.final_values().map_err(Error::Sumcheck)?
+            let mut summand = build(ghost)?;
+            if let Some(Forgery::Substitute(Substitute::Pad(_), delta)) = substituted {
+                let z = lookup::pad_factor(step, &plan.lookups[l]).ok_or(Error::Statement)?;
+                substitute(
+                    &mut summand.factors,
+                    &summand.terms.clone(),
+                    z,
+                    K::from_i64(delta),
+                )?;
             }
-            None => truth,
+            // The substitute's honest twin, folded at the same point after the proof:
+            // the producer routes the true finals (claims are equal, publics differ).
+            let twin = substituted.map(|_| build(None)).transpose()?;
+            let tweak = match forgery {
+                Some(Forgery::Layer(x)) if x == g => lookup::first_layer(step),
+                Some(Forgery::Final(x, input)) if x == g => Some(input),
+                _ => None,
+            };
+            let here = tweak.is_some();
+            detail.lap("zk/detail/gkr_factors");
+            summand.profile(if step.is_leaf() {
+                "gkr_leaf"
+            } else if step.is_first() {
+                "gkr_first"
+            } else {
+                "gkr_interior"
+            });
+            detail.lap("zk/detail/gkr_setup");
+            let (proof, point, truth, mu) = if forgery == Some(Forgery::Block(g)) {
+                let lambda = i.terms[1].coefficient;
+                let summand = Perturb {
+                    inner: summand,
+                    lambda,
+                };
+                let (proof, point) = masked::prove(&i, summand, &masks[index], &binding, t)
+                    .map_err(Error::Sumcheck)?;
+                let mut truth = proof.final_values.clone();
+                let shift = Perturb::<K>::shift(&truth, lambda)?;
+                truth[2] = truth[2] - K::from_i64(1);
+                truth[4] = truth[4] + shift;
+                let mu = proof.mask_final;
+                (proof, point, truth, mu)
+            } else {
+                masked_instance(
+                    &i,
+                    step.degree,
+                    summand,
+                    &masks[index],
+                    &binding,
+                    here,
+                    tweak,
+                    t,
+                )?
+            };
+            detail.lap("zk/detail/gkr_rounds");
+            let truth = match twin {
+                Some(mut twin) => {
+                    for c in &point {
+                        twin.fold(*c).map_err(Error::Sumcheck)?;
+                    }
+                    twin.final_values().map_err(Error::Sumcheck)?
+                }
+                None => truth,
+            };
+            (proof, point, truth, mu)
         };
         lookup::aborts(step, run, &point)?;
         let finals = lookup::finals(&plan, step, run, &point, &truth)?;
@@ -3346,7 +3609,7 @@ where
                     &plan,
                     step,
                     run,
-                    layers,
+                    Some(layers),
                     &data,
                     &shared_message,
                     &block_of,
@@ -3368,12 +3631,12 @@ where
                 route: &route,
             })?;
         }
-        for (source, claim) in finals.claims.iter().cloned() {
+        for (source, claim) in finals.claims {
             claims[source].push(claim);
         }
         mus.push(mask_claim(&plan, index, &point, mu)?);
-        mus.extend(finals.blocks.iter().cloned());
-        lookup::advance(step, run, &point, &finals, t)?;
+        mus.extend(finals.blocks);
+        lookup::advance(step, run, &point, finals.layers, t)?;
         gkr.push(proof);
         detail.lap("zk/detail/gkr_claims");
     }
@@ -3382,15 +3645,46 @@ where
     let mut revealed = None;
     for (b, source) in plan.batched.iter().enumerate() {
         let index = plan.steps.len() + plan.gkr.len() + b;
-        let (batch, point) = prove_batch(
-            plan.masks[index].0,
-            &prepared[*source],
-            &verified[*source],
-            &claims[*source],
-            &masks[index],
-            &binding,
-            t,
-        )?;
+        let id = plan.masks[index].0;
+        let (batch, point) = if let Some(backend) = execution {
+            let input = &prepared[*source];
+            let gammas = coefficients(t, claims[*source].len())?;
+            let instance = batch_instance(id, input.source(), &claims[*source], &gammas);
+            let result = match input {
+                Ready::Host(p) => backend.prove(
+                    &instance,
+                    p,
+                    &claims[*source],
+                    &gammas,
+                    &masks[index],
+                    &binding,
+                    t,
+                ),
+                Ready::Device(p, registry) => registry.batch(
+                    p.source().descriptor().id,
+                    &instance,
+                    &claims[*source],
+                    &gammas,
+                    &masks[index],
+                    &binding,
+                    t,
+                ),
+            }?;
+            input.finish(id, &verified[*source], result, t)?
+        } else {
+            let Ready::Host(input) = &prepared[*source] else {
+                return Err(Error::Backend);
+            };
+            prove_batch(
+                id,
+                input,
+                &verified[*source],
+                &claims[*source],
+                &masks[index],
+                &binding,
+                t,
+            )?
+        };
         mus.push(mask_claim(&plan, index, &point, batch.sumcheck.mask_final)?);
         if life_source == Some(*source) {
             let ell = plan.layouts[*source].ell as usize;
@@ -3405,25 +3699,46 @@ where
     let mut detail = stele_sumcheck::parallel::Laps::start();
     let shared = &prepared[shared_index];
     let gammas = coefficients(t, mus.len())?;
-    let weights = weight_table(shared.source(), &mus, &gammas)?;
     let i = batch_instance(plan.shared_batch_id(), shared.source(), &mus, &gammas);
-    let dense = Dense::new(&i, vec![weights, face(shared)]).map_err(Error::Sumcheck)?;
-    detail.lap("zk/detail/shared_weights_face");
-    let (proof, point) = prove_at(&i, dense, seed, t, plan.policy())?;
+    let (proof, point) = if let Some(factory) = execution.and_then(|e| e.standalone) {
+        let Ready::Device(_, registry) = shared else {
+            return Err(Error::Backend);
+        };
+        super::prove_bound(
+            &i,
+            seed,
+            t,
+            plan.policy(),
+            Some(factory),
+            |mask, binding, t| {
+                registry.batch(
+                    shared.source().descriptor().id,
+                    &i,
+                    &mus,
+                    &gammas,
+                    mask,
+                    binding,
+                    t,
+                )
+            },
+        )?
+    } else {
+        let weights = weight_table(shared.source(), &mus, &gammas)?;
+        let dense = Dense::new(&i, vec![weights, shared.face()]).map_err(Error::Sumcheck)?;
+        detail.lap("zk/detail/shared_weights_face");
+        prove_at(&i, dense, seed, t, plan.policy())?
+    };
     detail.lap("zk/detail/shared_prove");
     if point[0] == zero::<K>() {
         return Err(Error::BatchPoint);
     }
-    let shared_opening = shared
-        .opening_point(
-            t,
-            &verified[shared_index],
-            plan.shared_batch_id(),
-            &opening_point(&point, plan.shared.0 as usize),
-            proof.sumcheck.final_values[1],
-        )
-        .map_err(|f| Error::Pcs(f.cause))?
-        .0;
+    let shared_opening = shared.open(
+        t,
+        &verified[shared_index],
+        plan.shared_batch_id(),
+        &opening_point(&point, plan.shared.0 as usize),
+        proof.sumcheck.final_values[1],
+    )?;
     detail.lap("zk/detail/shared_opening");
     laps.lap("zk/shared_batch_and_opening");
     Ok((
@@ -3456,7 +3771,25 @@ pub fn prove_lifetime<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let (proof, revealed) = prove_with(
+    prove_lifetime_execution(statement, columns, seed, t, lifetime, model, None)
+}
+
+pub(super) fn prove_lifetime_execution<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    seed: Seed,
+    t: &mut Transcript<K>,
+    lifetime: &Lifetime,
+    model: ModelSecret<'_, K>,
+    execution: Option<BatchExecution<'_, K>>,
+) -> Result<(Proof<K>, Vec<K>), Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    if execution.is_some() && lifetime.geometry != Geometry::Balanced {
+        return Err(Error::Statement);
+    }
+    let (proof, revealed) = prove_observed(
         statement,
         columns,
         &seed.0,
@@ -3464,6 +3797,9 @@ where
         true,
         None,
         Some((lifetime, model)),
+        execution,
+        #[cfg(feature = "bench")]
+        None,
     )?;
     Ok((proof, revealed.ok_or(Error::Statement)?))
 }
@@ -3603,7 +3939,8 @@ where
     t.absorb(AbsorbLabel::FieldSources, &proof.sources[early..].concat())
         .map_err(fail)?;
     let binding = &proof.sources[shared_index];
-    let mut claims: Vec<Vec<Claim<K>>> = vec![Vec::new(); plan.layouts.len()];
+    let mut claims: Vec<Vec<occurrence_weight::Routed<K>>> =
+        (0..plan.layouts.len()).map(|_| Vec::new()).collect();
     let mut mus = Vec::new();
     let mut reductions = Vec::new();
     let mut records = Vec::new();
@@ -3625,7 +3962,8 @@ where
         public_finals(step, point, &free, finals)?;
         let first = step.first();
         for (k, o) in step.occurrences.iter().enumerate() {
-            let (source, claim) = occurrence_claim(&plan, o, point, &free, finals[first + k])?;
+            let (source, claim) =
+                occurrence_weight::route(&plan, o, point, &free, finals[first + k])?;
             claims[source].push(claim);
         }
         mus.push(mask_claim(&plan, j, point, result.mask_final)?);
@@ -3646,25 +3984,36 @@ where
         ledger.add(Line::Rlc, &name, line, r + 2);
         ledger.masked(&name, &result);
         let point = &result.reduction.point;
-        let finals = lookup::finals(&plan, step, run, point, &sumcheck.final_values)?;
-        for (source, claim) in finals.claims.iter().cloned() {
+        let finals = lookup::finals_with(
+            &plan,
+            step,
+            run,
+            point,
+            &sumcheck.final_values,
+            |o, value| occurrence_weight::route(&plan, o, point, &[], value),
+        )?;
+        for (source, claim) in finals.claims {
             claims[source].push(claim);
         }
         mus.push(mask_claim(&plan, index, point, result.mask_final)?);
-        mus.extend(finals.blocks.iter().cloned());
-        lookup::advance(step, run, point, &finals, t)?;
+        mus.extend(finals.blocks);
+        lookup::advance(step, run, point, finals.layers, t)?;
         reductions.push(result.reduction);
         records.push(result.mask);
     }
     for (b, (source, batch)) in plan.batched.iter().zip(&proof.batches).enumerate() {
         let index = plan.steps.len() + plan.gkr.len() + b;
-        let result = verify_batch(
+        let source_claims = &claims[*source];
+        let result = verify_batch_using(
             plan.masks[index].0,
             &verified[*source],
-            &claims[*source],
+            source_claims.iter().map(|c| c.value),
             batch,
             binding,
             t,
+            |source, gammas, point| {
+                occurrence_weight::expected(source, source_claims, gammas, point)
+            },
         )?;
         let name = alloc::format!("batch source {source}");
         let count = claims[*source].len() as u64;
@@ -4136,6 +4485,215 @@ mod tests {
     use super::*;
     use stele_field::{Field, QM31};
 
+    #[test]
+    fn rejects_zero_batch_point_before_opening_visit() {
+        let sumcheck = masked::Proof {
+            mask_sum: QM31::ZERO,
+            rounds: vec![],
+            final_values: vec![QM31::ONE, QM31::ONE],
+            mask_final: QM31::ZERO,
+        };
+        let mut called = false;
+        let result = finish_batch(16, (sumcheck, vec![QM31::ZERO]), |_, _| {
+            called = true;
+            Err(Error::Backend)
+        });
+        assert!(matches!(result, Err(Error::BatchPoint)));
+        assert!(!called);
+    }
+
+    #[test]
+    fn matches_reference_source_mask_prefix_with_rejections() {
+        let mut words: Vec<u32> = (0..2052).collect();
+        // Both encodings of p, including rejections straddling the first 4 KiB read.
+        words[0] = u32::MAX;
+        words[1023] = 0x7fff_ffff;
+        words[1024] = u32::MAX;
+        let bytes: Vec<u8> = words.iter().flat_map(|x| x.to_le_bytes()).collect();
+        for wanted in [0, 1, 1022, 1023, 1024, 2048] {
+            let mut position = 0;
+            skip_mask_prefix(wanted, |out| {
+                out.copy_from_slice(&bytes[position..position + out.len()]);
+                position += out.len();
+            });
+            let mut reference = words.iter();
+            for _ in 0..wanted {
+                reference
+                    .find(|&&w| w & 0x7fff_ffff != 0x7fff_ffff)
+                    .expect("enough accepted words in the reference stream");
+            }
+            assert_eq!(
+                &bytes[position..],
+                &bytes[4 * (words.len() - reference.len())..]
+            );
+        }
+    }
+
+    #[test]
+    fn matches_reference_source_mask_stream_tail() {
+        for (id, rows, width) in [(0, 1, 1), (7, 2, 128), (31, 16, 128)] {
+            let mut reference = MaskStream::new(&[21; 32], SOURCE_MASK, id);
+            for _ in 0..3 * rows * width {
+                reference.m31();
+            }
+            let mut candidate = after_masks(&[21; 32], id, rows, width);
+            for _ in 0..17 {
+                assert_eq!(candidate.m31(), reference.m31());
+            }
+            let mut expected = [0; 79];
+            let mut actual = [0; 79];
+            reference.fill(&mut expected);
+            candidate.fill(&mut actual);
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn matches_reference_projected_relation_columns() {
+        // Project each input axis independently. Variable axes cannot repeat (the plan validates distinct).
+        let choices = [
+            Coord::Var(0),
+            Coord::Var(1),
+            Coord::Var(2),
+            Coord::Free(1),
+            Coord::Free(0),
+            Coord::Fixed(0),
+            Coord::Fixed(1),
+        ];
+        let q = |i: i64| {
+            basis::<QM31>(2).expect("extension basis") * QM31::from_i64(i * i + 1)
+                + QM31::from_i64(i.pow(3) - i + 1)
+        };
+        for ncoords in 0..=3 {
+            let column: Vec<_> = (0..1usize << ncoords)
+                .map(|i| q(1 + 3 * i as i64))
+                .collect();
+            for mut code in 0..choices.len().pow(ncoords as u32) {
+                let mut coords = Vec::new();
+                for _ in 0..ncoords {
+                    coords.push(choices[code % choices.len()]);
+                    code /= choices.len();
+                }
+                if [0, 1, 2].iter().any(|v| {
+                    coords
+                        .iter()
+                        .filter(|c| matches!(c, Coord::Var(i) if i == v))
+                        .count()
+                        > 1
+                }) {
+                    continue;
+                }
+                for free in [[q(7), q(-3)], [zero::<QM31>(), QM31::from_i64(1)]] {
+                    let got = domain_table(&column, &coords, &free, 3);
+                    assert_eq!(got.len(), 8);
+                    for (i, value) in got.into_iter().enumerate() {
+                        let point: Vec<_> = (0..3)
+                            .map(|j| QM31::from_i64(bit(i, j, 3) as i64))
+                            .collect();
+                        let w = stele_poly::eq_table(&column_point(&coords, &point, &free))
+                            .expect("dense column oracle");
+                        let expected = column
+                            .iter()
+                            .zip(w)
+                            .fold(zero::<QM31>(), |s, (x, w)| s + *x * w);
+                        assert_eq!(value, expected);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn matches_reference_wide_column_on_a_small_domain() {
+        // One live or no live variables: fixed/free column width never sets the scratch size.
+        let unit = basis::<QM31>(1).expect("extension basis");
+        let column: Vec<_> = (0..1 << 16)
+            .map(|i| unit * QM31::from_i64(i) + QM31::from_i64(i * i))
+            .collect();
+        let mut fixed = vec![Coord::Fixed(1); 16];
+        fixed[7] = Coord::Var(2);
+        for (i, value) in domain_table(&column, &fixed, &[], 3)
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(value, column[0xffff ^ ((1 - bit(i, 2, 3)) << 8)]);
+        }
+        let free: Vec<_> = (0..16).map(|i| unit + QM31::from_i64(i)).collect();
+        let eq = stele_poly::eq_table(&free).expect("dense free-coordinate table");
+        let expected = column
+            .iter()
+            .zip(eq)
+            .fold(zero::<QM31>(), |s, (v, w)| s + *v * w);
+        assert_eq!(
+            domain_table(
+                &column,
+                &(0..16).map(Coord::Free).collect::<Vec<_>>(),
+                &free,
+                3
+            ),
+            vec![expected; 8]
+        );
+    }
+
+    #[test]
+    fn matches_reference_sparse_batch_weight() {
+        let q = |n| basis::<QM31>(1).expect("extension basis") + QM31::from_i64(n);
+        for ell in [3, 4] {
+            let source =
+                Source::<QM31>::hiding(0, ell, MIN_M, BLOWUP, [0; 32]).expect("hiding source");
+            let last = (source.rows() / 2) * (source.columns() / 2) - 1;
+            let claims = [
+                Claim {
+                    weights: vec![(0, q(2)), (last, q(3)), (0, q(5))],
+                    value: q(7),
+                },
+                Claim {
+                    weights: vec![(last, q(11)), (2, q(13))],
+                    value: q(17),
+                },
+                Claim {
+                    weights: vec![],
+                    value: q(19),
+                },
+            ];
+            let gammas = [q(23), q(29), q(31)];
+            let table = weight_table(&source, &claims, &gammas).expect("dense weights");
+            let mut point: Vec<_> = (0..table.len().ilog2()).map(|i| q(i64::from(i))).collect();
+            for w in [QM31::from_i64(0), QM31::from_i64(1), q(37)] {
+                point[0] = w;
+                let eq = stele_poly::eq_table(&point).expect("dense equality table");
+                let dense = eq
+                    .iter()
+                    .zip(&table)
+                    .fold(zero::<QM31>(), |s, (a, b)| s + *a * *b);
+                assert_eq!(
+                    expected_weight(&source, &claims, &gammas, &point),
+                    Ok(dense)
+                );
+            }
+            assert_eq!(
+                expected_weight(&source, &[], &[], &point),
+                Ok(zero::<QM31>())
+            );
+            assert_eq!(
+                expected_weight(&source, &claims, &gammas[..2], &point),
+                Err(Error::Statement)
+            );
+            assert_eq!(
+                expected_weight(&source, &claims, &gammas, &point[1..]),
+                Err(Error::Statement)
+            );
+            let bad = Claim {
+                weights: vec![(last + 1, q(41))],
+                value: q(43),
+            };
+            assert_eq!(
+                expected_weight(&source, &[bad], &[zero::<QM31>()], &point),
+                Err(Error::Statement)
+            );
+        }
+    }
+
     /// E12-26: the ledger's integer log2 and its round security, rounded toward the
     /// larger error; the eight-layer byte-4 LU and witness tensor rounds.
     #[test]
@@ -4287,6 +4845,173 @@ mod tests {
         )
     }
 
+    #[test]
+    fn matches_reference_interleaved_lookup_source_offsets() {
+        let (mut statement, mut columns) = lookup_case();
+        statement.sources = 2;
+        // Before either referenced column, place a different-size prefix in each owner.
+        statement.columns[0].source = 1;
+        statement.columns.splice(
+            ..0,
+            [
+                Column {
+                    source: 1,
+                    log_len: 1,
+                },
+                Column {
+                    source: 0,
+                    log_len: 2,
+                },
+            ],
+        );
+        columns.splice(
+            ..0,
+            [vec![M31::from_i64(19); 2], vec![M31::from_i64(37); 4]],
+        );
+        statement.lookups[0].members[0].tuple[0].column = 2;
+        statement.lookups[0].multiplicity = 3;
+        let plan = plan(&statement).expect("plan");
+        let descriptors = lookup::source_input::descriptors(&plan, &columns).expect("descriptors");
+        let input = descriptors[0].input(QM31::from_i64(11), QM31::from_i64(23));
+        for (column, owner, offset) in [
+            (input.members[0].tuple[0].column, 1, 2),
+            (input.multiplicity, 0, 4),
+        ] {
+            assert_eq!(
+                (column.owner, column.geometry.id),
+                (owner, plan.source_id(owner))
+            );
+            assert_eq!((column.offset, column.len), (offset, 16));
+            let width = column.geometry.columns / 2;
+            for i in 0..column.len {
+                let logical = offset + i;
+                let physical = logical / width * (2 * width) + logical % width;
+                assert_eq!(column.physical(i).expect("physical"), physical);
+            }
+        }
+    }
+
+    #[test]
+    fn matches_reference_ordinary_batch_execution_and_rejects_stale_session() {
+        let (statement, columns) = lookup_case();
+        check_live_execution(&statement, &columns);
+    }
+
+    #[test]
+    fn matches_reference_live_gkr_single_level_and_expanded_aliased_members() {
+        // Each original tuple leg reads the same column. Two members share both
+        // legs; a single member has a first-and-leaf step. Both require the
+        // original padded-table obligation at the transcript's final point.
+        for count in [1, 2] {
+            let member = Member {
+                vars: 3,
+                tuple: vec![
+                    Read {
+                        column: 0,
+                        vars: vec![0, 1, 2]
+                    };
+                    2
+                ],
+                shifts: vec![-3, 4],
+                selector: Some(Public {
+                    values: vec![1, 0],
+                    vars: vec![0],
+                }),
+            };
+            let statement = Statement::<QM31> {
+                sources: 1,
+                columns: vec![
+                    Column {
+                        source: 0,
+                        log_len: 3,
+                    },
+                    Column {
+                        source: 0,
+                        log_len: 2,
+                    },
+                ],
+                relations: Vec::new(),
+                lookups: vec![Lookup {
+                    members: vec![member; count],
+                    multiplicity: 1,
+                    table: vec![vec![-2, 5], vec![-1, 6], vec![0, 0], vec![0, 0]],
+                    valid: 2,
+                }],
+            };
+            let columns = vec![
+                (0..8).map(|i| M31::from_i64(1 + i % 2)).collect(),
+                [2 * count as i64, 2 * count as i64, 0, 0]
+                    .map(M31::from_i64)
+                    .to_vec(),
+            ];
+            let plan = plan(&statement).expect("lookup plan");
+            assert_eq!(plan.gkr.len(), count);
+            assert!(plan.gkr[0].is_first());
+            assert!(plan.gkr[count - 1].is_leaf());
+            check_live_execution(&statement, &columns);
+        }
+    }
+
+    fn check_live_execution(statement: &Statement<QM31>, columns: &[Vec<M31>]) {
+        let lifetime = Lifetime {
+            geometry: Geometry::Balanced,
+            source: 0,
+            proofs: 2,
+            index: 0,
+            blocks: occurrence_counts(statement).expect("occurrences"),
+        };
+        let model_seed = [17; 32];
+        let root = lifetime_root(statement, columns, &lifetime, &model_seed).expect("source root");
+        let model = || ModelSecret {
+            seed: &model_seed,
+            revealed: Vec::new(),
+            root,
+        };
+        let transcript = || Transcript::<QM31>::new(b"batch-execution").expect("transcript");
+        let session = stele_kernels::Scalar::<QM31>::new();
+        let produce = |execution| {
+            prove_lifetime_execution(
+                statement,
+                columns,
+                Seed::new([81; 32]),
+                &mut transcript(),
+                &lifetime,
+                model(),
+                execution,
+            )
+        };
+        let (reference, previously_revealed) = produce(None).expect("CPU reference");
+        assert!(!reference.relations.is_empty());
+        let relations_session = stele_kernels::Scalar::<QM31>::new();
+        let (all_relations, revealed) =
+            produce(Some(BatchExecution::with_relations(&relations_session)))
+                .expect("selected relation, GKR and batch execution");
+        assert_eq!(encode(&reference), encode(&all_relations));
+        assert_eq!(previously_revealed, revealed);
+        verify_lifetime(
+            statement,
+            Some(&lifetime),
+            &all_relations,
+            &mut transcript(),
+        )
+        .expect("all selected proof");
+        let complete_session = stele_kernels::Scalar::<QM31>::new();
+        let (all_stages, all_revealed) = produce(Some(BatchExecution::with_gkr(&complete_session)))
+            .expect("live GKR field execution");
+        assert_eq!(encode(&reference), encode(&all_stages));
+        assert_eq!(previously_revealed, all_revealed);
+        let (candidate, revealed) =
+            produce(Some(BatchExecution::new(&session))).expect("field execution");
+        assert_eq!(encode(&reference), encode(&candidate));
+        assert_eq!(revealed, previously_revealed);
+        verify_lifetime(statement, Some(&lifetime), &candidate, &mut transcript())
+            .expect("ordinary verification");
+        assert_eq!(
+            produce(Some(BatchExecution::new(&session))),
+            Err(Error::Backend)
+        );
+    }
+
     /// A ZK-GKR check tree of up to `2^30` positions plans (RFC-0026 A3's `m ≤ 30`,
     /// and `N < p` for RFC-0012 A8's characteristic hypothesis); `2^31` is refused. A
     /// real checkpoint's weight range check concatenates `2^24`-entry members up to
@@ -4415,7 +5140,7 @@ mod tests {
                 blocks: vec![t],
             };
             let plan = plan_with(&statement, Some(&life)).expect("plan");
-            let (_, first) = plan.layouts[1].offsets[0];
+            let (_, first) = plan.offsets[1];
             assert_eq!(plan.reserved[1], 3 * t);
             let mut out: Vec<usize> = plan
                 .steps

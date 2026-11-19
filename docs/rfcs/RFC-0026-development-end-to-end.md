@@ -2343,3 +2343,82 @@ E16-10b executes the accepted contract through the mandatory harness. E16-10b
 is blocked on acceptance of A18. NC-1302 and NC-1306 are unchanged. This text
 neither supplies a production adversarial-producer interface nor uses the
 unmerged E16-10b1 interface. Promotion to `standard` or `treaty` is not granted.
+
+### A19 — Execution of balanced dev-zk ordinary batches
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-10.
+[Independent lane Z review](../../agents/reviews/e20-10-dev-zk-backend-contract.md)
+
+Add to §7: profile byte 4 may use the RFC-0014 A2 backend for its ordinary
+claim batches. This preserves the existing proof statement and cost claim.
+The caller selects a backend as an execution option. The proof format,
+commitments, profile selection and independent verifier are unaffected.
+Report measured performance on the actual rung with all checks enabled.
+
+Soundness, challenge counts, ledger error terms, cells, lookups, proof bytes
+and control IDs are unchanged. RFC-0014 A2 defines operation parity, normal
+verification and measured resource checks. Affected tasks are E20-11 and
+E20-12. Promotion remains governed by Workflow 10.
+
+### A20 — Compute balanced dev-zk GKR field messages through a selected backend
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-13.
+[Independent lane Z review](../../agents/reviews/e20-13-live-gkr-contract.md)
+
+Extend A19's §7 execution option to the existing RFC-0008 A7 GKR field
+messages as specified by RFC-0014 A3. The full source-bound statement, wire
+bytes, public checks, challenge schedule, lifetime admission, soundness ledger
+and independent verification remain those of profile byte 4. E20-14 reports
+actual device participation, full proof parity and charged T32 resources.
+
+### A21 — Execute balanced development-ZK relation fields on the selected backend
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-15.
+[Independent review](../../agents/reviews/e20-15-live-relation-contract.md)
+
+Extend §7 and A19–A20's local execution option to the RFC-0013 A5 relations.
+The explicit combined backend computes all relation round evaluations, folds
+and final fields alongside the A7 GKR and ordinary batch fields. A4's
+checked sumcheck and A5's occurrence routing, rank and copy checks run in
+their original transcript order. The public bundle, committed statement,
+source material, proof bytes, lifetime reservation and verification rules
+remain identical. E20-16 exercises 50 complete CPU/CUDA proof pairs and
+the ordinary verified T32 workload at development profile byte 4.
+
+### A22 — Device-prepared material in balanced ZK inference
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-17.
+[Independent review](../../agents/reviews/e20-17-hiding-source-contract.md)
+
+Add RFC-0014 A5 to §7 and A19–A21's local byte-4 execution option. The normal
+proof producer may prepare and serve RFC-0010 A16 hiding-source material
+through the selected backend. Its committed model, statement, seeds, lifetime
+transaction, checked witness, Fiat–Shamir order and verified proof bytes
+remain those of A9. The default CPU path keeps its original preparation.
+E20-18 measures the whole selected proving run, including both source visits.
+
+### A23 — Selected lookup tops and retained GKR children in balanced inference
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-19.
+[Independent review](../../agents/reviews/e20-19-lookup-tree-ownership.md)
+
+The byte-4 normal prover may select RFC-0014 A6 after A22. The same top
+values and quotient enter the late source, and A7 receives the same ordered
+child factors. A failed provider or denominator check aborts under the
+existing proof-index transaction. Qualification reruns byte-identical proofs,
+ordinary independent verification, wrong-model rejection and backend-error
+rollback. All development profile, parser and verifier rules remain unchanged.
+
+### A24 — Select the balanced shared batch and standalone mask source
+
+Status: Accepted (development tier under RFC-0027 §2). Task E20-21.
+[Independent review](../../agents/reviews/e20-21-shared-batch.md)
+
+An explicitly selected balanced prover can perform RFC-0014 A7 after the
+ordered relation, lookup and ordinary-batch work. Its additional source is
+the same A4 two-block mask-polynomial source already encoded in the shared
+batch proof. Keep byte 4, plan authority, all expected-source checks and the
+model reservation transaction. Every selected proof reports actual source
+visits and batch operations, including the final shared batch. E20-22 compares
+complete pinned CPU/device proofs and the ordinary independently verified
+T32 run with these counts enabled.

@@ -1,0 +1,68 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "11a1f564e1f6a3b9eade9907ef01f88c4653f3e5",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-22afdccc-aafa-3402-5002-3636ec6a5f0e, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "changed_model_rejections": 2,
+    "changed_round_rejections": 1,
+    "complete_byte_matches": 50,
+    "distinct_models": 50,
+    "finals": 150,
+    "folds": 2550,
+    "ordinary_batches": 150,
+    "replays": 1,
+    "rounds": 2550,
+    "unavailable_device_rejections": 1,
+    "verified_proofs": 102
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk byte 4",
+    "job": 6933,
+    "plan": {
+      "context": 16,
+      "cpu_manifest": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
+      "heads": 4,
+      "hidden": 128,
+      "layers": 1,
+      "models": 50,
+      "positions": 2,
+      "profile": "dev-zk byte 4",
+      "selected": "ordinary masked dense batches",
+      "vocabulary": 256,
+      "width": 64
+    },
+    "public_receipt_sha256": {
+      "allocation.txt": "008725425441f8920f970d70439981f93007377c0ec537022d0af4411bd2cff6",
+      "campaign.time": "bca2bcd32d14ad5f88a9a69d133aeea9995a55e65a996177f09f6995750f162a",
+      "device.txt": "68776bfaacb1c0bc4c3670216d20eac5df105872dc60800f90a32412bed20e68",
+      "parity.err": "a12d9fea01a4fce6acabc5cd88becc8f53bfdbec6392c70a886143664ee160ec",
+      "parity.out": "d0d7b1c3d3ccae3d70528fc288e5111081a5c3c1b37105b9eac71a0690d9a1fd"
+    }
+  },
+  "note": "Campaign wall covers builds, the device differential, fixture preparation, CPU and CUDA proofs, comparisons, independent CPU-only verifier replays and changed-model controls. Operation counts for the 50 primary CUDA proofs exclude the additional deterministic replay. Each byte pair matched the pinned scalar reference.",
+  "plan_digest": "8530db1f21201519ceba52aa378c502c7f87a8e0d82c2a37bf6485c480424f7a",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 528790000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "complete_gate": 528790000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-complete-proof-parity"
+}

@@ -238,6 +238,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "stele-kernels"
+version = "0.1.0"
+dependencies = [
+ "stele-field",
+]
+
+[[package]]
 name = "stele-lookup"
 version = "0.1.0"
 dependencies = [
@@ -302,6 +309,7 @@ dependencies = [
  "stele-gkr",
  "stele-hash",
  "stele-ir",
+ "stele-kernels",
  "stele-lookup",
  "stele-pcs",
  "stele-poly",
