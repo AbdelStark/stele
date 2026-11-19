@@ -1,0 +1,156 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "25ced32d50ff0529a7a90c9086e37434df86e160",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "06/cf (16 pinned CPU threads)",
+  "driver": "not-applicable",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "checked_columns_per_trial": 5583,
+    "checked_field_entries_per_trial": 173797790,
+    "lookup_tables": 21,
+    "process_peak_rss_bytes": 88553234432,
+    "trials": 3
+  },
+  "kind": "micro",
+  "model_config": {
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "cli_sha256": "470528865b3118919374a1238e947525bcda8c8e818e2ba01ee46f6bc458c6d4",
+    "harness_sha256": {
+      "baseline.rs": "3efd05e2495a17c371f6ba4f251db7f27cbc69f6bead0223b40fde17ad859e18",
+      "campaign.sbatch": "91a9685b1c5f99e2f14d7269c6e817175610ee77128e81f4afcd9ff7e607972b",
+      "capture.py": "9e323ebf3025340b0855fda77e3685ea2839efa299ac58dba4d3a86109d47f0c",
+      "install.py": "284c2090f6735b7cb056694acbaf4027b420596cbbceed76a7320c6d7de9fafd",
+      "receipt.py": "291d03b63219f81d24ff20e72cbfd220ea73fe8d4fa582a3b828786d17f6a498",
+      "source.tar.gz": "e263fcaa359a98bd7ca7cfa33165a61a396f751115feb9c1e9291591904740d2"
+    },
+    "inputs": {
+      "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+      "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+      "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+      "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+    },
+    "job": "6783",
+    "plan": {
+      "baseline": "f32d8d1c4aa8e37b1a6060f8ec6f749a5f539662",
+      "candidate": "25ced32d50ff0529a7a90c9086e37434df86e160",
+      "checked": "23..32",
+      "inputs": {
+        "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+        "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+        "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+        "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+      },
+      "operation": "count canonical lookup multiplicities and produce all committed value columns on the original T32 values",
+      "orders": [
+        "base/candidate",
+        "candidate/base",
+        "base/candidate"
+      ],
+      "profile": "dev-zk",
+      "tokens": 32,
+      "workload": "dev/stories42m-t32"
+    },
+    "profile": "dev-zk",
+    "proof_sha256": "0551a8043664fd5e996ba4817aa28a0a4321a5603de167837d94631c1eb306fb",
+    "public_evidence_sha256": {
+      "allocations.txt": "7c004fb7e78e1c189b8daaa54e15fcaf060a19665c62bad6bbc7bb16272cf63d",
+      "commit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "commit.json": "006598c0fd509ab1eeaee0408b35b5a225db3582881f5f8e3b828c06f90ed951",
+      "commit.out": "4fda8e8b4feaf639120e5500134a1aa4a5c622e7680c057ed005392bf797855d",
+      "commit.time": "3c7424b331fc023c1b11370895cb6a2e6602a4059b8f689bc8865e9d9d122786",
+      "cpu.txt": "43a5f371381d943051ab39cb8bbd5b8fad7e762c9899c26ce2bb8f1ed520c3f9",
+      "prove.err": "2af086d481a272af0a612cca55ea2dd272e79d1f89ee3d19806589e3584c5ef7",
+      "prove.json": "150a6eb012c8c7d6aa732b336bcb19812d8ef85664f521a9609cd5770f82e4c1",
+      "prove.out": "6d736ba3fb4f31654d2758a0e9aef894e6cd3da60286673e18cf538bccd9ec57",
+      "prove.time": "a457d581b9d76f981eab892243bb5fd1f9ff2511720f7da76e3d2c5928604e04",
+      "result.json": "46fd1ba4c9f7fd73e6497116ee1d0248c5159b327f6bc013fb91201aab170cbd",
+      "sacct.txt": "188d65b4f61416db09ae0eafc0c20abf0599d559fc1749fdd7897dae93b3500e",
+      "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3",
+      "verify.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verify.json": "b9dc655e66a9c9f3adc397ffe6c02fea3ff0505efedf1c9c2902e2c44b498c51",
+      "verify.out": "443356554ac0a1e091a3e231ec9a5586e2f4f24e552471b4610d252d124cb610",
+      "verify.time": "ba16cb8d5263b330df5f40063487c3d8a305d3d02e5800086ca606920149d8a2",
+      "wrong.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "wrong.json": "50875976898cdea3db6b117f8ad39494d13ac408b221c5d87e84f0f3a91ab0b9",
+      "wrong.out": "519e3f8cfb26a1fc8a4b272314fc64f806712e122704343d8adf7173cf11a766",
+      "wrong.time": "67c1e0872c46eab95fd24a7adebbb96abbc1b40187d79be28c3f7de046dc1fa2"
+    },
+    "public_sha256": "9a829f5a60ffb04b92f69a3186b2cf418ba0209717f2030b85ad711b6622d850",
+    "reference": "The frozen baseline and production candidate each derive their own layout before timing. Both consume the same borrowed real T32 relation and witness values. Every committed column and derived multiplicity is compared element for element in every trial before the ordinary proof continues. Device resources requested: zero.",
+    "stage_trials": [
+      {
+        "after_ns": 647208932,
+        "before_ns": 24928452601,
+        "cells": 173797790,
+        "columns": 5583,
+        "lookups": 21,
+        "trial": 0
+      },
+      {
+        "after_ns": 683168549,
+        "before_ns": 23583934583,
+        "cells": 173797790,
+        "columns": 5583,
+        "lookups": 21,
+        "trial": 1
+      },
+      {
+        "after_ns": 638933178,
+        "before_ns": 23545011345,
+        "cells": 173797790,
+        "columns": 5583,
+        "lookups": 21,
+        "trial": 2
+      }
+    ],
+    "verifier_sha256": "b16646342de292f1d4733b9ccb80cff4d857ea550cb522581453249a1feb77dc",
+    "workload": "dev/stories42m-t32"
+  },
+  "note": "Same-input dev-zk CPU stage measurements in one complete development proof with the ordinary independent verifier and wrong-model control. The separately recorded Mac ledgers time uninstrumented end-to-end proofs. This micro ledger uses the standard record format and confers no security or GPU profile.",
+  "plan_digest": "ad96d27eca18a4742b9b74f7700961889f62516dd5832fc14b886cc894f693a7",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 891300000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "columns/base/0": 24928452601,
+    "columns/base/1": 23583934583,
+    "columns/base/2": 23545011345,
+    "columns/base/median": 23583934583,
+    "columns/candidate/0": 647208932,
+    "columns/candidate/1": 683168549,
+    "columns/candidate/2": 638933178,
+    "columns/candidate/median": 647208932
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-stories42m-t32-lookup-multiplicities-cpu"
+}
