@@ -1168,8 +1168,8 @@ fn combined<K: ChallengeField + CodeField>(
 /// source, and the layer values `[[p(0), p(1)], [q(0), q(1)]]`. Public finals are
 /// checked (`ClaimMismatch`).
 #[derive(Clone)]
-pub(super) struct Finals<K> {
-    pub(super) claims: Vec<(usize, Claim<K>)>,
+pub(super) struct Finals<K, C = Claim<K>> {
+    pub(super) claims: Vec<(usize, C)>,
     pub(super) blocks: Vec<Claim<K>>,
     pub(super) layers: [[K; 2]; 2],
 }
@@ -1182,6 +1182,22 @@ pub(super) fn finals<K: ChallengeField + CodeField + Eq>(
     point: &[K],
     finals: &[K],
 ) -> Result<Finals<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    finals_with(plan, step, run, point, finals, |o, value| {
+        occurrence_claim(plan, o, point, &[], value)
+    })
+}
+
+pub(super) fn finals_with<K: ChallengeField + CodeField + Eq, C>(
+    plan: &Plan<K>,
+    step: &GkrStep,
+    run: &Run<K>,
+    point: &[K],
+    finals: &[K],
+    route: impl Fn(&Occurrence, K) -> Result<(usize, C), Error>,
+) -> Result<Finals<K, C>, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
@@ -1238,8 +1254,7 @@ where
                 continue;
             }
             Gin::Top(o) | Gin::Leaf(o) => {
-                out.claims
-                    .push(occurrence_claim(plan, o, point, &[], *value)?);
+                out.claims.push(route(o, *value)?);
                 continue;
             }
             Gin::Layer { poly, t, .. } => {
@@ -1310,7 +1325,7 @@ pub(super) fn advance<K: ChallengeField + CodeField>(
     step: &GkrStep,
     run: &mut Run<K>,
     point: &[K],
-    layers: &Finals<K>,
+    layers: [[K; 2]; 2],
     t: &mut Transcript<K>,
 ) -> Result<(), Error> {
     if step.leaf {
@@ -1318,8 +1333,7 @@ pub(super) fn advance<K: ChallengeField + CodeField>(
     }
     let tstar = draw(t, ChallengeLabel::FractionFold)?;
     let u: Vec<K> = step.y.iter().map(|j| point[*j]).collect();
-    for poly in 0..2 {
-        let [a, b] = layers.layers[poly];
+    for (poly, [a, b]) in layers.into_iter().enumerate() {
         run.claims[poly] = a + tstar * (b - a);
         let k = kappa(point[step.xo + poly]);
         run.incoming[poly] = (k, u.clone());
