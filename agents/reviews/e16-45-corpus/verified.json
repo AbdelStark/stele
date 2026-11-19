@@ -1,0 +1,33 @@
+{
+  "complete_byte_matches": 50,
+  "cpu_reference_manifest_sha256": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
+  "distinct_models": 50,
+  "distinct_public_outputs": 50,
+  "gpu_proofs_compared": 0,
+  "inputs_sha256": "eb82268df09aaefd65abb0583e53d65b8360f089ead21510a1b048393b155387",
+  "node": "rtx-cc-0",
+  "producer_sha256": "82fa28e23818bb1161adc5631b3acc61e882acbbce883ecdb2e1cd58156e30de",
+  "public_receipt_sha256": {
+    "allocation.txt": "a5c6da5d751a6abfe9f2e4c994e8a8a68d87a88193b220c480ab53915206fe33",
+    "binaries.sha256": "e1d5183d7e540989614f79b684aba97d5129057971c6b728ef7881db4151b61f",
+    "cases.jsonl": "8d6570c17ad2a19f628826efc9ff9d7b62233d189412d0ee435d68c90c304a47",
+    "comparison.json": "6b5ee651d6c1518979f6bd7cc8b5c7cbf001158d092f5e6add2bae824d5238c6",
+    "slurm.txt": "f46ea9db437c11410b7db623ec6bdd7456cdfd27199f7b76d7005640176cacdd",
+    "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3"
+  },
+  "qualification": "CPU to CPU complete binary equality",
+  "replayed_case": 0,
+  "scheduler_source_sha256": {
+    "campaign.sbatch": "35cc1e62b6d7fe2cacb5e601ec92fc72283943209b094a79b04a00dcf159d5f6",
+    "reference.py": "29db96bdc43716aecfe98181adf8565c734514810fdde185f75e99ae83ee8d77",
+    "source.tar.gz": "c37dc8081d3461e6f0176f080ac9d391e9bc9c2932e6d9ad88a50b518a264ad1",
+    "synthetic_proof.rs": "e8eae781ff72c75bdc42089f4651bc5d1f547f31bebead8b724f1e1e9ec01452"
+  },
+  "slurm_job": 6797,
+  "source_commits": [
+    "da0da773c9a4db2dbc3907ebe0adec40594ee823",
+    "bcafe9b1324733e9c71cea734484d86412495c29"
+  ],
+  "verifier_sha256": "b16646342de292f1d4733b9ccb80cff4d857ea550cb522581453249a1feb77dc",
+  "wrong_expected_model_rejected_case": 0
+}
