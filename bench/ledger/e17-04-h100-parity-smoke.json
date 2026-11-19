@@ -1,0 +1,43 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "d88ad999b2d88d18394f49c2152c096fe54984b7",
+ "controls": {
+  "failed": 0,
+  "passed": 0,
+  "total": 0
+ },
+ "device": "NVIDIA H100 80GB HBM3 (81559 MiB)",
+ "driver": "580.173.02",
+ "generated_tokens": 0,
+ "kernel_counters": {
+  "parity_log_bytes": 39631,
+  "parity_peak_rss_bytes": 663187456
+ },
+ "kind": "micro",
+ "model_config": {
+  "command": "scripts/gates/parity.sh",
+  "host_context": "Dedicated 1x NVIDIA H100 80GB HBM3 and 12-core x86_64 Intel Xeon Platinum 8480CL Slurm GPU allocation (64 GiB RAM), run via bench/remote.py",
+  "parity_err_sha256": "a6e3c2d945c07b389df7bf1ae6a2fac792583dd3e710da6dca728e5550f02bf3",
+  "parity_out_sha256": "927eb9bbff7841921c870b8d2331f7419d5b60bb4ce701547e14f4914e134ca3",
+  "pinned_image": "docker.io/library/rust@sha256:3f6e6f8d8725a65a2db964bb828850f888d430c68784d661f753144e5d787207",
+  "threads": 12
+ },
+ "note": "RFC-0018 \u00a71 remote GPU parity smoke run (task E17-04) executing scripts/gates/parity.sh inside a digest-pinned image; verifies CPU/CUDA byte parity and negative controls on the development tier (claims no security level). Remote host run cost: $0.5911 USD (608.00 s at $3.50/hr; pinned image docker.io/library/rust@sha256:3f6e6f8d8725a65a2db964bb828850f888d430c68784d661f753144e5d787207).",
+ "plan_digest": "a710bdae34e7a8d6b8413e4edbeef02179e02aed41dcacdd09b10da2c7f44d63",
+ "profile": "standard",
+ "prompt_tokens": 0,
+ "proof_size_bytes": 0,
+ "prover_time_ns": 608000000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "gpu_parity_smoke": 608000000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 0
+ },
+ "witness_recompute_ns": 0,
+ "workload": "micro/remote-gpu-parity-smoke"
+}
