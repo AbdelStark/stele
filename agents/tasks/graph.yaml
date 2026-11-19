@@ -4943,7 +4943,7 @@ tasks:
   skill: fidelity-researcher
   crate: stele-prover+stele-bench
   lane: N
-  status: ready
+  status: done
   acceptance:
   - for any Model and window the tool prints, per module and relation kind, committed cells and lookup positions by width, without proving
   - its totals equal the E17-01 engine counters on L1

@@ -5,7 +5,7 @@
   python3 bench/scoreboard.py --check    # fail if bench/scoreboard.md is stale
 
 Bootstrap generator: task E17-02 moves it into `stele-bench scoreboard` with the same
-output. It reads inference records only and never edits a ledger.
+output. It reads inference records and E22-01 static-accounting micro records and never edits a ledger.
 """
 import argparse
 import json
@@ -69,6 +69,33 @@ def rows():
     return [cols for _, _, _, cols in sorted(out, key=lambda x: x[:3])]
 
 
+def static_rows():
+    out = []
+    for path in sorted((ROOT / 'bench/ledger').glob('*.json')):
+        r = json.loads(path.read_text())
+        if r['kind'] != 'micro' or not r['workload'].startswith('micro/static-accounting-'):
+            continue
+        mc = r['model_config']
+        k = r['kernel_counters']
+        rung = mc['target_rung']
+        model_name = mc.get('model_name', r['workload'])
+        tokens = k['tokens']
+        cells = k['committed_cells']
+        lookups = k['lookup_positions']
+        def fmt_top(key, count_key):
+            obj = mc.get(key)
+            if not isinstance(obj, dict):
+                return '—'
+            return f"{obj.get('module', '—')} ({obj.get(count_key, 0):,})"
+        out.append((ORDER.index(rung) if rung in ORDER else len(ORDER), rung, path.name, [
+            rung, model_name, str(tokens), f'{cells:,}', f'{cells // tokens:,}',
+            f'{lookups:,}', f'{lookups // tokens:,}',
+            fmt_top('top_module_cells', 'cells_per_token'),
+            fmt_top('top_module_lookups', 'lookups_per_token'),
+            f"[{path.stem}](ledger/{path.name}) @ `{r['commit'][:7]}`"]))
+    return [cols for _, _, _, cols in sorted(out, key=lambda x: x[:3])]
+
+
 def render():
     head = ['Rung', 'Profile', 'Device', 'Threads', 'Prove s', 'Tok/s', 'Verify s', 'Proof MB', 'RSS GB',
             'Cells/token', 'Lookups/token', 'Weight reads', 'λ bits', 'Controls', 'Ledger']
@@ -84,7 +111,16 @@ def render():
               '  stacked-source size and the sum of the verifier\'s LU numerators (tables included). A dash',
               '  means the record does not carry the counter.',
               '- λ is `none` for every development-profile record (RFC-0026 §1.2).',
-              '- Rows on different devices or thread counts are not a comparison (Workflow 04).', '']
+              '- Rows on different devices or thread counts are not a comparison (Workflow 04).']
+    st = static_rows()
+    if st:
+        shead = ['Target rung', 'Model / Window', 'T', 'Committed cells', 'Cells/token',
+                 'Lookup positions', 'Lookups/token', 'Top module (cells/tok)',
+                 'Top module (lookups/tok)', 'Ledger']
+        lines += ['', '## Static Accounting Baselines (RFC-0027 §3, E22-01)', '',
+                  '| ' + ' | '.join(shead) + ' |', '|' + '---|' * len(shead)]
+        lines += ['| ' + ' | '.join(cols) + ' |' for cols in st]
+    lines.append('')
     return '\n'.join(lines)
 
 
