@@ -1,6 +1,6 @@
 {
  "source": "research/cqis-model-contract/synthetic_e2e.py",
- "blake3": "d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+ "blake3": "75301d180c02e90fc664537e8f715f5c9931df0780759ef2fc627031721eb701",
  "cases": [
   {
    "name": "one-layer",
@@ -89,6 +89,39 @@
     "length": 377086
    },
    "artifact_id": "140b51f112acf66d7e0e087c9a58271c44ae0e5ae56ccf89655dfa14fd213f32"
+  },
+  {
+   "name": "one-layer-wide-gqa",
+   "params": {
+    "seed": 3,
+    "layers": 1,
+    "d": 64,
+    "heads": 4,
+    "groups": 2,
+    "hidden": 128,
+    "vocabulary": 256,
+    "context": 16,
+    "group": true,
+    "wide": true,
+    "group_down": true
+   },
+   "model": {
+    "offset": 559337,
+    "length": 1171
+   },
+   "preparation": {
+    "offset": 560508,
+    "length": 469
+   },
+   "scales": {
+    "offset": 560977,
+    "length": 2138
+   },
+   "artifact": {
+    "offset": 563115,
+    "length": 72779
+   },
+   "artifact_id": "98b13b8635b8ff79dec2a21ab4e066edd0489517358e3e8ffb5cdb34eb79efe4"
   }
  ]
 }

@@ -137,6 +137,9 @@ impl Finish {
         let mut row =
             RowConversion::new("G/row", normalised, rows, inner, p.policy).map_err(unsupported)?;
         row.declare(relation);
+        if p.head.output_bits != 16 {
+            return Err(FinishError::Unsupported(Unsupported::Shape));
+        }
         let mut head = Projection::new(
             "G/head",
             row.output().expect("declared"),

@@ -316,6 +316,54 @@ fn accepts_one_layer_grouped_window_on_pre_a10_sources() {
     );
 }
 
+/// RFC-0026 A25 (task E22-03): wide int24 residual stream (RFC-0004 A14, rmsnorm_q v2),
+/// GQA (H = 4, G = 2), and grouped rows including grouped gated FFN (RFC-0004 A15) prove
+/// and verify end to end on byte-5 sources and reject a tampered greedy next token.
+#[test]
+fn accepts_one_layer_wide_gqa_window() {
+    let case = load("one-layer-wide-gqa");
+    assert!(case.model.wide(), "fixture must be wide");
+    assert_eq!(case.model.shape().heads(), 4);
+    assert_eq!(case.model.shape().groups(), 2);
+    let mut executor = case.executor(&case.artifact);
+    let statement = greedy(&mut executor, 16);
+    let weights =
+        Weights::from_artifact_sources(&case.model, &case.artifact, Sources::CircleAllGrind)
+            .expect("weights");
+    let committed = Committed::new(&weights).expect("commitment");
+    let public = case.public(&committed, &weights);
+    let proof = prove(&public, &mut executor, &weights, &committed, &statement).expect("prove");
+    let ledger = verify(&public, &statement, &proof).expect("verify");
+    let (_, _, worst, floor) = enumerated(&ledger);
+    let hash = fnv(&proof);
+    assert!(
+        worst >= 108 * 1024 && floor >= 100 * 1024,
+        "hash={hash:#x} worst={worst} floor={floor}"
+    );
+    // Tampering with the next token on the wide+GQA+grouped proof must be rejected both
+    // at the header digest and (when restamped) by the engine transcript check.
+    let mut bad = statement.clone();
+    bad.next = Some((bad.next.expect("next") + 1) % case.model.shape().vocabulary());
+    assert_eq!(
+        verify(&public, &bad, &proof).err(),
+        Some(Error::StatementMismatch),
+        "tampered next token must reject at header"
+    );
+    let mut restamped = container::decode(&proof).expect("container");
+    restamped.statement = statement_digest_for(&public, &bad).expect("restamp");
+    assert!(
+        matches!(
+            verify(&public, &bad, &restamped.encode()).err(),
+            Some(Error::Engine(_))
+        ),
+        "restamped tampered next token must reject in engine"
+    );
+    eprintln!(
+        "one-layer-wide-gqa: T=16 proof {} bytes (fnv {hash:016x}), worst={worst}, floor={floor}",
+        proof.len()
+    );
+}
+
 /// The E16-10 acceptance window; release build only (`docs/development-e2e.md`).
 #[test]
 #[ignore = "8 layers at T=64: run with --release -- --ignored"]

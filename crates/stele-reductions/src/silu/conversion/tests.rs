@@ -548,6 +548,7 @@ fn accepts_static_validity_and_down_projection_input() {
             weight_bits: 8,
             mantissas: vec![1; outputs],
             shift: -20,
+            output_bits: 16,
         };
         let output = module.output().expect("declared");
         assert_eq!(output.scale_bound, GATED_SCALE);
@@ -559,7 +560,13 @@ fn accepts_static_validity_and_down_projection_input() {
 
 #[test]
 fn rejects_unsupported_policy() {
-    for policy in [Policy::Static(3), Policy::Grouped(4)] {
+    for policy in [
+        Policy::Static(3),
+        Policy::Grouped(0),
+        Policy::Grouped(3),
+        Policy::Grouped(8),
+        Policy::Grouped(16),
+    ] {
         assert_eq!(
             GatedConversion::new(0, ColumnId(0), ColumnId(1), 2, 8, policy).err(),
             Some(Unsupported::Policy)
@@ -631,4 +638,189 @@ fn accepts_largest_remainder_and_spare_limbs() {
     assert!(rh > 511 && ph > 511, "remainder high {rh}, spare high {ph}");
     let (reference_codes, _) = reference(&product, 8);
     assert_eq!(&case.column(c.codes)[..8], &reference_codes[..]);
+}
+
+/// Helper: grouped gated conversion case with `Policy::Grouped(group)`.
+fn grouped_case(product: &[i64], tokens: usize, hidden: usize, group_size: u32) -> Case {
+    let mut relation = Relation::default();
+    let n = log2_ceil(tokens) + log2_ceil(hidden);
+    let group = relation.add_group("L0/gated/test", n);
+    let mut limbs = [ColumnId(0); 2];
+    for (slot, (name, width)) in limbs
+        .iter_mut()
+        .zip([("high", Width::signed(16)), ("low", Width::unsigned(15))])
+    {
+        *slot = relation.add_column(name, Kind::Witness(group), width, n);
+        relation.ranges.push(Range {
+            name: name.into(),
+            column: *slot,
+            width,
+        });
+    }
+    let mut module = GatedConversion::new(
+        0,
+        limbs[0],
+        limbs[1],
+        tokens,
+        hidden,
+        Policy::Grouped(group_size),
+    )
+    .expect("plan");
+    module.declare(&mut relation);
+    let mut values = Values::new(&relation);
+    let plan = module.plan(product);
+    let high = plan.product.iter().map(|v| v.div_euclid(LIMB)).collect();
+    let low = plan.product.iter().map(|v| v.rem_euclid(LIMB)).collect();
+    values.set(&relation, limbs[0], high).expect("high");
+    values.set(&relation, limbs[1], low).expect("low");
+    module
+        .assign(&relation, product, &mut values)
+        .expect("honest");
+    Case {
+        relation,
+        values,
+        module,
+        plan,
+    }
+}
+
+/// Reference grouped gated conversion: one dynamic scale per group of `group_size` lanes.
+fn reference_grouped(product: &[i64], hidden: usize, group_size: usize) -> (Vec<i64>, Vec<i64>) {
+    let mut codes = Vec::new();
+    let mut scales = Vec::new();
+    for row in product.chunks(hidden) {
+        for chunk in row.chunks(group_size) {
+            let scale = (chunk.iter().map(|v| v.abs()).max().unwrap_or(0) + 126) / 127;
+            scales.push(scale);
+            for &v in chunk {
+                let q = if scale == 0 {
+                    0
+                } else {
+                    (2 * v.abs() + scale) / (2 * scale)
+                };
+                codes.push(v.signum() * q);
+            }
+        }
+    }
+    (codes, scales)
+}
+
+#[test]
+fn matches_reference_grouped_rows() {
+    let mut rng = Rng(0x0e22_0301);
+    for extreme in [false, true] {
+        for (tokens, hidden, group_size) in [(1, 8, 4), (3, 12, 4), (4, 16, 4), (2, 100, 4)] {
+            let mut product: Vec<i64> =
+                (0..tokens * hidden).map(|_| rng.product(extreme)).collect();
+            // Zero out one group within a non-zero row to exercise per-group zero branch.
+            product[..group_size as usize]
+                .iter_mut()
+                .for_each(|v| *v = 0);
+            let case = grouped_case(&product, tokens, hidden, group_size);
+            check(&case.relation, &case.values).expect("honest grouped values pass");
+            let (codes, scales) = reference_grouped(&product, hidden, group_size as usize);
+            let out = case.module.output().expect("declared");
+            assert_eq!(out.log_group, group_size.trailing_zeros() as u8);
+            let d = out.log_dimension;
+            let got_codes = case.column(out.codes);
+            let got_scales = case.column(out.scale);
+            let groups_per_row = hidden / group_size as usize;
+            let padded_groups = 1usize << (d - out.log_group);
+            for t in 0..tokens {
+                for j in 0..hidden {
+                    assert_eq!(
+                        got_codes[(t << d) | j],
+                        codes[t * hidden + j],
+                        "code ({t}, {j})"
+                    );
+                }
+                for g in 0..groups_per_row {
+                    assert_eq!(
+                        got_scales[t * padded_groups + g],
+                        scales[t * groups_per_row + g],
+                        "scale ({t}, {g})"
+                    );
+                }
+                for g in groups_per_row..padded_groups {
+                    assert_eq!(got_scales[t * padded_groups + g], 0, "padded scale");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn rejects_grouped_near_misses_and_other_rounding_direction() {
+    // Row 0 group 0: max = 508 (s = 4), tie 6/4 -> 2 at lane 0; group 1: all zeros.
+    // Row 1 group 0: large values (s = 32768); group 1: small negative tie -6/4 -> -2 at lane 12.
+    let product = vec![
+        6, -508, 300, -45, 0, 0, 0, 0, // row 0
+        4_161_536, -32_668, 100, 0, -6, 508, -7, 2, // row 1
+    ];
+    let case = grouped_case(&product, 2, 8, 4);
+    check(&case.relation, &case.values).expect("honest");
+    assert_eq!(case.plan.quotient[0], 2, "positive tie 6/4 rounds to 2");
+    assert_eq!(case.plan.quotient[12], 2, "negative tie -6/4 rounds to -2");
+    // Code ±1 (including opposite rounding direction at lanes 0 and 12).
+    for lane in [0, 1, 2, 4, 8, 9, 12, 13] {
+        for delta in [1, -1] {
+            let mut plan = case.plan.clone();
+            plan.quotient[lane] += delta;
+            assert!(
+                check(&case.relation, &case.attack(&plan, &[])).is_err(),
+                "lane {lane} delta {delta}"
+            );
+        }
+    }
+    // Scale ±1 and bogus zero branch on non-zero groups.
+    for group in [0, 2, 3] {
+        for delta in [1, -1] {
+            let mut plan = case.plan.clone();
+            plan.scale[group] += delta;
+            plan.slack[group] = 127 * plan.scale[group] - plan.maximum[group];
+            plan.quotient = recomputed(&plan);
+            assert!(check(&case.relation, &case.attack(&plan, &[])).is_err());
+        }
+        let mut plan = case.plan.clone();
+        plan.zero[group] = 1;
+        plan.quotient = recomputed(&plan);
+        assert!(check(&case.relation, &case.attack(&plan, &[])).is_err());
+    }
+}
+
+/// Llama-3.1-8B G7 gated down-projection shape: T = 64, hidden = 14336, g = 128,
+/// wide int24 output (d = 4096), int8 weights, row-blocked by RFC-0026 A6.
+#[test]
+fn validates_llama31_8b_grouped_gated_down_shape() {
+    let (tokens, hidden, outputs) = (64, 14336, 4096);
+    let mut relation = Relation::default();
+    let n = log2_ceil(tokens) + log2_ceil(hidden);
+    let group = relation.add_group("L0/gated/test", n);
+    let high = relation.add_column("high", Kind::Witness(group), Width::signed(16), n);
+    let low = relation.add_column("low", Kind::Witness(group), Width::unsigned(15), n);
+    for (column, width) in [(high, Width::signed(16)), (low, Width::unsigned(15))] {
+        relation.ranges.push(Range {
+            name: "limb".into(),
+            column,
+            width,
+        });
+    }
+    let mut conv =
+        GatedConversion::new(0, high, low, tokens, hidden, Policy::Grouped(128)).expect("plan");
+    conv.declare(&mut relation);
+    let output = conv.output().expect("declared");
+    assert_eq!(output.log_group, 7);
+    assert_eq!(output.scale_bound, GATED_SCALE);
+    let plan = ProjectionPlan {
+        rows: tokens,
+        inner: hidden,
+        outputs,
+        weight_bits: 8,
+        mantissas: vec![65535; outputs],
+        shift: -20,
+        output_bits: 24,
+    };
+    let mut down = Projection::new("L0/down", output, None, plan).expect("accepted");
+    down.declare(&mut relation);
+    relation.validate().expect("Llama-3.1-8B down validates");
 }

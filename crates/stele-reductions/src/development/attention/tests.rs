@@ -1719,6 +1719,14 @@ fn accepts_static_validity_realistic_shapes() {
         exp: (2, 14, 6, 12, 7),
         ..llama.clone()
     };
+    // Llama-3.1-8B G7 (RFC-0026 A25): m = 46341, e_score = -19, fq = fk = 7, exp F = 7,
+    // dh = 128; tightens score_wbits from 18 to 17 (259*259 = 67,081 < 2^17).
+    let llama_8b_g7 = Cfg {
+        score: (46341, -19),
+        fractions: [7, 7, 7, 7],
+        exp: (0, 15, 7, 14, 0),
+        ..Cfg::default()
+    };
     // E16-10 target (d = 512, h = 8, dh = 64) and GQA variants.
     for (rows, heads, groups, dh, cfg) in [
         (64, 8, 8, 64, &llama),
@@ -1729,6 +1737,8 @@ fn accepts_static_validity_realistic_shapes() {
         (512, 8, 2, 128, &llama),
         // Score and value matmuls past MAX_VARS (25 + 7 bits), in row blocks (A6).
         (1024, 32, 8, 128, &llama),
+        (64, 32, 8, 128, &llama_8b_g7),
+        (128, 32, 8, 128, &llama_8b_g7),
     ] {
         assert_eq!(
             validate_shape(rows, heads, groups, dh, cfg),
@@ -1739,6 +1749,125 @@ fn accepts_static_validity_realistic_shapes() {
 }
 
 #[test]
+fn accepts_and_rejects_near_miss_tight_score_scale_8b_head_width() {
+    // Llama-3.1-8B G7 score parameters with dynamic scales (scale_bound = 259):
+    // loose 511*511 (18 bits) hits score_bound >= 2^28; tight 259*259 (17 bits) fits.
+    let cfg = Cfg {
+        rows: 4,
+        heads: 4,
+        groups: 2,
+        head_width: 128,
+        policy: [Policy::Dynamic; 3],
+        score: (46341, -19),
+        fractions: [7, 7, 7, 7],
+        accumulation: 0,
+        drop: 0,
+        exp: (0, 15, 7, 14, 0),
+    };
+    // Exercise extreme dynamic scale = 259 on both Q and K (input lane = -32768 ->
+    // ceil(32768 / 127) = 259, W = 259 * 259 = 67,081 < 2^17) while keeping scores
+    // within the mode-0 exp table domain [-32768, 0].
+    let widths = [
+        cfg.heads * cfg.head_width,
+        cfg.groups * cfg.head_width,
+        cfg.groups * cfg.head_width,
+    ];
+    let mut rng = Rng(0x8B_0026_0025);
+    let convs: Vec<ConversionCapture> = (0..3)
+        .map(|k| {
+            let rows: Vec<Vec<i64>> = (0..cfg.rows)
+                .map(|_| {
+                    let mut v = vec![0i64; widths[k]];
+                    if k == 0 {
+                        // One -32768 lane at lane 0 forces scale = 259 without colliding
+                        // with K's -32768 at lane 1; small lanes 2..6 produce nonzero scores
+                        // well inside exp's [-32768, 0] domain.
+                        v[0] = -32768;
+                        for lane in &mut v[2..6] {
+                            *lane = rng.range(-400, 400);
+                        }
+                    } else if k == 1 {
+                        v[1] = -32768;
+                        for lane in &mut v[2..6] {
+                            *lane = rng.range(-400, 400);
+                        }
+                    } else {
+                        for lane in &mut v {
+                            *lane = rng.range(-4000, 4000);
+                        }
+                    }
+                    v
+                })
+                .collect();
+            convert(cfg.policy[k], &rows).expect("convert")
+        })
+        .collect();
+    assert!(convs[0].scales.iter().all(|s| s[0] == 259));
+    assert!(convs[1].scales.iter().all(|s| s[0] == 259));
+    let codes = [0, 1, 2].map(|k| convs[k].codes.clone());
+    let scales = [0, 1, 2].map(|k| convs[k].scales.iter().map(|s| s[0]).collect());
+    let positions = reference(&cfg, &codes, &scales, None).expect("executor-admitted 8B case");
+    let inputs = Inputs {
+        convs,
+        codes,
+        scales,
+    };
+    let c = build(&cfg, inputs, positions, true);
+    assert_eq!(c.attention.score_wbits(Some(&c.relation)), 17);
+    let top_id = c.id("score/scales/2");
+    assert_eq!(
+        c.relation.column(top_id).expect("top limb").width,
+        Width::unsigned(1)
+    );
+    assert!(c.relation.ranges.iter().any(|rg| rg.column == top_id
+        && rg.width == Width::unsigned(1)
+        && rg.name == "L0/attention/score/scales/2/range"));
+    assert_eq!(c.relation.validate(), Ok(()));
+    assert_eq!(check(&c.relation, &c.values), Ok(()));
+
+    // Direct negative control for the tightened 17-bit score/scales bound: forge
+    // sq = sk = 511 (both still inside RowConversion's u9 column range), yielding
+    // W = 261,121 = 1 + 256*252 + 65536*3 with re-solved carries; rejected at
+    // L0/attention/score/scales/2/range before any downstream identity.
+    let mut forged = c.values.clone();
+    let set_col = |values: &mut Values, col: ColumnId, index: usize, val: i64| {
+        let mut data = values.get(&c.relation, col).expect("col").to_vec();
+        data[index] = val;
+        values.set(&c.relation, col, data).expect("set");
+    };
+    set_col(&mut forged, c.attention.plan.query.scale, 0, 511);
+    set_col(&mut forged, c.attention.plan.key.scale, 0, 511);
+    c.set(&mut forged, "score/scales/0", 0, 1);
+    c.set(&mut forged, "score/scales/1", 0, 252);
+    c.set(&mut forged, "score/scales/2", 0, 3);
+    c.set(&mut forged, "score/scales/carry0", 0, 1020);
+    c.set(&mut forged, "score/scales/carry1", 0, 3);
+    assert!(matches!(
+        check(&c.relation, &forged),
+        Err(Violation::Range { ref relation, .. })
+            if relation == "L0/attention/score/scales/2/range"
+    ));
+
+    let attacked_score = c.attacked(&|stage, at, v| {
+        if stage == Stage::Score && at == (2, 1, 1) {
+            v + 1
+        } else {
+            v
+        }
+    });
+    assert!(check(&c.relation, &attacked_score).is_err());
+
+    let attacked_output = c.attacked(&|stage, at, v| {
+        if stage == Stage::Output && at == (3, 2, 0) {
+            v + 1
+        } else {
+            v
+        }
+    });
+    assert!(check(&c.relation, &attacked_output).is_err());
+}
+
+#[test]
 fn rejects_unsupported_plans_before_declaring() {
     let cfg = Cfg::default();
     // Score identities past MAX_VARS (T = 32768, 2 heads: 2*15 + 1 bits); only
@@ -1746,6 +1875,15 @@ fn rejects_unsupported_plans_before_declaring() {
     assert!(validate_shape(32768, 2, 2, 4, &cfg).is_err());
     // Non-power-of-two GQA ratio.
     assert!(validate_shape(8, 3, 1, 4, &cfg).is_err());
+    // Even tightened score_wbits = 17 exceeds 2^28 when head_width = 256
+    // (score_qmax(17) = 379,622,576 >= 2^28).
+    let llama_8b_g7 = Cfg {
+        score: (46341, -19),
+        fractions: [7, 7, 7, 7],
+        exp: (0, 15, 7, 14, 0),
+        ..Cfg::default()
+    };
+    assert!(validate_shape(64, 4, 2, 256, &llama_8b_g7).is_err());
 }
 
 // ---- Executor capture on the fixture corpora ----------------------------------

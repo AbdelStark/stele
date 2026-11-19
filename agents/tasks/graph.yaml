@@ -4972,10 +4972,11 @@ tasks:
   - RFC-0004 A14
   - RFC-0004 A15
   - RFC-0026 §1.3
+  - RFC-0026 A25
   skill: gkr-reduction-author
   crate: stele-reductions+stele-prover
   lane: N
-  status: ready
+  status: done
   acceptance:
   - an RFC-0026 amendment extends the model class to version-2 residual streams and the 8B shape (8 KV heads, grouped rows); matmuls past 30 bits use the row blocks of RFC-0026 A6 (E16-19)
   - the plain checker accepts executor captures on wide fixtures; near-miss tests reject output plus or minus one and the other rounding direction
