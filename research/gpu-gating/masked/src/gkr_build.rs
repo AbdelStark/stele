@@ -292,6 +292,10 @@ fn factor(
             TablePlan::single(column(len, all, values, coordinates, 0, leg(0))?),
             Some(mask(len, m)?),
         ),
+        // The research observer compares the live child to the original CPU pairs.
+        GkrFactor::RetainedLayer { .. } => {
+            return Err("GKR research observer requires host child pairs");
+        }
         GkrFactor::Layer {
             values,
             component,
@@ -787,14 +791,28 @@ mod tests {
             beta: K::ONE,
         };
         assert!(matches!(Plan::new(&input), Err("GKR row width")));
+        input.factors[0] = GkrFactor::RetainedLayer {
+            layer: 1,
+            component: 0,
+            side: 0,
+            mask: GkrMask {
+                values: vec![M31::ONE],
+                coordinates: &[],
+                vanishing: 0,
+            },
+        };
+        assert!(matches!(
+            Plan::new(&input),
+            Err("GKR research observer requires host child pairs")
+        ));
     }
 }
 
 #[cfg(test)]
 #[test]
 fn accepts_origin_bound_column_and_rejects_wrong_gather_geometry() {
+    use stele_kernels::gkr::Term;
     use stele_reductions::zk::claims::bench::{GkrFactor, GkrMask};
-    use stele_sumcheck::Term;
     let values = [K::ONE, K::ZERO];
     let input = GkrConstruction {
         num_vars: 2,

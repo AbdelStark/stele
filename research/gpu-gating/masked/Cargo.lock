@@ -259,6 +259,7 @@ name = "stele-masked-gpu-bench"
 version = "0.1.0"
 dependencies = [
  "cudarc",
+ "stele-kernels",
  "stele-prover",
  "stele-reductions",
  "stele-sumcheck",

@@ -5558,7 +5558,7 @@ tasks:
   - RFC-0008 A7 item 4
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: blocked(ADR-137 superseded by E16-40l after failed H100 qualification)
   agent: codex-root
   branch: task/E16-40d-masked-shape-parity
   acceptance:
@@ -5721,7 +5721,7 @@ tasks:
   - RFC-0003 §1, §2
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40j-batch-tables
   acceptance:
@@ -5746,7 +5746,7 @@ tasks:
   - RFC-0008 A7 item 4
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: blocked(ADR-137 superseded by E16-40l after failed H100 qualification)
   agent: codex-root
   branch: task/E16-40k-masked-prepare
   acceptance:
@@ -5771,7 +5771,7 @@ tasks:
   - RFC-0008 A7 item 4
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40l-masked-descriptors
   acceptance:
@@ -5797,7 +5797,7 @@ tasks:
   - RFC-0013 A5 items 1-6, A8
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40m-gkr-device
   acceptance:
@@ -5825,7 +5825,7 @@ tasks:
   - RFC-0013 A8
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40n-copy-boundaries
   acceptance:
@@ -5850,7 +5850,7 @@ tasks:
   - RFC-0013 A6, A8, A9
   skill: benchmark-runner
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40o-mac-stage-profile
   acceptance:
@@ -5875,7 +5875,7 @@ tasks:
   - RFC-0013 A8
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40q-resident-source
   acceptance:
@@ -5897,7 +5897,7 @@ tasks:
   - RFC-0014 §1, §5, A1
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40r-gkr-device-construction
   acceptance:
@@ -5920,7 +5920,7 @@ tasks:
   - RFC-0014 §1, §5, A1
   skill: benchmark-runner
   crate: research
-  status: in_progress
+  status: done
   agent: codex-integration
   branch: task/E16-40s-t32-lookup-batch
   acceptance:
@@ -5941,7 +5941,7 @@ tasks:
   - RFC-0014 §§1, 4, 5 and A1
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40t-t32-gkr
   acceptance:
@@ -5961,7 +5961,7 @@ tasks:
   - RFC-0014 §1, §5, A1
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-integration
   branch: task/E16-40u-resident-lookup-gkr
   acceptance:
@@ -5982,7 +5982,7 @@ tasks:
   - RFC-0014 §1, §5, A1
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-resident
   branch: task/E16-40v-batch-weight-runs
   acceptance:
@@ -6003,7 +6003,7 @@ tasks:
   - RFC-0014 A1
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-source-visits
   branch: task/E16-40w-source-visits
   acceptance:
@@ -6018,7 +6018,7 @@ tasks:
   rfc: [RFC-0014 §5, RFC-0013 A5 and A6]
   skill: benchmark-runner
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40x-small-model-reference
   acceptance:
@@ -6034,7 +6034,7 @@ tasks:
   rfc: [RFC-0008 A7, RFC-0014 §5 and A1]
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-integration
   branch: task/E16-40y-compact-lookup-inputs
   acceptance:
@@ -6050,7 +6050,7 @@ tasks:
   rfc: [RFC-0008 A7, RFC-0014 §5 and A1]
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-resident
   branch: task/E16-40z-gkr-memory-schedule
   acceptance:
@@ -6066,7 +6066,7 @@ tasks:
   rfc: [RFC-0008 A7, RFC-0014 §5 and A1, RFC-0018 A1]
   skill: benchmark-runner
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40aa-mac-gkr-calibration
   acceptance:
@@ -6082,7 +6082,7 @@ tasks:
   rfc: [RFC-0013 A5, RFC-0014 §5]
   skill: benchmark-runner
   crate: research
-  status: in_progress
+  status: done
   agent: codex-integration
   branch: task/E16-40ab-host-batch-pack
   acceptance:
@@ -6098,7 +6098,7 @@ tasks:
   rfc: [RFC-0008 A7, RFC-0013 A5/A6, RFC-0014 §5 and A1]
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-resident
   branch: task/E16-40ac-resident-original-messages
   acceptance:
@@ -6115,7 +6115,7 @@ tasks:
   rfc: [RFC-0013 A4, RFC-0014 §5]
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40ad-device-bound-sumcheck
   acceptance:
@@ -6131,7 +6131,7 @@ tasks:
   rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-integration
   branch: task/E16-40ae-lookup-source-views
   acceptance:
@@ -6147,7 +6147,7 @@ tasks:
   rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-integration
   branch: task/E16-40af-gkr-source-views
   acceptance:
@@ -6162,7 +6162,7 @@ tasks:
   rfc: [RFC-0014 §5 and A1, RFC-0018 A1]
   skill: benchmark-runner
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40ag-resident-ceiling
   acceptance:
@@ -6177,7 +6177,7 @@ tasks:
   rfc: [RFC-0009, RFC-0013 A4, RFC-0014 §5]
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-source-visits
   branch: task/E16-40ah-masked-relations
   acceptance:
@@ -6208,7 +6208,7 @@ tasks:
   rfc: [RFC-0013 A5, RFC-0014 §5, RFC-0026 §7]
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40aj-h100-inference-parity
   acceptance:
