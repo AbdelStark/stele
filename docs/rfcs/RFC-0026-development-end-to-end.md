@@ -2396,3 +2396,15 @@ through the selected backend. Its committed model, statement, seeds, lifetime
 transaction, checked witness, Fiat–Shamir order and verified proof bytes
 remain those of A9. The default CPU path keeps its original preparation.
 E20-18 measures the whole selected proving run, including both source visits.
+
+### A23 — Selected lookup tops and retained GKR children in balanced inference
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-19.
+[Independent review](../../agents/reviews/e20-19-lookup-tree-ownership.md)
+
+The byte-4 normal prover may select RFC-0014 A6 after A22. The same top
+values and quotient enter the late source, and A7 receives the same ordered
+child factors. A failed provider or denominator check aborts under the
+existing proof-index transaction. Qualification reruns byte-identical proofs,
+ordinary independent verification, wrong-model rejection and backend-error
+rollback. All development profile, parser and verifier rules remain unchanged.

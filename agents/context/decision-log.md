@@ -4400,3 +4400,12 @@ opening tree and its ordinary batch. The source context, lifetime state, model
 pin and transcript remain with the host. The existing PCS verifier authenticates
 each complete response. This admits implementation and qualification.
 [Independent lane Z review](../reviews/e20-17-hiding-source-contract.md)
+
+### ADR-144 — Retain balanced lookup child layers on the selected device
+
+RFC-0014 A6, RFC-0020 A14 and RFC-0026 A23 admit proof-local original inputs
+for top construction and retained A7 child access in the development prover.
+The host keeps top division, the zero-denominator abort, transcript and original
+claim authority. The last nonleaf can release the tree before folding. E20-20
+qualifies the complete proof and total peak device memory.
+[Review](../reviews/e20-19-lookup-tree-ownership.md)

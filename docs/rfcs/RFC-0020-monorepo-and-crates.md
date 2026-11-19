@@ -261,3 +261,16 @@ adapter uses the byte-4 producer's existing primitive dependencies; the
 kernels and CUDA crates acquire no PCS, verifier or transcript dependency.
 The verifier acquires no accelerator dependency. No protocol byte, binding
 or error term changes. E20-18 qualifies the selected operations.
+
+### A14 — Field-only lookup construction and retained child access
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-19.
+[Independent review](../../agents/reviews/e20-19-lookup-tree-ownership.md)
+
+Add RFC-0014 A6's lookup input, top operation, retained tree and GKR child
+construction to the proof-local field interface in `stele-kernels`. Reuse the
+same original owners introduced by A13. The reduction derives physical
+provenance, public geometry, actual draws and exactly which four child
+projections each nonleaf reads. A backend implementation performs arithmetic
+and owns its buffers. The caller handles the checked denominator and every
+transcript and verifier obligation. The existing crate edges suffice.
