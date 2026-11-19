@@ -30,6 +30,8 @@ const MIN_M: u8 = 9;
 /// Rejected statement, proof or abort; never partial acceptance.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    /// The required RFC-0014 A2 batch backend failed or returned an inconsistent claimed sum.
+    Backend,
     /// The masked sumcheck failed; its cause is preserved.
     Sumcheck(stele_sumcheck::Error),
     /// The mask source, certificate or opening failed; its cause is preserved.

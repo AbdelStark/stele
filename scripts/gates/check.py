@@ -22,7 +22,7 @@ SCOPES = {
     'digest': ('prover', 'proof'),
     'negative-controls': ('verifier',),
     'soundness-accounting': ('verifier',),
-    'parity': ('gpu', 'kernels'),
+    'parity': ('kernels',),
 }
 OWNERS = {
     'digest': 'E8-06', 'negative-controls': 'E0-03',
@@ -33,7 +33,7 @@ ARTIFACTS = {
     'digest': ('tests/digests',),
     'negative-controls': (),
     'soundness-accounting': ('tests/soundness',),
-    'parity': ('tests/parity',),
+    'parity': (),
 }
 
 
@@ -324,7 +324,7 @@ def development_surface(crate, name, actual, expected):
 
 
 def scalar_kernel_surface(root, actual, expected):
-    """E20-11. Execute the independently reviewed scalar interface with CUDA still empty."""
+    """E20-11. Execute the independently reviewed scalar operations before the CUDA differential."""
     name = 'stele-kernels'
     directory = root / 'crates' / name
     approved = json.loads((root / 'scripts/gates/scalar-kernel-sources.json').read_text())
@@ -342,7 +342,7 @@ def scalar_kernel_surface(root, actual, expected):
     if (result.returncode or any('test ' + name + ' ... ok' not in result.stdout for name in tests)
             or 'ordinary_scalar_cases=1000' not in result.stderr.splitlines()):
         raise ValueError('parity: scalar operation tests or controls failed: ' + result.stderr[-1000:])
-    print('gate parity: scalar ordinary batch interface, 1000 cases; production CUDA remains empty')
+    print('gate parity: scalar ordinary batch interface, 1000 cases')
     return expected
 
 
@@ -368,6 +368,8 @@ def bootstrap_guard(root, gate):
             if file.is_file() and file.name not in {'catalog.md', 'README.md', '.gitkeep'}:
                 raise ValueError(f'{gate}: validator not wired for {file.relative_to(root)} '
                                  f'(task {OWNERS[gate]})')
+    if gate == 'parity':
+        subprocess.run([sys.executable, str(root / 'tests/parity/check.py')], cwd=root, check=True)
     print(f'gate {gate}: remaining scaffold guards verified (task {OWNERS[gate]})')
 
 
@@ -748,6 +750,8 @@ def field_sources(root):
                'src/zk.rs', 'tests/zk.rs',
                # RFC-0013 A5: masked claims, zero-sums and per-source batches.
                'src/zk_claims.rs', 'src/zk_occurrence_weight.rs', 'tests/zk_claims.rs',
+               # RFC-0014 A2 and RFC-0020 A10: field-only ordinary batch adapter.
+               'src/zk_batch_backend.rs',
                # RFC-0008 A7: ZK-GKR over the A5 trees.
                'src/zk_lookup.rs', 'tests/zk_lookup.rs',
                # E16-40c: reviewed, opt-in production lookup and claim-batch references.
@@ -793,7 +797,7 @@ def field_sources(root):
     except tomllib.TOMLDecodeError as error:
         raise ValueError(f'reductions API not wired: unreadable manifest ({error})') from error
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
-                    for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis', 'poly')}
+                    for n in ('field', 'kernels', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis', 'poly')}
     # RFC-0026 §4 step 1: the relation statement digest is BLAKE3 (workspace pin).
     dependencies['blake3'] = {'version': '=1.8.7', 'default-features': False}
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
@@ -809,6 +813,13 @@ def field_sources(root):
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
                '    Error as StackedError, Failure as StackedFailure, StackedProof, StackedSourceRecord,\n};\n')
+    # RFC-0014 A2: external field operations never receive the transcript, masks or openings.
+    adapter = crate / 'src/zk_batch_backend.rs'
+    body = re.sub(r'//[^\n]*', '', adapter.read_text()) if adapter.is_file() else ''
+    interface = re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', body)
+    adapter_closed = (interface == [('pub', 'struct', 'BatchExecution'), ('pub', 'fn', 'new'),
+                                    ('pub(super)', 'fn', 'prove')]
+                      and re.findall(r'\bmasked\s*::\s*(prove\w*)\s*\(', body) == ['prove'])
     code = re.sub(r'//[^\n]*', '', (crate / 'src/field_sources.rs').read_text())
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
     stacked = re.sub(r'//[^\n]*', '', (crate / 'src/stacked_sources.rs').read_text())
@@ -963,7 +974,7 @@ def field_sources(root):
         and not re.search(r'\bimpl\b|\b(?:include|include_str|include_bytes|macro_rules)\s*!', matmul_producer))
     oracle = root / 'tests/negative-controls/lookup_corpus.py'
     ir_manifest = tomllib.loads((root / 'crates/stele-ir/Cargo.toml').read_text())
-    if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
+    if (not adapter_closed or actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target'))
             # E16-15: the opt-in prover-thread switch; no_std by default. E12-14a: the
@@ -2072,7 +2083,9 @@ def masked_sumcheck_quarantine(root):
                # RFC-0013 A4: the only admitted consumer binds the mask by a hiding source.
                'crates/stele-reductions/src/zk.rs',
                # RFC-0013 A5 item 5a: zk::claims binds plain masks in the shared mask source.
-               'crates/stele-reductions/src/zk_claims.rs'}
+               'crates/stele-reductions/src/zk_claims.rs',
+               # RFC-0014 A2: same checked shared-mask prover, field-only batch state.
+               'crates/stele-reductions/src/zk_batch_backend.rs'}
     pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    for path in (root / directory).rglob('*.rs')

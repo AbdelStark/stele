@@ -110,6 +110,7 @@ where
         true,
         None,
         lifetime,
+        None,
         Some(observer),
     )?;
     // RFC-0013 A6: preserve prove_lifetime's required opening disclosure.

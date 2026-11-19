@@ -78,6 +78,8 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | Apple M4 Max (48 GiB) | 16 | 220.08 | 0.145 | 11.01 | 21.4 | 34.7 | — | — | — | none | 1/1 | [e16-45-dev-zk-stories42m-t32-mac-0](ledger/e16-45-dev-zk-stories42m-t32-mac-0.json) @ `da0da77` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | Apple M4 Max (48 GiB) | 16 | 221.23 | 0.145 | 11.11 | 21.4 | 35.4 | — | — | — | none | 1/1 | [e16-45-dev-zk-stories42m-t32-mac-1](ledger/e16-45-dev-zk-stories42m-t32-mac-1.json) @ `da0da77` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | Apple M4 Max (48 GiB) | 16 | 220.50 | 0.145 | 10.76 | 21.4 | 35.2 | — | — | — | none | 1/1 | [e16-45-dev-zk-stories42m-t32-mac-2](ledger/e16-45-dev-zk-stories42m-t32-mac-2.json) @ `da0da77` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | Intel(R) Xeon(R) Platinum 8480CL on h100-sxm-8-0 | 16 | 557.13 | 0.057 | 60.13 | 21.4 | 89.7 | — | — | — | none | 1/1 | [e20-12-dev-zk-stories42m-t32-h100-cpu](ledger/e20-12-dev-zk-stories42m-t32-h100-cpu.json) @ `11a1f56` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | NVIDIA H100 80GB HBM3 on h100-sxm-8-0 | 16 | 539.61 | 0.059 | 59.20 | 21.4 | 89.8 | — | — | — | none | 1/1 | [e20-12-dev-zk-stories42m-t32-h100-cuda](ledger/e20-12-dev-zk-stories42m-t32-h100-cuda.json) @ `11a1f56` |
 
 Rungs with no record: L2b, L3a, L3b, L3c, L4, L5, L6.
 

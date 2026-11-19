@@ -9,6 +9,7 @@ description = "Stele — stele-reductions (see RFC-0007 RFC-0008 RFC-0009 RFC-00
 blake3 = { version = "=1.8.7", default-features = false }
 stele-cqis = { path = "../stele-cqis" }
 stele-field = { path = "../stele-field" }
+stele-kernels = { path = "../stele-kernels" }
 stele-hash = { path = "../stele-hash" }
 stele-sumcheck = { path = "../stele-sumcheck" }
 stele-gkr = { path = "../stele-gkr" }

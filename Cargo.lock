@@ -96,6 +96,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cudarc"
+version = "0.19.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7359bf1de037ddada72729c3acec9b040f3468400c6e9e740b01ba0cd2e89562"
+dependencies = [
+ "libloading",
+]
+
+[[package]]
 name = "digest"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -137,6 +146,16 @@ name = "libc"
 version = "0.2.191"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
+
+[[package]]
+name = "libloading"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "754ca22de805bb5744484a5b151a9e1a8e837d5dc232c2d7d8c2e3492edc8b60"
+dependencies = [
+ "cfg-if",
+ "windows-link",
+]
 
 [[package]]
 name = "memchr"
@@ -255,6 +274,7 @@ name = "stele-cli"
 version = "0.1.0"
 dependencies = [
  "stele-bench",
+ "stele-gpu",
  "stele-passport",
  "stele-prover",
  "stele-verifier",
@@ -305,6 +325,7 @@ dependencies = [
 name = "stele-gpu"
 version = "0.1.0"
 dependencies = [
+ "cudarc",
  "stele-kernels",
  "stele-prover",
 ]
@@ -427,6 +448,7 @@ dependencies = [
  "stele-gkr",
  "stele-hash",
  "stele-ir",
+ "stele-kernels",
  "stele-lookup",
  "stele-pcs",
  "stele-poly",
@@ -489,6 +511,12 @@ name = "unicode-ident"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2c754d6c33795a1c324727428e5a7dedb5b06195f9890bdbcba760d3e246563"
+
+[[package]]
+name = "windows-link"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
 
 [[package]]
 name = "zmij"

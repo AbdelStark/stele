@@ -31,10 +31,13 @@
 //! relations, GKR steps, batches and the shared batch; every mask stream is
 //! therefore used once per proof.
 use super::{basis, prove_at, verify_with, Error, Seed, BLOWUP, MIN_M};
+#[path = "zk_batch_backend.rs"]
+mod backend;
 use crate::relation::Line;
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
+pub use backend::BatchExecution;
 use core::fmt;
 use stele_field::{Inverse, Serialize, M31};
 use stele_hash::mask::{MaskStream, SOURCE_MASK};
@@ -1769,6 +1772,17 @@ pub fn prove_weighted<K: ChallengeField + CodeField + Eq>(
     detail.lap("zk/detail/batch_face");
     let (sumcheck, point) = masked::prove(&i, dense, mask, binding, t).map_err(Error::Sumcheck)?;
     detail.lap("zk/detail/batch_rounds");
+    finish_batch(id, prepared, verified, (sumcheck, point), t)
+}
+
+fn finish_batch<K: ChallengeField + CodeField + Eq>(
+    id: u64,
+    prepared: &PreparedSource<'_, K>,
+    verified: &VerifiedCertificate<K>,
+    (sumcheck, point): (masked::Proof<K>, Vec<K>),
+    t: &mut Transcript<K>,
+) -> Result<(Batch<K>, Vec<K>), Error> {
+    let mut detail = stele_sumcheck::parallel::Laps::start();
     // A5 item 4: w* = 0 leaves the opening without mask-row weight.
     if point[0] == zero::<K>() {
         return Err(Error::BatchPoint);
@@ -3035,6 +3049,7 @@ where
         claim_masks,
         forgery,
         lifetime,
+        None,
         #[cfg(feature = "bench")]
         None,
     )
@@ -3050,6 +3065,7 @@ fn prove_observed<K: ChallengeField + CodeField + Eq>(
     claim_masks: bool,
     forgery: Option<Forgery>,
     lifetime: Option<(&Lifetime, ModelSecret<'_, K>)>,
+    execution: Option<BatchExecution<'_, K>>,
     #[cfg(feature = "bench")] mut observer: Option<&mut gkr_bench::Observer<'_, K>>,
 ) -> Result<(Proof<K>, Option<Vec<K>>), Error>
 where
@@ -3486,15 +3502,32 @@ where
     let mut revealed = None;
     for (b, source) in plan.batched.iter().enumerate() {
         let index = plan.steps.len() + plan.gkr.len() + b;
-        let (batch, point) = prove_batch(
-            plan.masks[index].0,
-            &prepared[*source],
-            &verified[*source],
-            &claims[*source],
-            &masks[index],
-            &binding,
-            t,
-        )?;
+        let id = plan.masks[index].0;
+        let (batch, point) = if let Some(backend) = execution {
+            let input = &prepared[*source];
+            let gammas = coefficients(t, claims[*source].len())?;
+            let instance = batch_instance(id, input.source(), &claims[*source], &gammas);
+            let result = backend.prove(
+                &instance,
+                input,
+                &claims[*source],
+                &gammas,
+                &masks[index],
+                &binding,
+                t,
+            )?;
+            finish_batch(id, input, &verified[*source], result, t)?
+        } else {
+            prove_batch(
+                id,
+                &prepared[*source],
+                &verified[*source],
+                &claims[*source],
+                &masks[index],
+                &binding,
+                t,
+            )?
+        };
         mus.push(mask_claim(&plan, index, &point, batch.sumcheck.mask_final)?);
         if life_source == Some(*source) {
             let ell = plan.layouts[*source].ell as usize;
@@ -3560,7 +3593,25 @@ pub fn prove_lifetime<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let (proof, revealed) = prove_with(
+    prove_lifetime_execution(statement, columns, seed, t, lifetime, model, None)
+}
+
+pub(super) fn prove_lifetime_execution<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    seed: Seed,
+    t: &mut Transcript<K>,
+    lifetime: &Lifetime,
+    model: ModelSecret<'_, K>,
+    execution: Option<BatchExecution<'_, K>>,
+) -> Result<(Proof<K>, Vec<K>), Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    if execution.is_some() && lifetime.geometry != Geometry::Balanced {
+        return Err(Error::Statement);
+    }
+    let (proof, revealed) = prove_observed(
         statement,
         columns,
         &seed.0,
@@ -3568,6 +3619,9 @@ where
         true,
         None,
         Some((lifetime, model)),
+        execution,
+        #[cfg(feature = "bench")]
+        None,
     )?;
     Ok((proof, revealed.ok_or(Error::Statement)?))
 }
@@ -4594,6 +4648,50 @@ mod tests {
             statement,
             vec![x, counts.into_iter().map(M31::from_i64).collect()],
         )
+    }
+
+    #[test]
+    fn matches_reference_ordinary_batch_execution_and_rejects_stale_session() {
+        let (statement, columns) = lookup_case();
+        let lifetime = Lifetime {
+            geometry: Geometry::Balanced,
+            source: 0,
+            proofs: 2,
+            index: 0,
+            blocks: occurrence_counts(&statement).expect("occurrences"),
+        };
+        let model_seed = [17; 32];
+        let root =
+            lifetime_root(&statement, &columns, &lifetime, &model_seed).expect("source root");
+        let model = || ModelSecret {
+            seed: &model_seed,
+            revealed: Vec::new(),
+            root,
+        };
+        let transcript = || Transcript::<QM31>::new(b"batch-execution").expect("transcript");
+        let session = stele_kernels::Scalar::<QM31>::new();
+        let produce = |execution| {
+            prove_lifetime_execution(
+                &statement,
+                &columns,
+                Seed::new([81; 32]),
+                &mut transcript(),
+                &lifetime,
+                model(),
+                execution,
+            )
+        };
+        let (reference, previously_revealed) = produce(None).expect("CPU reference");
+        let (candidate, revealed) =
+            produce(Some(BatchExecution::new(&session))).expect("field execution");
+        assert_eq!(encode(&reference), encode(&candidate));
+        assert_eq!(revealed, previously_revealed);
+        verify_lifetime(&statement, Some(&lifetime), &candidate, &mut transcript())
+            .expect("ordinary verification");
+        assert_eq!(
+            produce(Some(BatchExecution::new(&session))),
+            Err(Error::Backend)
+        );
     }
 
     /// A ZK-GKR check tree of up to `2^30` positions plans (RFC-0026 A3's `m ≤ 30`,

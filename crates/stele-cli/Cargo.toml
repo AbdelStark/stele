@@ -5,7 +5,11 @@ edition = "2021"
 license = "Apache-2.0"
 description = "Stele — stele-cli (see RFC-0020)"
 
+[features]
+cuda = ["dep:stele-gpu", "stele-gpu/cuda"]
+
 [dependencies]
+stele-gpu = { path = "../stele-gpu", optional = true }
 stele-prover = { path = "../stele-prover" }
 stele-verifier = { path = "../stele-verifier" }
 stele-passport = { path = "../stele-passport" }

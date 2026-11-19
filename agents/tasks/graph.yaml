@@ -4561,7 +4561,9 @@ tasks:
   rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
   skill: cuda-kernel-author
   crate: stele-gpu+stele-reductions+stele-prover+stele-cli
-  status: ready
+  status: done
+  agent: codex-root
+  branch: task/E20-12-cuda-prover
   acceptance:
   - The normal explicit GPU proof entry authors every selected ordinary batch through the checked A4 transcript and preserves CPU default and independent verification
   - Mandatory hardware comparisons for 1000 seeded cases per implemented operation and 50 complete byte-identical proof pairs from pinned public fixtures
