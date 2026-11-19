@@ -781,6 +781,9 @@ fn check(
 
 fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
     relation.validate().map_err(Error::StatementMismatch)?;
+    if relation.has_virtual() {
+        return Err(Error::Unsupported);
+    }
     let mut groups = Vec::new();
     for (g, group_meta) in relation.groups.iter().enumerate() {
         let columns: Vec<ColumnId> = (0..relation.columns.len() as u32)
@@ -2422,6 +2425,9 @@ struct SegmentedPlan {
 
 fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan, Error> {
     relation.validate().map_err(Error::StatementMismatch)?;
+    if relation.has_virtual() {
+        return Err(Error::Unsupported);
+    }
     let seg_count = relation.segments();
     if seg_count > u32::from(u16::MAX) {
         return Err(Error::Unsupported);

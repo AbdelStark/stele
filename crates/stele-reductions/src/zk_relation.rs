@@ -83,6 +83,9 @@ fn vars(r: &Ref, m: u32) -> Vec<u32> {
 /// Derive the claims statement of a validated relation (verifier and prover).
 pub fn layout(relation: &Relation) -> Result<Layout, Error> {
     relation.validate().map_err(|_| Error::Statement)?;
+    if relation.has_virtual() || relation.is_segmented() {
+        return Err(Error::Statement);
+    }
     let kind = |id: ColumnId| &relation.columns[id.0 as usize].kind;
     let witness: Vec<ColumnId> = (0..relation.columns.len() as u32)
         .map(ColumnId)

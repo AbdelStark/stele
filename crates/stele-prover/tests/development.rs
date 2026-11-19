@@ -1443,6 +1443,12 @@ fn a15_relation(rel: &Relation) -> Vec<u8> {
                     out.extend_from_slice(&v.to_le_bytes());
                 }
             }
+            Kind::Virtual(_) => {
+                assert!(
+                    !matches!(c.kind, Kind::Virtual(_)),
+                    "A15 v1 fixture codec has no virtual columns"
+                );
+            }
         }
         width(&mut out, c.width);
         out.push(c.log_len);
@@ -1542,6 +1548,7 @@ fn a15_small() -> (Relation, Public, Statement, container::Container) {
                 },
                 log_len: 1,
                 carried: false,
+                segment: None,
             },
             Column {
                 name: "k".into(),
@@ -1552,6 +1559,7 @@ fn a15_small() -> (Relation, Public, Statement, container::Container) {
                 },
                 log_len: 1,
                 carried: false,
+                segment: None,
             },
             Column {
                 name: "p".into(),
@@ -1562,6 +1570,7 @@ fn a15_small() -> (Relation, Public, Statement, container::Container) {
                 },
                 log_len: 1,
                 carried: false,
+                segment: None,
             },
         ],
         tables: vec![Table {
@@ -1960,6 +1969,7 @@ fn a15_covers() -> Relation {
                 },
                 log_len: 17,
                 carried: false,
+                segment: None,
             },
             Column {
                 name: "one".into(),
@@ -1970,6 +1980,7 @@ fn a15_covers() -> Relation {
                 },
                 log_len: 0,
                 carried: false,
+                segment: None,
             },
         ],
         matmuls,
@@ -2004,6 +2015,7 @@ fn a15_cover_snapshot() -> Relation {
                 width: Width::signed(8),
                 log_len: 0,
                 carried: false,
+                segment: None,
             },
             Column {
                 name: "o".into(),
@@ -2011,6 +2023,7 @@ fn a15_cover_snapshot() -> Relation {
                 width: Width::signed(10),
                 log_len: 17,
                 carried: false,
+                segment: None,
             },
             Column {
                 name: "one".into(),
@@ -2018,6 +2031,7 @@ fn a15_cover_snapshot() -> Relation {
                 width: Width::signed(2),
                 log_len: 0,
                 carried: false,
+                segment: None,
             },
         ],
         ..Relation::default()

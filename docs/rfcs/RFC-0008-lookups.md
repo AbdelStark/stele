@@ -688,3 +688,28 @@ without it (ADR-108).
 
 Affected tasks: E12-24 (implements A8), E8-05 (the generator enumerates these
 rounds with their k), E16-30.
+
+### A9 — Virtual lookup tuple columns under RFC-0028 (development tier)
+
+Status: Accepted (development tier, RFC-0027 §2). Companion of RFC-0028 §1.4.
+Task: E18-01. Decision: ADR-150.
+
+1. **Scope.** Extends A2 item 4 and A6 for the development tier only. Promotion to
+   `standard` or `treaty` requires Workflow 10.
+2. **Admitted virtual tuple columns.** A lookup tuple column may be a virtual column
+   defined by RFC-0028 §2.1 (`Linear`, `Pointwise`, or `Contraction`), whose operands
+   have strictly smaller `ColumnId`s and derived magnitude strictly below `p / 2`
+   (RFC-0028 §2.2).
+3. **Commitment-before-challenge order.** By induction over `ColumnId`, every committed
+   witness or weight column entering the virtual column's definition has its commitment
+   root absorbed before `Unit`, `Beta`, and `Alpha` are drawn (RFC-0028 §2.4 steps 2.1
+   and 2.2 precede step 2.3). The virtual column is therefore a fixed polynomial function
+   of previously committed and public columns before any lookup challenge is drawn.
+4. **Claim discharge and soundness.** The lookup reduction emits an evaluation claim on
+   the virtual tuple column; RFC-0028 §2.4 step 4 discharges that claim down to committed
+   and public columns under the ledger lines registered by RFC-0012 A19. No new error
+   family or transcript label is added.
+5. **Controls.** `NC-1337..1340` reserved in `tests/negative-controls/catalog.md` (with
+   `NC-1339` covering a virtual rounding remainder lookup in E18-04).
+6. **Affected tasks.** E18-01 (IR validation and plain checker), E18-02..E18-05 (engine
+   reductions and module conversions).

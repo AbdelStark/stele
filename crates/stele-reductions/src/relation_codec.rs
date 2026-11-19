@@ -4,7 +4,7 @@
 //! little-endian integers and u32 length prefixes, so the bytes are a function of
 //! the plan alone. The digest is BLAKE3 of these bytes.
 use alloc::vec::Vec;
-use stele_ir::relation::{Kind, Ref, Relation, Width};
+use stele_ir::relation::{Def, Kind, Ref, Relation, Width};
 
 const MAGIC: &[u8] = b"stele/v0.1/relation/encoding/v1";
 const MAGIC_V2: &[u8] = b"stele/v0.1/relation/encoding/v2";
@@ -26,17 +26,18 @@ fn reference(out: &mut Vec<u8>, r: &Ref) {
 }
 
 /// Canonical bytes of a relation; prover and verifier derive them from the plan.
-/// Unsegmented relations keep `stele/v0.1/relation/encoding/v1` unchanged; segmented
-/// relations emit `stele/v0.1/relation/encoding/v2` (RFC-0026 A27 §2).
+/// Unsegmented relations without virtual columns keep `stele/v0.1/relation/encoding/v1`
+/// unchanged; segmented or virtual relations emit `stele/v0.1/relation/encoding/v2`
+/// (RFC-0026 A27 §2, RFC-0028 §2.1).
 pub fn encode(relation: &Relation) -> Vec<u8> {
-    let segmented = relation.is_segmented();
+    let v2 = relation.is_segmented() || relation.has_virtual();
     let mut out = Vec::new();
-    out.extend_from_slice(if segmented { MAGIC_V2 } else { MAGIC });
+    out.extend_from_slice(if v2 { MAGIC_V2 } else { MAGIC });
     u32_len(&mut out, relation.groups.len());
     for group in &relation.groups {
         name(&mut out, &group.name);
         out.push(group.log_len);
-        if segmented {
+        if v2 {
             out.extend_from_slice(&group.segment.to_le_bytes());
         }
     }
@@ -56,10 +57,53 @@ pub fn encode(relation: &Relation) -> Vec<u8> {
                     out.extend_from_slice(&v.to_le_bytes());
                 }
             }
+            Kind::Virtual(def) => {
+                out.push(3);
+                match def {
+                    Def::Linear { constant, terms } => {
+                        out.push(0);
+                        out.extend_from_slice(&constant.to_le_bytes());
+                        u32_len(&mut out, terms.len());
+                        for (coeff, r) in terms {
+                            out.extend_from_slice(&coeff.to_le_bytes());
+                            reference(&mut out, r);
+                        }
+                    }
+                    Def::Pointwise { terms } => {
+                        out.push(1);
+                        u32_len(&mut out, terms.len());
+                        for term in terms {
+                            out.extend_from_slice(&term.coeff.to_le_bytes());
+                            out.push(term.factors.len() as u8);
+                            for factor in &term.factors {
+                                reference(&mut out, factor);
+                            }
+                        }
+                    }
+                    Def::Contraction {
+                        free,
+                        summed,
+                        lhs,
+                        rhs,
+                    } => {
+                        out.push(2);
+                        out.extend_from_slice(&[*free, *summed]);
+                        reference(&mut out, lhs);
+                        reference(&mut out, rhs);
+                    }
+                }
+                match column.segment {
+                    None => out.push(0),
+                    Some(seg) => {
+                        out.push(1);
+                        out.extend_from_slice(&seg.to_le_bytes());
+                    }
+                }
+            }
         }
         width(&mut out, column.width);
         out.push(column.log_len);
-        if segmented {
+        if v2 {
             out.push(u8::from(column.carried));
         }
     }

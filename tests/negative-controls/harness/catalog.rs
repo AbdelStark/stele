@@ -53,9 +53,9 @@ fn rejects_registry_binding_tampers() {
 #[test]
 fn accepts_repository_catalog_without_crediting_stub() {
     let catalog = parse(include_str!("../catalog.md")).expect("valid repository catalog");
-    assert_eq!(catalog.len(), 248);
+    assert_eq!(catalog.len(), 252);
     assert_eq!(catalog.first().map(|entry| entry.id), Some(1));
-    assert_eq!(catalog.last().map(|entry| entry.id), Some(1336));
+    assert_eq!(catalog.last().map(|entry| entry.id), Some(1340));
     assert!(
         report(&catalog, &[]).is_err(),
         "done requires executed registration"
@@ -63,10 +63,10 @@ fn accepts_repository_catalog_without_crediting_stub() {
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
     assert!(
-        coverage.contains("80/122 bindings; 152/248 controls"),
+        coverage.contains("80/126 bindings; 152/252 controls"),
         "{coverage}"
     );
-    assert_eq!(coverage.matches("MISSING").count(), 96);
+    assert_eq!(coverage.matches("MISSING").count(), 100);
     for id in [
         203, 210, 211, 212, 213, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317,
         318, 400, 401, 402, 403, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 603, 605, 609,
@@ -87,12 +87,16 @@ fn accepts_repository_catalog_without_crediting_stub() {
             line.starts_with(&format!("NC-{id:04} |")) && line.ends_with("passed")
         }));
     }
-    for id in (100..=126).chain(704..=710).chain(1204..=1206) {
+    for id in (100..=126)
+        .chain(704..=710)
+        .chain(1204..=1206)
+        .chain(1337..=1340)
+    {
         assert!(
             !catalog
                 .iter()
                 .find(|entry| entry.id == id)
-                .expect("pending full CQIS control")
+                .expect("pending reserved control")
                 .done
         );
     }
