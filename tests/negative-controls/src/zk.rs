@@ -435,8 +435,8 @@ fn verify_view(
 }
 
 /// NC-0909 (RFC-0013 A5): one masked claim value changed while the batch is the
-/// honest one. Through the actual batch verifier (`claims::verify_batch`, which the
-/// dev-zk verifier runs per source) the public sum `Σ γ_a·c_a` moves and the
+/// honest one. Through the per-source batch verifier shared by the sparse and
+/// routed weight evaluators, the public sum `Σ γ_a·c_a` moves and the
 /// batch's first round fails. At the full proof the changed final first fails its
 /// relation's final check unless `μ` is re-solved; this is that consistent cheat.
 fn nc_0909() -> Result<(), String> {
