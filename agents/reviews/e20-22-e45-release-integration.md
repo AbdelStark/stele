@@ -51,3 +51,9 @@ Lucid job 6964 used one NVIDIA H100 SXM and the same pinned 16 CPU threads on ei
 Median proving times were **468.74 s on CPU** (range 467.62–469.10 s) and **102.17 s on CUDA** (range 101.14–103.63 s). The median paired wall-time ratio was **4.591×** (range 4.512–4.635×). The ratio of median times was 4.588×. These uninstrumented timings cover the prover process. Each ledger records the model commitment and both verifier processes separately.
 
 All three device proofs reached 32,800,374,784 bytes of charged physical peak on an 85,017,493,504-byte H100. Each 21,411,006-byte public proof contained 876 relations, 385 GKR steps and four batches. The positive receipts reconcile all five originals, ten visits, 1,570 responses and 1,456 retained lookup child views with the independently decoded proof. The 50-case fixed-seed corpus independently establishes byte parity.
+
+## Verification of the shipping candidate
+
+The normal CUDA CLI built from `ad43adf5` proved a fresh stories42M T32 statement in 101.43 s on Lucid job 7006. The current Linux CPU verifier accepted in 27.20 s. An older Linux CPU verifier also accepted, and both rejected a changed expected model. [Native proof and verification ledger](../../bench/ledger/e20-22-canonical-dev-zk-stories42m-t32-h100-sxm.json)
+
+A clean CPU-only build on Apple Silicon accepted the same proof and public input. Changing the expected model produced `model differs from --expect-model`. Changing one bit of the final Merkle sibling produced `Zk(Pcs(Merkle(RootMismatch)))`. The arm64 verifier binary has SHA-256 `1f8e3d505257a8daf7c3b88cf0e26e71764da0c0a96487791669611a1e855bf6` and the verification receipt has SHA-256 `1f80b09907d24d910ad2b1459616f79fdd2e13d705983cc6cb3f2a6efe475ec4`.
