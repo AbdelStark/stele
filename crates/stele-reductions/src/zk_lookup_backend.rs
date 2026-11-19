@@ -22,7 +22,7 @@ pub(in crate::zk::claims) trait TreeFactory<K> {
     fn begin_trees(&self) -> Rc<dyn Sources<'_, K> + '_>;
 }
 
-pub(in crate::zk::claims) trait Trees<K> {
+pub(in crate::zk) trait Trees<K> {
     fn top(&self, input: &Input<'_, K>) -> Result<Vec<[K; 2]>, Error>;
     fn rebuild(&self, input: &Input<'_, K>) -> Result<(), Error>;
     #[allow(clippy::too_many_arguments)]

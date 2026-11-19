@@ -34,7 +34,7 @@ use super::{basis, prove_at, verify_with, Error, Seed, BLOWUP, MIN_M};
 #[path = "zk_batch_backend.rs"]
 mod backend;
 #[path = "zk_source_backend.rs"]
-mod source_backend;
+pub(super) mod source_backend;
 use source_backend::Ready;
 #[path = "zk_gkr_backend.rs"]
 mod gkr_backend;
@@ -2546,7 +2546,7 @@ fn shared_message<K: ChallengeField + CodeField>(
     stele_pcs::hiding_message(plan.shared_id(), ell, m, &x, seed).map_err(Error::Pcs)
 }
 
-fn certify<K: ChallengeField + CodeField>(
+pub(super) fn certify<K: ChallengeField + CodeField>(
     prepared: &PreparedSource<'_, K, impl stele_pcs::ColumnMaterial>,
 ) -> Result<(Vec<u8>, VerifiedCertificate<K>), Error>
 where
@@ -3699,11 +3699,35 @@ where
     let mut detail = stele_sumcheck::parallel::Laps::start();
     let shared = &prepared[shared_index];
     let gammas = coefficients(t, mus.len())?;
-    let weights = weight_table(shared.source(), &mus, &gammas)?;
     let i = batch_instance(plan.shared_batch_id(), shared.source(), &mus, &gammas);
-    let dense = Dense::new(&i, vec![weights, shared.face()]).map_err(Error::Sumcheck)?;
-    detail.lap("zk/detail/shared_weights_face");
-    let (proof, point) = prove_at(&i, dense, seed, t, plan.policy())?;
+    let (proof, point) = if let Some(factory) = execution.and_then(|e| e.standalone) {
+        let Ready::Device(_, registry) = shared else {
+            return Err(Error::Backend);
+        };
+        super::prove_bound(
+            &i,
+            seed,
+            t,
+            plan.policy(),
+            Some(factory),
+            |mask, binding, t| {
+                registry.batch(
+                    shared.source().descriptor().id,
+                    &i,
+                    &mus,
+                    &gammas,
+                    mask,
+                    binding,
+                    t,
+                )
+            },
+        )?
+    } else {
+        let weights = weight_table(shared.source(), &mus, &gammas)?;
+        let dense = Dense::new(&i, vec![weights, shared.face()]).map_err(Error::Sumcheck)?;
+        detail.lap("zk/detail/shared_weights_face");
+        prove_at(&i, dense, seed, t, plan.policy())?
+    };
     detail.lap("zk/detail/shared_prove");
     if point[0] == zero::<K>() {
         return Err(Error::BatchPoint);

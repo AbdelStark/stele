@@ -531,7 +531,8 @@ class ClosedStackedGateTests(unittest.TestCase):
             (gkr, 'masked::prove(i, summand', 'masked::prove_unchecked(i, summand'),
             (gkr, 'pub(super) trait Arithmetic', 'pub trait Arithmetic'),
             (source, 'if root != entry.root {', 'if false {'),
-            (source, 'pub(super) trait Sources', 'pub trait Sources'),
+            (source, 'pub(in crate::zk) trait Sources', 'pub trait Sources'),
+            (source, 'pub(in crate::zk) fn open_mask(', 'pub fn open_mask('),
             (adapter, 'masked::prove(i, dense', 'masked::prove_unchecked(i, dense'),
             (manifest, 'stele-kernels = { path = "../stele-kernels" }', 'stele-gpu = { path = "../stele-gpu" }'),
         ):

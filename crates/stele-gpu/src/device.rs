@@ -17,6 +17,8 @@ pub struct Counts {
     pub lookup_planned_peak_bytes: usize,
     pub lookup_observed_peak_bytes: usize,
     pub originals: usize,
+    /// Bytes copied by original imports, included in uploaded_bytes.
+    pub original_uploaded_bytes: u64,
     pub source_visits: usize,
     pub source_responses: usize,
     pub source_hashes: u64,
@@ -167,6 +169,7 @@ impl<'d> Backend<QM31> for Session<'d> {
         self.record(|c| {
             c.observed_peak_bytes = c.observed_peak_bytes.max(peak);
             c.originals += 1;
+            c.original_uploaded_bytes += bytes as u64;
             c.uploaded_bytes += bytes as u64
         });
         Ok(Original {

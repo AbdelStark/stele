@@ -1,8 +1,9 @@
-//! RFC-0014 A2–A5. A single changed device field, reconstructed root or sibling must reject.
+//! RFC-0014 A2–A7. A single changed device field, reconstructed root or sibling must reject.
 #![forbid(unsafe_code)]
 use std::{cell::Cell, env, fs, path::PathBuf};
 use stele_gpu::{Cuda, Error, Session};
 use stele_kernels::gkr::{GkrBackend, GkrConstruction, RelationBackend, RelationConstruction};
+use stele_kernels::lookup::{Input, Key, LookupBackend, Visit};
 use stele_kernels::{
     Backend, HidingBackend, SourceColumn, SourceGeometry, WeightedClaim, M31, QM31,
 };
@@ -16,11 +17,31 @@ enum Change {
     Root,
     Sibling,
     LookupDenominator,
+    SharedRound,
+    StandaloneRoot,
+    StandaloneSibling,
+}
+impl Change {
+    fn shared_path(self) -> bool {
+        matches!(
+            self,
+            Self::SharedRound | Self::StandaloneRoot | Self::StandaloneSibling
+        )
+    }
+}
+struct Dense<'s, 'd: 's> {
+    state: <Session<'d> as Backend<QM31>>::Dense<'s>,
+    inject_first: Option<&'s Cell<bool>>,
 }
 struct Changed<'d, const ROUND: bool> {
     device: Session<'d>,
     target: Change,
     first_id: Cell<Option<u64>>,
+    shared_id: Cell<Option<u64>>,
+    standalone_id: Cell<Option<u64>>,
+    standalone_visits: Cell<usize>,
+    standalone_rebuild_queried: Cell<bool>,
+    shared_start: Cell<Option<(usize, usize, usize)>>,
     injected: Cell<bool>,
 }
 impl<'d, const ROUND: bool> Changed<'d, ROUND> {
@@ -29,6 +50,11 @@ impl<'d, const ROUND: bool> Changed<'d, ROUND> {
             device,
             target,
             first_id: Cell::new(None),
+            shared_id: Cell::new(None),
+            standalone_id: Cell::new(None),
+            standalone_visits: Cell::new(0),
+            standalone_rebuild_queried: Cell::new(false),
+            shared_start: Cell::new(None),
             injected: Cell::new(false),
         }
     }
@@ -41,7 +67,7 @@ impl<'d, const ROUND: bool> Backend<QM31> for Changed<'d, ROUND> {
     where
         Self: 's;
     type Dense<'s>
-        = <Session<'d> as Backend<QM31>>::Dense<'s>
+        = Dense<'s, 'd>
     where
         Self: 's;
 
@@ -50,7 +76,20 @@ impl<'d, const ROUND: bool> Backend<QM31> for Changed<'d, ROUND> {
         geometry: SourceGeometry,
         words: &'s [M31],
     ) -> Result<Self::Original<'s>, Error> {
-        self.device.original(geometry, words)
+        let result = self.device.original(geometry, words)?;
+        if self.target.shared_path() {
+            // The pinned complete fixture has three ordinary originals, then the shared
+            // original, then A4's standalone owner after the ordinary batches finish.
+            let c = self.device.counts();
+            match c.originals {
+                4 => self.shared_id.set(Some(geometry.id)),
+                5 if c.finals == 3 && self.shared_id.get() != Some(geometry.id) => {
+                    self.standalone_id.set(Some(geometry.id))
+                }
+                _ => {}
+            }
+        }
+        Ok(result)
     }
 
     fn dense_batch<'s>(
@@ -59,15 +98,31 @@ impl<'d, const ROUND: bool> Backend<QM31> for Changed<'d, ROUND> {
         o: &'s Self::Original<'_>,
         claims: &[WeightedClaim<'_, QM31>],
     ) -> Result<(Self::Dense<'s>, QM31), Error> {
-        self.device.dense_batch(g, o, claims)
+        let (state, value) = self.device.dense_batch(g, o, claims)?;
+        let c = self.device.counts();
+        let shared = self.target.shared_path()
+            && self.shared_id.get() == Some(g.id)
+            && c.batches == 4
+            && c.finals == 3;
+        if shared {
+            self.shared_start.set(Some((c.rounds, c.folds, c.finals)));
+        }
+        Ok((
+            Dense {
+                state,
+                inject_first: (shared && self.target == Change::SharedRound)
+                    .then_some(&self.injected),
+            },
+            value,
+        ))
     }
 
     fn dense_round<'s>(state: &mut Self::Dense<'s>) -> Result<[QM31; 3], Error>
     where
         Self: 's,
     {
-        let mut fields = Session::dense_round(state)?;
-        if ROUND {
+        let mut fields = Session::dense_round(&mut state.state)?;
+        if ROUND || state.inject_first.is_some_and(|flag| !flag.replace(true)) {
             fields[0] = fields[0] + QM31::ONE;
         }
         Ok(fields)
@@ -77,14 +132,14 @@ impl<'d, const ROUND: bool> Backend<QM31> for Changed<'d, ROUND> {
     where
         Self: 's,
     {
-        Session::dense_fold(state, point)
+        Session::dense_fold(&mut state.state, point)
     }
 
     fn dense_finals<'s>(state: &Self::Dense<'s>) -> Result<[QM31; 2], Error>
     where
         Self: 's,
     {
-        Session::dense_finals(state)
+        Session::dense_finals(&state.state)
     }
 }
 
@@ -129,6 +184,39 @@ impl<const ROUND: bool> RelationBackend<QM31> for Changed<'_, ROUND> {
     }
 }
 
+impl<'d> LookupBackend for Changed<'d, false> {
+    type Tree<'s>
+        = <Session<'d> as LookupBackend>::Tree<'s>
+    where
+        Self: 's;
+    fn lookup_top(
+        &self,
+        input: &Input<'_>,
+        owners: &[&Self::Original<'_>],
+    ) -> Result<Vec<[QM31; 2]>, Error> {
+        let mut pairs = self.device.lookup_top(input, owners)?;
+        if self.target == Change::LookupDenominator && !self.injected.replace(true) {
+            pairs.first_mut().ok_or(Error::Geometry)?[1] = QM31::ZERO;
+        }
+        Ok(pairs)
+    }
+    fn lookup_tree<'s>(
+        &'s self,
+        input: &Input<'_>,
+        owners: &[&Self::Original<'_>],
+    ) -> Result<Self::Tree<'s>, Error> {
+        self.device.lookup_tree(input, owners)
+    }
+    fn lookup_gkr<'s>(
+        &'s self,
+        key: Key,
+        visit: Visit<'_, Self::Tree<'_>>,
+        input: &GkrConstruction<'_, QM31>,
+    ) -> Result<Self::Gkr<'s>, Error> {
+        self.device.lookup_gkr(key, visit, input)
+    }
+}
+
 impl<'d> HidingBackend for Changed<'d, false> {
     type Columns<'s>
         = <Session<'d> as HidingBackend>::Columns<'s>
@@ -151,6 +239,13 @@ impl<'d> HidingBackend for Changed<'d, false> {
         {
             root[0] ^= 1;
         }
+        if self.standalone_id.get() == Some(g.id) {
+            let visit = self.standalone_visits.get() + 1;
+            self.standalone_visits.set(visit);
+            if self.target == Change::StandaloneRoot && visit == 2 && !self.injected.replace(true) {
+                root[0] ^= 1;
+            }
+        }
         Ok((tree, root))
     }
     fn selected_column(
@@ -159,44 +254,17 @@ impl<'d> HidingBackend for Changed<'d, false> {
         tree: &Self::Columns<'_>,
         index: usize,
     ) -> Result<SourceColumn, Error> {
+        if self.standalone_id.get() == Some(g.id) && self.standalone_visits.get() == 2 {
+            self.standalone_rebuild_queried.set(true);
+        }
         let mut col = self.device.selected_column(g, tree, index)?;
-        if self.target == Change::Sibling && !self.injected.replace(true) {
+        let standalone = self.target == Change::StandaloneSibling
+            && self.standalone_id.get() == Some(g.id)
+            && self.standalone_visits.get() == 1;
+        if (self.target == Change::Sibling || standalone) && !self.injected.replace(true) {
             col.siblings.first_mut().ok_or(Error::Geometry)?[0] ^= 1;
         }
         Ok(col)
-    }
-}
-
-impl<'d> stele_kernels::lookup::LookupBackend for Changed<'d, false> {
-    type Tree<'s>
-        = <Session<'d> as stele_kernels::lookup::LookupBackend>::Tree<'s>
-    where
-        Self: 's;
-    fn lookup_top(
-        &self,
-        input: &stele_kernels::lookup::Input<'_>,
-        owners: &[&Self::Original<'_>],
-    ) -> Result<Vec<[QM31; 2]>, Error> {
-        let mut pairs = self.device.lookup_top(input, owners)?;
-        if self.target == Change::LookupDenominator && !self.injected.replace(true) {
-            pairs.first_mut().ok_or(Error::Geometry)?[1] = QM31::ZERO;
-        }
-        Ok(pairs)
-    }
-    fn lookup_tree<'s>(
-        &'s self,
-        input: &stele_kernels::lookup::Input<'_>,
-        owners: &[&Self::Original<'_>],
-    ) -> Result<Self::Tree<'s>, Error> {
-        self.device.lookup_tree(input, owners)
-    }
-    fn lookup_gkr<'s>(
-        &'s self,
-        key: stele_kernels::lookup::Key,
-        visit: stele_kernels::lookup::Visit<'_, Self::Tree<'_>>,
-        input: &GkrConstruction<'_, QM31>,
-    ) -> Result<Self::Gkr<'s>, Error> {
-        self.device.lookup_gkr(key, visit, input)
     }
 }
 
@@ -204,18 +272,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args_os().skip(1).map(PathBuf::from).collect();
     let (case, model_commitment, model_secret, stage) = match args.as_slice() {
         [case, commitment, secret] => (case, commitment, secret, "batch"),
-        [case, commitment, secret, stage] if stage.as_os_str() == "gkr" => {
-            (case, commitment, secret, "gkr")
+        [case, commitment, secret, stage] => {
+            let mode = stage.to_str().ok_or("invalid control name")?;
+            if !matches!(
+                mode,
+                "gkr"
+                    | "relation"
+                    | "source-root"
+                    | "source-sibling"
+                    | "lookup-denominator"
+                    | "shared"
+                    | "standalone-root"
+                    | "standalone-sibling"
+            ) {
+                return Err("unknown device control".into());
+            }
+            (case, commitment, secret, mode)
         }
-        [case, commitment, secret, stage] if stage.as_os_str() == "relation" => {
-            (case, commitment, secret, "relation")
-        }
-        [case, commitment, secret, stage] if stage.as_os_str() == "source-root" => (case,commitment,secret,"source-root"),
-        [case, commitment, secret, stage] if stage.as_os_str() == "source-sibling" => (case,commitment,secret,"source-sibling"),
-        [case, commitment, secret, stage] if stage.as_os_str() == "lookup-denominator" => (case,commitment,secret,"lookup-denominator"),
         _ => {
             return Err(
-                "expected first parity case, commitment, state and optional gkr, relation, source-root or source-sibling".into(),
+                "expected first parity case, commitment, state and optional device control".into(),
             )
         }
     };
@@ -239,6 +315,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|_| "invalid fixture seed")?;
     let target = match stage {
         "lookup-denominator" => Change::LookupDenominator,
+        "shared" => Change::SharedRound,
+        "standalone-root" => Change::StandaloneRoot,
+        "standalone-sibling" => Change::StandaloneSibling,
         "source-root" => Change::Root,
         "source-sibling" => Change::Sibling,
         _ => Change::Round,
@@ -267,7 +346,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             index: &mut index,
         },
-        if target == Change::LookupDenominator {
+        if target.shared_path() {
+            zk::BatchExecution::with_shared(&material)
+        } else if target == Change::LookupDenominator {
             zk::BatchExecution::with_lookup(&material)
         } else if target != Change::Round {
             zk::BatchExecution::with_sources(&material)
@@ -282,7 +363,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let error = result.err().ok_or("changed CUDA round was accepted")?;
     // The inner error belongs to the reductions crate. Avoid adding a protocol dependency to
     // this field backend just to match its nested variants in this rejection binary.
-    let claimed = if target == Change::Round {
+    let claimed = if matches!(target, Change::Round | Change::SharedRound) {
         "Zk(Sumcheck(RoundSumMismatch))"
     } else if target == Change::LookupDenominator {
         "Zk(DenominatorZero)"
@@ -297,7 +378,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         material.device.counts()
     };
-    if target == Change::LookupDenominator {
+    if target.shared_path() {
+        if !material.injected.get()
+            || counts.originals != 5
+            || counts.source_responses == 0
+            || material.standalone_id.get().is_none()
+            || material.shared_id.get().is_none()
+            || material.standalone_id.get() == material.shared_id.get()
+        {
+            return Err(
+                "A7 fault did not use distinct shared and standalone original owners".into(),
+            );
+        }
+        match target {
+            Change::SharedRound => {
+                let (rounds, folds, finals) = material
+                    .shared_start
+                    .get()
+                    .ok_or("shared batch not dispatched")?;
+                if (counts.rounds, counts.folds, counts.finals) != (rounds + 1, folds, finals)
+                    || material.standalone_visits.get() != 1
+                    || counts.batches != 4
+                {
+                    return Err("changed shared round did not reject before its first fold".into());
+                }
+            }
+            Change::StandaloneRoot
+                if material.standalone_visits.get() == 2
+                    && !material.standalone_rebuild_queried.get()
+                    && counts.finals == 4
+                    && counts.rounds == counts.folds => {}
+            Change::StandaloneSibling
+                if material.standalone_visits.get() == 1 && counts.finals == 3 => {}
+            _ => return Err("standalone fault did not reach the intended A4 visit".into()),
+        }
+    } else if target == Change::LookupDenominator {
         if !material.injected.get()
             || counts.lookup_tops != 1
             || counts.gkr_steps != 0
@@ -360,7 +475,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         return Err("failed round did not restore the reservation".into());
     }
-    if target == Change::LookupDenominator {
+    if target == Change::SharedRound {
+        println!("rejected_cuda_shared=RoundSumMismatch target_rounds=1 target_folds=0 reservation_restored=1");
+    } else if target == Change::LookupDenominator {
         println!("rejected_cuda_{stage}=DenominatorZero injected=1 reservation_restored=1");
     } else if target != Change::Round {
         println!("rejected_cuda_{stage}=RootMismatch injected=1 reservation_restored=1");

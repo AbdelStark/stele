@@ -34,7 +34,7 @@ from pathlib import Path
 import re
 import subprocess
 
-from hiding_source_counts import check_source_work
+from hiding_source_counts import proof_inventory, check_source_work
 from lookup_tree_counts import check_lookup_work
 
 
@@ -118,7 +118,10 @@ def device_counters(stderr, verified, byte, driver, proof=None):
     if not required <= fields.keys():
         raise ValueError('missing CUDA work or memory counters')
     batches = re.search(r'^dev-zk: (?P<relations>\d+) relation instances, (?P<gkr>\d+) GKR steps, (?P<batches>\d+) batches,', verified, re.M)
-    if batches is None or not (0 < fields['batches'] == fields['finals'] == int(batches['batches']) - 1
+    has_shared = 'sources_original_h2d_bytes' in fields
+    if has_shared and not has_lookup:
+        raise ValueError('selected shared batch requires the full balanced execution')
+    if batches is None or not (0 < fields['batches'] == fields['finals'] == int(batches['batches']) - int(not has_shared)
                                and fields['originals'] == (fields.get('sources_originals') if has_sources else fields['batches'])
                                and 0 < fields['rounds'] == fields['folds'] and fields['h2d_bytes'] > 0
                                and fields['d2h_bytes'] == 48 * fields['rounds'] + 32 * fields['finals']):
@@ -151,7 +154,20 @@ def device_counters(stderr, verified, byte, driver, proof=None):
         if proof is None:
             raise ValueError('CUDA sources require the independently verified proof')
         source = {name.removeprefix('sources_'): value for name, value in fields.items() if name.startswith('sources_')}
-        check_source_work(source, proof, verified, fields['total_bytes'] * 2 // 5)
+        check_source_work(source, proof, verified, fields['total_bytes'] * 2 // 5, standalone=has_shared)
+        if has_shared:
+            relations, gkr, dense, _, _ = proof_inventory(proof)
+            rel_steps, rel_rounds, rel_nodes, rel_finals = relations
+            gkr_steps, gkr_rounds, gkr_nodes = gkr
+            if ((fields['relations_steps'], fields['relations_rounds']) != (rel_steps, rel_rounds)
+                    or fields['relations_d2h_bytes'] != 16 * (rel_nodes + rel_finals)):
+                raise ValueError('relation work differs from authenticated proof')
+            # A3 expands compact GKR finals on the host; every step returns at least one field.
+            if ((fields['gkr_steps'], fields['gkr_rounds']) != (gkr_steps, gkr_rounds)
+                    or fields['gkr_d2h_bytes'] < 16 * (gkr_nodes + gkr_steps)):
+                raise ValueError('GKR work differs from authenticated proof')
+            if (fields['batches'], fields['rounds']) != dense or fields['sources_original_h2d_bytes'] > fields['h2d_bytes']:
+                raise ValueError('shared device work differs from authenticated proof')
     if has_lookup:
         check_lookup_work({k.removeprefix('lookup_'): v for k, v in fields.items() if k.startswith('lookup_')}, verified, fields['total_bytes'] * 2 // 5)
         if fields['gkr_streamed_layer_bytes'] != 0:
@@ -239,6 +255,10 @@ def main():
             families.append('relation rounds')
         if 'sources_visits' in device:
             families.append('original hiding-source certificates and openings')
+        if 'lookup_tops' in device:
+            families.append('lookup trees and retained children')
+        if 'sources_original_h2d_bytes' in device:
+            families.append('the shared batch and its standalone mask certificate and opening')
         execution = 'CUDA supplied ' + ', '.join(families) + '.'
     ledger = {
         'schema_version': 1, 'kind': 'inference', 'workload': a.workload, 'commit': a.commit,
