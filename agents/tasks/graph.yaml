@@ -5273,6 +5273,25 @@ tasks:
   - count dense singleton ranges directly, checking the actual public table and preserving signed shifts and field values
   - compare complete column vectors on original T32 work, record matched CPU timings and three quiet-start Mac proofs with expected-model and wrong-model checks
 
+- id: E16-45
+  epic: E16
+  title: Measure and reduce dev-zk source claim verification work
+  lane: Z
+  depends:
+  - E16-44
+  rfc:
+  - RFC-0013 A5 and A6
+  - RFC-0026 A9
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-source-visits
+  branch: task/E16-45-verifier-weights
+  acceptance:
+  - measure occurrence routing and sparse expected-weight evaluation on a verified original T32 proof before choosing the implementation
+  - preserve source-local offsets, input rejection, public claim encoding, every transcript challenge and existing independent checks
+  - compare reference and candidate on the same original proof and qualify a material optimization with original CPU proofs
+
 - id: E16-40a
   epic: E16
   title: Separate development-ZK GPU-candidate CPU stage costs and shape inventory

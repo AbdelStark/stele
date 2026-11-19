@@ -722,7 +722,7 @@ def field_sources(root):
                # RFC-0013 A4: the bound masked A1 sumcheck and its tests.
                'src/zk.rs', 'tests/zk.rs',
                # RFC-0013 A5: masked claims, zero-sums and per-source batches.
-               'src/zk_claims.rs', 'tests/zk_claims.rs',
+               'src/zk_claims.rs', 'src/zk_occurrence_weight.rs', 'tests/zk_claims.rs',
                # RFC-0008 A7: ZK-GKR over the A5 trees.
                'src/zk_lookup.rs', 'tests/zk_lookup.rs',
                # E16-40c: reviewed, opt-in production lookup and claim-batch references.

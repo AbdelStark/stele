@@ -48,6 +48,8 @@ use stele_sumcheck::{Dense, Instance, Reduction, Summand, Term};
 
 #[path = "zk_lookup.rs"]
 mod lookup;
+#[path = "zk_occurrence_weight.rs"]
+mod occurrence_weight;
 
 #[cfg(feature = "bench")]
 #[path = "zk_gkr_bench.rs"]
@@ -706,12 +708,10 @@ struct PlanColumn {
     limbs: usize,
 }
 
-/// A claim source's layout: `R = 2^ell`, `C = 2^m`, each column's offset and its
-/// first block's offset.
+/// A claim source's layout: `R = 2^ell`, `C = 2^m`.
 struct Layout {
     ell: u8,
     m: u8,
-    offsets: Vec<(usize, usize)>,
 }
 
 struct Plan<K> {
@@ -719,7 +719,8 @@ struct Plan<K> {
     steps: Vec<Step<K>>,
     lookups: Vec<lookup::LookupPlan>,
     gkr: Vec<lookup::GkrStep>,
-    /// Per column: (offset, first block offset) in its source; per source: (ell, m).
+    /// Source-local (column offset, first block offset), in global column order.
+    offsets: Vec<(usize, usize)>,
     layouts: Vec<Layout>,
     /// Sources with at least one claim, in order.
     batched: Vec<usize>,
@@ -1419,14 +1420,7 @@ fn plan_with<K: ChallengeField + CodeField>(
         if m >= 30 {
             return Err(Error::Statement);
         }
-        layouts.push(Layout {
-            ell,
-            m,
-            offsets: Vec::new(),
-        });
-    }
-    for (x, offset) in columns.iter().zip(offsets) {
-        layouts[x.source].offsets.push(offset);
+        layouts.push(Layout { ell, m });
     }
     let batched: Vec<usize> = (0..sources)
         .filter(|&source| {
@@ -1473,6 +1467,7 @@ fn plan_with<K: ChallengeField + CodeField>(
         lookups: lookup_plans,
         gkr,
         layouts,
+        offsets,
         batched,
         masks,
         shared_offsets,
@@ -1484,15 +1479,6 @@ fn plan_with<K: ChallengeField + CodeField>(
         reserved,
         lifetime: lifetime.cloned(),
     })
-}
-
-/// The column's position within its source's `offsets`.
-fn slot<K>(plan: &Plan<K>, column: usize) -> usize {
-    let source = plan.columns[column].source;
-    plan.columns[..column]
-        .iter()
-        .filter(|x| x.source == source)
-        .count()
 }
 
 /// A column point: its `Var` coordinates at `ρ`, its `Free` ones at `free`.
@@ -1521,7 +1507,7 @@ where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     let column = plan.columns[occurrence.column];
-    let (at, blocks) = plan.layouts[column.source].offsets[slot(plan, occurrence.column)];
+    let (at, blocks) = plan.offsets[occurrence.column];
     let x = stele_sumcheck::parallel::eq_table(&column_point(&occurrence.coords, point, free))
         .map_err(|_| Error::Statement)?;
     let u: Vec<K> = occurrence.u.iter().map(|q| point[*q]).collect();
@@ -1655,6 +1641,18 @@ fn batch_instance<K: ChallengeField>(
     claims: &[Claim<K>],
     gammas: &[K],
 ) -> Instance<K> {
+    let claimed_sum = claims
+        .iter()
+        .zip(gammas)
+        .fold(zero::<K>(), |s, (c, g)| s + *g * c.value);
+    batch_instance_sum(id, source, claimed_sum)
+}
+
+fn batch_instance_sum<K: ChallengeField>(
+    id: u64,
+    source: &Source<K>,
+    claimed_sum: K,
+) -> Instance<K> {
     let num_vars = source.rows().trailing_zeros() + source.columns().trailing_zeros() - 1;
     Instance {
         id,
@@ -1664,10 +1662,7 @@ fn batch_instance<K: ChallengeField>(
             coefficient: K::from_i64(1),
             factors: vec![0, 1],
         }],
-        claimed_sum: claims
-            .iter()
-            .zip(gammas)
-            .fold(zero::<K>(), |s, (c, g)| s + *g * c.value),
+        claimed_sum,
     }
 }
 
@@ -1688,13 +1683,14 @@ fn opening_point<K: ChallengeField>(point: &[K], ell: usize) -> Vec<K> {
     full
 }
 
-/// The verifier's `W'(ρ) = (1 − w*)·W̃(row*, col*)`, zero weight on `w = 1`.
-/// Linearity lets each claim accumulate against the same equality table before batching.
-fn expected_weight<K: ChallengeField>(
+/// A5 item 5 and NC-0915: all batch weight evaluators are zero on the mask face.
+/// Check the complete source point and one draw per claim before evaluating its data face.
+fn on_data_face<K: ChallengeField>(
     source: &Source<K>,
-    claims: &[Claim<K>],
-    gammas: &[K],
     point: &[K],
+    claims: usize,
+    coefficients: usize,
+    evaluate: impl FnOnce(&[K]) -> Result<K, Error>,
 ) -> Result<K, Error> {
     let (w, coordinates) = point.split_first().ok_or(Error::Statement)?;
     let dimension = (source.rows() / 2)
@@ -1703,19 +1699,32 @@ fn expected_weight<K: ChallengeField>(
         + (source.columns() / 2)
             .checked_ilog2()
             .ok_or(Error::Statement)?;
-    if coordinates.len() != dimension as usize || claims.len() != gammas.len() {
+    if coordinates.len() != dimension as usize || claims != coefficients {
         return Err(Error::Statement);
     }
-    let eq = stele_sumcheck::parallel::eq_table(coordinates).map_err(|_| Error::Statement)?;
-    let mut data = zero::<K>();
-    for (claim, gamma) in claims.iter().zip(gammas) {
-        let mut value = zero::<K>();
-        for (position, weight) in &claim.weights {
-            value = value + *eq.get(*position).ok_or(Error::Statement)? * *weight;
+    Ok((K::from_i64(1) - *w) * evaluate(coordinates)?)
+}
+
+/// The verifier's `W'(ρ) = (1 − w*)·W̃(row*, col*)`, zero weight on `w = 1`.
+/// Linearity lets each claim accumulate against the same equality table before batching.
+fn expected_weight<K: ChallengeField>(
+    source: &Source<K>,
+    claims: &[Claim<K>],
+    gammas: &[K],
+    point: &[K],
+) -> Result<K, Error> {
+    on_data_face(source, point, claims.len(), gammas.len(), |coordinates| {
+        let eq = stele_sumcheck::parallel::eq_table(coordinates).map_err(|_| Error::Statement)?;
+        let mut data = zero::<K>();
+        for (claim, gamma) in claims.iter().zip(gammas) {
+            let mut value = zero::<K>();
+            for (position, weight) in &claim.weights {
+                value = value + *eq.get(*position).ok_or(Error::Statement)? * *weight;
+            }
+            data = data + *gamma * value;
         }
-        data = data + *gamma * value;
-    }
-    Ok((K::from_i64(1) - *w) * data)
+        Ok(data)
+    })
 }
 
 /// Prove one A5 item-5 batch of `claims` on a hiding source, with its plain mask
@@ -1793,13 +1802,39 @@ pub fn verify_batch<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    verify_batch_using(
+        id,
+        verified,
+        claims.iter().map(|c| c.value),
+        batch,
+        binding,
+        t,
+        |source, gammas, point| expected_weight(source, claims, gammas, point),
+    )
+}
+
+fn verify_batch_using<K: ChallengeField + CodeField + Eq>(
+    id: u64,
+    verified: &VerifiedCertificate<K>,
+    values: impl ExactSizeIterator<Item = K>,
+    batch: &Batch<K>,
+    binding: &[u8],
+    t: &mut Transcript<K>,
+    weight: impl FnOnce(&Source<K>, &[K], &[K]) -> Result<K, Error>,
+) -> Result<masked::Reduction<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let source = verified.record().source();
-    let gammas = coefficients(t, claims.len())?;
-    let i = batch_instance(id, source, claims, &gammas);
+    let gammas = coefficients(t, values.len())?;
+    let claimed_sum = values
+        .zip(&gammas)
+        .fold(zero::<K>(), |sum, (v, g)| sum + *g * v);
+    let i = batch_instance_sum(id, source, claimed_sum);
     let result =
         masked::verify_degree(&i, 2, &batch.sumcheck, binding, t).map_err(Error::Sumcheck)?;
     let point = &result.reduction.point;
-    if result.reduction.claims[0].1 != expected_weight(source, claims, &gammas, point)? {
+    if result.reduction.claims[0].1 != weight(source, &gammas, point)? {
         return Err(Error::Sumcheck(
             stele_sumcheck::Error::FinalEvaluationMismatch,
         ));
@@ -2312,7 +2347,7 @@ impl<K: ChallengeField + CodeField> Plan<K> {
     /// An occurrence's claim-mask block, read from its source's message.
     fn block(&self, messages: &[&[M31]], o: &Occurrence) -> Vec<M31> {
         let source = self.columns[o.column].source;
-        let (_, blocks) = self.layouts[source].offsets[slot(self, o.column)];
+        let (_, blocks) = self.offsets[o.column];
         let width = 1usize << self.layouts[source].m;
         let first = blocks + o.block * dim::<K>();
         (first..first + dim::<K>())
@@ -2446,14 +2481,15 @@ fn source_message<K: ChallengeField + CodeField>(
         .iter()
         .enumerate()
         .filter(|(_, c)| c.source == source);
-    for ((index, column), (at, blocks)) in members.zip(&layout.offsets) {
+    for (index, column) in members {
+        let (at, blocks) = plan.offsets[index];
         let len = 1usize << column.log_len;
         for (p, value) in columns[index].iter().enumerate() {
             for (d, limb) in limbs(*value)?.into_iter().take(column.limbs).enumerate() {
                 x[at + d * len + p] = limb;
             }
         }
-        for value in &mut x[*blocks..*blocks + plan.reserved[index] * dim::<K>()] {
+        for value in &mut x[blocks..blocks + plan.reserved[index] * dim::<K>()] {
             let drawn = stream.m31();
             if claim_masks {
                 *value = drawn;
@@ -3671,7 +3707,8 @@ where
     t.absorb(AbsorbLabel::FieldSources, &proof.sources[early..].concat())
         .map_err(fail)?;
     let binding = &proof.sources[shared_index];
-    let mut claims: Vec<Vec<Claim<K>>> = vec![Vec::new(); plan.layouts.len()];
+    let mut claims: Vec<Vec<occurrence_weight::Routed<K>>> =
+        (0..plan.layouts.len()).map(|_| Vec::new()).collect();
     let mut mus = Vec::new();
     let mut reductions = Vec::new();
     let mut records = Vec::new();
@@ -3693,7 +3730,8 @@ where
         public_finals(step, point, &free, finals)?;
         let first = step.first();
         for (k, o) in step.occurrences.iter().enumerate() {
-            let (source, claim) = occurrence_claim(&plan, o, point, &free, finals[first + k])?;
+            let (source, claim) =
+                occurrence_weight::route(&plan, o, point, &free, finals[first + k])?;
             claims[source].push(claim);
         }
         mus.push(mask_claim(&plan, j, point, result.mask_final)?);
@@ -3714,7 +3752,14 @@ where
         ledger.add(Line::Rlc, &name, line, r + 2);
         ledger.masked(&name, &result);
         let point = &result.reduction.point;
-        let finals = lookup::finals(&plan, step, run, point, &sumcheck.final_values)?;
+        let finals = lookup::finals_with(
+            &plan,
+            step,
+            run,
+            point,
+            &sumcheck.final_values,
+            |o, value| occurrence_weight::route(&plan, o, point, &[], value),
+        )?;
         for (source, claim) in finals.claims {
             claims[source].push(claim);
         }
@@ -3726,13 +3771,17 @@ where
     }
     for (b, (source, batch)) in plan.batched.iter().zip(&proof.batches).enumerate() {
         let index = plan.steps.len() + plan.gkr.len() + b;
-        let result = verify_batch(
+        let source_claims = &claims[*source];
+        let result = verify_batch_using(
             plan.masks[index].0,
             &verified[*source],
-            &claims[*source],
+            source_claims.iter().map(|c| c.value),
             batch,
             binding,
             t,
+            |source, gammas, point| {
+                occurrence_weight::expected(source, source_claims, gammas, point)
+            },
         )?;
         let name = alloc::format!("batch source {source}");
         let count = claims[*source].len() as u64;
@@ -4675,7 +4724,7 @@ mod tests {
                 blocks: vec![t],
             };
             let plan = plan_with(&statement, Some(&life)).expect("plan");
-            let (_, first) = plan.layouts[1].offsets[0];
+            let (_, first) = plan.offsets[1];
             assert_eq!(plan.reserved[1], 3 * t);
             let mut out: Vec<usize> = plan
                 .steps
