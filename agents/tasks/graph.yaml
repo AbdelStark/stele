@@ -4341,7 +4341,7 @@ tasks:
   skill: pcs-engineer
   lane: C
   crate: docs
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E19-07-source-material-contract
   acceptance:
@@ -4358,7 +4358,9 @@ tasks:
   skill: pcs-engineer
   lane: C
   crate: stele-pcs
-  status: ready
+  status: done
+  agent: codex-root
+  branch: task/E19-08-source-material
   acceptance:
   - same verifier-owned source, certificate bytes, opening bytes, field record and transcript as CPU for honest material
   - wrong root, changed sibling, wrong response size, exhausted lifetime and second opening reject under their specified checks
@@ -4559,7 +4561,7 @@ tasks:
   rfc: [RFC-0014 A2, RFC-0020 A10, RFC-0026 A19]
   skill: cuda-kernel-author
   crate: stele-gpu+stele-reductions+stele-prover+stele-cli
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E20-12-cuda-prover
   acceptance:
@@ -4576,7 +4578,7 @@ tasks:
   rfc: [RFC-0014 A3, RFC-0020 A11, RFC-0026 A20]
   skill: rfc-author
   crate: docs
-  status: in_progress
+  status: done
   agent: codex-integration
   branch: task/E20-13-live-gkr-contract
   acceptance:
@@ -4591,7 +4593,7 @@ tasks:
   rfc: [RFC-0014 A3, RFC-0020 A11, RFC-0026 A20]
   skill: cuda-kernel-author
   crate: stele-kernels+stele-reductions+stele-gpu+stele-prover+stele-cli
-  status: in_progress
+  status: done
   agent: codex-integration
   branch: task/E20-14-live-gkr
   acceptance:
@@ -4608,7 +4610,7 @@ tasks:
   rfc: [RFC-0014 A4, RFC-0020 A12, RFC-0026 A21]
   skill: rfc-author
   crate: docs
-  status: in_progress
+  status: done
   agent: codex-source-visits
   branch: task/E20-15-live-relations-contract
   acceptance:
@@ -5271,7 +5273,7 @@ tasks:
   - RFC-0018 A1
   skill: performance-engineer
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-qualify-full-path
   branch: task/E16-41-mask-stream-prefix
   acceptance:
@@ -5279,6 +5281,84 @@ tasks:
   - compare the following raw stream bytes and M31 draws with the unchanged scalar sampler, including both rejected encodings and rejection at the buffer boundary
   - reduce the source_messages stage on the E16-40o stories42M T32 Mac workload; measure the complete proof, request verification, wrong-model rejection and all source/transcript pins with every binding active
   - keep the change private to the producer and obtain independent review with mandatory gates; the CPU residual result alone does not reopen ADR-127
+
+- id: E16-42
+  epic: E16
+  title: Reduce claim routing and self-verification work on the CPU
+  lane: Z
+  depends:
+  - E16-24
+  rfc:
+  - RFC-0008 A7
+  - RFC-0013 A5 items 4 and 5
+  - RFC-0018 A1
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E16-42-claim-routing
+  acceptance:
+  - transfer ownership of GKR claim weights once while preserving claim order, transcript challenges, public finals and the mask rank checks
+  - compare the verifier's direct evaluation of sparse claim weights with its dense reference on ordinary and shared sources, covering duplicate positions, field-valued coefficients, invalid positions and the mask face
+  - compare the stories42M T32 claim-routing and self-verification stages with the immediate baseline on the same host and thread count, and keep pinned proof bytes and mandatory gates green
+
+- id: E16-43
+  epic: E16
+  title: Fold fixed and free relation coordinates before broadcasting domain tables
+  lane: Z
+  depends:
+  - E16-24
+  rfc:
+  - RFC-0013 A5 item 2
+  - RFC-0026 A6, A9
+  - RFC-0008 A7
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E16-43-relation-projection
+  acceptance:
+  - reduce the work of constructing a masked relation factor from a column under fixed bits, free challenges and permuted or broadcast domain variables; preserve the GKR caller
+  - compare every result of the projection with an independent multilinear evaluation over mixed coordinates, Boolean and extension points, padding, scalars and permutations
+  - measure the same stories42M T32 relation-factors lap and total prover time on the same host and threads; preserve pinned proof bytes and negative controls
+
+- id: E16-44
+  epic: E16
+  title: Count dev-zk lookup multiplicities with one canonical key per point
+  lane: Z
+  depends:
+  - E12-14
+  rfc:
+  - RFC-0026 A3 and A9
+  - RFC-0008 A7
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-source-visits
+  branch: task/E16-44-multiplicity
+  acceptance:
+  - reuse validated references and canonical tuple keys while preserving fixed, permuted and selected reads, missing rows, duplicate canonical entries and padding
+  - count dense singleton ranges directly, checking the actual public table and preserving signed shifts and field values
+  - compare complete column vectors on original T32 work, record matched CPU timings and three quiet-start Mac proofs with expected-model and wrong-model checks
+
+- id: E16-45
+  epic: E16
+  title: Measure and reduce dev-zk source claim verification work
+  lane: Z
+  depends:
+  - E16-44
+  rfc:
+  - RFC-0013 A5 and A6
+  - RFC-0026 A9
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-source-visits
+  branch: task/E16-45-verifier-weights
+  acceptance:
+  - measure occurrence routing and sparse expected-weight evaluation on a verified original T32 proof before choosing the implementation
+  - preserve source-local offsets, input rejection, public claim encoding, every transcript challenge and existing independent checks
+  - compare reference and candidate on the same original proof and qualify a material optimization with original CPU proofs
 
 - id: E16-40a
   epic: E16
