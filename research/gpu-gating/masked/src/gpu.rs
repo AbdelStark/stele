@@ -44,7 +44,7 @@ pub use original::OriginalMessage;
 
 #[path = "gpu_gkr_build.rs"]
 mod gkr_build;
-pub use gkr_build::{ConstructionWork, MemorySample};
+pub use gkr_build::{ConstructionWork, MemorySample, PrivateChild};
 
 #[cfg(test)]
 #[path = "gpu_bound_tests.rs"]

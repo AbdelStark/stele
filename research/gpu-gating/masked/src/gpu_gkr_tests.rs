@@ -216,7 +216,7 @@ fn matches_reference_original_gkr_gather_across_mask_columns() {
             for (u32 raw=0; raw<2; raw++) {{
                 for (u32 i=0; i<64; ++i) data[i] = 900+i;
                 for (u32 x=0; x<16; ++x) data[(x/4)*8+x%4]=17+x+raw*2147483647u;
-                gkr_build_span(out,1,data,shifts,3,7,2147483640u,8,0,8,16,3,2);
+                gkr_build_span(out,1,data,shifts,3,7,2147483640u,8,0,8,16,3,2,nullptr);
                 std::fwrite(out,sizeof(u32),16,stdout);
             }}
         }}"#,

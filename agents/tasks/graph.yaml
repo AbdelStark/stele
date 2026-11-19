@@ -5837,7 +5837,7 @@ tasks:
   rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-resident
   branch: task/E16-40ai-original-mask-windows
   acceptance:
