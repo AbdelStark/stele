@@ -4704,7 +4704,7 @@ tasks:
   - RFC-0008 A7
   skill: cuda-kernel-author
   crate: stele-kernels+stele-reductions+stele-gpu+stele-cli
-  status: in_progress
+  status: done
   agent: codex-live-gkr
   branch: task/E20-20-live-lookup-trees
   acceptance:
