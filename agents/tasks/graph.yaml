@@ -4015,7 +4015,7 @@ tasks:
   skill: benchmark-runner
   crate: stele-prover+stele-reductions+stele-bench
   lane: B
-  status: in_progress
+  status: done
   agent: antigravity-lane-b
   branch: task/E17-01-stage-timers-counters
   acceptance:
