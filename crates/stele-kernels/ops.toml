@@ -1,0 +1,4 @@
+# RFC-0014 A2. Transitions in the field-only ordinary batch interface.
+format = 1
+family = "ordinary_batch"
+operations = ["original", "dense_batch", "dense_round", "dense_fold", "dense_finals"]
