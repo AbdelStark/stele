@@ -1,0 +1,134 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "69d3083eba59a9f04ae5dc78ca6abf9b0bbb7121",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-22afdccc-aafa-3402-5002-3636ec6a5f0e, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "fresh_contexts": 2,
+    "matched_cases": 1000,
+    "qualified_real_trees": 4,
+    "selected_columns": 4000,
+    "whole_proof_pairs": 0
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "development byte 4 source component",
+    "evidence_location": "lucid-cluster:~/stele-codex/e20-18-a1-69d3083e/job-6944",
+    "fresh_context_samples": {
+      "EAGER": {
+        "init": {
+          "initial_stack": 1024,
+          "leaf_local_bytes": 896,
+          "ready_stack": 1024,
+          "source_a1_initial_outside_bytes": 554565632,
+          "source_a1_ready_outside_bytes": 554565632
+        },
+        "trees": [
+          {
+            "outside_bytes": 554565632,
+            "physical_budget_bytes": 34006997400,
+            "pool_high_bytes": 67108864,
+            "source_a1_completed_id": 0
+          },
+          {
+            "outside_bytes": 554565632,
+            "physical_budget_bytes": 34006997400,
+            "pool_high_bytes": 100663296,
+            "source_a1_completed_id": 1
+          }
+        ]
+      },
+      "LAZY": {
+        "init": {
+          "initial_stack": 1024,
+          "leaf_local_bytes": 896,
+          "ready_stack": 1024,
+          "source_a1_initial_outside_bytes": 554565632,
+          "source_a1_ready_outside_bytes": 554565632
+        },
+        "trees": [
+          {
+            "outside_bytes": 554565632,
+            "physical_budget_bytes": 34006997400,
+            "pool_high_bytes": 67108864,
+            "source_a1_completed_id": 0
+          },
+          {
+            "outside_bytes": 554565632,
+            "physical_budget_bytes": 34006997400,
+            "pool_high_bytes": 100663296,
+            "source_a1_completed_id": 1
+          }
+        ]
+      }
+    },
+    "job": 6944,
+    "output_bytes": {
+      "cuda.bin": 2252800,
+      "scalar.bin": 2252800
+    },
+    "output_sha256": {
+      "cuda.bin": "c55ec030695bd023bba884e12859f6255114c776f972ab3d773c0c8e3a085483",
+      "scalar.bin": "c55ec030695bd023bba884e12859f6255114c776f972ab3d773c0c8e3a085483"
+    },
+    "plan": {
+      "fresh_modes": [
+        "LAZY",
+        "EAGER"
+      ],
+      "geometries": [
+        [
+          2048,
+          1024
+        ],
+        [
+          16,
+          131072
+        ]
+      ],
+      "selected_columns": 4000,
+      "source_cases": 1000,
+      "stage": "driver backing before private source admission"
+    },
+    "public_artifact_sha256": {
+      "allocation.txt": "831fe39ef4cf2d5b4656f13134e051062c0a4f36b3f365e36de2bd2761e6cee9",
+      "comparison.txt": "3c1dd2571057db0f813d79e8bf23540d5e90ad403de1ba486b40af5d82e3a25a",
+      "cuda.log": "ff4b0f78684b7b3bbe8c6addae3d52dec01cfb8d62f5368b5e1a06f626ce6835",
+      "cuda.time": "015ce9246f441d64a55eece08278b2160922f112d3f9f7d41a54e531bebfdc64",
+      "device.txt": "68776bfaacb1c0bc4c3670216d20eac5df105872dc60800f90a32412bed20e68",
+      "fresh-EAGER.log": "b4629ecd19fbe53e091af97f602f6ba7d3b7e7434ce3eb6b5c787ec1b1603853",
+      "fresh-LAZY.log": "f2970cda9178cc3aef6c226881c62cba573e93b97fc7b6baa916d3289735180e",
+      "scalar.log": "ff4b0f78684b7b3bbe8c6addae3d52dec01cfb8d62f5368b5e1a06f626ce6835",
+      "scalar.time": "cbb401ab25beada2c26c18c57023d3096663edc35bbb1b4b88c41b7051276e94",
+      "slurm.txt": "0928846aa99c2e8ca09761570a7aef19c3c6016b3a90d075b7a2c17fe2c8efd7",
+      "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3"
+    },
+    "source_patch_base": "2b632c6c",
+    "source_patch_sha256": "0724cddcb8ea173f44ca6ad470435d5bc8153e960c59b9da42828283af810fb2"
+  },
+  "note": "The named H100 had identical physical outside-pool occupancy before and after priming in both driver loading modes. The per-thread local and stack sizes come from the loaded device function and context. Each process then built a deep multichunk tree and a full-grid tree. Source-stage equality compares scalar and CUDA roots, selected field limbs and all siblings.",
+  "plan_digest": "473f4565999c369bff2073e430bdf0dbc2c3fa8ff256b6236f35bcd6e1a0baf9",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 13740000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "cuda_differential": 2830000000,
+    "scalar_differential": 10910000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-hiding-source-first-use-memory"
+}

@@ -15,6 +15,7 @@ use stele_sumcheck::{
 #[derive(Clone, Copy)]
 pub struct BatchExecution<'a, K> {
     batches: &'a dyn Arithmetic<K>,
+    pub(super) sources: Option<&'a dyn super::source_backend::Factory<K>>,
     gkr: Option<&'a dyn super::gkr_backend::Arithmetic<K>>,
     relations: Option<&'a dyn super::gkr_backend::Relations<K>>,
 }
@@ -24,6 +25,7 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
     pub fn new<B: Backend<K>>(session: &'a B) -> Self {
         Self {
             batches: session,
+            sources: None,
             gkr: None,
             relations: None,
         }
@@ -33,6 +35,7 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
     pub fn with_gkr<B: stele_kernels::gkr::GkrBackend<K>>(session: &'a B) -> Self {
         Self {
             batches: session,
+            sources: None,
             gkr: Some(session),
             relations: None,
         }
@@ -42,6 +45,7 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
     pub fn with_relations<B: stele_kernels::gkr::RelationBackend<K>>(session: &'a B) -> Self {
         Self {
             batches: session,
+            sources: None,
             gkr: Some(session),
             relations: Some(session),
         }
@@ -68,6 +72,18 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
     ) -> Result<(masked::Proof<K>, Vec<K>), Error> {
         self.batches
             .prove(i, source, claims, gammas, mask, binding, t)
+    }
+}
+
+impl<'a> BatchExecution<'a, stele_kernels::QM31> {
+    /// Use the same proof-local originals for hiding-source visits and ordinary batches (A5).
+    pub fn with_sources<B>(session: &'a B) -> Self
+    where
+        B: stele_kernels::HidingBackend + stele_kernels::gkr::RelationBackend<stele_kernels::QM31>,
+    {
+        let mut execution = Self::with_relations(session);
+        execution.sources = Some(session);
+        execution
     }
 }
 
@@ -106,38 +122,55 @@ impl<K: ChallengeField + CodeField + Eq, B: Backend<K>> Arithmetic<K> for B {
             rows: s.rows(),
             columns: s.columns(),
         };
-        let count = geometry.word_count().map_err(|_| Error::Statement)? / 2;
-        if count.ilog2() != i.num_vars {
-            return Err(Error::Statement);
-        }
         let original = self
             .original(geometry, source.message())
             .map_err(|_| Error::Backend)?;
-        let claims: Vec<_> = claims
-            .iter()
-            .zip(gammas)
-            .map(|(c, &gamma)| WeightedClaim {
-                weights: &c.weights,
-                value: c.value,
-                gamma,
-            })
-            .collect();
-        let (state, value) = self
-            .dense_batch(geometry, &original, &claims)
-            .map_err(|_| Error::Backend)?;
-        if value != i.claimed_sum {
-            return Err(Error::Backend);
-        }
-        let dense = FieldSummand::<K, B> {
-            state: RefCell::new(state),
-            remaining: i.num_vars,
-            field: PhantomData,
-        };
-        masked::prove(i, dense, mask, binding, t).map_err(|error| match error {
-            stele_sumcheck::Error::Source => Error::Backend,
-            other => Error::Sumcheck(other),
-        })
+        prove_original(
+            self, geometry, &original, i, claims, gammas, mask, binding, t,
+        )
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn prove_original<K: ChallengeField + CodeField + Eq, B: Backend<K>>(
+    backend: &B,
+    geometry: SourceGeometry,
+    original: &B::Original<'_>,
+    i: &Instance<K>,
+    claims: &[Claim<K>],
+    gammas: &[K],
+    mask: &Mask<K>,
+    binding: &[u8],
+    t: &mut Transcript<K>,
+) -> Result<(masked::Proof<K>, Vec<K>), Error> {
+    let count = geometry.word_count().map_err(|_| Error::Statement)? / 2;
+    if count.ilog2() != i.num_vars || claims.len() != gammas.len() {
+        return Err(Error::Statement);
+    }
+    let claims: Vec<_> = claims
+        .iter()
+        .zip(gammas)
+        .map(|(c, &gamma)| WeightedClaim {
+            weights: &c.weights,
+            value: c.value,
+            gamma,
+        })
+        .collect();
+    let (state, value) = backend
+        .dense_batch(geometry, original, &claims)
+        .map_err(|_| Error::Backend)?;
+    if value != i.claimed_sum {
+        return Err(Error::Backend);
+    }
+    let dense = FieldSummand::<K, B> {
+        state: RefCell::new(state),
+        remaining: i.num_vars,
+        field: PhantomData,
+    };
+    masked::prove(i, dense, mask, binding, t).map_err(|error| match error {
+        stele_sumcheck::Error::Source => Error::Backend,
+        other => Error::Sumcheck(other),
+    })
 }
 struct FieldSummand<'s, K: ChallengeField, B: Backend<K> + 's> {
     state: RefCell<B::Dense<'s>>,

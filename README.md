@@ -81,9 +81,13 @@ The zero knowledge is conditional and computational, and there is no security le
 - **Soundness:** `verify-dev` prints a soundness ledger (worst round `2^-95.4` on stories42M; FS unproven, PCS
   conjectural).
 
+The balanced development prover supports `prove-dev --zk --backend cuda` on an H100. The qualification corpus compares complete GPU and CPU proof bytes and public inputs for 50 distinct models. [Run the H100 prover](docs/development-e2e.md#prove-a-balanced-development-window-on-an-h100) · [Parity ledger](bench/ledger/e20-18-h100-complete-hiding-source-proof-parity.json)
+
+The independent `no_std` verifier replays registered byte-5 proofs against a trusted plan-registry entry. [Registered verification](docs/development-e2e.md#registered-byte-5-verification-rfc-0026-a16)
+
 **Does not exist yet.** A security level (the development profile claims none), zero knowledge at a security
-level, a dev-zk proof of any real model other than stories42M, a GPU prover,
-the `no_std` verifier crate, a passport, a proof of Llama‑3.1‑8B.
+level, a dev-zk proof of any real model other than stories42M,
+a passport, a proof of Llama‑3.1‑8B.
 
 **What is solid underneath.** Fields, transcript, Merkle, sumcheck, lookup, encoder and commitment primitives
 with independent Python oracles; the CQIS integer semantics with native and NumPy executors and a fidelity

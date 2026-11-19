@@ -34,6 +34,8 @@ from pathlib import Path
 import re
 import subprocess
 
+from hiding_source_counts import check_source_work
+
 
 def gnu_time(path):
     """Wall seconds and maximum RSS bytes from GNU time -v, or from BSD (macOS) time -l."""
@@ -81,14 +83,17 @@ def zk_ledger(verify):
 
 
 
-def device_counters(stderr, verified, byte, driver):
+def device_counters(stderr, verified, byte, driver, proof=None):
     """Check the reported execution families against the independent verifier and memory limit."""
-    lines = [line for line in stderr.splitlines() if line.startswith(('cuda ', 'cuda_gkr ', 'cuda_relations ', 'cuda_memory '))]
+    lines = [line for line in stderr.splitlines() if line.startswith(('cuda ', 'cuda_'))]
     has_gkr = any(line.startswith('cuda_gkr ') for line in lines)
     has_relations = any(line.startswith('cuda_relations ') for line in lines)
+    has_sources = any(line.startswith('cuda_sources ') for line in lines)
+    if has_sources and not has_relations:
+        raise ValueError('selected CUDA sources require combined relation execution')
     if has_relations and not has_gkr:
         raise ValueError('selected CUDA relations require the combined GKR execution')
-    prefixes = ['cuda '] + (['cuda_gkr '] if has_gkr else []) + (['cuda_relations '] if has_relations else []) + ['cuda_memory ']
+    prefixes = ['cuda '] + (['cuda_gkr '] if has_gkr else []) + (['cuda_relations '] if has_relations else []) + (['cuda_sources '] if has_sources else []) + ['cuda_memory ']
     if not driver and not lines:
         return {}
     if not driver or byte != 4 or len(lines) != len(prefixes):
@@ -99,7 +104,7 @@ def device_counters(stderr, verified, byte, driver):
             raise ValueError('unexpected CUDA counters')
         for entry in line[len(prefix):].split():
             name, value = entry.split('=')
-            if prefix in ('cuda_gkr ', 'cuda_relations '):
+            if prefix in ('cuda_gkr ', 'cuda_relations ', 'cuda_sources '):
                 name = prefix.removeprefix('cuda_').strip() + '_' + name
             if name in fields or not re.fullmatch(r'[0-9]+', value):
                 raise ValueError('invalid CUDA counter')
@@ -109,7 +114,8 @@ def device_counters(stderr, verified, byte, driver):
     if not required <= fields.keys():
         raise ValueError('missing CUDA work or memory counters')
     batches = re.search(r'^dev-zk: (?P<relations>\d+) relation instances, (?P<gkr>\d+) GKR steps, (?P<batches>\d+) batches,', verified, re.M)
-    if batches is None or not (0 < fields['originals'] == fields['batches'] == fields['finals'] == int(batches['batches']) - 1
+    if batches is None or not (0 < fields['batches'] == fields['finals'] == int(batches['batches']) - 1
+                               and fields['originals'] == (fields.get('sources_originals') if has_sources else fields['batches'])
                                and 0 < fields['rounds'] == fields['folds'] and fields['h2d_bytes'] > 0
                                and fields['d2h_bytes'] == 48 * fields['rounds'] + 32 * fields['finals']):
         raise ValueError('CUDA work differs from the verified ordinary batches')
@@ -137,6 +143,11 @@ def device_counters(stderr, verified, byte, driver):
                 and 0 < min(fields['relations_planned_peak_bytes'], fields['relations_observed_peak_bytes'])
                 and max(fields['relations_planned_peak_bytes'], fields['relations_observed_peak_bytes']) <= fields['total_bytes'] * 2 // 5):
             raise ValueError('CUDA relation work or memory differs from the verified schedule')
+    if has_sources:
+        if proof is None:
+            raise ValueError('CUDA sources require the independently verified proof')
+        source = {name.removeprefix('sources_'): value for name, value in fields.items() if name.startswith('sources_')}
+        check_source_work(source, proof, verified, fields['total_bytes'] * 2 // 5)
     peak = fields['outside_pool_bytes'] + fields['pool_high_bytes']
     if not 0 < max(peak, fields.get('observed_peak_bytes', 0)) <= fields['total_bytes'] * 2 // 5:
         raise ValueError('CUDA memory exceeds RFC-0014 A1')
@@ -197,7 +208,7 @@ def main():
                     proof_index=int(re.search(r'^proof index (\d+) of', (run / 'verify.out').read_text(), re.M).group(1)))
         log = run / 'prove.err'
         verified = (run / 'verify.out').read_text()
-        device = device_counters(log.read_text() if log.exists() else '', verified, byte, a.cuda_driver)
+        device = device_counters(log.read_text() if log.exists() else '', verified, byte, a.cuda_driver, proof)
         if device:
             plan['backend'] = 'cuda'
         extra_counters = {'commit_peak_rss_bytes': commit_rss,
@@ -211,6 +222,16 @@ def main():
         assert isinstance(extra, dict) and not set(extra) & set(counters), 'CounterNames'
         assert all(type(v) is int and v >= 0 for v in extra.values()), 'CounterValues'
         counters.update(extra)
+    execution = 'CPU only, no GPU.'
+    if a.cuda_driver:
+        families = ['ordinary masked batches']
+        if 'gkr_steps' in device:
+            families.append('GKR rounds')
+        if 'relations_steps' in device:
+            families.append('relation rounds')
+        if 'sources_visits' in device:
+            families.append('original hiding-source certificates and openings')
+        execution = 'CUDA supplied ' + ', '.join(families) + '.'
     ledger = {
         'schema_version': 1, 'kind': 'inference', 'workload': a.workload, 'commit': a.commit,
         'toolchain': a.toolchain, 'device': a.device, 'driver': a.cuda_driver or 'not-applicable',
@@ -227,8 +248,7 @@ def main():
         'controls': {'total': len(controls), 'passed': len(controls), 'failed': 0},
         'note': ZK_NOTE.format(timer=timer, byte=plan['profile_byte'], sources=ZK_SOURCES[plan['profile_byte']],
                                proofs=plan['proofs'], index=plan['proof_index'],
-                               ledger=zk_ledger(verified), execution=('CUDA supplied the ordinary masked batches.'
-                               if a.cuda_driver else 'CPU only, no GPU.')) if a.zk else ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '
+                               ledger=zk_ledger(verified), execution=execution) if a.zk else ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '
                  'no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight '
                  'commitment, executor capture (witness), plain check and proof; the witness is not timed '
                  'separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact '

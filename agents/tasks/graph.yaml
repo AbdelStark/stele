@@ -4664,7 +4664,9 @@ tasks:
   skill: cuda-kernel-author
   crate: stele-kernels+stele-gpu+stele-reductions+stele-cli
   lane: E
-  status: ready
+  status: done
+  agent: codex-root
+  branch: task/E20-18-live-source-material
   acceptance:
   - seeded operation parity against the existing host preparation for Circle, salted leaves, roots and complete individual paths, with malformed owner and index controls
   - after the E19-08 selected-material interface lands, normal byte-4 CUDA proofs certify and open all original sources, reusing each original and charging every preparation, transferred byte and peak

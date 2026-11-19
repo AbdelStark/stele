@@ -329,7 +329,7 @@ def scalar_kernel_surface(root, actual, expected):
     directory = root / 'crates' / name
     approved = json.loads((root / 'scripts/gates/scalar-kernel-sources.json').read_text())
     files = {'Cargo.toml', 'ops.toml', 'src/lib.rs', 'src/scalar.rs', 'tests/dense.rs',
-             'src/gkr.rs', 'src/gkr/plan.rs', 'src/gkr/scalar.rs', 'tests/gkr.rs', 'tests/relation.rs'}
+             'src/gkr.rs', 'src/gkr/plan.rs', 'src/gkr/scalar.rs', 'tests/gkr.rs', 'tests/relation.rs', 'src/hiding.rs'}
     if set(actual) != files or actual != approved or actual['Cargo.toml'] != expected['Cargo.toml']:
         raise ValueError('parity: scalar kernel source differs from the admitted interface')
     contract = tomllib.loads((directory / 'ops.toml').read_text())
@@ -338,8 +338,10 @@ def scalar_kernel_surface(root, actual, expected):
     prior, added = source.split('pub trait RelationBackend', 1)
     gkr = re.findall(r'^    fn (\w+)', prior, re.M)
     relation = re.findall(r'^    fn (\w+)', added, re.M)
+    hiding = re.findall(r'^    fn (\w+)', (directory / 'src/hiding.rs').read_text(), re.M)
     if (contract != {'format': 1, 'family': 'ordinary_batch', 'operations': methods, 'gkr': {'operations': gkr},
-                     'relation': {'constructor': 'relation_start', 'arithmetic': gkr[1:]}}
+                     'relation': {'constructor': 'relation_start', 'arithmetic': gkr[1:]}, 'hiding_source': {'operations': hiding}}
+            or hiding != ['prepare_columns', 'selected_column']
             or relation != ['relation_start']
             or gkr != ['gkr_start', 'gkr_round', 'gkr_fold', 'gkr_finals']
             or methods != ['original', 'dense_batch', 'dense_round', 'dense_fold', 'dense_finals']):
@@ -762,7 +764,7 @@ def field_sources(root):
                # RFC-0013 A5: masked claims, zero-sums and per-source batches.
                'src/zk_claims.rs', 'src/zk_occurrence_weight.rs', 'tests/zk_claims.rs',
                # RFC-0014 A2 and RFC-0020 A10: field-only ordinary batch adapter.
-               'src/zk_batch_backend.rs', 'src/zk_gkr_backend.rs', 'src/zk_gkr_expand.rs', 'src/zk_projected_relations.rs',
+               'src/zk_batch_backend.rs', 'src/zk_source_backend.rs', 'src/zk_gkr_backend.rs', 'src/zk_gkr_expand.rs', 'src/zk_projected_relations.rs',
                # RFC-0008 A7: ZK-GKR over the A5 trees.
                'src/zk_lookup.rs', 'tests/zk_lookup.rs',
                # E16-40c: reviewed, opt-in production lookup and claim-batch references.
@@ -831,8 +833,20 @@ def field_sources(root):
     adapter_closed = (interface == [('pub', 'struct', 'BatchExecution'), ('pub', 'fn', 'new'),
                                     ('pub', 'fn', 'with_gkr'), ('pub', 'fn', 'with_relations'),
                                     ('pub(super)', 'fn', 'relations'), ('pub(super)', 'fn', 'gkr'),
-                                    ('pub(super)', 'fn', 'prove')]
+                                    ('pub(super)', 'fn', 'prove'), ('pub', 'fn', 'with_sources'),
+                                    ('pub(super)', 'fn', 'prove_original')]
                       and re.findall(r'\bmasked\s*::\s*(prove\w*)\s*\(', body) == ['prove'])
+    # A5 delegates only field material. The reductions adapter checks the rebuilt root,
+    # then passes selected columns through the same certificate and opening producers.
+    path = crate / 'src/zk_source_backend.rs'
+    source_adapter = re.sub(r'//[^\n]*', '', path.read_text()) if path.is_file() else ''
+    source_api = re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', source_adapter)
+    adapter_closed = (adapter_closed and source_api == [
+        ('pub(super)', kind, name) for kind, name in (
+            ('trait', 'Factory'), ('trait', 'Sources'), ('struct', 'Selected'), ('type', 'Session'),
+            ('enum', 'Ready'), ('type', 'Certified'), ('fn', 'prepare'), ('fn', 'source'), ('fn', 'face'),
+            ('fn', 'finish'), ('fn', 'open'), ('fn', 'host_certificates'))]
+        and 'if root != entry.root {' in source_adapter and 'let certificate = certify(&p);' in source_adapter)
     gkr_adapter = crate / 'src/zk_gkr_backend.rs'
     body = re.sub(r'//[^\n]*', '', gkr_adapter.read_text()) if gkr_adapter.is_file() else ''
     # The field backend returns polynomials and compact finals. Reduction-owned
@@ -1167,7 +1181,7 @@ def field_source_codec(root):
     crate = root / 'crates/stele-pcs'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/source.rs', 'src/preparation.rs', 'src/expansion.rs',
                'tests/expander_source.rs', 'tests/fixtures/expander-wire.jsonl', 'examples/expander_policy.rs',
-               'src/producer.rs', 'src/producer_tests.rs', 'src/certificate.rs', 'src/certificate_tests.rs',
+               'examples/scalar_hiding_source.rs', 'src/producer.rs', 'src/producer_tests.rs', 'src/certificate.rs', 'src/certificate_tests.rs',
                'tests/fixtures/certificate-continuation.txt',
                'tests/field_source.rs', 'tests/preparation.rs',
                'src/opening.rs', 'tests/opening.rs', 'tests/fixtures/opening-continuation.txt',
@@ -2114,7 +2128,7 @@ def masked_sumcheck_quarantine(root):
                'crates/stele-reductions/src/zk_claims.rs',
                # RFC-0014 A2: same checked shared-mask prover, field-only batch state.
                'crates/stele-reductions/src/zk_batch_backend.rs',
-               'crates/stele-reductions/src/zk_gkr_backend.rs'}
+               'crates/stele-reductions/src/zk_gkr_backend.rs', 'crates/stele-reductions/src/zk_source_backend.rs'}
     pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    for path in (root / directory).rglob('*.rs')
@@ -2149,7 +2163,7 @@ def standard_quarantine(root):
     # RFC-0013 A8 (E12-28): these may name `Policy::Two` for dev-zk hiding sources, which
     # resolve Development (proven: false) and stay on the development path (below); the
     # standard entry points resolve_pcs and Descriptor::standard stay forbidden there.
-    policy_two_only = {'crates/stele-pcs/src/preparation.rs', 'crates/stele-pcs/tests/selected_material.rs',
+    policy_two_only = {'crates/stele-pcs/examples/scalar_hiding_source.rs', 'crates/stele-pcs/src/preparation.rs', 'crates/stele-pcs/tests/selected_material.rs',
                        'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
                        'crates/stele-reductions/tests/batch_bench.rs',
                        'crates/stele-prover/tests/development.rs'}
@@ -2170,7 +2184,8 @@ def standard_quarantine(root):
         raise ValueError(f'standard-profile entry point used before E8-05 (ADR-108): {found}')
     # RFC-0026 A11, ADR-111: the development tier's Policy 2 entry points resolve
     # `proven: false`; they stay in the development path and never reach stele-verifier.
-    dev_allowed = {'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
+    dev_allowed = {'crates/stele-reductions/src/zk_source_backend.rs', 'crates/stele-pcs/examples/scalar_hiding_source.rs',
+                   'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
                    'crates/stele-pcs/src/source.rs', 'crates/stele-pcs/src/preparation.rs',
                    'crates/stele-reductions/src/relation.rs', 'crates/stele-reductions/src/relation_tests.rs',
                    'crates/stele-prover/src/development.rs', 'crates/stele-prover/src/development/bundle.rs',

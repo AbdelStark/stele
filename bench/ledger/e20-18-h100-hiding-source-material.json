@@ -1,0 +1,58 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "8330f5de11c8fdc22eac84736e99b9cad793cda6",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-4fbb9af4-e0b3-9d5e-54ed-f3b9944cc281, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "compared_output_bytes": 2252800,
+    "selected_column_paths": 4000,
+    "source_roots": 1000
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk byte 4",
+    "job": 6941,
+    "plan": {
+      "profile": "dev-zk byte 4",
+      "reference_sha256": "c55ec030695bd023bba884e12859f6255114c776f972ab3d773c0c8e3a085483",
+      "seeds": 1000,
+      "selections": 4,
+      "source": "circle-policy2-salted"
+    },
+    "public_receipt_sha256": {
+      "allocation.txt": "84680c4da538aa6cf91d3f2c4772db12ef7465f3e63c5f9d50856cde5954b788",
+      "comparison.txt": "3c1dd2571057db0f813d79e8bf23540d5e90ad403de1ba486b40af5d82e3a25a",
+      "cuda.log": "ff4b0f78684b7b3bbe8c6addae3d52dec01cfb8d62f5368b5e1a06f626ce6835",
+      "cuda.time": "9d4334428f24244fb6dfe3318fd4f799857a31c99a8965d84fa16929ce7270bb",
+      "device.txt": "5530a9d39b26eae207ff05fdff6e574b9b215a3ce225b0af8f241acf1d87d715",
+      "scalar.log": "ff4b0f78684b7b3bbe8c6addae3d52dec01cfb8d62f5368b5e1a06f626ce6835",
+      "scalar.time": "4ad01cfecd83f5e78943127faa45d62f8fb11038391988f0d3a78ec23d9531b4",
+      "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3"
+    }
+  },
+  "note": "Independent scalar PCS and CUDA executables produced identical roots, selected column symbols and complete Merkle paths for 1,000 synthetic physical originals. Process wall includes input generation, initialization, hashing, output serialization and four selections per case. Device stage includes NVRTC compilation and ownership and bounds checks. Times cover only this operation campaign.",
+  "plan_digest": "829b668b2fb8954130c327d643811911156781aaa6e80acdefd2fa390de1840a",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 13720000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "cuda": 2840000000,
+    "scalar": 10880000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-hiding-source-material"
+}

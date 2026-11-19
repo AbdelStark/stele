@@ -22,6 +22,19 @@ fn storage(table: &TablePlan<'_>, len: usize) -> usize {
         {
             s.arg as usize
         }
+        // RFC-0008 A7: the public lookup table, including its one-padding, is
+        // independent of the leading selector bit. Its spans cover one layer.
+        [rows, padding @ ..]
+            if !table.base
+                && rows.op == Op::Table
+                && rows.period.is_power_of_two()
+                && len.is_multiple_of(rows.period as usize)
+                && padding
+                    .iter()
+                    .all(|s| s.op == Op::Constant && s.period == rows.period) =>
+        {
+            rows.period as usize
+        }
         _ => len,
     }
 }
@@ -159,7 +172,9 @@ fn table(device: &Cuda, t: TablePlan<'_>, len: usize, work: &mut Work) -> Result
             layer(device, &s, len, &mut output, work)?;
             continue;
         }
-        let (period, begin, width) = if count < len {
+        // Only a low-bit Block can have a native period shorter than its defining
+        // span. Public table rows and their padding retain their disjoint ranges.
+        let (period, begin, width) = if count < s.period as usize {
             (count as u32, 0, count as u32)
         } else {
             (s.period, s.begin, s.end - s.begin)
@@ -226,4 +241,38 @@ pub(crate) fn factors(
         factors.push(Factor { x, mask });
     }
     Ok(factors)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use stele_kernels::gkr::{GkrConstruction, GkrFactor, Term};
+    use stele_kernels::QM31;
+
+    #[test]
+    fn matches_reference_public_table_storage_across_padding() {
+        let rows: Vec<_> = (0..8).map(|i| vec![i - 2]).collect();
+        for valid in [1, 3, 7, 8] {
+            let input = GkrConstruction {
+                num_vars: 4,
+                layer_variables: 3,
+                degree: 1,
+                factors: vec![GkrFactor::Table {
+                    rows: &rows,
+                    valid,
+                    alpha: QM31::ONE,
+                    beta: QM31::ONE,
+                }],
+                terms: vec![Term {
+                    coefficient: QM31::ONE,
+                    factors: vec![0],
+                }],
+            };
+            let plan = Plan::new(&input).expect("valid periodic public table");
+            let table = &plan.factors[0].values;
+            assert_eq!(storage(table, plan.len), plan.len / 2);
+            assert_eq!(table.spans[0].end as usize, valid);
+            assert!(table.spans.iter().all(|span| span.period == 8));
+        }
+    }
 }
