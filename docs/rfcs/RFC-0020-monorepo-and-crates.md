@@ -246,3 +246,18 @@ reduction supplies the field tables and original mask blocks. The verifier,
 transcript and PCS have no dependency on the execution backend. No crate
 edge, protocol byte, ledger term or binding changes. E20-16 validates the
 existing dependency boundaries and complete proof gate.
+
+### A13 — Producer-side Circle and Merkle buffer execution
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-17.
+[Independent review](../../agents/reviews/e20-17-hiding-source-contract.md)
+
+Add to A10–A12 the RFC-0014 A5 buffer operations over a proof-local original
+message. The kernel interface carries source geometry, the salt input, field
+limbs and digest bytes. Its implementations may prepare, release and rebuild
+the actual encoding and provide one selected column and sibling path. The
+production CPU reference remains the existing PCS producer. The integration
+adapter uses the byte-4 producer's existing primitive dependencies; the
+kernels and CUDA crates acquire no PCS, verifier or transcript dependency.
+The verifier acquires no accelerator dependency. No protocol byte, binding
+or error term changes. E20-18 qualifies the selected operations.

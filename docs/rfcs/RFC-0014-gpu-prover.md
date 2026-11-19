@@ -260,3 +260,57 @@ inventories, and a verified original stories42M T32 inference with actual
 transfer and A1 memory charges. Measure `c_sc` and `T_misc` on the named rung.
 The prior research measured the independently checked relation arithmetic.
 [Research evidence](https://github.com/AbdelStark/stele/blob/817a5059ba0375d1ee4ae3ad427e033533b197d2/bench/ledger/e16-40aj-h100-complete-proof-parity.json)
+
+### A5 — Prepare and open balanced hiding-source material on the selected device
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-17.
+[Independent review](../../agents/reviews/e20-17-hiding-source-contract.md)
+
+**Addition to A2–A4.** For the byte-4 proof, the selected backend can prepare
+the RFC-0010 A15 salted Circle columns and Merkle tree underlying each original
+early, top and shared source. The host derives the source id, physical extent,
+rate 1/4 Circle code, column descriptor and source-specific salt stream under
+RFC-0013 A8. Import the exact immutable row-major M31 message once in this
+proof session. The original outlives its certificate, ordinary batch consumers
+and authenticated opening. Foreign owners, mismatched geometry and repeat
+imports reject under A2.
+
+One preparation visit binds that owner and the caller's salt seed to the A15
+encoding. It performs the canonical Circle transform over each row and hashes
+each salted leaf and every parent in its RFC-0012 A3 domain. Return the full
+root and charge the work of the tree. For a transcript-selected index, return
+the canonical column and its bottom-up Merkle siblings; the adapter may derive
+the selected 32-byte salt with the same host MaskStream. Check the index,
+payload width and path depth against the host source. Never coalesce or reorder
+proof responses. The caller uses the ordinary RFC-0010 A16 certificate and
+opening path. A producer result confers no verification authority.
+
+The encoded columns and nodes may be released after the certificate visit.
+If released, reconstruct them from the same original for the opening visit and
+compare the reconstructed root with the first root before supplying responses.
+Every visit keeps the source's original opening budget, seed, persisted history
+and rank checks. Lifetime-model roots still must equal their published pin.
+The verifier checks each actual certificate and opening under the expected
+context. Keep host row combinations and all Fiat–Shamir and failure paths.
+Account for each transform and tree, copied metadata and selected bytes, host
+salt assembly, scratch, original owners, retained nodes, context and pool.
+Peak across coexisting operations stays within A1.
+
+The scalar reference is the established host Circle encoder, salted column
+preparation and Merkle path. The buffer interface operates on words, roots
+and sibling bytes. It has no entry point for authentication, transcripts,
+opening records, rollbacks or lifetime reservations. The optional device
+backend may hold the salt key only within the trusted proving computation;
+public qualification artifacts contain outputs, sizes and counters.
+
+**Soundness, cost and controls.** The same A9/A15 binding and soundness lines
+apply. No new challenge, error, commitment, lookup or wire field. Targets are
+Circle encoding, Merkle construction and host/device transfer. Compare device
+roots and individual columns and paths against the scalar reference on 1,000
+seeded cases, including repeated queries and both single- and multi-chunk
+BLAKE3 leaves. Change a root on reconstruction and one selected sibling and
+require the corresponding rejection. Keep NC-0601, NC-0602, NC-0606 and
+NC-0607. The combined gate requires positive source, relation, GKR and batch
+counts for all 50 pinned proof pairs and actual T32 CPU and H100 inference
+with every selected visit, A1 memory accounting and independent verification.
+[Source experiment and T32 visit evidence](https://github.com/AbdelStark/stele/pull/422)
