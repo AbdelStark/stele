@@ -68,6 +68,8 @@ jobs:
       - run: python3 scripts/ci_tests.py
       - run: cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings
       - run: cargo test --workspace --all-features --locked --offline
+      - name: L0 prove and verify smoke (INV-15)
+        run: cargo test --release -p stele-prover --test development accepts_one_layer_window --locked --offline
       - run: cargo test --workspace --examples --all-features --locked --offline
       # E16-22: the plain checker's sequential (no `std`) path.
       - run: cargo test -p stele-ir --locked --offline

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "fixture_manifest": "crates/stele-prover/tests/fixtures/synthetic-e2e.json",
+  "entries": [
+    {
+      "rung": "L0",
+      "case": "one-layer",
+      "t": 16,
+      "sources": "CircleAll",
+      "profile_byte": 3,
+      "proof_bytes": 4534593,
+      "fnv1a_64": "61d3c1990e561b8f",
+      "sha256": "e910f3d4e08c8a7f8c6a288601921e70a1a0e160ac93d01bbd86c268b08c9bcf",
+      "amendment": "RFC-0026 A12"
+    },
+    {
+      "rung": "L0",
+      "case": "one-layer",
+      "t": 16,
+      "sources": "CircleAllGrind",
+      "profile_byte": 5,
+      "proof_bytes": 4534649,
+      "fnv1a_64": "59ee67e39aa25d4b",
+      "sha256": "b87cf7a35ea8c1f5879fe15cc400a32884841e6627a64e911b04eb401e21f70a",
+      "amendment": "RFC-0026 A14"
+    },
+    {
+      "rung": "L1",
+      "case": "eight-layer",
+      "t": 64,
+      "sources": "CircleAll",
+      "profile_byte": 3,
+      "proof_bytes": 7024521,
+      "fnv1a_64": "f2a864539644a144",
+      "sha256": "60bec98c7d81a01c364f0dc78a91f054b0e225f333682e3d5a3f6ae12f5ea900",
+      "amendment": "RFC-0026 A12"
+    },
+    {
+      "rung": "L1",
+      "case": "eight-layer",
+      "t": 64,
+      "sources": "CircleAllGrind",
+      "profile_byte": 5,
+      "proof_bytes": 7024665,
+      "fnv1a_64": "f66d7640b9de788e",
+      "sha256": "899e5745baedfb8a296112f6a61adde966d3f371c5845d94b0a2654ff561d9c1",
+      "amendment": "RFC-0026 A14"
+    }
+  ]
+}

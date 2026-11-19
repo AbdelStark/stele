@@ -70,6 +70,7 @@ class ReadinessTests(unittest.TestCase):
                 'python3 scripts/ci_tests.py',
                 'cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings',
                 'cargo test --workspace --all-features --locked --offline',
+                'cargo test --release -p stele-prover --test development accepts_one_layer_window --locked --offline',
                 'cargo test --workspace --examples --all-features --locked --offline',
                 'cargo test -p stele-ir --locked --offline',
                 'cargo check -p stele-sumcheck -p stele-lookup -p stele-cqis -p stele-reductions -p stele-code -p stele-pcs -p stele-verifier -p stele-ir --no-default-features --locked --offline',

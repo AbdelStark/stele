@@ -720,6 +720,59 @@ fn dumps_byte5_windows_for_the_independent_verifier() {
     }
 }
 
+/// RFC-0020 §5, RFC-0027 §7 (task E17-03): prove and verify the L0 and L1 fixtures
+/// for both RFC-0026 A12 (byte 3) and A14 (byte 5) sources and write the proof bytes
+/// to `STELE_DIGEST_DIR` for independent digest verification by `scripts/gates/digest.sh`.
+#[test]
+#[ignore = "RFC-0020 §5 digest gate (task E17-03): run via scripts/gates/digest.sh"]
+fn dumps_development_digests() {
+    let dir = std::env::var_os("STELE_DIGEST_DIR")
+        .map(std::path::PathBuf::from)
+        .expect("STELE_DIGEST_DIR must be set");
+    std::fs::create_dir_all(&dir).expect("digest dump directory");
+    for (rung, name, t, sources, label) in [
+        ("L0", "one-layer", 16usize, Sources::CircleAll, "CircleAll"),
+        (
+            "L0",
+            "one-layer",
+            16usize,
+            Sources::CircleAllGrind,
+            "CircleAllGrind",
+        ),
+        (
+            "L1",
+            "eight-layer",
+            64usize,
+            Sources::CircleAll,
+            "CircleAll",
+        ),
+        (
+            "L1",
+            "eight-layer",
+            64usize,
+            Sources::CircleAllGrind,
+            "CircleAllGrind",
+        ),
+    ] {
+        let case = load(name);
+        let mut executor = case.executor(&case.artifact);
+        let statement = greedy(&mut executor, t);
+        let weights =
+            Weights::from_artifact_sources(&case.model, &case.artifact, sources).expect("weights");
+        let committed = Committed::new(&weights).expect("commitment");
+        let public = case.public(&committed, &weights);
+        let proof = prove(&public, &mut executor, &weights, &committed, &statement).expect("prove");
+        verify(&public, &statement, &proof).expect("verify");
+        let filename = format!("{rung}-{label}.proof");
+        std::fs::write(dir.join(&filename), &proof).expect("write proof");
+        eprintln!(
+            "digest {rung} {name} T={t} {label} bytes={} fnv1a={:016x}",
+            proof.len(),
+            fnv(&proof)
+        );
+    }
+}
+
 /// Research census for formal/zk-claims.md §4.4 (no protocol change): per
 /// committed column, the masked claims a dev-zk proof would reveal (one per
 /// distinct (zerocheck domain, column, vars map), lookup tuple ref, range, matmul
