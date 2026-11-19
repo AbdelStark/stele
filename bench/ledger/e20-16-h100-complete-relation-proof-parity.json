@@ -1,0 +1,84 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "51363dae835a5e3a9f588770bff1417ecba46544",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-50b1db84-500f-6403-1d61-6ebfc4d68a2a, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "changed_gkr_round_rejections": 1,
+    "changed_model_rejections": 2,
+    "changed_ordinary_round_rejections": 1,
+    "changed_relation_round_rejections": 1,
+    "complete_byte_matches": 50,
+    "distinct_models": 50,
+    "gkr_finals": 10800,
+    "gkr_folds": 97350,
+    "gkr_rounds": 97350,
+    "gkr_steps": 10800,
+    "ordinary_batches": 150,
+    "ordinary_finals": 150,
+    "ordinary_folds": 2550,
+    "ordinary_rounds": 2550,
+    "relation_final_fields": 70350,
+    "relation_finals": 8850,
+    "relation_folds": 46550,
+    "relation_rounds": 46550,
+    "relation_steps": 8850,
+    "replays": 1,
+    "unavailable_device_rejections": 1,
+    "verified_proofs": 102
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "development byte 4 (balanced)",
+    "cpu_cores": 12,
+    "cpu_reference_sha256": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
+    "evidence_location": "lucid-cluster:~/stele-codex/e20-16-combined-51363dae/job-6939",
+    "job": 6939,
+    "plan": {
+      "context": 16,
+      "cpu_manifest": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
+      "heads": 4,
+      "hidden": 128,
+      "layers": 1,
+      "models": 50,
+      "positions": 2,
+      "profile": "dev-zk byte 4",
+      "selected": "all ordinary masked batches, masked GKR and masked relations",
+      "vocabulary": 256,
+      "width": 64
+    },
+    "public_receipt_sha256": {
+      "accounting.txt": "64d4afeaab8352e5a85c20607ef94be8f0abba2742d399fc6b00832279e4aa70",
+      "allocation.txt": "0995eb3bef4ea2b62bc19e3cd587c3cfc37645116f1c837219d1e264bbacb6aa",
+      "campaign.time": "d5a5512e6da9267c9602a857985a031536b372b4e778b3440fb4f6f953b5b46b",
+      "device.txt": "dcbc9a7b6f7feb046248dc61e116a096760441997b62d4ee5b1e6b12e3c14020",
+      "parity.err": "7e906fc28b9f7dd007867806d90afcd2d9f7f92deb08503d41f620248656a218",
+      "parity.out": "7ed4e418ac88e3255c9f3152790a0821f1a231240682073d03d43cd59c01ae88"
+    },
+    "source_patch_sha256": "e825fa767e5be4785a0d4d82c4dd9781762b2cdb5491b47e3d509e1c5382b977"
+  },
+  "note": "Development-tier production proof parity. Each model produced two complete proofs through the ordinary host or explicitly selected CUDA backend. The CPU and CUDA public and proof bytes matched the independently pinned original bytes. Both proved the deterministic replay and passed independent verification. Device totals exclude the replay. Distinct controls covered wrong model on both producers, unavailable CUDA and three altered device polynomials with lifetime rollback. The campaign wall includes building and all qualification steps.",
+  "plan_digest": "ca23da83cb89fea1c676e4caf57ef16d74cc3486e345045b9bedf44bb904b0dd",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 508150000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "complete_gate": 508150000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-complete-relation-proof-parity"
+}

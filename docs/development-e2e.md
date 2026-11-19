@@ -210,7 +210,9 @@ target/release/stele commit-model --zk \
   --model /tmp/dev-e2e/model.bin --preparation /tmp/dev-e2e/preparation.bin \
   --scales /tmp/dev-e2e/scales.bin --artifact /tmp/dev-e2e/artifact.bin \
   --length 16 --proofs 8 \
-  --commitment /tmp/dev-e2e/zk-model.bin --secret /tmp/dev-e2e/zk-model.secret
+  --commitment /tmp/dev-e2e/zk-model.bin --secret /tmp/dev-e2e/zk-model.secret \
+  > /tmp/dev-e2e/zk-commit.txt
+model_digest=$(awk '$1 == "model" {print $2}' /tmp/dev-e2e/zk-commit.txt)
 target/release/stele prove-dev --zk \
   --model /tmp/dev-e2e/model.bin --preparation /tmp/dev-e2e/preparation.bin \
   --scales /tmp/dev-e2e/scales.bin --artifact /tmp/dev-e2e/artifact.bin \
@@ -218,8 +220,28 @@ target/release/stele prove-dev --zk \
   --commitment /tmp/dev-e2e/zk-model.bin --secret /tmp/dev-e2e/zk-model.secret \
   --public /tmp/dev-e2e/zk-public.bin --proof /tmp/dev-e2e/zk-proof.bin
 target/release/stele verify-dev --public /tmp/dev-e2e/zk-public.bin \
-  --proof /tmp/dev-e2e/zk-proof.bin --expect-model <model digest from commit-model>
+  --proof /tmp/dev-e2e/zk-proof.bin --expect-model "$model_digest"
 ```
+
+### Prove a balanced development window on an H100
+
+On the allocated H100, the CUDA build loads the NVIDIA driver and NVRTC at runtime. The example uses the fixture and balanced commitment above, spends its next proof index, and writes the GPU output to new files. A separately built CPU CLI verifies the proof against the commitment owner's model digest.
+
+```sh
+cargo build --release --locked -p stele-cli --target-dir target/cpu
+cargo build --release --locked -p stele-cli --features cuda --target-dir target/cuda
+model_digest=$(awk '$1 == "model" {print $2}' /tmp/dev-e2e/zk-commit.txt)
+target/cuda/release/stele prove-dev --zk --backend cuda \
+  --model /tmp/dev-e2e/model.bin --preparation /tmp/dev-e2e/preparation.bin \
+  --scales /tmp/dev-e2e/scales.bin --artifact /tmp/dev-e2e/artifact.bin \
+  --tokens 1 --length 16 \
+  --commitment /tmp/dev-e2e/zk-model.bin --secret /tmp/dev-e2e/zk-model.secret \
+  --public /tmp/dev-e2e/cuda-public.bin --proof /tmp/dev-e2e/cuda-proof.bin
+target/cpu/release/stele verify-dev --public /tmp/dev-e2e/cuda-public.bin \
+  --proof /tmp/dev-e2e/cuda-proof.bin --expect-model "$model_digest"
+```
+
+The prover reports ordinary batch, GKR, relation and source counters on stderr. The parity gate checks the produced proof and public bytes against the pinned CPU reference, replays the verifier and exercises failures before publishing a proof. Run it on the allocated GPU with `scripts/gates/parity.sh`. The qualification ledger records the stage coverage and the remaining CPU work for its source revision. [H100 complete-proof parity](../bench/ledger/e20-18-h100-complete-hiding-source-proof-parity.json)
 
 Eight-layer window, `T = 64`, one Apple laptop, one run each, back to back
 (`bench/ledger/e12-14-synthetic-8layer-mac.json` and

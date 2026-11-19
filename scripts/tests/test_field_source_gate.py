@@ -62,6 +62,7 @@ class FieldSourceGateTests(unittest.TestCase):
             crate = root / 'crates/stele-pcs'
             shutil.copytree(ROOT / 'crates/stele-pcs', crate)
             for name, added in [('src/lib.rs', '\npub fn verify() -> bool { true }\n'),
+                                ('src/material.rs', '\npub fn verifier_decision() -> bool { true }\n'),
                                 ('src/source.rs', '\nimpl<K: ChallengeField> Source<K> { '
                                  'pub fn verify_certificate(&self) -> bool { true } }\n'),
                                 ('src/source.rs', '\nimpl<K: ChallengeField> From<Source<K>> for bool { '
@@ -522,11 +523,14 @@ class ClosedStackedGateTests(unittest.TestCase):
         crate = self.root / 'crates/stele-reductions'
         adapter = crate / 'src/zk_batch_backend.rs'
         gkr = crate / 'src/zk_gkr_backend.rs'
+        source = crate / 'src/zk_source_backend.rs'
         manifest = crate / 'Cargo.toml'
         for path, old, new in (
             (adapter, 'pub(super) fn prove(', 'pub fn prove('),
             (gkr, 'masked::prove(i, summand', 'masked::prove_unchecked(i, summand'),
             (gkr, 'pub(super) trait Arithmetic', 'pub trait Arithmetic'),
+            (source, 'if root != entry.root {', 'if false {'),
+            (source, 'pub(super) trait Sources', 'pub trait Sources'),
             (adapter, 'masked::prove(i, dense', 'masked::prove_unchecked(i, dense'),
             (manifest, 'stele-kernels = { path = "../stele-kernels" }', 'stele-gpu = { path = "../stele-gpu" }'),
         ):

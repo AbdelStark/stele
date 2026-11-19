@@ -764,7 +764,7 @@ def field_sources(root):
                # RFC-0013 A5: masked claims, zero-sums and per-source batches.
                'src/zk_claims.rs', 'tests/zk_claims.rs',
                # RFC-0014 A2 and RFC-0020 A10: field-only ordinary batch adapter.
-               'src/zk_batch_backend.rs', 'src/zk_gkr_backend.rs', 'src/zk_gkr_expand.rs', 'src/zk_projected_relations.rs',
+               'src/zk_batch_backend.rs', 'src/zk_source_backend.rs', 'src/zk_gkr_backend.rs', 'src/zk_gkr_expand.rs', 'src/zk_projected_relations.rs',
                # RFC-0008 A7: ZK-GKR over the A5 trees.
                'src/zk_lookup.rs', 'tests/zk_lookup.rs',
                # E16-40c: reviewed, opt-in production lookup and claim-batch references.
@@ -833,8 +833,20 @@ def field_sources(root):
     adapter_closed = (interface == [('pub', 'struct', 'BatchExecution'), ('pub', 'fn', 'new'),
                                     ('pub', 'fn', 'with_gkr'), ('pub', 'fn', 'with_relations'),
                                     ('pub(super)', 'fn', 'relations'), ('pub(super)', 'fn', 'gkr'),
-                                    ('pub(super)', 'fn', 'prove')]
+                                    ('pub(super)', 'fn', 'prove'), ('pub', 'fn', 'with_sources'),
+                                    ('pub(super)', 'fn', 'prove_original')]
                       and re.findall(r'\bmasked\s*::\s*(prove\w*)\s*\(', body) == ['prove'])
+    # A5 delegates only field material. The reductions adapter checks the rebuilt root,
+    # then passes selected columns through the same certificate and opening producers.
+    path = crate / 'src/zk_source_backend.rs'
+    source_adapter = re.sub(r'//[^\n]*', '', path.read_text()) if path.is_file() else ''
+    source_api = re.findall(r'\b(pub(?:\([^)]*\))?)\s+(\w+)\s+(\w+)', source_adapter)
+    adapter_closed = (adapter_closed and source_api == [
+        ('pub(super)', kind, name) for kind, name in (
+            ('trait', 'Factory'), ('trait', 'Sources'), ('struct', 'Selected'), ('type', 'Session'),
+            ('enum', 'Ready'), ('type', 'Certified'), ('fn', 'prepare'), ('fn', 'source'), ('fn', 'face'),
+            ('fn', 'finish'), ('fn', 'open'), ('fn', 'host_certificates'))]
+        and 'if root != entry.root {' in source_adapter and 'let certificate = certify(&p);' in source_adapter)
     gkr_adapter = crate / 'src/zk_gkr_backend.rs'
     body = re.sub(r'//[^\n]*', '', gkr_adapter.read_text()) if gkr_adapter.is_file() else ''
     # The field backend returns polynomials and compact finals. Reduction-owned
@@ -1174,7 +1186,7 @@ def field_source_codec(root):
                'tests/field_source.rs', 'tests/preparation.rs',
                'src/opening.rs', 'tests/opening.rs', 'tests/fixtures/opening-continuation.txt',
                'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs', 'src/work.rs',
-               'src/hiding.rs', 'tests/hiding.rs',
+               'src/hiding.rs', 'tests/hiding.rs', 'src/material.rs', 'tests/selected_material.rs',
                # E12-23: RFC-0010 A14 Policy 2 wire parity.
                'tests/policy2_wire.rs', 'tests/fixtures/policy2-wire.jsonl'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
@@ -1183,12 +1195,13 @@ def field_source_codec(root):
                '//!\n//! Verification retains conditional obligations; A1 closure and profiles remain separate.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod certificate;\nmod expansion;\nmod hiding;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\nmod work;\n'
+               'extern crate alloc;\nmod certificate;\nmod expansion;\nmod hiding;\nmod material;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\nmod work;\n'
                'pub use certificate::{\n'
                '    verify_certificate, verify_certificate_measured, CertificateRecord, Failure, Usage,\n'
                '    VerifiedCertificate,\n};\n'
                'pub use expansion::{expand, Embedding, Value};\n'
                'pub use hiding::hiding_message;\n'
+               'pub use material::{ColumnMaterial, ColumnResponse, HidingUse, HostColumns};\n'
                'pub use opening::{\n'
                '    verify_opening, verify_opening_measured, verify_point, verify_point_measured, Functional,\n'
                '    OpeningRecord, RetainedRow, RetainedRowWork,\n};\n'
@@ -1262,32 +1275,45 @@ def field_source_codec(root):
         ('fn', 'hiding'), ('fn', 'hiding_with'),  # RFC-0013 A8, E12-28
         # RFC-0013 A6, E12-25: a lifetime hiding source.
         ('fn', 'hiding_lifetime'), ('fn', 'hiding_lifetime_with'), ('fn', 'hiding_mask'),
-        ('fn', 'hiding_mask_with'),
-        ('fn', 'source'), ('fn', 'message'),
-        ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]
+        ('fn', 'hiding_mask_with'), ('fn', 'response'), ('fn', 'work'), ('fn','hiding_material'),
+        ('fn', 'source'), ('fn', 'message'), ('fn', 'message_reads')]
         and len(prepared_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', prepared))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
-            == ["impl<'a,K:ChallengeField>PreparedSource<'a,K>{"]
+            == ["impl<'a,K:ChallengeField>PreparedSource<'a,K>{",
+                "impl<'a,K:ChallengeField,M:ColumnMaterial>PreparedSource<'a,K,M>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', prepared)] == [
-            'usecrate::{Error,Policy,Source};', 'usealloc::vec::Vec;', 'usecore::mem::size_of;',
+            'usecrate::{ColumnMaterial,ColumnResponse,Error,HidingUse,HostColumns,Policy,ProverWork,Source,};',
+            'usealloc::borrow::Cow;', 'usealloc::vec::Vec;', 'usecore::mem::size_of;',
             'usecore::sync::atomic::{AtomicUsize,Ordering};',
             'usestele_code::Encoder;', 'usestele_field::{Serialize,M31};',
             'usestele_hash::mask::{MaskStream,SOURCE_SALT};',
-            'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
+            'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usecrate::work::{add,bytes};', 'usesuper::*;']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
             == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]']
                # RFC-0013 A8, E12-28: hiding_with, hiding_lifetime(_with), hiding_mask_with.
-               + ['#[allow(clippy::too_many_arguments)]'] * 4 + [
+               + ['#[allow(clippy::too_many_arguments)]'] * 5 + [
                 # E16-24 review follow-up: the leaf-salt test reads the private leaves.
                 '#[cfg(test)]', '#[test]', '#[test]']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', prepared))
+    # A16 permits only a source descriptor, untrusted root and selected bytes from material.
+    material = re.sub(r'//[^\n]*', '', (crate / 'src/material.rs').read_text())
+    contract = re.search(r'pub trait ColumnMaterial\s*\{([^}]*)}', material)
+    material_closed = (contract is not None and compact(contract[1]) ==
+        "fndescriptor(&self)->merkle::Descriptor;fnroot(&self)->merkle::Digest;"
+        "fnselected(&self,index:u64)->Result<ColumnResponse<'_>,Error>;"
+        and re.findall(r'\bpub\s+(type|trait|struct|enum)\s+(\w+)', material) ==
+            [('type', 'ColumnResponse'), ('trait', 'ColumnMaterial'), ('struct', 'HostColumns'), ('enum', 'HidingUse')]
+        and re.findall(r'\bpub\b(?:\s*\([^)]*\))?', material) == ['pub'] * 3 + ['pub(crate)'] * 5 + ['pub']
+        and [compact(i) for i in re.findall(r'\bimpl\b[^\{]*\{', material)] ==
+            ['implHostColumns{', 'implColumnMaterialforHostColumns{']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', material))
     producer = re.sub(r'//[^\n]*', '', (crate / 'src/producer.rs').read_text())
     producer_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', producer)
     producer_closed = (producer_declarations == [('struct', 'CertificateFailure'),
         ('', 'cause'), ('', 'usage'), ('fn', 'certificate'), ('fn', 'certificate_measured')]
         and len(producer_declarations) == len(re.findall(r'\bpub\b', producer))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', producer)]
-            == ["impl<K:ChallengeField>PreparedSource<'_,K>{"]
+            == ["impl<K:ChallengeField,M:crate::ColumnMaterial>PreparedSource<'_,K,M>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', producer)] == [
             'usecrate::work::{add,bytes};', 'usecrate::{Error,PreparedSource,ProofKind,ProverWork,Source};', 'usealloc::vec::Vec;',
             'usestele_hash::{AbsorbLabel,ChallengeField,ChallengeLabel,HashUsage,Transcript};']
@@ -1331,7 +1357,7 @@ def field_source_codec(root):
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', opening)] == [
             "impl<K:ChallengeField>Functional<'_,K>{", "impl<K:ChallengeField>OpeningRecord<'_,K>{",
             "impl<'prepared,'message,K:ChallengeField>RetainedRow<'prepared,'message,K>{",
-            "impl<K:ChallengeField>PreparedSource<'_,K>{"]
+            "impl<K:ChallengeField,M:crate::ColumnMaterial>PreparedSource<'_,K,M>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', opening)] == [
             'usecrate::work::{add,bytes};',
             'usecrate::{CertificateRecord,Error,Failure,PreparedSource,ProofKind,ProverWork,Source,Usage,VerifiedCertificate,VerifierWork,};',
@@ -1360,7 +1386,7 @@ def field_source_codec(root):
             == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]'] * 2 + ['#[cfg(test)]', '#[test]']
         and not re.search(r'\bimpl\b|\b(?:include|include_str|include_bytes|macro_rules)\s*!', work))
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
-            or not closed_surface or not prepared_closed or not producer_closed or not certificate_closed
+            or not closed_surface or not prepared_closed or not material_closed or not producer_closed or not certificate_closed
             or not opening_closed or not work_closed
             or manifest.get('dependencies') != dependencies
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
@@ -1374,6 +1400,10 @@ def field_source_codec(root):
     checks = [
         (['cargo', 'test', '-p', 'stele-pcs', '--locked', '--offline'],
          ['test matches_reference_qm31_source_and_wire ... ok',
+          'test matches_reference_certificate_opening_and_single_spend ... ok',
+          'test rejects_malformed_material_and_changed_authentication ... ok',
+          'test rejects_exhausted_or_rank_deficient_material_history ... ok',
+          'test rejects_invalid_work_and_preserves_prior_usage ... ok',
           'test matches_reference_om31_source_and_wire ... ok',
           'test rejects_unsupported_sources_without_allocation ... ok',
           'test accepts_maximum_source_shape_without_domain_allocation ... ok',
@@ -2098,7 +2128,7 @@ def masked_sumcheck_quarantine(root):
                'crates/stele-reductions/src/zk_claims.rs',
                # RFC-0014 A2: same checked shared-mask prover, field-only batch state.
                'crates/stele-reductions/src/zk_batch_backend.rs',
-               'crates/stele-reductions/src/zk_gkr_backend.rs'}
+               'crates/stele-reductions/src/zk_gkr_backend.rs', 'crates/stele-reductions/src/zk_source_backend.rs'}
     pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    for path in (root / directory).rglob('*.rs')
@@ -2133,7 +2163,8 @@ def standard_quarantine(root):
     # RFC-0013 A8 (E12-28): these may name `Policy::Two` for dev-zk hiding sources, which
     # resolve Development (proven: false) and stay on the development path (below); the
     # standard entry points resolve_pcs and Descriptor::standard stay forbidden there.
-    policy_two_only = {'crates/stele-pcs/examples/scalar_hiding_source.rs', 'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
+    policy_two_only = {'crates/stele-pcs/examples/scalar_hiding_source.rs', 'crates/stele-pcs/src/preparation.rs', 'crates/stele-pcs/tests/selected_material.rs',
+                       'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
                        'crates/stele-reductions/tests/batch_bench.rs',
                        'crates/stele-prover/tests/development.rs'}
     pattern = re.compile(r'\bresolve_pcs\b|\bPolicy\s*::\s*Two\b|\bDescriptor\s*::\s*standard\b'
@@ -2153,7 +2184,7 @@ def standard_quarantine(root):
         raise ValueError(f'standard-profile entry point used before E8-05 (ADR-108): {found}')
     # RFC-0026 A11, ADR-111: the development tier's Policy 2 entry points resolve
     # `proven: false`; they stay in the development path and never reach stele-verifier.
-    dev_allowed = {'crates/stele-pcs/examples/scalar_hiding_source.rs',
+    dev_allowed = {'crates/stele-reductions/src/zk_source_backend.rs', 'crates/stele-pcs/examples/scalar_hiding_source.rs',
                    'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
                    'crates/stele-pcs/src/source.rs', 'crates/stele-pcs/src/preparation.rs',
                    'crates/stele-reductions/src/relation.rs', 'crates/stele-reductions/src/relation_tests.rs',
@@ -2166,10 +2197,10 @@ def standard_quarantine(root):
                    'crates/stele-reductions/src/zk.rs', 'crates/stele-reductions/src/zk_claims.rs',
                    'crates/stele-reductions/tests/batch_bench.rs',
                    'crates/stele-reductions/tests/gkr_bench.rs',
-                   'crates/stele-pcs/src/producer_tests.rs'}
+                   'crates/stele-pcs/src/producer_tests.rs', 'crates/stele-pcs/tests/selected_material.rs'}
     dev_pattern = re.compile(r'\bfrom_code_id_development\b|\bProfile\s*::\s*Development\b'
                              r'|\bSources\s*::\s*Circle\w*\b'  # Circle (A11), CircleAll (A12)
-                             r'|\bhiding(?:_lifetime|_mask)?_with\b'  # RFC-0013 A8
+                             r'|\bhiding(?:_lifetime|_mask)?_with\b|\bhiding_material\b'  # RFC-0013 A8, RFC-0010 A16
                              r'|\bGeometry\s*::\s*Balanced\b')  # RFC-0013 A8's dev-zk geometry
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    if (root / directory).is_dir()

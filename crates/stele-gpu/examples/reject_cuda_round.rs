@@ -1,16 +1,39 @@
-//! RFC-0014 A2. A genuine device round with one changed field must fail the ordinary prover.
+//! RFC-0014 A2–A5. A single changed device field, reconstructed root or sibling must reject.
 #![forbid(unsafe_code)]
-use std::{env, fs, path::PathBuf};
+use std::{cell::Cell, env, fs, path::PathBuf};
 use stele_gpu::{Cuda, Error, Session};
 use stele_kernels::gkr::{GkrBackend, GkrConstruction, RelationBackend, RelationConstruction};
-use stele_kernels::{Backend, SourceGeometry, WeightedClaim, M31, QM31};
+use stele_kernels::{
+    Backend, HidingBackend, SourceColumn, SourceGeometry, WeightedClaim, M31, QM31,
+};
 use stele_prover::development::{prove_window_with_backend, zk, Statement};
 
 // Only this rejection binary can replace the first field. The selected source, construction,
 // challenge-independent round and all other operations are the production CUDA implementation.
-struct ChangedRound<'d>(Session<'d>);
+#[derive(Clone, Copy, PartialEq)]
+enum Change {
+    Round,
+    Root,
+    Sibling,
+}
+struct Changed<'d, const ROUND: bool> {
+    device: Session<'d>,
+    target: Change,
+    first_id: Cell<Option<u64>>,
+    injected: Cell<bool>,
+}
+impl<'d, const ROUND: bool> Changed<'d, ROUND> {
+    fn new(device: Session<'d>, target: Change) -> Self {
+        Self {
+            device,
+            target,
+            first_id: Cell::new(None),
+            injected: Cell::new(false),
+        }
+    }
+}
 
-impl<'d> Backend<QM31> for ChangedRound<'d> {
+impl<'d, const ROUND: bool> Backend<QM31> for Changed<'d, ROUND> {
     type Error = Error;
     type Original<'s>
         = <Session<'d> as Backend<QM31>>::Original<'s>
@@ -26,7 +49,7 @@ impl<'d> Backend<QM31> for ChangedRound<'d> {
         geometry: SourceGeometry,
         words: &'s [M31],
     ) -> Result<Self::Original<'s>, Error> {
-        self.0.original(geometry, words)
+        self.device.original(geometry, words)
     }
 
     fn dense_batch<'s>(
@@ -35,7 +58,7 @@ impl<'d> Backend<QM31> for ChangedRound<'d> {
         o: &'s Self::Original<'_>,
         claims: &[WeightedClaim<'_, QM31>],
     ) -> Result<(Self::Dense<'s>, QM31), Error> {
-        self.0.dense_batch(g, o, claims)
+        self.device.dense_batch(g, o, claims)
     }
 
     fn dense_round<'s>(state: &mut Self::Dense<'s>) -> Result<[QM31; 3], Error>
@@ -43,7 +66,9 @@ impl<'d> Backend<QM31> for ChangedRound<'d> {
         Self: 's,
     {
         let mut fields = Session::dense_round(state)?;
-        fields[0] = fields[0] + QM31::ONE;
+        if ROUND {
+            fields[0] = fields[0] + QM31::ONE;
+        }
         Ok(fields)
     }
 
@@ -62,21 +87,23 @@ impl<'d> Backend<QM31> for ChangedRound<'d> {
     }
 }
 
-impl<'d> GkrBackend<QM31> for ChangedRound<'d> {
+impl<'d, const ROUND: bool> GkrBackend<QM31> for Changed<'d, ROUND> {
     type Gkr<'s>
         = <Session<'d> as GkrBackend<QM31>>::Gkr<'s>
     where
         Self: 's;
     fn gkr_start<'s>(&'s self, input: &GkrConstruction<'_, QM31>) -> Result<Self::Gkr<'s>, Error> {
-        self.0.gkr_start(input)
+        self.device.gkr_start(input)
     }
     fn gkr_round<'s>(state: &mut Self::Gkr<'s>) -> Result<Vec<QM31>, Error>
     where
         Self: 's,
     {
         let mut fields = Session::gkr_round(state)?;
-        let first = fields.first_mut().ok_or(Error::Geometry)?;
-        *first = *first + QM31::ONE;
+        if ROUND {
+            let first = fields.first_mut().ok_or(Error::Geometry)?;
+            *first = *first + QM31::ONE;
+        }
         Ok(fields)
     }
     fn gkr_fold<'s>(s: &mut Self::Gkr<'s>, c: QM31) -> Result<(), Error>
@@ -92,12 +119,50 @@ impl<'d> GkrBackend<QM31> for ChangedRound<'d> {
         Session::gkr_finals(s)
     }
 }
-impl RelationBackend<QM31> for ChangedRound<'_> {
+impl<const ROUND: bool> RelationBackend<QM31> for Changed<'_, ROUND> {
     fn relation_start<'s>(
         &'s self,
         input: &RelationConstruction<'_, QM31>,
     ) -> Result<Self::Gkr<'s>, Error> {
-        self.0.relation_start(input)
+        self.device.relation_start(input)
+    }
+}
+
+impl<'d> HidingBackend for Changed<'d, false> {
+    type Columns<'s>
+        = <Session<'d> as HidingBackend>::Columns<'s>
+    where
+        Self: 's;
+
+    fn prepare_columns<'s>(
+        &'s self,
+        g: SourceGeometry,
+        original: &Self::Original<'_>,
+        seed: &[u8; 32],
+        hashes: &mut u64,
+    ) -> Result<(Self::Columns<'s>, [u8; 32]), Error> {
+        let (tree, mut root) = self.device.prepare_columns(g, original, seed, hashes)?;
+        if self.first_id.get().is_none() {
+            self.first_id.set(Some(g.id));
+        } else if self.target == Change::Root
+            && self.first_id.get() == Some(g.id)
+            && !self.injected.replace(true)
+        {
+            root[0] ^= 1;
+        }
+        Ok((tree, root))
+    }
+    fn selected_column(
+        &self,
+        g: SourceGeometry,
+        tree: &Self::Columns<'_>,
+        index: usize,
+    ) -> Result<SourceColumn, Error> {
+        let mut col = self.device.selected_column(g, tree, index)?;
+        if self.target == Change::Sibling && !self.injected.replace(true) {
+            col.siblings.first_mut().ok_or(Error::Geometry)?[0] ^= 1;
+        }
+        Ok(col)
     }
 }
 
@@ -111,9 +176,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         [case, commitment, secret, stage] if stage.as_os_str() == "relation" => {
             (case, commitment, secret, "relation")
         }
+        [case, commitment, secret, stage] if stage.as_os_str() == "source-root" => (case,commitment,secret,"source-root"),
+        [case, commitment, secret, stage] if stage.as_os_str() == "source-sibling" => (case,commitment,secret,"source-sibling"),
         _ => {
             return Err(
-                "expected first parity case, commitment, state and optional gkr or relation".into(),
+                "expected first parity case, commitment, state and optional gkr, relation, source-root or source-sibling".into(),
             )
         }
     };
@@ -135,7 +202,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let seed = fs::read(case.join("proof-seed.bin"))?
         .try_into()
         .map_err(|_| "invalid fixture seed")?;
-    let changed = ChangedRound(device.session());
+    let target = match stage {
+        "source-root" => Change::Root,
+        "source-sibling" => Change::Sibling,
+        _ => Change::Round,
+    };
+    let changed = Changed::<true>::new(device.session(), Change::Round);
+    let material = Changed::<false>::new(device.session(), target);
     let result = prove_window_with_backend(
         &fs::read(case.join("model.bin"))?,
         &fs::read(case.join("preparation.bin"))?,
@@ -158,7 +231,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             index: &mut index,
         },
-        if relation {
+        if target != Change::Round {
+            zk::BatchExecution::with_sources(&material)
+        } else if relation {
             zk::BatchExecution::with_relations(&changed)
         } else if stage == "gkr" {
             zk::BatchExecution::with_gkr(&changed)
@@ -169,12 +244,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let error = result.err().ok_or("changed CUDA round was accepted")?;
     // The inner error belongs to the reductions crate. Avoid adding a protocol dependency to
     // this field backend just to match its nested variants in this rejection binary.
-    let claimed = "Zk(Sumcheck(RoundSumMismatch))";
+    let claimed = if target == Change::Round {
+        "Zk(Sumcheck(RoundSumMismatch))"
+    } else {
+        "Zk(Pcs(Merkle(RootMismatch)))"
+    };
     if format!("{error:?}") != claimed {
         return Err(format!("expected {claimed}, got {error:?}").into());
     }
-    let counts = changed.0.counts();
-    if relation {
+    let counts = if target == Change::Round {
+        changed.device.counts()
+    } else {
+        material.device.counts()
+    };
+    if target != Change::Round {
+        if !material.injected.get()
+            || counts.source_responses == 0
+            || counts.source_visits == 0
+            || (target == Change::Root && counts.source_visits <= counts.originals)
+            || (target == Change::Sibling && (counts.source_visits != 1 || counts.batches != 0))
+        {
+            return Err("source fault did not reach its intended proof visit".into());
+        }
+    } else if relation {
         if (
             counts.relation_steps,
             counts.relation_rounds,
@@ -220,7 +312,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         return Err("failed round did not restore the reservation".into());
     }
-    if relation {
+    if target != Change::Round {
+        println!("rejected_cuda_{stage}=RootMismatch injected=1 reservation_restored=1");
+    } else if relation {
         println!("rejected_cuda_relation=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1");
     } else if stage == "gkr" {
         println!("rejected_cuda_gkr_round=RoundSumMismatch device_rounds=1 folds=0 reservation_restored=1");

@@ -1,0 +1,89 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "e2a87fb5b078035aa0dcf223906569a430121438",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 80GB HBM3, GPU-15277ee0-f331-7a26-7e80-82df766e5653, 81559 MiB",
+  "driver": "580.173.02",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "changed_model_rejections": 2,
+    "changed_round_rejections": 3,
+    "changed_source_rejections": 2,
+    "complete_byte_matches": 50,
+    "device_rounds": 2550,
+    "distinct_models": 50,
+    "gkr_rounds": 97350,
+    "gkr_steps": 10800,
+    "relation_rounds": 46550,
+    "relations": 8850,
+    "replays": 1,
+    "selected_batches": 150,
+    "source_d2h_bytes": 60803200,
+    "source_h2d_bytes": 34885600,
+    "source_hashes": 13926000,
+    "source_host_salt_bytes": 2009600,
+    "source_originals": 200,
+    "source_responses": 62800,
+    "source_visits": 400,
+    "unavailable_device_rejections": 1,
+    "verified_proofs": 102
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk byte 4",
+    "fresh_contexts": [
+      "LAZY",
+      "EAGER"
+    ],
+    "job": 6957,
+    "plan": {
+      "context": 16,
+      "cpu_manifest": "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd",
+      "families": [
+        "original hiding sources",
+        "masked relations",
+        "GKR steps",
+        "ordinary batches"
+      ],
+      "heads": 4,
+      "hidden": 128,
+      "layers": 1,
+      "models": 50,
+      "positions": 2,
+      "profile": "dev-zk byte 4",
+      "vocabulary": 256,
+      "width": 64
+    },
+    "public_receipt_sha256": {
+      "allocation.txt": "b88021b8705e3b14f96f83e9d84d69a2e59feb55aa5695713336145300430460",
+      "campaign.time": "33bfd6d7ffe2bfb33a2aaeb0def55e5f98047159287092a2c394ad15f9765cc1",
+      "device.txt": "b72c8fa2540996ca6d120617435a013d026fb715bb627e6fb1a615de7d474e2d",
+      "parity.err": "e64c1c66c807b2943068946438997c7e6ef8bfa9cf28de82948251b42f3950bc",
+      "parity.out": "efdded43e491d436994a40221fc24b46d7ffec7bec33bc8126db40c1b64644ff",
+      "scheduler.txt": "4fd1fc085f86dccc963013b80fe78c2455c376c9c3ae7ab38bc1cc3b8cd831f8"
+    },
+    "source_tree": "c8b19f1df514ac3f8f718619e54092317e0d78f1"
+  },
+  "note": "Development-profile qualification. Total wall includes builds, seeded source and field differentials, 51 proof pairs including one replay, and independent verification. Work counters cover the 50 primary CUDA proofs. Each source schedule was reconstructed from the pinned proof descriptors and independent verifier output. Source upload counts twiddles and salt metadata; existing aggregate ordinary H2D reports the one-time original uploads. Source download includes roots, selected field columns and sibling paths. Proofs use the CPU implementation for the standalone shared batch in this revision. The fresh-context capacity controls ran in both CUDA module-loading modes before the complete corpus.",
+  "plan_digest": "851d0dbad1e628a3044e2f328507be03ce9cabfd4fe8b8710496bb314aa5521f",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 655050000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "complete_gate": 655050000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-h100-hiding-source-proof-parity"
+}
