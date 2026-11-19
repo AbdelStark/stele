@@ -4608,7 +4608,7 @@ tasks:
   rfc: [RFC-0014 A4, RFC-0020 A12, RFC-0026 A21]
   skill: rfc-author
   crate: docs
-  status: in_progress
+  status: done
   agent: codex-source-visits
   branch: task/E20-15-live-relations-contract
   acceptance:
