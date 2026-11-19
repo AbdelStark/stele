@@ -4071,7 +4071,9 @@ tasks:
   skill: benchmark-runner
   crate: bench
   lane: B
-  status: ready
+  status: done
+  agent: antigravity-lane-b
+  branch: task/E17-04-remote-host-and-baseline
   acceptance:
   - one command provisions a pinned image on a rented host, runs a named rung, and returns the ledger, logs and proof digest
   - no credential, token or host name is stored in the repository; cost per run is recorded in the ledger note

@@ -4,3 +4,4 @@ harness/.venv/
 research/**/out/
 .DS_Store
 __pycache__/
+.env

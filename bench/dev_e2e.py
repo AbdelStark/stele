@@ -280,6 +280,7 @@ def main():
                    help='allow a pre-E17-01 prove.out without in-process stage_ns/counter lines')
     p.add_argument('--zk', action='store_true', help='a dev-zk run against a published model commitment')
     p.add_argument('--cuda-driver', help='observed driver version for a CUDA development proof')
+    p.add_argument('--note-suffix', help='optional provenance or cost suffix appended to the ledger note')
     a = p.parse_args()
     if a.cuda_driver and not a.zk:
         p.error('--cuda-driver requires --zk')
@@ -394,6 +395,13 @@ def main():
         'proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 '
         'records; not a cost-model fit input.'
     )
+    note = (
+        ZK_NOTE.format(timer=timer, byte=plan['profile_byte'], sources=ZK_SOURCES[plan['profile_byte']],
+                       proofs=plan['proofs'], index=plan['proof_index'],
+                       ledger=zk_ledger(verified), execution=execution) if a.zk else dev_note
+    )
+    if a.note_suffix and a.note_suffix.strip():
+        note = f'{note} {a.note_suffix.strip()}'
     ledger = {
         'schema_version': 1, 'kind': 'inference', 'workload': a.workload, 'commit': a.commit,
         'toolchain': a.toolchain, 'device': a.device, 'driver': a.cuda_driver or 'not-applicable',
@@ -408,9 +416,7 @@ def main():
         'kernel_counters': counters,
         'proof_size_bytes': len(proof), 'verifier_time_ns': {'rust': verify_ns, 'python': 0},
         'controls': {'total': len(controls), 'passed': len(controls), 'failed': 0},
-        'note': ZK_NOTE.format(timer=timer, byte=plan['profile_byte'], sources=ZK_SOURCES[plan['profile_byte']],
-                               proofs=plan['proofs'], index=plan['proof_index'],
-                               ledger=zk_ledger(verified), execution=execution) if a.zk else dev_note,
+        'note': note,
     }
     a.out.write_text(json.dumps(ledger, indent=1, sort_keys=True) + '\n')
     subprocess.run(['cargo', 'run', '-q', '-p', 'stele-bench', '--locked', '--offline', '--', 'ledger', 'validate',
