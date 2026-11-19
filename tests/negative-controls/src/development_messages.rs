@@ -50,6 +50,7 @@ fn build() -> Result<Vec<Fixture>, String> {
                     scales: &scales,
                     vectors: &public.vectors,
                     zk: false,
+                    segment_layers: 0,
                 },
                 &statement,
             )

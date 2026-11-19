@@ -23,6 +23,8 @@ const CIRCLE_MAGIC: &[u8] = b"stele-dev-public-v2";
 const CIRCLE_ALL_MAGIC: &[u8] = b"stele-dev-public-v3";
 /// The A14 input file (profile byte 5, ground lookup rounds): the same layout.
 const GRIND_MAGIC: &[u8] = b"stele-dev-public-v4";
+/// RFC-0026 A27: segmented development input file (`sources_byte: u8`, `segment_layers: u16le` >= 1).
+const SEGMENTED_MAGIC: &[u8] = b"stele-dev-public-v5";
 /// The dev-zk profile's input file (RFC-0026 A9 profile byte 1): the same layout.
 const ZK_MAGIC: &[u8] = b"stele-dev-zk-public-v1";
 /// RFC-0013 A8's input file (profile byte 4): the same layout.
@@ -40,13 +42,26 @@ pub fn encode(public: &Public, statement: &Statement) -> Vec<u8> {
 
 /// Canonical bytes of the verifier's input under `profile` (0 development, 1 dev-zk).
 pub fn encode_profile(public: &Public, statement: &Statement, profile: u8) -> Vec<u8> {
-    let mut out = match (profile, public.sources) {
-        (0, Sources::Expander) => MAGIC.to_vec(),
-        (0, Sources::Circle) => CIRCLE_MAGIC.to_vec(),
-        (0, Sources::CircleAll) => CIRCLE_ALL_MAGIC.to_vec(),
-        (0, Sources::CircleAllGrind) => GRIND_MAGIC.to_vec(),
-        (super::zk::PROFILE_BALANCED, _) => ZK_BALANCED_MAGIC.to_vec(),
-        _ => ZK_MAGIC.to_vec(),
+    let mut out = if profile == 0 && public.segment_layers > 0 {
+        let mut head = SEGMENTED_MAGIC.to_vec();
+        let src_byte = match public.sources {
+            Sources::Expander => 0u8,
+            Sources::Circle => super::CIRCLE_PROFILE,
+            Sources::CircleAll => super::CIRCLE_ALL_PROFILE,
+            Sources::CircleAllGrind => super::GRIND_PROFILE,
+        };
+        head.push(src_byte);
+        head.extend_from_slice(&public.segment_layers.to_le_bytes());
+        head
+    } else {
+        match (profile, public.sources) {
+            (0, Sources::Expander) => MAGIC.to_vec(),
+            (0, Sources::Circle) => CIRCLE_MAGIC.to_vec(),
+            (0, Sources::CircleAll) => CIRCLE_ALL_MAGIC.to_vec(),
+            (0, Sources::CircleAllGrind) => GRIND_MAGIC.to_vec(),
+            (super::zk::PROFILE_BALANCED, _) => ZK_BALANCED_MAGIC.to_vec(),
+            _ => ZK_MAGIC.to_vec(),
+        }
     };
     out.extend_from_slice(&static_data(public));
     out.extend_from_slice(&(public.commitment.len() as u32).to_le_bytes());
@@ -168,27 +183,45 @@ pub fn decode_profile(bytes: &[u8]) -> Result<(Public, Statement, u8), Error> {
 
 #[allow(clippy::type_complexity)]
 fn parse(bytes: &[u8]) -> Result<(Public, Statement, u8, &[u8]), Error> {
-    let (profile, magic, sources) = if bytes.starts_with(ZK_BALANCED_MAGIC) {
-        (
-            super::zk::PROFILE_BALANCED,
-            ZK_BALANCED_MAGIC,
-            Sources::Expander,
-        )
-    } else if bytes.starts_with(ZK_MAGIC) {
-        (1, ZK_MAGIC, Sources::Expander)
-    } else if bytes.starts_with(CIRCLE_MAGIC) {
-        (0, CIRCLE_MAGIC, Sources::Circle)
-    } else if bytes.starts_with(CIRCLE_ALL_MAGIC) {
-        (0, CIRCLE_ALL_MAGIC, Sources::CircleAll)
-    } else if bytes.starts_with(GRIND_MAGIC) {
-        (0, GRIND_MAGIC, Sources::CircleAllGrind)
-    } else {
-        (0, MAGIC, Sources::Expander)
-    };
     let mut r = Reader(bytes);
-    if r.take(magic.len())? != magic {
-        return Err(Error::StatementMismatch);
-    }
+    let (profile, sources, segment_layers) = if bytes.starts_with(SEGMENTED_MAGIC) {
+        r.take(SEGMENTED_MAGIC.len())?;
+        let src = match r.take(1)?[0] {
+            0 => Sources::Expander,
+            super::CIRCLE_PROFILE => Sources::Circle,
+            super::CIRCLE_ALL_PROFILE => Sources::CircleAll,
+            super::GRIND_PROFILE => Sources::CircleAllGrind,
+            _ => return Err(Error::StatementMismatch),
+        };
+        let sl = r.take(2)?;
+        let segment_layers = u16::from_le_bytes([sl[0], sl[1]]);
+        if segment_layers == 0 {
+            return Err(Error::StatementMismatch);
+        }
+        (0, src, segment_layers)
+    } else {
+        let (profile, magic, sources) = if bytes.starts_with(ZK_BALANCED_MAGIC) {
+            (
+                super::zk::PROFILE_BALANCED,
+                ZK_BALANCED_MAGIC,
+                Sources::Expander,
+            )
+        } else if bytes.starts_with(ZK_MAGIC) {
+            (1, ZK_MAGIC, Sources::Expander)
+        } else if bytes.starts_with(CIRCLE_MAGIC) {
+            (0, CIRCLE_MAGIC, Sources::Circle)
+        } else if bytes.starts_with(CIRCLE_ALL_MAGIC) {
+            (0, CIRCLE_ALL_MAGIC, Sources::CircleAll)
+        } else if bytes.starts_with(GRIND_MAGIC) {
+            (0, GRIND_MAGIC, Sources::CircleAllGrind)
+        } else {
+            (0, MAGIC, Sources::Expander)
+        };
+        if r.take(magic.len())? != magic {
+            return Err(Error::StatementMismatch);
+        }
+        (profile, sources, 0)
+    };
     let model = r.blob()?.to_vec();
     let scales = r.blob()?.to_vec();
     let preparation = r.blob()?.to_vec();
@@ -229,6 +262,7 @@ fn parse(bytes: &[u8]) -> Result<(Public, Statement, u8, &[u8]), Error> {
         vectors,
         commitment,
         sources,
+        segment_layers,
     };
     Ok((
         public,

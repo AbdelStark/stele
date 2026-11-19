@@ -84,6 +84,7 @@ impl Case {
             vectors: weights.vectors.clone(),
             commitment: committed.commitment.clone(),
             sources: weights.sources(),
+            segment_layers: 0,
         }
     }
 }
@@ -447,6 +448,7 @@ fn rejects_false_witness_with_check_under_dev_zk() {
         vectors: zk::published(case.bytes[0], &weights.vectors).expect("published"),
         commitment: Vec::new(),
         sources: Sources::Expander,
+        segment_layers: 0,
     };
     let (commitment, mut state) = zk::commit(
         &base,
@@ -658,8 +660,8 @@ fn rejects_tampers_on_a_supplied_proof() {
     eprintln!("honest: accepted in {} ms", clock.elapsed().as_millis());
     let rejects = |name: &str, p: &Public, s: &Statement| {
         assert_eq!(verify(p, s, &proof).err(), Some(Error::StatementMismatch));
-        let mut c = container::decode(&proof).expect("container");
-        c.statement = statement_digest_for(p, s).expect("digest");
+        let mut c = container::decode_any(&proof).expect("container");
+        c.set_statement(statement_digest_for(p, s).expect("digest"));
         let clock = Instant::now();
         let error = verify(p, s, &c.encode()).expect_err(name);
         eprintln!(
@@ -746,6 +748,7 @@ fn dumps_byte5_windows_for_the_independent_verifier() {
                 scales: &case.scales,
                 vectors: &public.vectors,
                 zk: false,
+                segment_layers: 0,
             },
             &statement,
         )
@@ -1002,6 +1005,7 @@ fn zk_window_sources(name: &str, t: usize, profile: u8) -> (u64, Vec<(u32, Polic
         vectors: zk::published(case.bytes[0], &weights.vectors).expect("published"),
         commitment: Vec::new(),
         sources: Sources::Expander,
+        segment_layers: 0,
     };
     // RFC-0013 A6: commit once (budget 2), then prove as index 0.
     let (commitment, mut state) = zk::commit(
@@ -1526,6 +1530,7 @@ fn a15_small() -> (Relation, Public, Statement, container::Container) {
         groups: vec![Group {
             name: "G/x/1".into(),
             log_len: 1,
+            segment: 0,
         }],
         columns: vec![
             Column {
@@ -1536,6 +1541,7 @@ fn a15_small() -> (Relation, Public, Statement, container::Container) {
                     bits: 8,
                 },
                 log_len: 1,
+                carried: false,
             },
             Column {
                 name: "k".into(),
@@ -1545,6 +1551,7 @@ fn a15_small() -> (Relation, Public, Statement, container::Container) {
                     bits: 4,
                 },
                 log_len: 1,
+                carried: false,
             },
             Column {
                 name: "p".into(),
@@ -1554,6 +1561,7 @@ fn a15_small() -> (Relation, Public, Statement, container::Container) {
                     bits: 3,
                 },
                 log_len: 1,
+                carried: false,
             },
         ],
         tables: vec![Table {
@@ -1608,6 +1616,7 @@ fn a15_small() -> (Relation, Public, Statement, container::Container) {
         vectors: vec![(3, vec![-1, 2])],
         commitment: vec![([0xab; 32], vec![1, 2, 3])],
         sources: Sources::CircleAllGrind,
+        segment_layers: 0,
     };
     let statement = Statement {
         tokens: vec![5, 6],
@@ -1691,6 +1700,7 @@ fn matches_a15_codecs_on_the_one_layer_byte5_window() {
             scales: &case.scales,
             vectors: &public.vectors,
             zk: false,
+            segment_layers: 0,
         },
         &statement,
     )
@@ -1938,6 +1948,7 @@ fn a15_covers() -> Relation {
         groups: vec![Group {
             name: "G/o/17".into(),
             log_len: 17,
+            segment: 0,
         }],
         columns: vec![
             Column {
@@ -1948,6 +1959,7 @@ fn a15_covers() -> Relation {
                     bits: 8,
                 },
                 log_len: 17,
+                carried: false,
             },
             Column {
                 name: "one".into(),
@@ -1957,6 +1969,7 @@ fn a15_covers() -> Relation {
                     bits: 2,
                 },
                 log_len: 0,
+                carried: false,
             },
         ],
         matmuls,
@@ -1976,10 +1989,12 @@ fn a15_cover_snapshot() -> Relation {
             Group {
                 name: "d".into(),
                 log_len: 0,
+                segment: 0,
             },
             Group {
                 name: "o".into(),
                 log_len: 17,
+                segment: 0,
             },
         ],
         columns: vec![
@@ -1988,18 +2003,21 @@ fn a15_cover_snapshot() -> Relation {
                 kind: Kind::Witness(GroupId(0)),
                 width: Width::signed(8),
                 log_len: 0,
+                carried: false,
             },
             Column {
                 name: "o".into(),
                 kind: Kind::Witness(GroupId(1)),
                 width: Width::signed(10),
                 log_len: 17,
+                carried: false,
             },
             Column {
                 name: "one".into(),
                 kind: Kind::Public(vec![1]),
                 width: Width::signed(2),
                 log_len: 0,
+                carried: false,
             },
         ],
         ..Relation::default()
@@ -2268,6 +2286,7 @@ fn matches_reference_request_layout_variants() {
                         scales: &scales,
                         vectors: &weights.vectors,
                         zk: false,
+                        segment_layers: 0,
                     },
                     &statement,
                 )
@@ -2384,4 +2403,141 @@ fn accepts_one_layer_measured_with_unchanged_proof_bytes_and_stage_counters() {
             report2.engine.weight_elements_read
         );
     }
+}
+
+/// RFC-0026 A27 (task E18-06): segmented proving (`segment_layers = 1`) works on both
+/// version-1 (`one-layer`) and version-2 wide int24 GQA (`one-layer-wide-gqa`) windows,
+/// emits `stele-dev-e2e-v2` and `stele-dev-public-v5`, is deterministic across runs,
+/// and rejects cross-version container/bundle mismatches and statement tampers.
+#[test]
+fn accepts_segmented_one_layer_and_wide_gqa_windows() {
+    for case_name in ["one-layer", "one-layer-wide-gqa"] {
+        let case = load(case_name);
+        let base = Statement {
+            tokens: vec![1],
+            start: 0,
+            end: 1,
+            next: None,
+        };
+        let (public, statement, proof, report) =
+            stele_prover::development::prove_window_development_segmented_measured(
+                case.bytes[0],
+                case.bytes[2],
+                case.bytes[1],
+                &case.artifact,
+                base.clone(),
+                16,
+                3,
+                1,
+            )
+            .expect("segmented prove");
+        assert_eq!(public.segment_layers, 1);
+        let v2 = container::decode_v2(&proof).expect("stele-dev-e2e-v2");
+        assert_eq!(v2.segments.len(), 2, "{case_name}: [Embed+L0], [Finish]");
+        assert_eq!(
+            container::decode(&proof).err(),
+            Some(container::Error::Header)
+        );
+        assert!(verify(&public, &statement, &proof).is_ok());
+
+        // `stele-dev-public-v5` round-trip and malformed rejections.
+        let encoded_pub = bundle::encode(&public, &statement);
+        assert!(encoded_pub.starts_with(b"stele-dev-public-v5"));
+        let (dec_pub, dec_stmt) = bundle::decode(&encoded_pub).expect("decode v5");
+        assert_eq!((dec_pub, dec_stmt), (public.clone(), statement.clone()));
+        let mut zero_seg = encoded_pub.clone();
+        zero_seg[20..22].copy_from_slice(&0u16.to_le_bytes());
+        assert_eq!(
+            bundle::decode(&zero_seg).err(),
+            Some(Error::StatementMismatch)
+        );
+        let mut bad_src = encoded_pub;
+        bad_src[19] = 99;
+        assert_eq!(
+            bundle::decode(&bad_src).err(),
+            Some(Error::StatementMismatch)
+        );
+
+        // Cross-version rejection: v2 proof under unsegmented public (segment_layers = 0).
+        let unseg_pub = Public {
+            segment_layers: 0,
+            ..public.clone()
+        };
+        assert_eq!(
+            verify(&unseg_pub, &statement, &proof).err(),
+            Some(Error::StatementMismatch)
+        );
+
+        // Restamped statement tamper must be rejected by the engine, not just header check.
+        let bad_next = Statement {
+            next: statement.next.map(|y| y ^ 1),
+            ..statement.clone()
+        };
+        let mut restamped = container::decode_any(&proof).expect("decode_any");
+        restamped.set_statement(statement_digest_for(&public, &bad_next).expect("digest"));
+        assert!(matches!(
+            verify(&public, &bad_next, &restamped.encode()),
+            Err(Error::Engine(_))
+        ));
+
+        // Deterministic proof bytes and counters across two runs.
+        let (_, _, proof2, report2) =
+            stele_prover::development::prove_window_development_segmented_measured(
+                case.bytes[0],
+                case.bytes[2],
+                case.bytes[1],
+                &case.artifact,
+                base,
+                16,
+                3,
+                1,
+            )
+            .expect("second segmented prove");
+        assert_eq!(proof, proof2);
+        assert_eq!(
+            report.engine.committed_cells,
+            report2.engine.committed_cells
+        );
+        assert_eq!(
+            report.engine.lookup_positions,
+            report2.engine.lookup_positions
+        );
+        assert_eq!(report.engine.weight_reads, report2.engine.weight_reads);
+    }
+
+    // F1 + F3: multi-layer uneven segmentation (eight-layer, T=4, segment_layers=3 -> 4 segments:
+    // [Embed+L0..2], [L3..5], [L6..7], [Finish]) under profile 5 (GRIND_PROFILE), exercising
+    // layer-to-layer carried boundaries (norm1 + mid) and asserting `registry::publish` rejects
+    // segmented `Public` inputs (`StatementMismatch`).
+    let eight = load("eight-layer");
+    let base4 = Statement {
+        tokens: vec![1],
+        start: 0,
+        end: 1,
+        next: None,
+    };
+    let (pub5, stmt5, proof5, _) =
+        stele_prover::development::prove_window_development_segmented_measured(
+            eight.bytes[0],
+            eight.bytes[2],
+            eight.bytes[1],
+            &eight.artifact,
+            base4,
+            4,
+            5,
+            3,
+        )
+        .expect("eight-layer uneven segmented profile-5 prove");
+    let v2 = container::decode_v2(&proof5).expect("stele-dev-e2e-v2");
+    assert_eq!(
+        v2.segments.len(),
+        4,
+        "[Embed+L0..2], [L3..5], [L6..7], [Finish]"
+    );
+    assert!(verify(&pub5, &stmt5, &proof5).is_ok());
+    assert_eq!(
+        stele_prover::development::registry::publish(&pub5, &stmt5).err(),
+        Some(Error::StatementMismatch),
+        "A16 registry::publish must reject segmented public bundles"
+    );
 }

@@ -4549,3 +4549,29 @@ Key choices:
   (`seg_count <= (remaining - 4) / 28`) with fallible `try_reserve_exact`, and reject
   any trailing byte with `Error::ProofShape`.
 - Framing only: no new challenge, no new soundness ledger line, no profile promotion.
+
+## ADR-148 — Accept RFC-0026 A27: segments and carried residual boundaries for bounded-memory proving (E18-06)
+
+To prove real Llama 3.1 8B windows (Gate M1 / E22-04) within `<= 512 GiB` CPU RAM and
+within the A3/A4 `2^30` per-source and per-lookup domain caps, the development relation
+IR, engine, and prover must partition windows into segments with carried residual
+boundaries so at most two consecutive segments' witness commitments are live at once.
+
+Accepted RFC-0026 A27 at the development tier under RFC-0027 §2 / Workflow 02 item 4
+following independent review ([E18-06 review](../reviews/e18-06-segments-bounded-memory.md)).
+Key choices:
+- Pure-data segment metadata (`Group.segment: u32`, `Column.carried: bool`) validated
+  statically in `Relation::validate` (`Invalid::Segment` -> `StatementMismatch`), with
+  weight-column ranges assigned to the earliest witness-bearing segment reading that
+  weight so every segment loads only its own weights.
+- `stele/v0.1/relation/encoding/v2` and `stele-dev-public-v5` apply only when segmented,
+  preserving unsegmented v1 relations, digests, bundles, and `stele-dev-e2e-v1` proofs
+  byte-identically.
+- Per-segment domain-separated source/instance IDs (`(s << 16) + 2` for witness stack,
+  `(s << 16) + 3 + j` for multiplicities, `ZEROCHECK | (s << 16) | m`,
+  `BATCH | (s << 32)`) match v1 identically at `s = 0` (`S == 1`).
+- `Weights::from_artifact_sources` streams 2-D weights directly into `stacked` (`M31`)
+  and decodes per role on demand, removing the duplicate `Vec<Vec<Vec<i64>>>` copy, and
+  `prove_window` drops `Executor` immediately after `capture`.
+- Registered `NC-1335` and `NC-1336` in the negative-control catalogue; deterministic
+  across repeated runs and thread counts. No security level or profile promotion granted.

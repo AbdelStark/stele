@@ -6,28 +6,13 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use rayon::prelude::*;
 
-/// A named constraint, for `check_except`'s skip list.
-trait Named {
-    fn name(&self) -> &str;
-}
-macro_rules! named {
-    ($($t:ty),*) => {$(impl Named for $t { fn name(&self) -> &str { &self.name } })*};
-}
-named!(
-    super::Range,
-    super::Lookup,
-    super::Compose,
-    super::Identity,
-    super::Matmul
-);
-
 /// The first failure, in `items` order, of `failure` over the kept items.
-fn first<T: Named + Sync>(
+fn first_item<T: Sync>(
     items: &[T],
-    kept: &(dyn Fn(&str) -> bool + Sync),
+    kept: &(dyn Fn(&T) -> bool + Sync),
     failure: impl Fn(&T) -> Option<Violation> + Sync,
 ) -> Result<(), Violation> {
-    let one = |item: &T| kept(item.name()).then(|| failure(item)).flatten();
+    let one = |item: &T| kept(item).then(|| failure(item)).flatten();
     #[cfg(feature = "std")]
     let found = items
         .par_iter()
@@ -82,6 +67,13 @@ pub fn check(relation: &Relation, values: &Values) -> Result<(), Violation> {
     check_except(relation, values, &[])
 }
 
+/// Validate `relation`, then evaluate every constraint owned by `segment` over the integers
+/// (RFC-0026 A27). Only columns belonging to `segment` or referenced by `segment`'s constraints
+/// must be assigned in `values`.
+pub fn check_segment(relation: &Relation, segment: u32, values: &Values) -> Result<(), Violation> {
+    check_inner(relation, values, &[], SUMMED_TABLE, Some(segment))
+}
+
 /// Test aid for mutation surveys: [`check`] with every constraint whose name is in
 /// `skip` left unevaluated (after a full `validate`). It is not a verifier mode; no
 /// proof path calls it.
@@ -97,26 +89,100 @@ pub(crate) fn check_with(
     skip: &[&str],
     summed_table: u8,
 ) -> Result<(), Violation> {
-    let kept = |name: &str| !skip.contains(&name);
+    check_inner(relation, values, skip, summed_table, None)
+}
+
+fn check_inner(
+    relation: &Relation,
+    values: &Values,
+    skip: &[&str],
+    summed_table: u8,
+    segment: Option<u32>,
+) -> Result<(), Violation> {
     relation.validate()?;
-    let columns: Vec<&[i64]> = (0..relation.columns.len())
-        .map(|i| {
-            let id = super::ColumnId(i as u32);
-            values.get(relation, id).ok_or(Violation::Missing(id))
-        })
-        .collect::<Result<_, _>>()?;
-    for (i, column) in columns.iter().enumerate() {
-        if column.len() != 1usize << relation.columns[i].log_len {
-            return Err(Invalid::Column(super::ColumnId(i as u32)).into());
+    let weight_segs = relation.weight_segments();
+    let in_segment = |item_seg: u32| segment.is_none_or(|s| s == item_seg);
+    let mut required = alloc::vec![segment.is_none(); relation.columns.len()];
+    if let Some(seg) = segment {
+        for (i, _) in relation.columns.iter().enumerate() {
+            if relation.column_segment(super::ColumnId(i as u32)) == Some(seg) {
+                required[i] = true;
+            }
+        }
+        for range in &relation.ranges {
+            if relation.range_segment_with(range, &weight_segs) == seg {
+                required[range.column.0 as usize] = true;
+            }
+        }
+        for lookup in &relation.lookups {
+            if relation.lookup_segment(lookup) == seg {
+                for r in lookup.tuple.iter().chain(lookup.selector.iter()) {
+                    required[r.column.0 as usize] = true;
+                }
+            }
+        }
+        for compose in &relation.composes {
+            if relation.compose_segment(compose) == seg {
+                required[compose.column.0 as usize] = true;
+                for &(limb, _) in &compose.limbs {
+                    required[limb.0 as usize] = true;
+                }
+            }
+        }
+        for identity in &relation.identities {
+            if relation.identity_segment(identity) == seg {
+                for term in &identity.terms {
+                    for f in &term.factors {
+                        required[f.column.0 as usize] = true;
+                    }
+                }
+            }
+        }
+        for matmul in &relation.matmuls {
+            if relation.matmul_segment(matmul) == seg {
+                for r in [&matmul.out, &matmul.lhs, &matmul.rhs] {
+                    required[r.column.0 as usize] = true;
+                }
+            }
         }
     }
-    let column = |r: &Ref| columns[r.column.0 as usize];
+    let columns: Vec<Option<&[i64]>> = (0..relation.columns.len())
+        .map(|i| {
+            let id = super::ColumnId(i as u32);
+            if !required[i] {
+                return Ok(None);
+            }
+            let slice = values.get(relation, id).ok_or(Violation::Missing(id))?;
+            if slice.len() != 1usize << relation.columns[i].log_len {
+                return Err(Invalid::Column(id).into());
+            }
+            Ok(Some(slice))
+        })
+        .collect::<Result<_, Violation>>()?;
+    let col_slice = |id: super::ColumnId| columns[id.0 as usize].expect("required column checked");
+    let column = |r: &Ref| col_slice(r.column);
+
+    let kept_range = |r: &super::Range| {
+        in_segment(relation.range_segment_with(r, &weight_segs)) && !skip.contains(&r.name.as_str())
+    };
+    let kept_lookup = |l: &super::Lookup| {
+        in_segment(relation.lookup_segment(l)) && !skip.contains(&l.name.as_str())
+    };
+    let kept_compose = |c: &super::Compose| {
+        in_segment(relation.compose_segment(c)) && !skip.contains(&c.name.as_str())
+    };
+    let kept_identity = |i: &super::Identity| {
+        in_segment(relation.identity_segment(i)) && !skip.contains(&i.name.as_str())
+    };
+    let kept_matmul = |m: &super::Matmul| {
+        in_segment(relation.matmul_segment(m)) && !skip.contains(&m.name.as_str())
+    };
 
     // E16-22: with `std` each category's constraints, and the points of each one, are
     // checked on the pool. `first` keeps constraint order and `first_point` returns
     // the least failing point, so the result is the sequential first failure.
-    first(&relation.ranges, &kept, |range| {
-        let column = columns[range.column.0 as usize];
+    first_item(&relation.ranges, &kept_range, |range| {
+        let column = col_slice(range.column);
         first_point(column.len() as u64, |i| {
             !range.width.contains(column[i as usize])
         })
@@ -125,7 +191,7 @@ pub(crate) fn check_with(
             index: index as usize,
         })
     })?;
-    first(&relation.lookups, &kept, |lookup| {
+    first_item(&relation.lookups, &kept_lookup, |lookup| {
         let rows: BTreeSet<&[i64]> = relation.tables[lookup.table.0 as usize]
             .rows
             .iter()
@@ -152,14 +218,14 @@ pub(crate) fn check_with(
             point,
         })
     })?;
-    first(&relation.composes, &kept, |compose| {
-        let column = columns[compose.column.0 as usize];
+    first_item(&relation.composes, &kept_compose, |compose| {
+        let column = col_slice(compose.column);
         first_point(column.len() as u64, |i| {
             let i = i as usize;
             let sum: i128 = compose
                 .limbs
                 .iter()
-                .map(|&(limb, shift)| (columns[limb.0 as usize][i] as i128) << shift)
+                .map(|&(limb, shift)| (col_slice(limb)[i] as i128) << shift)
                 .sum();
             sum != column[i] as i128
         })
@@ -170,7 +236,7 @@ pub(crate) fn check_with(
     })?;
     // After ranges, lookups and compositions every column is within its declared width (discipline),
     // so the static bounds keep every sum below p; checked arithmetic is a second guard.
-    first(&relation.identities, &kept, |identity| {
+    first_item(&relation.identities, &kept_identity, |identity| {
         let terms: Vec<(i64, Vec<_>)> = identity
             .terms
             .iter()
@@ -193,7 +259,7 @@ pub(crate) fn check_with(
             point,
         })
     })?;
-    first(&relation.matmuls, &kept, |matmul| {
+    first_item(&relation.matmuls, &kept_matmul, |matmul| {
         let (lhs, rhs, out) = (&matmul.lhs, &matmul.rhs, &matmul.out);
         let (lc, rc, oc) = (column(lhs), column(rhs), column(out));
         let (lg, rg, og) = (Gather::new(lhs), Gather::new(rhs), Gather::new(out));

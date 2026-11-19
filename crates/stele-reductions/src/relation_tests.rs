@@ -1150,3 +1150,256 @@ fn matches_reference_weight_reads_for_repeated_and_row_blocked_matmuls() {
     assert_eq!(blocked.weight_reads, 4);
     assert_eq!(blocked.weight_elements_read, 16);
 }
+
+/// RFC-0026 A27: for a single-segment uncarried relation, `prove_segmented` emits the
+/// exact same engine section bytes as RFC-0026 v1 `prove`, and `codec::encode` keeps v1.
+#[test]
+fn matches_reference_single_segment_messages_equal_v1() {
+    let (rel, values) = batched();
+    assert!(!rel.is_segmented());
+    assert!(codec::encode(&rel).starts_with(b"stele/v0.1/relation/encoding/v1"));
+
+    let mut t1 = Transcript::new(PUBLIC).expect("transcript");
+    let v1 = prove(&mut t1, &rel, &values, &[], Sources::CircleAll).expect("v1 prove");
+    let mut t2 = Transcript::new(PUBLIC).expect("transcript");
+    let v2 = prove_segmented(
+        &mut t2,
+        &rel,
+        |s| {
+            assert_eq!(s, 0);
+            Ok(values.clone())
+        },
+        &[],
+        Sources::CircleAll,
+    )
+    .expect("v2 prove");
+
+    assert_eq!(v2.segments.len(), 1);
+    assert_eq!(v2.segments[0].groups, v1.groups);
+    assert_eq!(v2.segments[0].multiplicities, v1.multiplicities);
+    assert_eq!(v2.segments[0].identities, v1.identities);
+    assert_eq!(v2.segments[0].lookups, v1.lookups);
+    assert_eq!(v2.segments[0].matmuls, v1.matmuls);
+    assert!(v2.segments[0].reductions.is_empty());
+    assert_eq!(v2.segments[0].openings, v1.openings);
+    assert!(v2.model_openings.is_empty());
+
+    let mut tv = Transcript::new(PUBLIC).expect("transcript");
+    assert!(verify_segmented(&mut tv, &rel, &[], &v2, Sources::CircleAll).is_ok());
+}
+
+fn three_segment_fixture() -> (Relation, Vec<Values>, Values) {
+    let mut rel = Relation::default();
+    let g0 = Kind::Witness(rel.add_group_in("L0/a/2", 2, 0));
+    let g1 = Kind::Witness(rel.add_group_in("L1/a/2", 2, 1));
+    let g2 = Kind::Witness(rel.add_group_in("L2/a/2", 2, 2));
+    let w = rel.add_column("w", Kind::Weight, Width::signed(8), 2);
+    let x0 = rel.add_column("x0", g0.clone(), Width::signed(8), 2);
+    let y0 = rel.add_column("y0", g0, Width::signed(8), 2);
+    rel.mark_carried(y0);
+    let y1 = rel.add_column("y1", g1, Width::signed(8), 2);
+    rel.mark_carried(y1);
+    let y2 = rel.add_column("y2", g2, Width::signed(17), 2);
+
+    for (c, bits) in [(w, 8), (x0, 8), (y0, 8), (y1, 8)] {
+        rel.ranges.push(Range {
+            name: alloc::format!("r_{}", c.0),
+            column: c,
+            width: Width::signed(bits),
+        });
+    }
+    rel.identities.push(Identity {
+        name: "s0_id".into(),
+        vars: 2,
+        terms: vec![
+            IdentityTerm {
+                coeff: 1,
+                factors: vec![Ref::identity(y0, 2)],
+            },
+            IdentityTerm {
+                coeff: -1,
+                factors: vec![Ref::identity(x0, 2)],
+            },
+            IdentityTerm {
+                coeff: -1,
+                factors: vec![],
+            },
+        ],
+    });
+    rel.identities.push(Identity {
+        name: "s1_id".into(),
+        vars: 2,
+        terms: vec![
+            IdentityTerm {
+                coeff: 1,
+                factors: vec![Ref::identity(y1, 2)],
+            },
+            IdentityTerm {
+                coeff: -1,
+                factors: vec![Ref::identity(y0, 2)],
+            },
+            IdentityTerm {
+                coeff: -2,
+                factors: vec![],
+            },
+        ],
+    });
+    // Segment 2 matmul: y2(i, j) = sum_k y1(i, k) * w(j, k)
+    rel.add_matmul(stele_ir::relation::Matmul {
+        name: "s2_mm".into(),
+        free: 2,
+        summed: 1,
+        out: Ref {
+            column: y2,
+            vars: vec![0, 1],
+        },
+        lhs: Ref {
+            column: y1,
+            vars: vec![2, 1],
+        },
+        rhs: Ref {
+            column: w,
+            vars: vec![2, 0],
+        },
+    });
+
+    let wv = vec![1, 2, -1, 3];
+    let x0v = vec![1, 2, 3, 4];
+    let y0v = vec![2, 3, 4, 5];
+    let y1v = vec![4, 5, 6, 7];
+    let mut y2v = vec![0; 4];
+    for i in 0..2 {
+        for j in 0..2 {
+            y2v[j + 2 * i] = y1v[2 * i] * wv[2 * j] + y1v[1 + 2 * i] * wv[1 + 2 * j];
+        }
+    }
+
+    let mut full = Values::new(&rel);
+    full.set(&rel, w, wv.clone()).expect("w");
+    full.set(&rel, x0, x0v.clone()).expect("x0");
+    full.set(&rel, y0, y0v.clone()).expect("y0");
+    full.set(&rel, y1, y1v.clone()).expect("y1");
+    full.set(&rel, y2, y2v.clone()).expect("y2");
+    assert_eq!(stele_ir::relation::check(&rel, &full), Ok(()));
+
+    let mut v0 = Values::new(&rel);
+    v0.set(&rel, w, wv.clone()).expect("w");
+    v0.set(&rel, x0, x0v).expect("x0");
+    v0.set(&rel, y0, y0v.clone()).expect("y0");
+
+    let mut v1 = Values::new(&rel);
+    v1.set(&rel, y0, y0v).expect("y0 carried");
+    v1.set(&rel, y1, y1v.clone()).expect("y1");
+
+    let mut v2 = Values::new(&rel);
+    v2.set(&rel, w, wv).expect("w");
+    v2.set(&rel, y1, y1v).expect("y1 carried");
+    v2.set(&rel, y2, y2v).expect("y2");
+
+    for (s, sv) in [(&v0, 0u32), (&v1, 1), (&v2, 2)] {
+        assert_eq!(stele_ir::relation::check_segment(&rel, sv, s), Ok(()));
+    }
+    (rel, vec![v0, v1, v2], full)
+}
+
+#[test]
+fn accepts_three_segment_relation_and_rejects_root_reorder_and_non_carried() {
+    let (rel, seg_vals, full) = three_segment_fixture();
+    assert!(rel.is_segmented());
+    assert!(codec::encode(&rel).starts_with(b"stele/v0.1/relation/encoding/v2"));
+    let messages = model_messages(&rel, &full).expect("messages");
+
+    for sources in [Sources::Expander, Sources::CircleAll] {
+        let layouts = model_layout(&rel, sources).expect("layout");
+        let prepared: Vec<_> = layouts
+            .iter()
+            .zip(&messages)
+            .map(|(l, m)| l.sources.prepare(l.id, l.ell, &l.code, m).expect("model"))
+            .collect();
+        let certificates: Vec<_> = prepared
+            .iter()
+            .map(|p| {
+                let (bytes, _) = p.certificate().expect("cert");
+                verify_certificate(*p.source(), &bytes).expect("verify").0
+            })
+            .collect();
+        let model: Vec<_> = prepared.iter().zip(&certificates).collect();
+        let refs: Vec<_> = certificates.iter().collect();
+
+        let mut t = Transcript::new(PUBLIC).expect("transcript");
+        let (proof, metrics) = prove_segmented_measured(
+            &mut t,
+            &rel,
+            |s| Ok(seg_vals[s as usize].clone()),
+            &model,
+            sources,
+        )
+        .expect("segmented prove");
+        assert_eq!(proof.segments.len(), 3);
+        assert_eq!(proof.model_openings.len(), 1);
+        assert!(metrics.committed_cells > 0);
+        assert!(metrics.weight_reads >= 2);
+
+        // Honest verify succeeds.
+        let mut tv = Transcript::new(PUBLIC).expect("transcript");
+        assert!(verify_segmented(&mut tv, &rel, &refs, &proof, sources).is_ok());
+
+        // Swapping only the 32-byte roots of segments 0 and 1 rejects with RootMismatch
+        // (Policy 1 / Expander) or GrindMismatch (Policy 2 / CircleAll).
+        let mut swapped_roots = proof.clone();
+        let r0: [u8; 32] = swapped_roots.segments[0].groups[0][..32]
+            .try_into()
+            .expect("r0");
+        let r1: [u8; 32] = swapped_roots.segments[1].groups[0][..32]
+            .try_into()
+            .expect("r1");
+        assert_ne!(r0, r1);
+        swapped_roots.segments[0].groups[0][..32].copy_from_slice(&r1);
+        swapped_roots.segments[1].groups[0][..32].copy_from_slice(&r0);
+        let mut tv = Transcript::new(PUBLIC).expect("transcript");
+        let err = verify_segmented(&mut tv, &rel, &refs, &swapped_roots, sources)
+            .expect_err("reordered segment roots must reject");
+        match sources {
+            Sources::Expander => assert_eq!(
+                err,
+                Error::Pcs(stele_pcs::Error::Merkle(
+                    stele_hash::merkle::Error::RootMismatch
+                ))
+            ),
+            _ => assert_eq!(
+                err,
+                Error::Pcs(stele_pcs::Error::Transcript(
+                    stele_hash::Error::GrindMismatch
+                ))
+            ),
+        }
+
+        // Swapping entire (root, cert) group sections also rejects (segment source_id mismatch).
+        let mut swapped_certs = proof.clone();
+        let g0 = swapped_certs.segments[0].groups[0].clone();
+        let g1 = swapped_certs.segments[1].groups[0].clone();
+        swapped_certs.segments[0].groups[0] = g1;
+        swapped_certs.segments[1].groups[0] = g0;
+        let mut tv = Transcript::new(PUBLIC).expect("transcript");
+        assert!(verify_segmented(&mut tv, &rel, &refs, &swapped_certs, sources).is_err());
+
+        // Unexpected non-empty `reductions` rejects with ProofShape.
+        let mut extra_red = proof.clone();
+        extra_red.segments[0].reductions.push(vec![0u8; 4]);
+        let mut tv = Transcript::new(PUBLIC).expect("transcript");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &refs, &extra_red, sources).err(),
+            Some(Error::ProofShape)
+        );
+    }
+
+    // Tampering the relation so segment 1 reads non-carried `x0` rejects with StatementMismatch(Segment).
+    let mut bad_rel = rel;
+    bad_rel.identities[1].terms[1].factors[0] = Ref::identity(ColumnId(1), 2);
+    let mut tv = Transcript::new(PUBLIC).expect("transcript");
+    let empty_proof = ProofV2::default();
+    assert!(matches!(
+        verify_segmented(&mut tv, &bad_rel, &[], &empty_proof, Sources::CircleAll),
+        Err(Error::StatementMismatch(Invalid::Segment { .. }))
+    ));
+}

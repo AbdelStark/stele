@@ -645,7 +645,7 @@ fn window_values(
     let capture = executor
         .capture(&statement.tokens)
         .map_err(|_| Error::Witness)?;
-    let values = layout.assign(&capture, &weights.codes)?;
+    let values = layout.assign(&capture, weights)?;
     laps.lap("witness/zk_capture_assign");
     // E16-34: one plain check. The committed relation below keeps every constraint of
     // `layout.relation` over the same values (the records only change kind) and adds

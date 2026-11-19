@@ -390,6 +390,7 @@ pub fn run(id: u16) -> Result<(), String> {
         vectors: weights.vectors.clone(),
         commitment: committed.commitment.clone(),
         sources: weights.sources(),
+        segment_layers: 0,
     };
     let proof = prove(&public, &mut exec, &weights, &committed, &honest)
         .map_err(|e| format!("honest prover: {e:?}"))?;
@@ -1097,6 +1098,7 @@ mod privacy {
             vectors: weights.vectors.clone(),
             commitment: committed.commitment.clone(),
             sources: weights.sources(),
+            segment_layers: 0,
         };
         let mut captured = None;
         let mut hook = |r: &mut Relation, v: &mut Values| captured = Some((r.clone(), v.clone()));
@@ -1202,6 +1204,7 @@ mod privacy {
             vectors: zk::published(span("model"), &weights.vectors).expect("published"),
             commitment: Vec::new(),
             sources: Sources::Expander,
+            segment_layers: 0,
         };
         check_two_proofs(base, &mut exec, &weights, &statement, 4, profile, 100);
     }
@@ -1336,6 +1339,7 @@ mod privacy {
             preparation: p,
             commitment: Vec::new(),
             sources: Sources::Expander,
+            segment_layers: 0,
         };
         check_two_proofs(
             base,
@@ -1544,6 +1548,279 @@ fn rejects_nc_1321_to_nc_1324_lookup_grinding() {
     }
 }
 
+/// RFC-0026 A27 (task E18-06): segmented proof controls executed through the actual verifier.
+/// - NC-1335: reading a non-carried column of segment `s - 1` from segment `s` rejects with
+///   `StatementMismatch` inside `relation::verify_segmented` (`Invalid::Segment`).
+/// - NC-1336: reordering two segment roots in a `stele-dev-e2e-v2` proof rejects with
+///   `RootMismatch` under Policy 1 (`Expander`) and `GrindMismatch` under Policy 2 (`CircleAll`).
+pub fn run_segments(id: u32) -> Result<(), String> {
+    use stele_prover::development::{Layout, PlanData};
+    use stele_reductions::relation::{ProofV2, SegmentProof};
+    use stele_reductions::stele_hash::merkle;
+    use stele_reductions::stele_ir::relation::{Invalid, Kind};
+
+    let model = Model::decode(span("model")?).map_err(|e| format!("{e:?}"))?;
+    let prep = Preparation::decode(&model, span("preparation")?).map_err(|e| format!("{e:?}"))?;
+    let scales = Scales::decode(&model, span("scales")?).map_err(|e| format!("{e:?}"))?;
+    let artifact = span("artifact")?;
+    let aid = artifact_id(artifact);
+    let mut exec = Executor::new(&model, &prep, &scales, artifact, &aid, 1 << 34)
+        .map_err(|e| format!("{e:?}"))?;
+    let mut tokens = vec![1u32];
+    let (mut cache, mut logits) = (None, Vec::new());
+    for i in 0..4 {
+        if i == tokens.len() {
+            let max = logits.iter().max().ok_or("empty logits")?;
+            tokens.push(logits.iter().position(|v| v == max).ok_or("argmax")? as u32);
+        }
+        let (step, next) = exec
+            .step(tokens[i], cache.as_ref())
+            .map_err(|e| format!("{e:?}"))?;
+        logits = step.logits().to_vec();
+        cache = Some(next);
+    }
+    let full = exec.full(&tokens).map_err(|e| format!("{e:?}"))?;
+    let last = full.logits().last().ok_or("last logits")?;
+    let max = last.iter().max().ok_or("max logit")?;
+    let next = last.iter().position(|v| v == max).ok_or("next")? as u32;
+    let honest = Statement {
+        tokens,
+        start: 0,
+        end: 4,
+        next: Some(next),
+    };
+
+    match id {
+        1335 => {
+            let sources = Sources::CircleAll;
+            let weights = Weights::from_artifact_sources(&model, artifact, sources)
+                .map_err(|e| format!("{e:?}"))?;
+            let committed = Committed::new(&weights).map_err(|e| format!("{e:?}"))?;
+            let public = Public {
+                model: span("model")?.to_vec(),
+                scales: span("scales")?.to_vec(),
+                preparation: span("preparation")?.to_vec(),
+                vectors: weights.vectors.clone(),
+                commitment: committed.commitment.clone(),
+                sources,
+                segment_layers: 1,
+            };
+            let proof = prove(&public, &mut exec, &weights, &committed, &honest)
+                .map_err(|e| format!("honest segmented prover: {e:?}"))?;
+            verify(&public, &honest, &proof)
+                .map_err(|e| format!("honest segmented verifier: {e:?}"))?;
+
+            let layout = Layout::declare(
+                &PlanData {
+                    model: &model,
+                    scales: &scales,
+                    vectors: &public.vectors,
+                    zk: false,
+                    segment_layers: 1,
+                },
+                &honest,
+            )
+            .map_err(|e| format!("{e:?}"))?;
+            let c = container::decode_v2(&proof).map_err(|e| format!("{e:?}"))?;
+            let sections = ProofV2 {
+                segments: c
+                    .segments
+                    .into_iter()
+                    .map(|s| SegmentProof {
+                        groups: s.groups,
+                        multiplicities: s.multiplicities,
+                        identities: s.identities,
+                        lookups: s.lookups,
+                        matmuls: s.matmuls,
+                        reductions: s.reductions,
+                        openings: s.openings,
+                    })
+                    .collect(),
+                model_openings: c.model_openings,
+            };
+            let bits: Vec<u8> = layout
+                .weights
+                .iter()
+                .map(|(col, _, _)| layout.relation.columns[col.0 as usize].log_len)
+                .collect();
+            let model_layouts =
+                relation::model_layout_for(&bits, sources).map_err(|e| format!("{e:?}"))?;
+            let certs: Vec<_> = public
+                .commitment
+                .iter()
+                .zip(&model_layouts)
+                .map(|((root, bytes), l)| {
+                    let src = l
+                        .sources
+                        .source(l.id, l.ell, &l.code, *root)
+                        .map_err(|e| format!("{e:?}"))?;
+                    verify_certificate(src, bytes)
+                        .map(|(v, _)| v)
+                        .map_err(|e| format!("{e:?}"))
+                })
+                .collect::<Result<_, _>>()?;
+            let cert_refs: Vec<_> = certs.iter().collect();
+            let input = public_input(&public, &c.cqis_id, &honest);
+
+            // Honest segmented engine replay passes.
+            let mut t = Transcript::new(&input).map_err(|e| format!("{e:?}"))?;
+            relation::verify_segmented(&mut t, &layout.relation, &cert_refs, &sections, sources)
+                .map_err(|e| format!("honest engine replay failed: {e:?}"))?;
+
+            // Tamper 1: clear the `carried` flag on the boundary column read by segment 1.
+            let carried_idx = layout
+                .relation
+                .columns
+                .iter()
+                .position(|col| col.carried)
+                .ok_or("expected carried column")?;
+            let mut cleared = layout.relation.clone();
+            cleared.columns[carried_idx].carried = false;
+            let mut t = Transcript::new(&input).map_err(|e| format!("{e:?}"))?;
+            match relation::verify_segmented(&mut t, &cleared, &cert_refs, &sections, sources) {
+                Err(relation::Error::StatementMismatch(Invalid::Segment { .. })) => {}
+                other => {
+                    return Err(format!(
+                        "NC-1335 (cleared carried): expected StatementMismatch(Segment), got {other:?}"
+                    ));
+                }
+            }
+
+            // Tamper 2: redirect segment 1's read of the carried column to a non-carried
+            // witness column of segment 0 with the same shape.
+            let carried_id = stele_reductions::stele_ir::relation::ColumnId(carried_idx as u32);
+            let carried_log_len = layout.relation.columns[carried_idx].log_len;
+            let non_carried = (0..layout.relation.columns.len())
+                .find(|&i| {
+                    let col = &layout.relation.columns[i];
+                    !col.carried
+                        && col.log_len == carried_log_len
+                        && matches!(col.kind, Kind::Witness(g) if layout.relation.groups[g.0 as usize].segment == 0)
+                })
+                .ok_or("expected non-carried segment-0 column of matching shape")?;
+            let non_carried_id = stele_reductions::stele_ir::relation::ColumnId(non_carried as u32);
+            let mut redirected = layout.relation.clone();
+            let mut replaced = false;
+            for id_rel in &mut redirected.identities {
+                if layout.relation.identity_segment(id_rel) == 1 {
+                    for term in &mut id_rel.terms {
+                        for factor in &mut term.factors {
+                            if factor.column == carried_id {
+                                factor.column = non_carried_id;
+                                replaced = true;
+                            }
+                        }
+                    }
+                }
+            }
+            for comp in &mut redirected.composes {
+                if layout.relation.compose_segment(comp) == 1 {
+                    if comp.column == carried_id {
+                        comp.column = non_carried_id;
+                        replaced = true;
+                    }
+                    for (limb, _) in &mut comp.limbs {
+                        if *limb == carried_id {
+                            *limb = non_carried_id;
+                            replaced = true;
+                        }
+                    }
+                }
+            }
+            for mm in &mut redirected.matmuls {
+                if layout.relation.matmul_segment(mm) == 1 {
+                    for r in [&mut mm.out, &mut mm.lhs, &mut mm.rhs] {
+                        if r.column == carried_id {
+                            r.column = non_carried_id;
+                            replaced = true;
+                        }
+                    }
+                }
+            }
+            if !replaced {
+                return Err("expected segment 1 relation reading carried column".into());
+            }
+            let mut t = Transcript::new(&input).map_err(|e| format!("{e:?}"))?;
+            match relation::verify_segmented(&mut t, &redirected, &cert_refs, &sections, sources) {
+                Err(relation::Error::StatementMismatch(Invalid::Segment { .. })) => Ok(()),
+                other => Err(format!(
+                    "NC-1335 (non-carried read): expected StatementMismatch(Segment), got {other:?}"
+                )),
+            }
+        }
+        1336 => {
+            for sources in [Sources::Expander, Sources::CircleAll] {
+                let weights = Weights::from_artifact_sources(&model, artifact, sources)
+                    .map_err(|e| format!("{e:?}"))?;
+                let committed = Committed::new(&weights).map_err(|e| format!("{e:?}"))?;
+                let public = Public {
+                    model: span("model")?.to_vec(),
+                    scales: span("scales")?.to_vec(),
+                    preparation: span("preparation")?.to_vec(),
+                    vectors: weights.vectors.clone(),
+                    commitment: committed.commitment.clone(),
+                    sources,
+                    segment_layers: 1,
+                };
+                let proof = prove(&public, &mut exec, &weights, &committed, &honest)
+                    .map_err(|e| format!("honest segmented prover ({sources:?}): {e:?}"))?;
+                verify(&public, &honest, &proof)
+                    .map_err(|e| format!("honest segmented verifier ({sources:?}): {e:?}"))?;
+                let mut c = container::decode_v2(&proof).map_err(|e| format!("{e:?}"))?;
+                if c.segments.len() < 2
+                    || c.segments[0].groups.is_empty()
+                    || c.segments[1].groups.is_empty()
+                {
+                    return Err("expected at least two committed segments".into());
+                }
+                let r0: [u8; 32] = c.segments[0].groups[0][..32]
+                    .try_into()
+                    .map_err(|_| "root 0")?;
+                let r1: [u8; 32] = c.segments[1].groups[0][..32]
+                    .try_into()
+                    .map_err(|_| "root 1")?;
+                if r0 == r1 {
+                    return Err("segment roots must differ".into());
+                }
+                c.segments[0].groups[0][..32].copy_from_slice(&r1);
+                c.segments[1].groups[0][..32].copy_from_slice(&r0);
+                let err = verify(&public, &honest, &c.encode())
+                    .err()
+                    .ok_or("reordered segment roots accepted")?;
+                let ok = match sources {
+                    Sources::Expander => matches!(
+                        err,
+                        Error::Engine(relation::Error::Pcs(stele_pcs::Error::Merkle(
+                            merkle::Error::RootMismatch
+                        )))
+                    ),
+                    _ => matches!(
+                        err,
+                        Error::Engine(relation::Error::Pcs(stele_pcs::Error::Transcript(
+                            stele_reductions::stele_hash::Error::GrindMismatch
+                        )))
+                    ),
+                };
+                if !ok {
+                    return Err(format!(
+                        "NC-1336 ({sources:?}): unexpected rejection {err:?}"
+                    ));
+                }
+            }
+            Ok(())
+        }
+        _ => Err(format!("unknown segment control {id}")),
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn rejects_nc_1335_to_nc_1336_segments() {
+    for id in [1335, 1336] {
+        assert_eq!(run_segments(id), Ok(()), "NC-{id}");
+    }
+}
+
 /// E8-02f1b (controls only): forged one-layer byte-5 windows (T = 16) for the independent
 /// verifier's parity. Each is proved by `relation::prove_forged`: the plan and absorbed
 /// relation digest are the honest relation's, and the container header is the honest one,
@@ -1598,6 +1875,7 @@ pub fn forged_windows(dir: &std::path::Path, public_entry: usize) -> Result<(), 
         vectors: weights.vectors.clone(),
         commitment: committed.commitment.clone(),
         sources: weights.sources(),
+        segment_layers: 0,
     };
     // The honest relation and witness, taken from the prover without changing them.
     let mut honest: Option<(Relation, Values)> = None;
