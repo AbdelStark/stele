@@ -1,0 +1,18 @@
+{
+  "scope": "Terminal-auditor readiness only; actual evidence reviewed separately.",
+  "auditor_files": {
+    "verify.py": "5a47416754d599660692976d60471c21a065baff769433cac9735fc9e91848ed",
+    "test_verify.py": "279b3dc4a8e884fe66e74787f4a7c52477798c524866e939c7cd8d5dbdb4801a",
+    "before-gnu-timer-fix/verify.py": "e078fa78f93fb5e5250dc5808605148aec08b75a3ecf73d30dca469f3db50c0a",
+    "before-gnu-timer-fix/test_verify.py": "71987c0cb6b9bae3b3e77b3d2f17cd35fa1e70a5e2a9522670a897584f5f6783"
+  },
+  "pins_sha256": "f441c73f4790ff0eb3e818e79b2a64e68fa961d594347b0af71959d9b2564a9d",
+  "tests": 4,
+  "green_log_sha256": "847806a1fb77f99ac5c863cc27c9e1643c8e32702e45ac80dc3e5937a2a8de9b",
+  "reviews": {
+    "spec": "gkr_terminal_spec_review: PASS, independently ran all four tests in all three packages.",
+    "standards": "gkr_terminal_standards_review: PASS after mixed/duplicate GNU timing fix, independently ran all four tests in all three packages."
+  },
+  "finding_resolved": "Reject mixed GNU/BSD records and duplicate GNU wall/RSS fields before the shared timer parser.",
+  "source": "6034113f67ace10258b48c90e973db291a0a4d99"
+}

@@ -10,6 +10,8 @@ use stele_reductions::stele_hash::merkle::Descriptor;
 
 #[path = "source_material.rs"]
 mod material;
+#[cfg(feature = "cuda")]
+pub(crate) use material::{digest, payload};
 pub use material::{material, Material};
 
 const P: u32 = 0x7fff_ffff;

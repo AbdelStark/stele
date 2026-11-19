@@ -30,5 +30,8 @@ opt-level = 3
 opt-level = 2
 
 [dev-dependencies]
+stele-kernels = { path = "../../../crates/stele-kernels" }
 # Production Dense is the oracle for the resident claim-batch rounds.
 stele-sumcheck = { path = "../../../crates/stele-sumcheck", features = ["std"] }
+# Whole-proof reference on synthetic models (RFC-0014 §5).
+stele-prover = { path = "../../../crates/stele-prover" }

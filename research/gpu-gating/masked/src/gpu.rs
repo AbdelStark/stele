@@ -2,19 +2,14 @@
 //! folded in place, one round polynomial copied back per round (RFC-0014 §1: the CPU
 //! is the reference and the values must be the same elements).
 //!
-//! The round kernel is generated per round shape (which factors are M31, which are
-//! masked in this round) and compiled by NVRTC at run time, so every table index is a
-//! register; the term products follow the CPU's mixed form (E16-34): M31 factors
-//! multiplied in M31, then applied once to the QM31 product.
-use crate::{Shape, Source, CM31, K, M31, QM31};
+//! The round kernel has fixed code; checked term/factor descriptors preserve the
+//! CPU's mixed products while bounding compiler input independently of shape size.
+use crate::{round::Terms, Shape, Source, CM31, K, M31, QM31};
 use cudarc::driver::{
     CudaContext, CudaFunction, CudaModule, CudaSlice, CudaStream, DevicePtr, DriverError,
     LaunchConfig, PushKernelArg,
 };
 use cudarc::nvrtc::{compile_ptx_with_opts, CompileOptions};
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt::Write;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use stele_reductions::stele_field::Field;
@@ -28,16 +23,48 @@ const KERNELS: &str = concat!(
     "\n",
     include_str!("lookup.cu"),
     "\n",
-    include_str!("batch.cu")
+    include_str!("lookup_compact.cu"),
+    "\n",
+    include_str!("batch.cu"),
+    "\n",
+    include_str!("gkr_build.cu"),
+    "\n",
+    include_str!("round.cuh"),
+    "\n",
+    include_str!("round.cu")
 );
 const THREADS: u32 = 256;
 
 #[path = "gpu_batch.rs"]
 pub mod batch;
 
+#[path = "gpu_original.rs"]
+mod original;
+pub use original::OriginalMessage;
+
+#[path = "gpu_gkr_build.rs"]
+mod gkr_build;
+pub use gkr_build::{ConstructionWork, MemorySample, PrivateChild};
+
+#[cfg(test)]
+#[path = "gpu_bound_tests.rs"]
+mod bound_tests;
+
+#[cfg(test)]
+#[path = "gpu_boundary_tests.rs"]
+mod boundary_tests;
+
 #[cfg(test)]
 #[path = "gpu_field_tests.rs"]
 mod field_tests;
+
+#[cfg(test)]
+#[path = "gpu_round_tests.rs"]
+mod round_tests;
+
+#[cfg(test)]
+#[path = "gpu_gkr_tests.rs"]
+mod gkr_tests;
 
 /// `(x, r)` per factor, read back from the device.
 pub type Tables = Vec<(Vec<K>, Vec<K>)>;
@@ -47,7 +74,14 @@ pub type Tables = Vec<(Vec<K>, Vec<K>)>;
 pub enum Error {
     Driver(DriverError),
     Compile(String),
+    /// Invalid round descriptors, rejected before device allocation.
+    Shape(&'static str),
     Lookup(crate::lookup::Error),
+    /// A measured GKR stage would exceed the remaining allocation budget.
+    Budget {
+        required: usize,
+        available: usize,
+    },
     /// A value read back from the device is not canonical.
     Value,
 }
@@ -100,6 +134,14 @@ impl Buf {
     fn is_base(&self) -> bool {
         matches!(self, Buf::Base(_))
     }
+    /// A compact extension block repeats over leading variables until the
+    /// logical table first fits its native low-axis domain.
+    fn period(&self, len: usize) -> Option<usize> {
+        match self {
+            Self::Ext(s) if s.len() / 4 < len => Some(s.len() / 4),
+            _ => None,
+        }
+    }
     fn slice(&self) -> &CudaSlice<u32> {
         match self {
             Buf::Base(s) | Buf::Ext(s) => s,
@@ -117,10 +159,10 @@ struct Factor {
 pub struct Device {
     ctx: Arc<CudaContext>,
     stream: Arc<CudaStream>,
+    #[cfg(test)]
     arch: Option<&'static str>,
     sms: u32,
     kernels: Arc<CudaModule>,
-    rounds: RefCell<HashMap<String, CudaFunction>>,
     /// The device's name.
     pub name: String,
 }
@@ -150,10 +192,10 @@ impl Device {
         Ok(Self {
             ctx,
             stream,
+            #[cfg(test)]
             arch,
             sms,
             kernels,
-            rounds: RefCell::new(HashMap::new()),
             name,
         })
     }
@@ -173,16 +215,6 @@ impl Device {
 
     pub(crate) fn function(&self, name: &str) -> Result<CudaFunction, Error> {
         Ok(self.kernels.load_function(name)?)
-    }
-
-    fn round_function(&self, src: &str) -> Result<CudaFunction, Error> {
-        if let Some(f) = self.rounds.borrow().get(src) {
-            return Ok(f.clone());
-        }
-        let module = Self::compile(&self.ctx, self.arch, &format!("{KERNELS}\n{src}"))?;
-        let f = module.load_function("round_kernel")?;
-        self.rounds.borrow_mut().insert(src.to_string(), f.clone());
-        Ok(f)
     }
 
     pub(crate) fn grid(&self, n: usize) -> LaunchConfig {
@@ -243,7 +275,14 @@ impl Device {
     /// Upload the shape's inputs, then build its tables on the device. Returns the
     /// summand and the two phases' wall times (upload, device build).
     pub fn build(&self, shape: &Shape) -> Result<(DeviceMasked<'_>, Duration, Duration), Error> {
-        let len = 1usize << shape.n;
+        let nodes = shape
+            .degree
+            .checked_add(1)
+            .ok_or(Error::Shape("round degree"))?;
+        let terms = Terms::new(shape.factors.len(), &shape.terms, nodes).map_err(Error::Shape)?;
+        let len = 1usize
+            .checked_shl(u32::try_from(shape.n).map_err(|_| Error::Shape("round domain"))?)
+            .ok_or(Error::Shape("round domain"))?;
         // Phase 1: host to device (columns, layer values, points, periods, blocks).
         let start = Instant::now();
         let mut staged = Vec::new();
@@ -272,7 +311,7 @@ impl Device {
                 v: f.mask.as_ref().map(|(_, v)| *v),
             });
         }
-        let masked = self.summand(factors, shape.terms.clone(), shape.degree + 1, len)?;
+        let masked = self.summand(factors, &shape.terms, terms, nodes, len)?;
         self.sync()?;
         Ok((masked, upload, start.elapsed()))
     }
@@ -280,22 +319,41 @@ impl Device {
     fn summand(
         &self,
         factors: Vec<Factor>,
-        terms: Vec<(K, Vec<u32>)>,
+        coefficients: &[(K, Vec<u32>)],
+        terms: Terms,
         nodes: usize,
         len: usize,
     ) -> Result<DeviceMasked<'_>, Error> {
         let blocks = self.grid(len / 2).grid_dim.0 as usize;
-        let coef: Vec<K> = terms.iter().map(|(c, _)| *c).collect();
+        let mut coef: Vec<K> = coefficients.iter().map(|(c, _)| *c).collect();
+        if coef.is_empty() {
+            coef.push(K::from_i64(0));
+        }
         let count = factors.len();
+        for f in &factors {
+            // Only public, unmasked extension blocks can use cyclic storage.
+            if let Some(period) = f.x.period(len) {
+                if !period.is_power_of_two() || f.r.is_some() || f.v.is_some() {
+                    return Err(Error::Shape("invalid cyclic extension table"));
+                }
+            }
+        }
         Ok(DeviceMasked {
             dev: self,
             factors,
-            terms,
+            term_count: coefficients.len() as u32,
+            offsets: self.stream.clone_htod(&terms.offsets)?,
+            indices: self.stream.clone_htod(if terms.factors.is_empty() {
+                &[0][..]
+            } else {
+                &terms.factors
+            })?,
+            flags: self.stream.alloc_zeros::<u32>(count.max(1))?,
             nodes,
             len,
             bound: 0,
-            xs: self.stream.alloc_zeros::<u64>(count)?,
-            rs: self.stream.alloc_zeros::<u64>(count)?,
+            xs: self.stream.alloc_zeros::<u64>(count.max(1))?,
+            rs: self.stream.alloc_zeros::<u64>(count.max(1))?,
             coef: self.qm31s(&coef)?,
             partials: self.stream.alloc_zeros::<u32>(blocks * nodes * 4)?,
             out: self.stream.alloc_zeros::<u32>(nodes * 4)?,
@@ -404,7 +462,10 @@ impl Device {
 pub struct DeviceMasked<'d> {
     dev: &'d Device,
     factors: Vec<Factor>,
-    terms: Vec<(K, Vec<u32>)>,
+    term_count: u32,
+    offsets: CudaSlice<u32>,
+    indices: CudaSlice<u32>,
+    flags: CudaSlice<u32>,
     nodes: usize,
     len: usize,
     bound: usize,
@@ -416,65 +477,97 @@ pub struct DeviceMasked<'d> {
 }
 
 impl DeviceMasked<'_> {
-    /// Compile every round kernel this summand will need (outside any timed region).
+    /// Resolve the fixed kernel; context creation already compiled its module.
     pub fn prepare(&self) -> Result<(), Error> {
-        let n = self.len.trailing_zeros() as usize;
-        for round in 0..n {
-            let xbase: Vec<bool> = self
-                .factors
-                .iter()
-                .map(|f| round == 0 && f.x.is_base())
-                .collect();
-            let rnow: Vec<Option<bool>> = self
-                .factors
-                .iter()
-                .map(|f| match (&f.r, f.v) {
-                    (Some(r), Some(v)) if v == round => Some(round == 0 && r.is_base()),
-                    _ => None,
-                })
-                .collect();
-            self.dev
-                .round_function(&round_source(&xbase, &rnow, &self.terms, self.nodes))?;
-        }
+        self.dev.function("round_kernel")?;
         Ok(())
+    }
+
+    /// Explicit device allocation capacities; excludes module/context/allocator memory.
+    pub fn device_buffer_bytes(&self) -> usize {
+        let tables: usize = self
+            .factors
+            .iter()
+            .map(|f| f.x.slice().len() + f.r.as_ref().map_or(0, |r| r.slice().len()))
+            .sum();
+        8 * (self.xs.len() + self.rs.len())
+            + 4 * (tables
+                + self.flags.len()
+                + self.offsets.len()
+                + self.indices.len()
+                + self.coef.len()
+                + self.partials.len()
+                + self.out.len())
+    }
+
+    /// One-time term-offset/index/coefficient bytes transferred by summand setup.
+    pub fn descriptor_upload_bytes(&self) -> usize {
+        4 * (self.offsets.len() + self.indices.len() + self.coef.len())
+    }
+
+    /// Pointer and type/mask descriptor bytes uploaded for each round.
+    pub fn round_upload_bytes(&self) -> usize {
+        20 * self.factors.len()
     }
 
     /// The round polynomial at nodes `0..=degree`.
     pub fn round(&mut self) -> Result<Vec<K>, Error> {
         let dev = self.dev;
         let half = self.len / 2;
-        let xbase: Vec<bool> = self.factors.iter().map(|f| f.x.is_base()).collect();
-        let rnow: Vec<Option<bool>> = self
-            .factors
-            .iter()
-            .map(|f| match (&f.r, f.v) {
-                (Some(r), Some(v)) if v == self.bound => Some(r.is_base()),
-                _ => None,
-            })
-            .collect();
-        let f = dev.round_function(&round_source(&xbase, &rnow, &self.terms, self.nodes))?;
+        if self.len < 2 {
+            return Err(Error::Shape("round exhausted"));
+        }
+        let f = dev.function("round_kernel")?;
         let xs: Vec<u64> = self.factors.iter().map(|f| dev.ptr(f.x.slice())).collect();
         let rs: Vec<u64> = self
             .factors
             .iter()
-            .zip(&rnow)
-            .map(|(f, now)| match (&f.r, now) {
-                (Some(r), Some(_)) => dev.ptr(r.slice()),
-                _ => 0,
+            .map(|f| {
+                if f.v == Some(self.bound) {
+                    f.r.as_ref().map_or(0, |r| dev.ptr(r.slice()))
+                } else {
+                    0
+                }
             })
             .collect();
-        dev.stream.memcpy_htod(&xs, &mut self.xs)?;
-        dev.stream.memcpy_htod(&rs, &mut self.rs)?;
+        let flags: Vec<u32> = self
+            .factors
+            .iter()
+            .map(|f| {
+                (f.x.period(self.len).map_or(0, |p| (1 + p.ilog2()) << 3))
+                    | u32::from(f.x.is_base())
+                    | if f.v == Some(self.bound) {
+                        f.r.as_ref()
+                            .map_or(0, |r| 2 | (u32::from(r.is_base()) << 2))
+                    } else {
+                        0
+                    }
+            })
+            .collect();
+        if !xs.is_empty() {
+            dev.stream
+                .memcpy_htod(&xs, &mut self.xs.slice_mut(..xs.len()))?;
+            dev.stream
+                .memcpy_htod(&rs, &mut self.rs.slice_mut(..rs.len()))?;
+            dev.stream
+                .memcpy_htod(&flags, &mut self.flags.slice_mut(..flags.len()))?;
+        }
         let cfg = dev.grid(half);
         let (half64, blocks, nodes) = (half as u64, cfg.grid_dim.0 as i32, self.nodes as i32);
         let mut b = dev.stream.launch_builder(&f);
         b.arg(&self.xs)
             .arg(&self.rs)
+            .arg(&self.flags)
+            .arg(&self.offsets)
+            .arg(&self.indices)
             .arg(&self.coef)
+            .arg(&self.term_count)
             .arg(&half64)
+            .arg(&nodes)
             .arg(&mut self.partials);
-        // SAFETY: every `xs[k]` table has `2·half` entries of its type, every nonzero
-        // `rs[k]` too; `partials` has `blocks · nodes` QM31 entries.
+        // SAFETY: each x table is dense or is an unmasked native period (indexed modulo its size); every nonzero
+        // `rs[k]` too; checked offsets/indices address these factors (RFC-0014 §5),
+        // nodes <= 32, and `partials` has `blocks · nodes` QM31 entries.
         unsafe { b.launch(cfg) }?;
         let reduce = dev.function("reduce_kernel")?;
         let mut b = dev.stream.launch_builder(&reduce);
@@ -546,12 +639,33 @@ impl DeviceMasked<'_> {
             let host = self.dev.stream.clone_dtoh(b.slice())?;
             match b {
                 Buf::Base(_) => host[..self.len].iter().map(|x| base(*x)).collect(),
-                Buf::Ext(_) => host[..self.len * 4].chunks(4).map(element).collect(),
+                Buf::Ext(_) => {
+                    let physical = (host.len() / 4).min(self.len);
+                    let entries: Vec<K> = host[..physical * 4]
+                        .chunks_exact(4)
+                        .map(element)
+                        .collect::<Result<_, _>>()?;
+                    Ok(entries.iter().copied().cycle().take(self.len).collect())
+                }
             }
         };
         self.factors
             .iter()
             .map(|f| Ok((read(&f.x)?, f.r.as_ref().map_or(Ok(Vec::new()), read)?)))
+            .collect()
+    }
+
+    /// Download only the singleton for each input after the final fold.
+    pub fn final_values(&self) -> Result<Vec<K>, Error> {
+        if self.len != 1 {
+            return Err(Error::Shape("incomplete folds"));
+        }
+        self.factors
+            .iter()
+            .map(|factor| match &factor.x {
+                Buf::Ext(table) => element(&self.dev.stream.clone_dtoh(&table.slice(..4))?),
+                Buf::Base(table) => base(self.dev.stream.clone_dtoh(&table.slice(..1))?[0]),
+            })
             .collect()
     }
 }
@@ -563,6 +677,11 @@ fn fold_one(
     c: &[u32; 4],
     cfg: LaunchConfig,
 ) -> Result<(), Error> {
+    // A leading coordinate has equal branches in a tiled public block.
+    // Once the active domain reaches its period, fold_ext binds ordinary pairs.
+    if b.period(2 * half).is_some() {
+        return Ok(());
+    }
     let half64 = half as u64;
     match b {
         Buf::Ext(s) => {
@@ -597,117 +716,4 @@ fn fold_one(
         }
     }
     Ok(())
-}
-
-/// `κ(t) = t(1 − t)` at an integer node, as a canonical M31 value.
-fn kappa_node(t: usize) -> u32 {
-    let p = u64::from(M31::MODULUS);
-    let v = (t as u64 * (t as u64 - 1)) % p;
-    ((p - v) % p) as u32
-}
-
-/// The round kernel for one round shape: `xbase[k]` whether factor `k`'s table is M31,
-/// `rnow[k]` whether it is masked in this round (and its mask table M31).
-pub fn round_source(
-    xbase: &[bool],
-    rnow: &[Option<bool>],
-    terms: &[(K, Vec<u32>)],
-    nodes: usize,
-) -> String {
-    let one = K::from_i64(1);
-    let minus = K::from_i64(-1);
-    let mut s = String::new();
-    let _ = writeln!(
-        s,
-        "extern \"C\" __global__ void round_kernel(const u64 *xs, const u64 *rs, const u32 *coef, u64 half, u32 *partials) {{"
-    );
-    let _ = writeln!(s, "  __shared__ Q sh[{THREADS}];");
-    for (i, (c, _)) in terms.iter().enumerate() {
-        if *c != one && *c != minus {
-            let _ = writeln!(s, "  Q c{i} = qload(coef, {i});");
-        }
-    }
-    for t in 0..nodes {
-        let _ = writeln!(s, "  Q acc{t} = qzero();");
-    }
-    let _ = writeln!(s, "  GRID_STRIDE(j, half) {{");
-    let load = |s: &mut String, name: &str, slope: &str, table: &str, k: usize, b: bool| {
-        let _ = if b {
-            writeln!(s, "    u32 {name}{k} = ((const u32 *){table}[{k}])[j]; u32 {slope}{k} = msub(((const u32 *){table}[{k}])[j + half], {name}{k});")
-        } else {
-            writeln!(s, "    Q {name}{k} = qload((const u32 *){table}[{k}], j); Q {slope}{k} = qsub(qload((const u32 *){table}[{k}], j + half), {name}{k});")
-        };
-    };
-    for k in 0..xbase.len() {
-        load(&mut s, "x", "d", "xs", k, xbase[k]);
-        if let Some(rb) = rnow[k] {
-            load(&mut s, "r", "e", "rs", k, rb);
-        }
-    }
-    // A value is M31 when its table is and, if masked now, its mask table is too.
-    let vbase: Vec<bool> = (0..xbase.len())
-        .map(|k| xbase[k] && rnow[k].is_none_or(|rb| rb))
-        .collect();
-    let add = |b: bool| if b { "madd" } else { "qadd" };
-    for t in 0..nodes {
-        let _ = writeln!(s, "    {{");
-        if t > 0 {
-            for k in 0..xbase.len() {
-                let _ = writeln!(s, "      x{k} = {}(x{k}, d{k});", add(xbase[k]));
-                if let Some(rb) = rnow[k] {
-                    let _ = writeln!(s, "      r{k} = {}(r{k}, e{k});", add(rb));
-                }
-            }
-        }
-        for k in 0..xbase.len() {
-            let ty = if vbase[k] { "u32" } else { "Q" };
-            let value = match rnow[k] {
-                // κ(0) = κ(1) = 0: the mask term vanishes on the cube.
-                Some(rb) if t > 1 => {
-                    let kap = kappa_node(t);
-                    match (xbase[k], rb) {
-                        (true, true) => format!("madd(x{k}, mmul({kap}u, r{k}))"),
-                        (true, false) => format!("qadd(qembed(x{k}), qmulm(r{k}, {kap}u))"),
-                        (false, true) => format!("qadd(x{k}, qembed(mmul({kap}u, r{k})))"),
-                        (false, false) => format!("qadd(x{k}, qmulm(r{k}, {kap}u))"),
-                    }
-                }
-                Some(_) if !vbase[k] && xbase[k] => format!("qembed(x{k})"),
-                _ => format!("x{k}"),
-            };
-            let _ = writeln!(s, "      {ty} v{k} = {value};");
-        }
-        for (i, (c, factors)) in terms.iter().enumerate() {
-            let m = factors
-                .iter()
-                .filter(|f| vbase[**f as usize])
-                .map(|f| format!("v{f}"))
-                .reduce(|a, b| format!("mmul({a}, {b})"));
-            let q = factors
-                .iter()
-                .filter(|f| !vbase[**f as usize])
-                .map(|f| format!("v{f}"))
-                .reduce(|a, b| format!("qmul({a}, {b})"));
-            let p = match (m, q) {
-                (Some(m), Some(q)) => format!("qmulm({q}, {m})"),
-                (Some(m), None) => format!("qembed({m})"),
-                (None, Some(q)) => q,
-                (None, None) => "qembed(1u)".to_string(),
-            };
-            let _ = if *c == one {
-                writeln!(s, "      acc{t} = qadd(acc{t}, {p});")
-            } else if *c == minus {
-                writeln!(s, "      acc{t} = qsub(acc{t}, {p});")
-            } else {
-                writeln!(s, "      acc{t} = qadd(acc{t}, qmul(c{i}, {p}));")
-            };
-        }
-        let _ = writeln!(s, "    }}");
-    }
-    let _ = writeln!(s, "  }}");
-    for t in 0..nodes {
-        let _ = writeln!(s, "  block_sum(sh, acc{t}, partials, {nodes}, {t});");
-    }
-    let _ = writeln!(s, "}}");
-    s
 }

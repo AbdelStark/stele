@@ -1,0 +1,33 @@
+{
+  "status": "verified_failure",
+  "job": "6685",
+  "source": "8038e131e93d59c08328c7c94a979f3c551058e1",
+  "manifest_sha256": "d28ca7abe7a6b1d4c3e5f84d7bb724252eda0a752f9cb25f7b33f64febb6df2e",
+  "payloads_verified": 10,
+  "completed_cpu": 1000,
+  "completed_gpu": 9,
+  "last_case_start": 9,
+  "cpu_gpu_completed_case_digests_equal": true,
+  "campaign_timeout": true,
+  "no_parity_or_performance_credit": true,
+  "files": {
+    "check.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result.json": "ce6fa2e4a6facf5e5f829568b2eb4d14c17dbf716345abcae80f8f562696f53a",
+    "check.out": "20397f37a9adf49f89b16794b7154aa51ac59e3fc37eb3080192b5aeac609303",
+    "cpu.json": "5a0ac00876ebe16d0f47f47fb874f1f816adaf27f110758e46848f5632c53bcb",
+    "host.json": "e1105d1bdb5e11820c6b54ecc8dabc0900925cd0004a8822b8711cd380cc1733",
+    "check.json": "9727d5c3eec2b52646b7504c5aeb202e24a4a933b8ecf2ab04f4ce12e027a288",
+    "cpu.time": "9d4d15732f754e85510cdb40d786ad40fc524506782fffc3278e89a02b2e93d9",
+    "cpu.out": "4fc5084046cc5ef7b71eee99676c4a2d34fc17031843a2549c5b76ba72b16355",
+    "check.time": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpu.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "scheduler": {
+    "state": "FAILED",
+    "exit_code": "1:0",
+    "automatic_requeue": false,
+    "restarts": 0
+  },
+  "last_receipt": "case_start=9 shape=9 seed=67960851 representation=base original_vars=9 executed_vars=2 compact=false",
+  "disposition": "E16-40d qualification unmet; E16-40k retains all 1000 cases and scopes one diagnostic plus one separately reviewed implementation/qualification."
+}

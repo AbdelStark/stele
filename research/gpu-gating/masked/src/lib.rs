@@ -20,13 +20,25 @@ mod batch;
 #[cfg(test)]
 mod batch_cases;
 #[cfg(test)]
+mod boundary_cases;
+#[cfg(any(test, feature = "cuda"))]
+pub mod compact_lookup;
+#[cfg(test)]
 mod field_cases;
+#[cfg(any(test, feature = "cuda"))]
+pub mod gkr;
+#[cfg(any(test, feature = "cuda"))]
+mod gkr_build;
+#[cfg(test)]
+mod gkr_cases;
 #[cfg(feature = "cuda")]
 pub mod gpu;
 #[cfg(feature = "cuda")]
 pub mod gpu_lookup;
 #[cfg(feature = "cuda")]
 pub mod gpu_source;
+#[cfg(any(test, feature = "cuda"))]
+pub mod host_pack;
 #[cfg(test)]
 mod host_probe;
 pub mod inventory;
@@ -34,6 +46,10 @@ pub mod inventory;
 pub mod lookup;
 #[cfg(test)]
 mod lookup_cases;
+#[cfg(any(test, feature = "cuda"))]
+mod round;
+#[cfg(test)]
+mod round_cases;
 pub mod source;
 
 /// The challenge field.

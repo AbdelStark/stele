@@ -5558,7 +5558,7 @@ tasks:
   - RFC-0008 A7 item 4
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: blocked(ADR-137 superseded by E16-40l after failed H100 qualification)
   agent: codex-root
   branch: task/E16-40d-masked-shape-parity
   acceptance:
@@ -5721,7 +5721,7 @@ tasks:
   - RFC-0003 §1, §2
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40j-batch-tables
   acceptance:
@@ -5732,3 +5732,507 @@ tasks:
   - expose staging and device build times, transfer bytes and complete explicit construction buffer overlap separately from round scratch, first base-field fold, retained capacities, context/module/allocator and whole-pipeline costs; source preparation, host grouping, compilation, downloads and authenticated openings cannot be omitted from later cost measurements
   - work budget is one bounded implementation and one H100 qualification campaign; stop and report on device divergence, compile or allocation failure before further optimization; prototype only in research under ADR-123 and leave the earlier queued archives unchanged
   - obtain independent review, required H100 receipts and mandatory gates in stack order before merge; no production interface, core backend, protocol binding, challenge, proof byte, external dependency, full masked-batch/proof parity, performance, complete-device-budget or ADR-127 GO change
+
+- id: E16-40k
+  epic: E16
+  title: Bound production-shape masked GPU preparation and finish its qualification
+  lane: V
+  depends:
+  - E16-35
+  - E16-40a
+  rfc:
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0013 A5 item 3
+  - RFC-0008 A7 item 4
+  skill: cuda-kernel-author
+  crate: research
+  status: blocked(ADR-137 superseded by E16-40l after failed H100 qualification)
+  agent: codex-root
+  branch: task/E16-40k-masked-prepare
+  acceptance:
+  - diagnose the E16-40d production-inventory preparation stall with a bounded single-shape reproducer that distinguishes input construction, NVRTC compilation, driver module loading and round execution; preserve the original source, inventory, seeds and terminal campaign evidence
+  - make no generator change and run no replacement device campaign until job 6685 is terminal and its outcome is reported; this successor is not an automatic retry or a relaxation of E16-40d acceptance
+  - write the actual-path reproducer and reference checks before any fix; preserve every factor, term, mask coordinate, degree, coefficient, seeded case, error and canonical output; use fixed reduction order and no atomics on transcript-bound values
+  - work budget is one bounded diagnostic campaign and one reviewed implementation followed by one bounded H100 qualification campaign; phase deadlines must reject incomplete preparation and kill descendants, with no partial-case or absent-device success; report any failed candidate before another optimization
+  - after any preparation fix, complete all original 1000 production-inventory CPU and H100 cases with every round and folded table equal, including base, extension and mixed storage and canonical edges; retain compact-final, raw-kernel and actual-size exclusions until separately qualified
+  - count cold compilation, construction, transfers, retained allocations and whole-command costs; publish measured numbers only in validated ledgers and evaluate any speed hypothesis under Workflow 09, without claiming the full prover or ADR-127 gate
+  - obtain independent owning-GPU and another-lane reviews, H100 evidence and mandatory gates in lane-stack order; research only under ADR-123, no new core backend, protocol binding, challenge, committed tensor, proof byte, production dependency or GO
+
+- id: E16-40l
+  epic: E16
+  title: Qualify fixed-code masked rounds over production term descriptors
+  lane: V
+  depends:
+  - E16-35
+  - E16-40a
+  rfc:
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0013 A5 item 3
+  - RFC-0008 A7 item 4
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40l-masked-descriptors
+  acceptance:
+  - carry every unresolved complete-inventory requirement from E16-40d and E16-40k after terminal failed job 6730 and its exact generator rollback; preserve the failed evidence and do not retry either archived candidate
+  - replace shape-sized generated round code with fixed CUDA code driven by checked term offsets, factor indices, coefficients and per-round storage/mask descriptors; preserve every original factor, term, coefficient, seed, mask coordinate, degree and output, including empty products, repeated factors and zero coefficients
+  - write descriptor boundary controls and actual-expression host differential tests before implementation; compare canonical and raw lazy inputs, all storage combinations, mask events, both failed production shapes and mixed coefficients with the production CPU Masked reference; invalid factor indices must fail even for zero coefficients
+  - retain the existing fixed block reduction, fold algorithm, canonical readback rejection and CPU default; validate descriptor counts and node bounds before allocation or launch, and do not add a production interface, backend dependency, challenge or proof binding
+  - qualify the exact new CUDA path on the unchanged original 1000 seeded inventory cases, with initial tables, every round polynomial and every folded table equal; include explicit H100 regression cases 9 and 11 and representative larger masked rounds; absent CUDA, missing cases, compilation failure or any mismatch fails
+  - count descriptor upload bytes, per-round pointer/type transfers and retained explicit device buffers; report repeated factor reads and host staging, cold context/module compilation, construction and whole-command costs separately from module/allocator overhead and complete pipeline memory; publish performance numbers only in validated ledgers
+  - one reviewed implementation and one bounded H100 qualification campaign; phase or case deadlines kill descendants and retain failure evidence; reject and report the candidate before another optimization if complete qualification fails
+  - obtain independent owning-GPU and another-lane reviews and mandatory current-main/intended-tree gates in lane-stack order; research only under ADR-123, no compact-final, actual-size, full-proof, complete-budget or ADR-127 GO credit from reduced inventory parity
+
+- id: E16-40m
+  epic: E16
+  title: Qualify resident CUDA GKR rounds and compact finals on genuine production inputs
+  lane: V
+  depends:
+  - E16-35
+  - E16-40g
+  rfc:
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0008 A7
+  - RFC-0013 A5 items 1-6, A8
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40m-gkr-device
+  acceptance:
+  - retire the untested production compact-GKR consumer risk in docs/plan.md §9 using the already merged GkrCase interface; preserve every factor, term, mask coordinate, degree, actual challenge and original table dimension
+  - adapt genuine production Masked tables to the existing research device path with checked dimensions and metadata; keep host factor construction and compact expansion explicit and counted, with no device-construction or whole-stage acceleration credit for uploaded CPU-built tables
+  - write honest, malformed-input and near-miss tests before implementation; compare every initial table, round polynomial, folded table and compact final before expansion; a changed compact slot must fail even when production expansion ignores it
+  - compare expanded finals and all routed source/block/child claims with the genuine CPU step, including first, interior and leaf steps, heterogeneous members, selectors, shifts, padding, extension coefficients, narrow and balanced lifetime geometry
+  - qualify all GKR steps from 1000 seeded synthetic production statements on actual H100, using canonical and raw lazy table/coefficient representations and unchanged actual transcript challenges; verify each ordinary observed CPU proof, fail on absent CUDA or any missing case, and never count observer CUDA work as an integrated GPU proof
+  - report host reconstruction/conversion/expansion/routing and upload/download work separately from resident rounds; account explicit retained device capacities and host copies without claiming complete pipeline memory or performance without a validated ledger
+  - one reviewed implementation and one bounded H100 campaign; deadline cleanup kills descendants and preserves failures; report and reject a failed candidate before further optimization
+  - obtain owning-GPU and another-lane reviews, hardware evidence and mandatory gates in lane-stack order; this research successor to E16-40l consumes only already merged production interfaces and changes no core backend, dependency, challenge, binding, committed tensor, proof bytes or ADR-127 decision
+
+- id: E16-40n
+  epic: E16
+  title: Canonicalize and qualify remaining field-copy and source-kernel boundaries
+  lane: V
+  depends:
+  - E16-35
+  - E16-36
+  rfc:
+  - RFC-0014 §1, §5, §7
+  - RFC-0003 §1, §6
+  - RFC-0010 A2
+  - RFC-0012 A3
+  - RFC-0013 A8
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40n-copy-boundaries
+  acceptance:
+  - audit remaining field-copy and source kernels against gpu-parity guardrail 4; distinguish field words from arbitrary digest, salt, key and descriptor bytes before changing a boundary
+  - write canonical/raw lazy honest and edge controls before changes; cover mask coordinate order, duplicate halves, tile boundaries, transpose edges, bit-reversal swaps and fixed points, Circle butterfly/scale and source leaf/node hashing
+  - use the existing CPU field, polynomial, source and Merkle references; execute actual CUDA expressions on the host where possible and require explicit actual H100 execution with no absent-device or skipped-case credit
+  - canonicalize field outputs and canonical field serialization while preserving arbitrary digest and metadata bits; include full-width non-field words that must not be reduced modulo p, and leave hash compression unchanged
+  - compare every affected kernel on 1000 seeded cases with 0, 1, p-1, p and values in [p,2p); verify complete source material against production preparation on representative original sizes and preserve all proof bytes
+  - account any additional reads and writes in c_sc, c_c and T_misc; make no speedup, complete-memory, integrated-proof or ADR-127 GO claim without the required evidence
+  - one reviewed implementation and one bounded H100 campaign after the preceding qualification; fail closed on missing receipts, deadlines or mismatches, preserve failed evidence and obtain owning-GPU and another-lane reviews
+  - research only in the same lane stack; no production interface, dependency, challenge, commitment or verifier changes; mandatory gates and current-main/intended-tree validation precede merge
+- id: E16-40o
+  epic: E16
+  title: Record current quiet-Mac development-ZK stage costs
+  lane: V
+  depends:
+  - E16-36
+  - E16-40a
+  rfc:
+  - RFC-0018 A1, A2
+  - RFC-0027 §3, §5
+  - RFC-0013 A6, A8, A9
+  skill: benchmark-runner
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40o-mac-stage-profile
+  acceptance:
+  - record three sequential instrumented stories42M T32 CPU proofs on the original M4 Max 48 GiB laps host with 16 explicit Rayon threads, one fresh P8 commitment and indices 0 through 2; never copy or restore secret state
+  - start each measured command below one-minute load 3, bound waiting and execution, retain every attempted command and failure, and record load, memory pressure and swap observations before and after commands
+  - pin clean source, actual executable, Rust toolchain, exact public input hashes and capture scripts; retain every output, command, exit, process resource report, proof and public bundle hash; keep private model state out of published evidence
+  - independently verify every proof against the expected commitment and reject its wrong-model control; parse the complete actual stage inventory with the existing parser and preserve construction, rounds, claim routing, remainders and CPU-only stages separately
+  - validate all three ledgers through the existing development recorder and stele-bench validator, regenerate the scoreboard and report this T32 calibration below L2a T64 without a cross-host speed comparison or matched-seed claim
+  - retire the stale-Mac-stage-profile risk for ADR-127; no kernel, protocol, dependency, production interface or runtime changes, no whole-stage inference from legacy round templates and no ADR-127 GO or integrated-GPU-proof credit
+  - obtain another-lane and spec reviews and mandatory gates in lane-stack order; this successor to E16-40n consumes only the already merged E16-40a instrumentation
+
+- id: E16-40q
+  epic: E16
+  title: Qualify resident source responses without full material download
+  lane: V
+  depends:
+  - E16-40b
+  rfc:
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0010 A9
+  - RFC-0012 A3
+  - RFC-0013 A8
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40q-resident-source
+  acceptance:
+  - retain the existing device encoding and Merkle levels and download only each requested column and its bottom-up path; preserve the root-only and complete-material paths and all validation
+  - compare roots and every requested payload and path with production PreparedSource on 1000 seeded device cases including zero, one and p-minus-one values; cover reversed and duplicate requests, first and last columns, out-of-range rejection and ordinary RootMismatch on one changed word
+  - test host payload serialization and malformed sizes, indices and noncanonical values without CUDA; required device execution must refuse absent CUDA or an empty inventory
+  - report preparation and response transfer bytes, retained device buffers, download and host salt assembly work; do not equate tracked buffers with the complete RFC-0014 A1 peak
+  - retire the source response path's dependency on complete host material in the research harness; no new kernel, dependency, core source interface, certificate, proof, binding or protocol change, and no speedup or ADR-127 GO claim
+  - obtain owning lane E and independent standards review, recorded actual H100 parity and mandatory gates in stack order; this independent lane-V successor to E16-40p uses only merged source interfaces and does not consume its GKR construction interface
+
+- id: E16-40r
+  epic: E16
+  title: Construct genuine GKR factors from borrowed inputs on H100
+  lane: V
+  depends:
+  - E16-40p
+  rfc:
+  - RFC-0008 A7
+  - RFC-0014 §1, §5, A1
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40r-gkr-device-construction
+  acceptance:
+  - build the GKR factor and mask tables on device from the production construction descriptors; retain production terms, degree, ordering, original columns and child-layer semantics without uploading CPU-expanded output tables
+  - validate every source and destination bound before kernel access; compare initial values, each round and fold, compact finals and routing to genuine CPU steps across 1000 seeded statements on H100; reject malformed geometry and absent CUDA
+  - record uploaded descriptor and input bytes separately from resident state; retain the ordinary CPU proof verifier, all bindings and the core backend decision under ADR-127
+  - obtain independent review and the native and parity gates; large-model whole-stage performance and complete pipeline memory require separate measurements
+
+- id: E16-40s
+  epic: E16
+  title: Measure real T32 lookup trees and claim batches on H100
+  lane: V
+  depends:
+  - E16-40c
+  - E16-40i
+  - E16-40j
+  rfc:
+  - RFC-0008 A7
+  - RFC-0013 A5
+  - RFC-0014 §1, §5, A1
+  skill: benchmark-runner
+  crate: research
+  status: done
+  agent: codex-integration
+  branch: task/E16-40s-t32-lookup-batch
+  acceptance:
+  - observe actual T32 lookup preparations, later tree rebuilds and ordinary claim batches during a complete verified stories42M dev-zk proof on a Lucid H100
+  - compare every tree and top and every dense batch round and final to the CPU reference at its genuine transcript challenges; record failure on errors and incomplete coverage
+  - charge cold context and compilation, host normalization and grouping, transfers, device construction and outputs; identify residual protocol work separately and preserve independent expected-model verification
+  - retain source and job provenance and the current Mac laps; no core binding, protocol change or integrated proof credit
+
+- id: E16-40t
+  epic: E16
+  title: Measure genuine masked GKR construction and rounds at stories42M scale
+  lane: V
+  depends:
+  - E16-40p
+  - E16-40a
+  rfc:
+  - RFC-0008 A7
+  - RFC-0014 §§1, 4, 5 and A1
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40t-t32-gkr
+  acceptance:
+  - compare 385 actual GKR steps against the original CPU polynomials, challenges and compact finals in a complete stories42M T32 proof with expected-model and wrong-model controls; classify any oversize step as CPU work
+  - charge input preparation, allocations, H2D, construction, rounds, folds and readbacks; retain CPU masking, transcript, final expansion and routing costs
+  - bound allocations before each launch and record driver pool high-water and process memory for this component; obtain independent review and mandatory gates
+
+- id: E16-40u
+  epic: E16
+  title: Consume selected lookup tops and resident lookup children in GKR
+  lane: V
+  depends:
+  - E16-40i
+  - E16-40r
+  rfc:
+  - RFC-0008 A7
+  - RFC-0014 §1, §5, A1
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-integration
+  branch: task/E16-40u-resident-lookup-gkr
+  acceptance:
+  - download only p/q/h and the denominator flags on the first visit, preserving the ordinary zero denominator abort
+  - retain the rebuilt tree on H100, use checked geometry and device identity to construct GKR child factors directly from the resident layer, and release before the leaf
+  - enforce the combined device budget before allocation and separately charge packing, transfers, allocation lifetimes and qualification-only readback
+  - compare all required tops, rebuild pairs, actual round polynomials and finals against the ordinary CPU prover on seeded cases and the complete T32 workload; preserve its independent verifier and control
+
+- id: E16-40v
+  epic: E16
+  title: Pack contiguous claim weights into ordered runs for H100 batch preparation
+  lane: V
+  depends:
+  - E16-40j
+  - E16-40s
+  rfc:
+  - RFC-0013 A5 item 5
+  - RFC-0014 §1, §5, A1
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-resident
+  branch: task/E16-40v-batch-weight-runs
+  acceptance:
+  - pack each weight once and each claim coefficient once, using bounded contiguous runs per destination tile and preserving order for overlaps and duplicates
+  - compare actual and lazy H100 outputs, dense rounds and finals to the reference across 1000 seeded sources, retaining invalid-position and wrong-value controls
+  - capture the real stories42M T32 proof with ordinary independent verification and the wrong-model control; measure host packing, transfers, schedule, allocations and complete preparation against job 6776
+
+- id: E16-40w
+  epic: E16
+  title: Measure two real hiding-source visits and their selected responses on H100
+  lane: V
+  depends:
+  - E16-40q
+  - E16-40s
+  rfc:
+  - RFC-0010 A9 and A15
+  - RFC-0013 A2 and A6
+  - RFC-0014 A1
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-source-visits
+  branch: task/E16-40w-source-visits
+  acceptance:
+  - compare every actual certificate and opening column and Merkle sibling against the CPU proof from the same original hiding message and salt seed
+  - charge both uploads and preparations, selected response downloads and release before returning; preflight all device buffers including concurrent holds under the A1 budget
+  - verify the ordinary stories42M T32 proof with the pinned expected model and wrong-model control; publish only aggregated timings and public evidence
+- id: E16-40x
+  epic: E16
+  title: Capture complete CPU proof bytes on 50 seeded synthetic inference models
+  lane: V
+  depends:
+  - E16-40a
+  rfc: [RFC-0014 §5, RFC-0013 A5 and A6]
+  skill: benchmark-runner
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40x-small-model-reference
+  acceptance:
+  - Generate 50 distinct small model artifacts and greedy requests from pinned seeds with the existing family-1 generator; use synthetic public model and proof randomness only
+  - Drive the normal balanced development-ZK proving library, verify the complete public bundle and proof with a separately built CLI under the expected model, and save byte digests for later GPU comparison
+  - Replay a case for determinism, reject a mismatched model pin, and give this CPU corpus zero GPU parity credit
+
+- id: E16-40y
+  epic: E16
+  title: Build lookup leaves from the original base-field columns on the device
+  lane: V
+  depends:
+  - E16-40u
+  rfc: [RFC-0008 A7, RFC-0014 §5 and A1]
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-integration
+  branch: task/E16-40y-compact-lookup-inputs
+  acceptance:
+  - consume original base-field columns, member ranges and selectors, public table rows and multiplicity, and account all input preparation and explicit transfers
+  - compare canonical and lazy device values to original lookup trees and selected tops in 1000 seeded cases, including malformed geometry, zero denominator and single-value controls
+  - retain resident child ownership, budget preflight and original CPU comparisons through the complete verified stories42M T32 proof; compare the same lookup visits against E16-40u
+
+- id: E16-40z
+  epic: E16
+  title: Schedule final child ownership and GKR promotions under the device budget
+  lane: V
+  depends:
+  - E16-40y
+  rfc: [RFC-0008 A7, RFC-0014 §5 and A1]
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-resident
+  branch: task/E16-40z-gkr-memory-schedule
+  acceptance:
+  - Bound construction and first-fold live allocations in factor order, with actual mask consumption, scratch, staging and stream-ordered frees
+  - Release a final child owner after synced factor construction and before promotions with a checked last layer
+  - Compare 1000 seeded canonical/raw statements and all rounds and finals; measure all 385 T32 steps without skips under the device budget with the real lookup tree
+
+- id: E16-40aa
+  epic: E16
+  title: Calibrate original GKR construction and rounds on the T32 laps host
+  lane: V
+  depends:
+  - E16-40o
+  - E16-40t
+  rfc: [RFC-0008 A7, RFC-0014 §5 and A1, RFC-0018 A1]
+  skill: benchmark-runner
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40aa-mac-gkr-calibration
+  acceptance:
+  - Measure all 385 original GKR steps of a complete balanced stories42M T32 proof on the quiet Mac with 16 threads and the same lookup geometry as the H100 run
+  - Separate CPU round and fold arithmetic from masking, expansion and transcript work and retain host construction of the compact expansion map
+  - Validate a pinned-model proof and changed-pin rejection with the separately built verifier, reconcile the disjoint intervals and record the calibration in a ledger
+
+- id: E16-40ab
+  epic: E16
+  title: Compare parallel host claim packing on original T32 batch weights
+  lane: V
+  depends:
+  - E16-40v
+  rfc: [RFC-0013 A5, RFC-0014 §5]
+  skill: benchmark-runner
+  crate: research
+  status: done
+  agent: codex-integration
+  branch: task/E16-40ab-host-batch-pack
+  acceptance:
+  - compare every packed message, claim weight, gamma, run and offset on the original three T32 ordinary claim batches, under the same complete CPU proof and verifier
+  - report repeated alternating CPU-only preparations on one pinned Lucid host, including allocation, zero initialization, claim indexing, run scheduling, packing, destruction and explicit input and output bytes
+  - select the candidate only on measured improvement and retain the verified reference path otherwise
+
+- id: E16-40ac
+  epic: E16
+  title: Reuse immutable source messages across PCS, GKR and claim batches within the device budget
+  lane: V
+  depends:
+  - E16-40ab
+  - E16-40z
+  rfc: [RFC-0008 A7, RFC-0013 A5/A6, RFC-0014 §5 and A1]
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-resident
+  branch: task/E16-40ac-resident-original-messages
+  acceptance:
+  - Store unmasked periodic block factors on their native low-axis domain and compare all messages and folds to the CPU, including the transition to the first varying coordinate
+  - Upload each actual hiding-source message once through pinned staging and borrow validated source owners for selected authenticated responses and the ordinary batch face
+  - Qualify 1000 seeded canonical/raw cases and the complete T32 source, lookup, GKR and batch schedule with normal/wrong-model verification, exact identity/transfer charges and physically measured simultaneous memory below 40 percent
+  - Evaluate the identity and address geometry of GKR and lookup original columns and leave any remaining host uploads explicit
+
+- id: E16-40ad
+  epic: E16
+  title: Produce bound masked sumcheck subproofs with device-authored round messages
+  lane: V
+  depends:
+  - E16-40j
+  - E16-40l
+  rfc: [RFC-0013 A4, RFC-0014 §5]
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40ad-device-bound-sumcheck
+  acceptance:
+  - Drive the public checked masked prover with a research CUDA summand so every polynomial and final comes from the H100 before the host transcript draws the next challenge
+  - Compare complete masked subproofs, certificate and opening bytes and transcript continuation on synthetic inputs; use the ordinary verifier and discharge its ordered input evaluations directly
+  - Reject a changed round using the ordinary verifier and distinguish this component from the 50 required inference proof comparisons
+
+- id: E16-40ae
+  epic: E16
+  title: Read compact lookup columns from their original hiding-source messages
+  lane: V
+  depends:
+  - E16-40y
+  - E16-40ac
+  rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-integration
+  branch: task/E16-40ae-lookup-source-views
+  acceptance:
+  - Derive tuple and multiplicity views from original column IDs, aligned limb runs, claim-mask boundaries and the hiding source's actual two-dimensional geometry
+  - Check every referenced base limb against the genuine stored T32 messages before qualifying the device views; include crossing a row, alias/offset near misses, repeated equal values from distinct columns and missing ownership
+  - Compare all 21 tops and 21 resident rebuilds on H100 with original CPU values; account physical input allocations, qualification readbacks, transfers and ownership under the total device ceiling
+
+- id: E16-40af
+  epic: E16
+  title: Read original GKR column gathers from their authenticated source messages
+  lane: V
+  depends:
+  - E16-40ae
+  rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-integration
+  branch: task/E16-40af-gkr-source-views
+  acceptance:
+  - Derive source identity at the actual production column origin for every implemented GKR gather; distinguish publics, masks and challenge-derived factors even if their values match
+  - Check canonical and raw boundary statements and all 385 genuine T32 GKR round and final outputs on H100 against the CPU proof under the total allocation ceiling
+  - Classify actual H2D input bytes by gathers, public tables, masks, selectors, Fiat–Shamir inputs and descriptors; reconstruct the charged total without counting borrowed data as a transfer
+- id: E16-40ag
+  epic: E16
+  title: Recompute the resident T32 prover ceiling from a complete original-source run
+  lane: V
+  depends:
+  - E16-40z
+  - E16-40aa
+  - E16-40ac
+  - E16-40ae
+  rfc: [RFC-0014 §5 and A1, RFC-0018 A1]
+  skill: benchmark-runner
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40ag-resident-ceiling
+  acceptance:
+  - On three verified quiet-host stories42M T32 proofs, replace only the measured disjoint stage intervals, retain the measured GKR host remainder and charge source visits, batch packing, arithmetic, transfers and synchronization from the paired H100 capture
+  - Require the original source and memory receipts, all 385 authentic GKR steps, every lookup and ordinary batch, and the unchanged model controls; report cold and resident projections separately from an actual whole-prover measurement
+  - Record the measured ADR-127 reopening decision with its input ledgers, independent review and remaining backend, parity and dependency conditions
+- id: E16-40ah
+  epic: E16
+  title: Qualify masked relation sumchecks on the original T32 workload
+  lane: V
+  depends:
+  - E16-40ag
+  rfc: [RFC-0009, RFC-0013 A4, RFC-0014 §5]
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-source-visits
+  branch: task/E16-40ah-masked-relations
+  acceptance:
+  - Exercise authentic T32 relation factors including all large-domain instances through the fixed-code H100 masked round and fold operations with the ordinary transcript challenges
+  - Check round polynomials and all final evaluations against the ordinary CPU prover and verify a device-produced relation subproof with its original bindings
+  - Account for factor preparation, mask and descriptor transfers, device setup, synchronized releases, peak memory and measured small-domain crossover independently of CPU dispatch
+
+- id: E16-40ai
+  epic: E16
+  title: Borrow occurrence masks and shared layer blocks from their certified source messages
+  lane: V
+  depends:
+  - E16-40ah
+  rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-resident
+  branch: task/E16-40ai-original-mask-windows
+  acceptance:
+  - Derive occurrence, combined member, and shared layer mask windows from the exact original source ID, data-quadrant offset, limb count and scheduled layer side
+  - Compare every field word and all generated leaf, interior and mixed GKR round messages and finals against independent CPU values across 1000 genuine canonical and lazy seed families
+  - Replay all 385 T32 GKR steps with the four real original owners live and the actual lookup tree, zero private mask payload H2D, all public challenge and descriptor bytes charged, measured allocation limits and normal verifier controls
+- id: E16-40aj
+  epic: E16
+  title: Compare complete inference proof bytes when the H100 authors masked relation rounds
+  lane: V
+  depends:
+  - E16-40x
+  - E16-40ah
+  rfc: [RFC-0013 A5, RFC-0014 §5, RFC-0026 §7]
+  skill: cuda-kernel-author
+  crate: research
+  status: done
+  agent: codex-root
+  branch: task/E16-40aj-h100-inference-parity
+  acceptance:
+  - Use all 50 distinct original model artifacts, their fixed synthetic seeds and verified CPU binaries; check every model identity, full public and proof bytes, complete external verification, deterministic replay and the wrong-model control
+  - For each complete proof require positive evidence that checked masked relation polynomials were produced on the H100 before their Fiat-Shamir challenge, including folds and final evaluations, with the device and operation source pinned
+  - Report the reference CPU, synchronous oracle work, device-authored stages and every fallback separately; this research corpus qualifies exactly its participating operations and confers no production backend or performance claim

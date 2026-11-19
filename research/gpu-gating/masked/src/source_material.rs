@@ -4,12 +4,34 @@ use crate::M31;
 use stele_reductions::stele_hash::mask::{MaskStream, SOURCE_SALT};
 use stele_reductions::stele_hash::merkle::Digest;
 
-pub(super) fn digest(words: &[u32]) -> Digest {
+pub(crate) fn digest(words: &[u32]) -> Digest {
     let mut out = [0; 32];
     for (bytes, word) in out.chunks_mut(4).zip(words) {
         bytes.copy_from_slice(&word.to_le_bytes());
     }
     out
+}
+
+/// RFC-0010 A9: serialize only a requested canonical column, including its salt.
+#[cfg(any(test, feature = "cuda"))]
+pub(crate) fn payload(shape: &Shape, index: u64, encoded: &[u32]) -> Option<Vec<u8>> {
+    let desc = shape.source()?.descriptor();
+    if index >= desc.count
+        || encoded.len() != shape.rows()
+        || encoded.iter().any(|x| M31::from_canonical(*x).is_none())
+    {
+        return None;
+    }
+    let width = usize::try_from(desc.width).ok()?;
+    let mut bytes = Vec::new();
+    bytes.try_reserve_exact(width).ok()?;
+    bytes.resize(width, 0);
+    MaskStream::new(&shape.seed, SOURCE_SALT, shape.id)
+        .fill_at(index.checked_mul(32)?, &mut bytes[..32]);
+    for (out, word) in bytes[32..].chunks_exact_mut(4).zip(encoded) {
+        out.copy_from_slice(&word.to_le_bytes());
+    }
+    Some(bytes)
 }
 
 /// Salted columns and every Merkle level, leaves first and root last.
@@ -109,6 +131,58 @@ pub fn material(shape: &Shape, message: &[M31]) -> Option<Material> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Field;
+
+    #[test]
+    fn matches_reference_selected_payload() {
+        use stele_reductions::stele_hash::HashUsage;
+        use stele_reductions::stele_pcs::{Policy, PreparedSource};
+        let shape = Shape::new(3, 9, 19);
+        let message = shape.message();
+        let words: Vec<_> = message.iter().map(|v| v.as_u32()).collect();
+        let encoded = encode_rows(&words, shape.rows(), shape.log_n(), u32::from(BLOWUP));
+        let reference = PreparedSource::<crate::QM31>::hiding_with(
+            shape.id,
+            shape.ell,
+            shape.m,
+            BLOWUP,
+            &message,
+            &shape.seed,
+            &mut HashUsage::default(),
+            Policy::Two,
+        )
+        .unwrap();
+        let last = reference.source().descriptor().count - 1;
+        for index in [last, 0, last / 2, 1, last, 0] {
+            let at = index as usize * shape.rows();
+            assert_eq!(
+                payload(&shape, index, &encoded[at..at + shape.rows()]).unwrap(),
+                reference.response(index).unwrap().payload,
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_selected_payload() {
+        let shape = Shape::new(3, 9, 1);
+        let count = shape.source().unwrap().descriptor().count;
+        let mut words = vec![0; shape.rows()];
+        words[1] = 1;
+        words[2] = M31::MODULUS - 1;
+        let bytes = payload(&shape, 0, &words).unwrap();
+        assert_eq!(&bytes[32..36], &0u32.to_le_bytes());
+        assert_eq!(&bytes[36..40], &1u32.to_le_bytes());
+        assert_eq!(&bytes[40..44], &(M31::MODULUS - 1).to_le_bytes());
+        assert!(payload(&shape, count, &words).is_none());
+        assert!(payload(&shape, u64::MAX, &words).is_none());
+        assert!(payload(&shape, 0, &words[..words.len() - 1]).is_none());
+        assert!(payload(&shape, 0, &vec![0; words.len() + 1]).is_none());
+        assert!(payload(&Shape::new(30, 9, 1), 0, &[]).is_none());
+        for invalid in [M31::MODULUS, M31::MODULUS + 1, u32::MAX] {
+            words[0] = invalid;
+            assert!(payload(&shape, 0, &words).is_none());
+        }
+    }
 
     #[test]
     fn rejects_incomplete_or_noncanonical_material() {

@@ -136,3 +136,110 @@ fn matches_reference_lookup_inverse_on_h100() {
         dev.name
     );
 }
+
+#[test]
+#[ignore = "requires an allocated H100"]
+fn matches_reference_selected_top_and_resident_layers_on_h100() {
+    let dev = device();
+    for index in 0..CASES {
+        let (s, columns, beta, alpha) = fixture(SEED + 2 * index as u64);
+        let case = LookupCase::new(&s, &columns, 0).unwrap();
+        let input = case.inputs(beta, alpha);
+        let expected = case.reference(beta, alpha).unwrap();
+        let (top, timing) = super::select::top(&dev, &input).unwrap();
+        assert_eq!(top, expected.top);
+        assert_eq!(timing.download_bytes, 52 * top[0].len());
+        let (tree, timing) = super::select::resident(&dev, index, &input).unwrap();
+        assert_eq!(timing.download_bytes, 0);
+        assert_eq!(tree.compare_all(&expected.layers).unwrap(), tree.bytes());
+        let (raw_top, _) = super::select::top_raw(&dev, &input).unwrap();
+        assert_eq!(raw_top, expected.top);
+        let (raw_tree, _) = super::select::resident_raw(&dev, index, &input).unwrap();
+        assert_eq!(
+            raw_tree.compare_all(&expected.layers).unwrap(),
+            raw_tree.bytes()
+        );
+        let mut changed = expected.layers.clone();
+        let k = if index % 2 == 0 { 0 } else { changed.len() - 1 };
+        changed[k][0][0] = changed[k][0][0] + K::ONE;
+        assert!(matches!(tree.compare_all(&changed), Err(Error::Value)));
+        // All four child selectors must take their inputs from the device view.
+        // Poison the borrowed host layer without changing its extent.
+        use stele_reductions::zk::claims::bench::{GkrConstruction, GkrFactor, GkrMask};
+        let depth = 1 + (index % (expected.layers.len() - 1));
+        let layer = &expected.layers[depth];
+        let poison = vec![[K::ZERO; 2]; layer.len()];
+        let selector = index % 4;
+        let input = GkrConstruction {
+            num_vars: depth as u32,
+            layer_variables: depth - 1,
+            degree: 2,
+            terms: vec![],
+            factors: vec![GkrFactor::Layer {
+                values: &poison,
+                component: selector % 2,
+                side: selector / 2,
+                mask: GkrMask {
+                    values: vec![M31::ZERO],
+                    coordinates: &[],
+                    vanishing: 0,
+                },
+            }],
+        };
+        let (result, work) = dev.build_gkr_resident(&input, index, &tree).unwrap();
+        assert_eq!(work.layer_views, 1);
+        assert_eq!(work.layer_bytes, 32 * layer.len());
+        let tables = result.tables().unwrap();
+        let half = layer.len() / 2;
+        for (x, v) in tables[0].0.iter().enumerate() {
+            assert_eq!(*v, layer[2 * (x % half) + selector / 2][selector % 2]);
+        }
+        assert!(dev.build_gkr_resident(&input, index + 1, &tree).is_err());
+        assert!(tree.layer(&dev, index + 1, 1).is_err());
+        assert!(tree.layer(&dev, index, 3).is_err());
+        assert!(tree.layer(&dev, index, usize::MAX).is_err());
+        // Transfer the actual bottom owner, with deliberately wrong host pairs.
+        // Both raw and canonical lookups must supply identical child values
+        // after the owner has already been released.
+        let last = expected.layers.len() - 2; // Parents of raw paired branch leaves.
+        let bottom = &expected.layers[last];
+        let poison = vec![[K::ZERO; 2]; bottom.len()];
+        let last_input = GkrConstruction {
+            num_vars: last as u32,
+            layer_variables: last - 1,
+            degree: 2,
+            terms: vec![],
+            factors: vec![GkrFactor::Layer {
+                values: &poison,
+                component: selector % 2,
+                side: selector / 2,
+                mask: GkrMask {
+                    values: vec![M31::ZERO],
+                    coordinates: &[],
+                    vanishing: 0,
+                },
+            }],
+        };
+        assert!(tree.is_last_child(last - 1));
+        assert!(!tree.is_last_child(last));
+        for owner in [tree, raw_tree] {
+            let (state, work) = dev.build_gkr_last_child(&last_input, index, owner).unwrap();
+            assert_eq!(work.layer_bytes, 32 * bottom.len());
+            let actual = state.tables().unwrap();
+            for (i, x) in actual[0].0.iter().enumerate() {
+                assert_eq!(
+                    *x,
+                    bottom[2 * (i % (bottom.len() / 2)) + selector / 2][selector % 2]
+                );
+            }
+        }
+    }
+    let (s, columns, _, _) = fixture(SEED);
+    let case = LookupCase::new(&s, &columns, 0).unwrap();
+    let input = case.inputs(K::ZERO, K::ZERO);
+    assert!(matches!(
+        super::select::top(&dev, &input),
+        Err(Error::Lookup(LookupError::DenominatorZero))
+    ));
+    eprintln!("final_child_owners=2000 resident_lookup_cases={CASES} top_cases={CASES} resident_layer_cases={CASES} context_controls={CASES} zero_denominator_cases=1 raw_top_cases={CASES} raw_resident_layer_cases={CASES} near_miss_cases={CASES} seed={SEED} device={}",dev.name);
+}

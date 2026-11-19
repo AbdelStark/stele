@@ -124,7 +124,13 @@ fn matches_reference_complete_source_material_on_device() {
             3 + (seed % 2) as u8
         };
         let (shape, message) = fixture(ell, 9, seed);
-        let (actual, _) = prepare_material(&dev, &shape, &message).expect("device material");
+        let (actual, time) = prepare_material(&dev, &shape, &message).expect("device material");
+        let count = shape.source().unwrap().descriptor().count as usize;
+        assert_eq!(
+            time.download_bytes,
+            count * shape.rows() * 4 + (2 * count - 1) * 32
+        );
+        assert_eq!(time.retained_bytes, time.download_bytes);
         compare(&shape, &message, &actual);
         cases += 1;
     }

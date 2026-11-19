@@ -15,7 +15,7 @@ pub(crate) fn words(value: K) -> [u32; 4] {
     core::array::from_fn(|i| u32::from_le_bytes(bytes[4 * i..4 * i + 4].try_into().unwrap()))
 }
 
-fn element(words: &[u32]) -> Result<K, Error> {
+pub(crate) fn element(words: &[u32]) -> Result<K, Error> {
     let mut bytes = [0; 16];
     for (w, b) in words.iter().zip(bytes.chunks_exact_mut(4)) {
         b.copy_from_slice(&w.to_le_bytes());

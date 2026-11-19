@@ -6,6 +6,12 @@ use cudarc::driver::{CudaSlice, PushKernelArg};
 use std::time::{Duration, Instant};
 use stele_reductions::zk::claims::bench::{LookupInputs, LookupTree};
 
+#[path = "gpu_lookup_compact.rs"]
+pub mod compact;
+
+#[path = "gpu_lookup_resident.rs"]
+pub mod select;
+
 #[cfg(test)]
 #[path = "gpu_lookup_tests.rs"]
 mod tests;
@@ -37,11 +43,15 @@ struct Tree<'a> {
 
 impl<'a> Tree<'a> {
     fn new(dev: &'a Device, p: &Prepared) -> Result<Self, Error> {
+        Self::sized(dev, p.tree_words, p.top)
+    }
+
+    fn sized(dev: &'a Device, tree_words: usize, top: usize) -> Result<Self, Error> {
         Ok(Self {
             dev,
-            pairs: dev.stream().alloc_zeros(p.tree_words)?,
-            h: dev.stream().alloc_zeros(4 * p.top)?,
-            flags: dev.stream().alloc_zeros(p.top)?,
+            pairs: dev.stream().alloc_zeros(tree_words)?,
+            h: dev.stream().alloc_zeros(4 * top)?,
+            flags: dev.stream().alloc_zeros(top)?,
         })
     }
 
@@ -101,27 +111,42 @@ impl<'a> Tree<'a> {
     }
 }
 
+/// Build the tree down to the lowest consumed layer, retaining the device pairs.
+fn build<'a>(
+    dev: &'a Device,
+    p: &Prepared,
+    lowest: usize,
+) -> Result<(Tree<'a>, Duration, Duration), Error> {
+    let start = Instant::now();
+    let values = dev.stream().clone_htod(&p.values)?;
+    let selector = dev.stream().clone_htod(&p.selector)?;
+    let tree = Tree::new(dev, p)?;
+    dev.sync()?;
+    let upload = start.elapsed();
+    let start = Instant::now();
+    tree.leaf(&values, &selector, p)?;
+    build_levels(&tree, p.leaves, lowest)?;
+    dev.sync()?;
+    let tree_time = start.elapsed();
+    Ok((tree, upload, tree_time))
+}
+
+fn build_levels(tree: &Tree<'_>, leaves: usize, lowest: usize) -> Result<(), Error> {
+    let mut width = leaves / 2;
+    while width >= lowest {
+        tree.level(width)?;
+        width /= 2;
+    }
+    Ok(())
+}
+
 /// Consume production-normalized inputs and return all canonical layers and p/q/h.
 /// No proof, commitment, transcript or core backend calls this research operation.
 pub fn prepare(dev: &Device, input: &LookupInputs<K>) -> Result<(LookupTree<K>, Timing), Error> {
     let start = Instant::now();
     let p = Prepared::new(input)?;
     let stage = start.elapsed();
-    let start = Instant::now();
-    let values = dev.stream().clone_htod(&p.values)?;
-    let selector = dev.stream().clone_htod(&p.selector)?;
-    let tree = Tree::new(dev, &p)?;
-    dev.sync()?;
-    let upload = start.elapsed();
-    let start = Instant::now();
-    tree.leaf(&values, &selector, &p)?;
-    let mut width = p.leaves / 2;
-    while width > 0 {
-        tree.level(width)?;
-        width /= 2;
-    }
-    dev.sync()?;
-    let tree_time = start.elapsed();
+    let (tree, upload, tree_time) = build(dev, &p, 1)?;
     let start = Instant::now();
     tree.divide()?;
     dev.sync()?;

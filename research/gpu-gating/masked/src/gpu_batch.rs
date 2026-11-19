@@ -13,10 +13,17 @@ mod tests;
 /// Operation wall times and explicit allocations, excluding CUDA infrastructure.
 pub struct Timing {
     pub stage: Duration,
+    /// Included in stage: count and validate runs, prefix tile offsets and predict run visits.
+    pub index_time: Duration,
     pub upload: Duration,
     pub build: Duration,
     pub round_setup: Duration,
     pub upload_bytes: usize,
+    /// Host vector capacities during preparation, excluding the original prover inputs.
+    pub host_buffer_bytes: usize,
+    pub scheduled_runs: u64,
+    /// Position/run range tests across the selected tiles.
+    pub schedule_checks: u64,
     /// All upload buffers and both output tables coexist during construction.
     pub construction_peak_bytes: usize,
     /// Both tables, descriptors, coefficients and all round scratch capacities.
@@ -35,39 +42,112 @@ pub fn prepare<'a>(
     claims: &[Claim<K>],
     gammas: &[K],
 ) -> Result<(DeviceMasked<'a>, K, Timing), Error> {
+    prepare_message(dev, source.source(), source.message(), claims, gammas)
+}
+
+/// The same preparation from the source descriptor and its original message.
+pub fn prepare_message<'a>(
+    dev: &'a Device,
+    source: &stele_reductions::stele_pcs::Source<K>,
+    message: &[crate::M31],
+    claims: &[Claim<K>],
+    gammas: &[K],
+) -> Result<(DeviceMasked<'a>, K, Timing), Error> {
     let start = Instant::now();
-    let p = Prepared::new(source.source(), source.message(), claims, gammas).ok_or(Error::Value)?;
+    let p = Prepared::new(source, message, claims, gammas).ok_or(Error::Value)?;
     let stage = start.elapsed();
-    let (summand, mut timing) = build(dev, &p)?;
+    let (summand, mut timing) = build(dev, &p, None)?;
     timing.stage = stage;
     Ok((summand, p.claimed_sum, timing))
 }
 
-fn build<'a>(dev: &'a Device, p: &Prepared) -> Result<(DeviceMasked<'a>, Timing), Error> {
+/// Build the batch face from the identical on-device source that was certified.
+pub fn prepare_original<'a>(
+    dev: &'a Device,
+    source: &stele_reductions::stele_pcs::Source<K>,
+    owner: &super::OriginalMessage<'_>,
+    claims: &[Claim<K>],
+    gammas: &[K],
+) -> Result<(DeviceMasked<'a>, K, Timing), Error> {
     let start = Instant::now();
-    let message = dev.stream.clone_htod(&p.message)?;
-    let pairs = dev.stream.clone_htod(&p.pairs)?;
+    let original = owner.words(dev, source.descriptor().id, source.rows(), source.columns())?;
+    let (p, _) = if crate::batch::multi_gib_weights(claims) {
+        crate::batch::pack_with_message::<true>(source, None, claims, gammas)
+    } else {
+        crate::batch::pack_with_message::<false>(source, None, claims, gammas)
+    }
+    .ok_or(Error::Value)?;
+    let stage = start.elapsed();
+    let (state, mut timing) = build(dev, &p, Some(original))?;
+    timing.stage = stage;
+    Ok((state, p.claimed_sum, timing))
+}
+
+fn build<'a>(
+    dev: &'a Device,
+    p: &Prepared,
+    original: Option<&cudarc::driver::CudaSlice<u32>>,
+) -> Result<(DeviceMasked<'a>, Timing), Error> {
+    let coefficients = vec![(K::from_i64(1), vec![0, 1])];
+    let terms = crate::round::Terms::new(2, &coefficients, 3).map_err(Error::Shape)?;
+    // The two-factor dense state retains pointers, flags, two offsets,
+    // two term indices, a coefficient and fixed three-node round scratch.
+    let logical_tables = p
+        .len
+        .checked_mul(20)
+        .ok_or(Error::Shape("batch table bytes"))?;
+    let blocks = dev.grid(p.len / 2).grid_dim.0 as usize;
+    let round_descriptors_and_scratch = 72 + 48 * (blocks + 1);
+    let initial_round = logical_tables
+        .checked_add(round_descriptors_and_scratch)
+        .ok_or(Error::Shape("batch round bytes"))?;
+    let promotion = initial_round
+        .checked_add(p.len.checked_mul(8).ok_or(Error::Value)?)
+        .ok_or(Error::Value)?;
+    let construction = p
+        .upload_bytes()
+        .checked_add(logical_tables)
+        .ok_or(Error::Value)?;
+    dev.require_budget(construction.max(promotion))?;
+    let start = Instant::now();
+    let temporary = if original.is_some() {
+        None
+    } else {
+        Some(dev.stream.clone_htod(&p.message)?)
+    };
+    let message = original.or(temporary.as_ref()).ok_or(Error::Value)?;
+    let packed = dev.stream.clone_htod(&p.weights)?;
+    let gammas = dev.stream.clone_htod(&p.gammas)?;
+    let runs = dev.stream.clone_htod(&p.runs)?;
     let offsets = dev.stream.clone_htod(&p.offsets)?;
     let weights = dev.stream.alloc_zeros::<u32>(4 * p.len)?;
     let face = dev.stream.alloc_zeros::<u32>(p.len)?;
     dev.sync()?;
     let upload = start.elapsed();
     let start = Instant::now();
-    let (mp, pp, op, wp, fp, columns, len) = (
-        dev.ptr(&message),
-        dev.ptr(&pairs),
-        dev.ptr(&offsets),
-        dev.ptr(&weights),
-        dev.ptr(&face),
-        p.columns as u64,
-        p.len as u64,
-    );
+    let mp = dev.ptr(message);
+    let wp = dev.ptr(&weights);
+    let fp = dev.ptr(&face);
+    let columns = p.columns as u64;
+    let len = p.len as u64;
+    let half = len / 2;
+    let tile = crate::batch::TILE as u64;
+    let packed_ptr = dev.ptr(&packed);
+    let gamma_ptr = dev.ptr(&gammas);
+    let runs_ptr = dev.ptr(&runs);
+    let offset_ptr = dev.ptr(&offsets);
     let f = dev.function("batch_weights")?;
     let mut b = dev.stream.launch_builder(&f);
-    b.arg(&pp).arg(&op).arg(&wp).arg(&len);
-    // SAFETY: Prepared bounds offsets by pairs and data positions by len/2.
-    // Each thread owns one canonical output; claim order is fixed (RFC-0014 §1).
-    unsafe { b.launch(dev.grid(p.len)) }?;
+    b.arg(&packed_ptr)
+        .arg(&gamma_ptr)
+        .arg(&runs_ptr)
+        .arg(&offset_ptr)
+        .arg(&wp)
+        .arg(&tile)
+        .arg(&half);
+    // SAFETY: Prepared bounds each tile interval, weight span and claim index.
+    // The launch visits only the data face. The zero-initialized mask face is retained.
+    unsafe { b.launch(dev.grid(p.len / 2)) }?;
     let f = dev.function("batch_face")?;
     let mut b = dev.stream.launch_builder(&f);
     b.arg(&mp).arg(&fp).arg(&columns).arg(&len);
@@ -76,7 +156,7 @@ fn build<'a>(dev: &'a Device, p: &Prepared) -> Result<(DeviceMasked<'a>, Timing)
     unsafe { b.launch(dev.grid(p.len)) }?;
     dev.sync()?;
     let build = start.elapsed();
-    drop((message, pairs, offsets));
+    drop((temporary, packed, gammas, runs, offsets));
     let start = Instant::now();
     let factors = vec![
         Factor {
@@ -90,20 +170,22 @@ fn build<'a>(dev: &'a Device, p: &Prepared) -> Result<(DeviceMasked<'a>, Timing)
             v: None,
         },
     ];
-    let state = dev.summand(factors, vec![(K::from_i64(1), vec![0, 1])], 3, p.len)?;
+    let state = dev.summand(factors, &coefficients, terms, 3, p.len)?;
     dev.sync()?;
     let round_setup = start.elapsed();
-    let scratch = 8 * (state.xs.len() + state.rs.len())
-        + 4 * (state.coef.len() + state.partials.len() + state.out.len());
-    let initial_round_buffer_bytes = 20 * p.len + scratch;
+    let initial_round_buffer_bytes = state.device_buffer_bytes();
     Ok((
         state,
         Timing {
             stage: Duration::ZERO,
+            index_time: p.index_time,
             upload,
             build,
             round_setup,
             upload_bytes: p.upload_bytes(),
+            host_buffer_bytes: p.host_buffer_bytes(),
+            scheduled_runs: p.offsets.last().copied().unwrap_or(0),
+            schedule_checks: p.schedule_checks,
             construction_peak_bytes: p.upload_bytes() + 20 * p.len,
             initial_round_buffer_bytes,
             first_fold_peak_bytes: initial_round_buffer_bytes + 8 * p.len,

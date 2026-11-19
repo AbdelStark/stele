@@ -4418,3 +4418,87 @@ two-block mask source. The host retains the certificate, both different
 opening contexts, Fiat–Shamir and all aborts. This extends the selected
 operations of byte 4. E20-22 qualifies the complete route.
 [Independent lane C review](../reviews/e20-21-shared-batch.md)
+
+## ADR-137: Carry failed production-shape GPU preparation into a fixed-code research successor (task E16-40l)
+
+Context: E16-40d job 6685 timed out after starting production shape 9.
+E16-40k diagnostic 6726 localized preparation phases without establishing a
+unique driver/compiler cause. Its one candidate moved QM31 products out of line;
+qualification 6730 passed the case-9 regression and representative rounds, then
+timed out at shape 11. The candidate was reported and reverted exactly. Complete
+inventory qualification remains unmet. Raw evidence and independent negative-result
+reviews are retained in `agents/reviews/e16-40k-qualification-failure.md`.
+
+Decision:
+- E16-40l is a separately scoped lane-V research successor in the existing stack.
+  Its fixed CUDA program consumes checked term/factor descriptors, avoiding code
+  growth with the term list. It preserves every factor, term, coefficient, mask,
+  seed, field operation and fixed reduction order of the CPU statement.
+- E16-40d and E16-40k remain unfinished. E16-40l carries their original complete
+  1,000-case acceptance and preparation/cost-accounting requirements; neither
+  predecessor can be closed until those requirements have evidence. Their old
+  campaign budgets do not reopen and their archives are not retried.
+- The successor has one reviewed implementation and one bounded H100 campaign.
+  A failed candidate is reported and rejected before any further optimization.
+  Host expression/reference tests and malformed-descriptor controls precede it.
+- This trades shape-specialized code for descriptor and repeated factor reads.
+  Account for those reads, descriptor transfers, retained buffers and cold
+  setup in `c_sc`/`T_misc`; no speedup or complete device budget is assumed.
+- No protocol amendment is required: the Accepted arithmetic, challenge schedule,
+  verifier, proof bytes and production interfaces are unchanged. Research-only
+  execution remains under ADR-123; ADR-127's core-backend NO-GO is unchanged.
+
+Status: Proposed research disposition, pending independent review with E16-40l.
+No acceptance or performance claim follows from this planning record.
+
+Disposition after independent implementation and capture reviews: accepted as a
+research-only successor. Both owning-GPU/spec and another-lane standards reviews
+passed before the single H100 submission. Job 6732 completed the unchanged full
+reduced inventory, both preparation regressions, canonical/lazy descriptors and
+the affected batch path at source `75302055`; provenance and exclusions are in
+`agents/reviews/e16-40l-qualification.md`. This retires the demonstrated reduced-
+inventory preparation failure for the candidate, not the remaining full prover
+or actual-size risk. Post-execution review and mandatory merge gates remain due;
+all three tasks stay in progress until their remaining acceptance is met.
+
+## ADR-138 — Reopen the development-tier resident GPU implementation on the measured E45 candidate (E16-40ag)
+
+ADR-127 requires a measured resident ceiling of at least 3× before opening
+a core backend task. The three verified stories42M byte-4, 32-token proofs
+on the M4 Max use E45 CPU source `da0da773`. Lucid job 6800 measured
+the actual source, lookup, GKR and ordinary batch operations on one H100
+NVL at source `323f6218`. All 385 GKR steps ran within the measured
+39,786,276,454-byte device budget while the original sources stayed live.
+
+| E45 CPU wall (s) | Projected resident (s) | Resident ratio | Projected cold (s) | Cold ratio |
+|---:|---:|---:|---:|---:|
+| 220.08 | 67.655 | 3.253× | 72.981 | 3.016× |
+| 221.23 | 67.215 | 3.291× | 72.541 | 3.050× |
+| 220.50 | 68.733 | 3.208× | 74.059 | 2.977× |
+
+The calculation replaces seven disjoint CPU intervals. It keeps the full
+masked relation and ordinary batch round costs, source certification,
+self-verification, and the rest of the original CPU wall. It charges the
+largest observed host remainders for GKR, source admission and batch setup,
+the actual device work and transfers, and the observed source lock wait.
+Cold operation adds a measured context and program setup. The third cold
+case falls below 3×. The two hosts have different CPUs. Each ratio is a
+projection for the measured workload and source revision. The inference
+proof that qualified the component measurements was CPU-authored.
+
+Accepted after independent lane Z review of `b711bd76`. All three resident projections
+clear ADR-127's threshold. Reopen the development-tier implementation on
+this E45-qualified source, through an interface-first task and an explicit
+field-kernel dependency amendment. Carry E45 or an equally qualified CPU
+baseline into the eventual merge tree. Keep the CPU default, the ordinary
+verifier, protocol bytes, transcript and index ownership. Charge all stages
+in the subsequent same-host end-to-end CPU and GPU benchmark. Release
+requires the actual parity gate, independently verified complete proofs
+and memory evidence. The broader E10-01 and E16-37 milestones retain
+their original acceptance criteria. This decision grants no profile promotion.
+The reviewer reproduced all six ratios, the 519,321,501 ns host setup
+charge and the inclusion of the full late-source preparation interval.
+
+Machine-readable evidence, input hashes, retained stages and per-sample charges
+are in [the projection](../../bench/ledger/e16-40ag-t32-resident-projection.json)
+and [the host calibration](../../bench/ledger/e16-40ag-t32-mac-source-batch-host.json).

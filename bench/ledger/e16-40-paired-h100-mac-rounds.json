@@ -1,0 +1,143 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "60f2a39af07e749d6a85ba0dbfa10d34556b2157",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "Apple M4 Max and NVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 95830 MiB, 570.211.01",
+  "driver": "570.211.01",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "cpu/gkr-24/median_rounds_ns": 1112731921,
+    "cpu/gkr-26/median_rounds_ns": 4212545416,
+    "cpu/gkr-27/median_rounds_ns": 11032527912,
+    "cpu/relation-24/median_rounds_ns": 536027584,
+    "cpu/relation-26/median_rounds_ns": 2174961748,
+    "cpu/relation-27/median_rounds_ns": 4447466832,
+    "gpu/gkr-24/median_rounds_ns": 55108356,
+    "gpu/gkr-26/median_rounds_ns": 198443625,
+    "gpu/gkr-27/median_rounds_ns": 389719725,
+    "gpu/relation-24/median_rounds_ns": 18655301,
+    "gpu/relation-26/median_rounds_ns": 62364146,
+    "gpu/relation-27/median_rounds_ns": 119004557
+  },
+  "kind": "micro",
+  "model_config": {
+    "commit": "60f2a39af07e749d6a85ba0dbfa10d34556b2157",
+    "gpu_binary_sha256": "72ad2a0e6d8a04c87d0d0851a95bceb06ce7fdb38425e17b51db557ed0916053",
+    "gpu_pin_sha256": "67a0d0e0f25570e67ebc8bb5d3ce24fa93c062e80cce4e5aafb02398e3edce9b",
+    "gpu_result_sha256": "ecf7fabb5b36a733cfd6023280e98762cd46ad3fed574ddb29db2faaf18e1a64",
+    "inputs": "E16-35 relation and interior GKR templates. Seed 35, n=24/26/27, three processes per backend and geometry.",
+    "job_id": "6775",
+    "mac_binary_sha256": "f183269c6e38bf0588578051a49aea1a4bc018ad3fe9f4a8c25d69ca97a84544",
+    "mac_pin_sha256": "c77e796314ec7cf90733531aafc4688ed6f156ec6bb5c6c0014dc80f33dd6aaa",
+    "mac_result_sha256": "a57445873f54c123823d13cde9c00e3eae776694b1520e7efa9aa19e07ccbec9",
+    "round_and_final_fnv64": {
+      "gkr-24": "4962e1acd086a821",
+      "gkr-26": "6badf945b83ec187",
+      "gkr-27": "91bcc9d88acdc592",
+      "relation-24": "40866a1e52c7960e",
+      "relation-26": "4707615ef238719c",
+      "relation-27": "72b349931f949025"
+    },
+    "rounds_ns": {
+      "gkr-24": {
+        "cpu": [
+          989703211,
+          1169482668,
+          1112731921
+        ],
+        "gpu": [
+          55611989,
+          55108356,
+          54615575
+        ]
+      },
+      "gkr-26": {
+        "cpu": [
+          3913328205,
+          4212545416,
+          4428118503
+        ],
+        "gpu": [
+          198250863,
+          198508784,
+          198443625
+        ]
+      },
+      "gkr-27": {
+        "cpu": [
+          13431939712,
+          10665697002,
+          11032527912
+        ],
+        "gpu": [
+          389738302,
+          389719725,
+          389188716
+        ]
+      },
+      "relation-24": {
+        "cpu": [
+          661083082,
+          536027584,
+          471398875
+        ],
+        "gpu": [
+          18655301,
+          19514646,
+          18592840
+        ]
+      },
+      "relation-26": {
+        "cpu": [
+          2000610502,
+          2327798712,
+          2174961748
+        ],
+        "gpu": [
+          63775111,
+          62364146,
+          61836017
+        ]
+      },
+      "relation-27": {
+        "cpu": [
+          4543677799,
+          4111335251,
+          4447466832
+        ],
+        "gpu": [
+          118911603,
+          119004557,
+          124248682
+        ]
+      }
+    }
+  },
+  "note": "Paired E16-36 masked rounds and folds. Each Mac process began at one-minute load below 3 with 16 Rayon threads. Each CUDA fold synchronized before stopping its timer. FNV-1a matches every case over all round polynomials and final values. These digests are a regression comparison, not a collision-resistant equality proof. prover_time_ns sums wall times of the 18 timed device processes including startup, upload, construction and final download. The six stage times are medians of resident rounds and folds only. The hand-built shapes do not qualify whole production stages, source material, an integrated proof or a backend speedup. The schema standard micro tag claims no security level or rung.",
+  "plan_digest": "67a0d0e0f25570e67ebc8bb5d3ce24fa93c062e80cce4e5aafb02398e3edce9b",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 273987951350,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "gpu/gkr-24/median_rounds": 55108356,
+    "gpu/gkr-26/median_rounds": 198443625,
+    "gpu/gkr-27/median_rounds": 389719725,
+    "gpu/relation-24/median_rounds": 18655301,
+    "gpu/relation-26/median_rounds": 62364146,
+    "gpu/relation-27/median_rounds": 119004557
+  },
+  "toolchain": "rustc 1.90.0 on both hosts, locked release artifacts",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-masked-rounds-paired-h100-mac"
+}

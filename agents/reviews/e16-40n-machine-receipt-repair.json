@@ -1,0 +1,17 @@
+{
+  "reason": "Machine metadata host.json collided with the CPU host command receipt; writer changed to machine.json before any hardware execution.",
+  "old_pins_sha256": "155b99f11cbf581d261c9429a46c84ed1fb413220cc15908340fd58d4cd7648b",
+  "pins_sha256": "90ac22ed5e35f88b29288576eb1d26f7b442591ec53bdee59d8f72eef5d1fab6",
+  "source_unchanged": "e192fe0b6d4ec604c4d8e922c187532049c8a5dc",
+  "reviews": {
+    "spec": "machine_receipt_spec_review: PASS; exact filename-only capture repair, preserved pins and red/green real-entry regression",
+    "standards": "machine_receipt_standards_review: PASS; exact pin equality, unchanged source/corpus/deadlines, regression mutation rejection"
+  },
+  "linux_preflight": {
+    "controls": 6,
+    "passed": 6,
+    "skipped": 0,
+    "log_sha256": "13f17a0c2ca06bfbd796bc550caf9975ff8b10c8d931d31bc432354eaa18194a"
+  },
+  "submission": "Not submitted; wait for accepted E16-40m hardware evidence"
+}

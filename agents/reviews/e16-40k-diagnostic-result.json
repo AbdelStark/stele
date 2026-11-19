@@ -1,0 +1,80 @@
+{
+  "job": "6726",
+  "status": "stall_reproduced",
+  "source": "8038e131e93d59c08328c7c94a979f3c551058e1",
+  "input_manifest_sha256": "6d3e7d41914471fe830ad0ffc2705fcd7865f99e51eacf5bfd6d5e4e7b7b8dd6",
+  "evidence_manifest_sha256": "b375a130e66076e7104b3fb7917c8e9ad2121ce40452f6f7d5a09dec9296ed0c",
+  "binary_sha256": "c30c0a02699d2ebf97136c621d4568f5657ff2d3ca07634036721457d3fdfe29",
+  "scheduler_state": "COMPLETED",
+  "scheduler_exit": "0:0",
+  "terminal_readback_sha256": "a25f02e6b5ec9a014d6ce52ffe9e44aa7ed11edac4e72e92110d8254bcce2475",
+  "payloads": {
+    "case-0-round-1.out": "c17b617b98256078a2a905223aa317d4627481fdc962e07d8018eb754455ece0",
+    "case-0-round-0.ptx": "bd503e471e33fcdab1f53f8c07518aef53baa5afa2dd7f83c5d5880a42fbc99d",
+    "fetch.json": "56c3283a62684518264934147e781fe38c5e3cd2ba3f4901f45dddfdf94d0d8f",
+    "extract-source.json": "c76a158b62fe05d304ca4884af3b9ad9eaa60983ead2f31566b1c1fd989f960a",
+    "case-0-round-0.json": "acaa12b04827772b2d6932f685de6597bc58d25e415ee11c27401d5f7df07a2d",
+    "case-0-round-1.json": "018d7c1ff961c6b138b70fbc3bb039d55228d03813659807f5869af4c40dd935",
+    "case-0-round-0.out": "31c40a665889c3f56d25fd811adc5d73f63954b4e2ae7575564b897335991bfb",
+    "extract-probe.json": "d1b1930433784d33d7ae9adedcf8f25d6988b19a9eb3e1dd51ede205fa45eb0e",
+    "gpu.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "toolchain.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result.json": "8bc86372ddc813f1f286af1d87d149797a51029a510748d8c5371cbeb3fbb14b",
+    "toolchain.out": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3",
+    "case-9-round-0.json": "eda2f5952e8e4207230a30509e8018def0484e3213250091dae9b4ef1a1b1e4e",
+    "build.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu.out": "d34ee2cdb823d5397408734aef8b15ea8104016a97db8986818f6c792b3055ca",
+    "fetch.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "extract-probe.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu.json": "f62a6fd12d7d8cbf1d565d0a08a6990164b5ff0fde9ef7ddb67f373ca2028f95",
+    "extract-probe.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "extract-source.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "case-0-round-1.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "host.json": "bf9e2f695c40eac5de0327090cd7d6229008afc6ed5e9f2bf161fbcae80eae3f",
+    "case-9-round-0.ptx": "587e1ada332902b77bac0f93e40c91d8b3e20082818f70134aa2ceeff7164a72",
+    "case-9-round-0.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "case-0-round-1.ptx": "760d971e49976862b6ea8a9ac6d96de56d895c2bb070737812007b662300db06",
+    "case-9-round-1.out": "06c4651426742c3802e55e774703d9e1bb049d83debe5084bef2467f56a8bdb7",
+    "toolchain.json": "ca00a09036f41ff3143bbc0468e905ca2e8f22d2f43f593f0167f11e050e4824",
+    "build.err": "38b9c60649a59649b5e8c6f1230f78835be3151de673b4920dda2e24f561ef49",
+    "extract-source.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "case-9-round-1.ptx": "14c8f0efcecdadc696b429b61e8351838c7594807c583949e852da587006ab4d",
+    "build.json": "12d3fc266a0915e24ca89cb30e1a9437155463a53821c622cdd93f6724b8c002",
+    "case-9-round-0.out": "4c4ec2d3f59efbe705b6a1c698ccaadc3034ab8dd69bf6b0454a3e493080eb29",
+    "case-9-round-1.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "case-9-round-1.json": "725ff115a8fea0c5ac887c29d5fa403688b6a0b12c5188bfe27b0fb5c937ea8f",
+    "case-0-round-0.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fetch.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "outcomes": [
+    {
+      "case": 0,
+      "round": 0,
+      "status": "completed",
+      "exit_code": 0
+    },
+    {
+      "case": 0,
+      "round": 1,
+      "status": "completed",
+      "exit_code": 0
+    },
+    {
+      "case": 9,
+      "round": 0,
+      "status": "timed_out",
+      "exit_code": -15,
+      "last_phase": "actual_prepare",
+      "timeout_reason": "phase"
+    },
+    {
+      "case": 9,
+      "round": 1,
+      "status": "timed_out",
+      "exit_code": -15,
+      "last_phase": "module",
+      "timeout_reason": "phase"
+    }
+  ],
+  "no_parity_or_performance_credit": true
+}

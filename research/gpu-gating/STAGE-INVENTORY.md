@@ -133,3 +133,39 @@ The public evidence archive is identified by SHA-256
 all 75 payload files were hash-checked after download. Private state and seeds
 are excluded. These measurements qualify CPU costs for further device research;
 they do not lift ADR-127's NO-GO or establish an integrated GPU prover.
+
+## Quiet-start Mac baseline (E16-40o)
+
+Three current-source CPU proofs ran on the original Apple M4 Max host (48 GiB,
+16 Rayon threads), from clean source `60f2a39a`. Each measured command started
+below one-minute load 3. This is `stories42M` at `T = 32`, checked `23..32`, below
+L2a's `T = 64`. One fresh P8 commitment advanced through indices 0, 1 and 2;
+no secret state was copied or restored. Every proof independently verified against
+its expected model and rejected the wrong-model control with the named error.
+
+| Index | Prove process (s) | Verify process (s) | GKR factors (s) | GKR rounds (s) | GKR claim routing (s) | Ledger |
+|---|---:|---:|---:|---:|---:|---|
+| 0 | 287.99 | 21.57 | 27.304 | 99.024 | 8.001 | [sample 0](../../bench/ledger/e16-40o-dev-zk-stories42m-t32-mac-0.json) |
+| 1 | 288.63 | 21.55 | 25.855 | 99.411 | 7.790 | [sample 1](../../bench/ledger/e16-40o-dev-zk-stories42m-t32-mac-1.json) |
+| 2 | 285.43 | 21.71 | 26.715 | 98.464 | 7.881 | [sample 2](../../bench/ledger/e16-40o-dev-zk-stories42m-t32-mac-2.json) |
+
+The [scoreboard](../../bench/scoreboard.md) carries the three corresponding
+`e16-40o` rows. Every proof contains 21,411,006 bytes. All samples preserve the
+complete inventory above: 876 relations, 385 GKR steps, 21 lookups, three source
+batches and 64 distinct shapes. Construction, rounds and claim routing remain
+separate costs; none can be assigned another stage's device ratio. Parent laps
+already include their children, and unlabelled remainders remain CPU work.
+
+BSD `time -l` reports whole-process time and RSS, including witness generation,
+self-verification and memory management. Raw observations retain load, VM,
+compression, swap and memory pressure before and after commands. Quiet starts
+do not establish host isolation. All attempts are retained; there was no proof
+retry, discarded sample or warmup. CLI proof seeds are fresh OS draws, so these
+samples do not establish matched-seed parity or a comparison with another host
+or source revision. No fitted cost-model constant changes.
+
+The [evidence record](../../agents/reviews/e16-40o-profile.md) identifies source,
+binary, input and capture pins and the public archive. This retires the stale
+Mac stage-profile risk. Quiet Mac round calibration, complete device operations
+and memory accounting, ADR-127 reopening, and integrated GPU proof parity remain
+separate obligations.

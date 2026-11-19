@@ -1,9 +1,15 @@
-// RFC-0013 A5 item 5: repeated positions accumulate in original claim order.
-extern "C" __global__ void batch_weights(const u32 *pairs, const u64 *offsets, u32 *weights, u64 len) {
-  GRID_STRIDE(i, len) {
+// RFC-0013 A5 item 5: one thread owns one data position. Runs in its tile
+// preserve claim and contribution order, even for overlapping or repeated positions.
+extern "C" __global__ void batch_weights(const u32 *packed, const u32 *gammas,
+    const u64 *runs, const u64 *offsets, u32 *weights, u64 tile, u64 half) {
+  GRID_STRIDE(i, half) {
     Q sum = qzero();
-    if (i < len/2) for (u64 j = offsets[i]; j < offsets[i+1]; ++j)
-      sum = qadd(sum, qmul(qload(pairs, 2*j), qload(pairs, 2*j+1)));
+    const u64 t = i / tile;
+    for (u64 j = offsets[t]; j < offsets[t + 1]; ++j) {
+      const u64 *r = runs + 4*j;
+      if (r[0] <= i && i < r[1])
+        sum = qadd(sum, qmul(qload(packed, r[2] + (i-r[0])), qload(gammas, r[3])));
+    }
     qstore(weights, i, sum);
   }
 }

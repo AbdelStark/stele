@@ -1,0 +1,125 @@
+"""ADR-127. Project a resident T32 proof from disjoint measured operations on both hosts."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import runpy
+import tarfile
+
+HERE = Path(__file__).resolve().parent
+REPLACED = ("sources_prepare", "top_tree", "gkr_tree", "gkr_factors",
+            "gkr_rounds", "batch_face", "batch_weights")
+
+
+def project(cpu_ns, laps, host_gkr_ns, host_setup_ns, device_ns, cold_ns, qualification_ns):
+    removed = {name: laps["lap_zk_detail_" + name] for name in REPLACED}
+    retained = cpu_ns - sum(removed.values())
+    if min(removed.values()) < 0 or min(retained, host_gkr_ns, host_setup_ns, device_ns, cold_ns) <= 0 or qualification_ns < 0:
+        raise ValueError("invalid disjoint timing")
+    # In particular the full original ordinary batch rounds stay charged. Only their dense
+    # arithmetic moved. This bounds the unmeasured portion for masking and the transcript.
+    warm = retained + host_gkr_ns + host_setup_ns + device_ns
+    return dict(cpu_ns=cpu_ns, replaced_laps_ns=removed, retained_cpu_ns=retained,
+                calibrated_host_gkr_ns=host_gkr_ns, calibrated_host_setup_ns=host_setup_ns, measured_h100_ns=device_ns,
+                warm_projected_ns=warm, cold_projected_ns=warm+cold_ns,
+                including_oracle_readbacks_ns=warm+qualification_ns,
+                warm_reaches_three=cpu_ns >= 3*warm, cold_reaches_three=cpu_ns >= 3*(warm+cold_ns))
+
+
+def capture(archive, expected_sha256):
+    if hashlib.sha256(archive.read_bytes()).hexdigest() != expected_sha256:
+        raise ValueError("wrong H100 evidence archive")
+    names = ("run/result.json", "run/prove.err", "run/verify.out", "run/wrong.out")
+    with tarfile.open(archive) as bundle:
+        def read(name):
+            member = bundle.getmember(name)
+            if not member.isfile() or not 0 < member.size < 40_000_000:
+                raise ValueError("unexpected public receipt")
+            return bundle.extractfile(member).read()
+        result, log, accepted, rejected = (read(n) for n in names)
+    checked = accepted.decode().splitlines()
+    if checked[-1] != "YES" or rejected.decode().splitlines()[-1] != "NO: model differs from --expect-model":
+        raise ValueError("missing verifier controls")
+    statement = {}
+    for key in ("cqis_id", "T", "tokens", "checked", "next"):
+        values = [line[len(key)+1:] for line in checked if line.startswith(key + " ")]
+        if len(values) != 1:
+            raise ValueError("missing public statement field " + key)
+        statement[key] = values[0]
+    return json.loads(result), log, statement
+
+
+def calculate(mac, calibration, setup_calibration, hardware, log, result, statement):
+    if result["profile"] != "dev-zk" or result["workload"] != "dev/stories42m-t32":
+        raise ValueError("wrong original proof")
+    h = hardware["model_config"]
+    original = result["inputs"]
+    if (result["proof_sha256"] != h["proof_sha256"] or result["inputs"] != h["inputs"]
+            or hashlib.sha256(log).hexdigest() != h["public_receipt_sha256"]["run/prove.err"]):
+        raise ValueError("hardware receipt changed")
+    text = log.decode()
+    resident = runpy.run_path(str(HERE.parent / "t32-original/receipt.py"))["summarize"](text)
+    views = runpy.run_path(str(HERE.parent / "t32-alias/receipt.py"))["device_summary"](text)
+    gkr = resident["gkr"]
+    if gkr["on_device"] != 385 or gkr["budget_rejections"] or resident["original_uploads"] != 5:
+        raise ValueError("incomplete device coverage")
+    source = resident["source"]
+    # The source visit starts after taking a process-local lock. Charging all measured waits
+    # is conservative when CPU certificate workers wait for another recorded GPU visit.
+    waits = sum(r["lock_wait_ns"] for r in source["sources"])
+    charges = dict(source_visits=source["device_ns"], source_lock_wait=waits,
+                   original_column_layout=views["charged_layout_ns"], lookup_tops=resident["top"]["gpu_ns"],
+                   lookup_rebuilds=resident["rebuild"]["gpu_ns"], gkr=gkr["charged"]["device_path_ns"],
+                   ordinary_batch_prepare=resident["batch_prepare"]["gpu_ns"],
+                   ordinary_batch_dense=resident["batch_dense"]["gpu_ns"])
+    qualifications = source["host_oracle_compare_ns"] + views["qualification_ns"] + sum(
+        resident[k]["qualification_ns"] for k in ("top", "rebuild"))
+    c = calibration["model_config"]
+    host = c["samples"]
+    if (c["process"]["input_sha256"] != original or [r["index"] for r in host] != [0, 1, 2]
+            or any(r["load_before_thousandths"][0] >= 3000 for r in host)):
+        raise ValueError("wrong laps-host calibration")
+    host_ns = max(r["stages"]["host_factor_ns"] + r["stages"]["host_round_ns"] for r in host)
+    if ([r["model_config"]["proof_index"] for r in mac] != [0, 1, 2]
+            or len({r["commit"] for r in mac}) != 1
+            or len({r["model_config"]["proof_sha256"] for r in mac}) != 3):
+        raise ValueError("expected three distinct checks from the same CPU producer")
+    wrappers = setup_calibration["model_config"]
+    setup = wrappers["samples"]
+    if (wrappers["process"]["operation_source"] != mac[0]["commit"]
+            or wrappers["process"]["input_sha256"] != original or [r["index"] for r in setup] != [0, 1, 2]
+            or any(r["load_before_thousandths"][0] >= 3000 for r in setup)
+            or setup_calibration["device"] != calibration["device"]):
+        raise ValueError("wrong early source / ordinary batch host calibration")
+    setup_ns = max(r["stages"]["early_source_host_ns"] + r["stages"]["ordinary_batch_setup_host_ns"] for r in setup)
+    out = []
+    for r in mac:
+        m = r["model_config"]
+        if (r["kind"] != "inference" or r["profile"] != "development" or not r["bindings_all_on"]
+                or r["workload"] != result["workload"] or m["profile_byte"] != 4 or m["threads"] != 16
+                or not calibration["device"].startswith(r["device"] + ",") or r["toolchain"] != calibration["toolchain"]
+                or {k: m["statement"][k] for k in statement} != statement
+                or m["evidence"]["input_hashes"] != original or m["statement"]["checked"] != "23..32"
+                or int(m["statement"]["T"]) != 32 or r["controls"]["passed"] < 1
+                or r["controls"]["failed"] != 0 or r["verifier_time_ns"]["rust"] <= 0):
+            raise ValueError("wrong CPU reference or statement")
+        out.append(project(r["prover_time_ns"], r["stage_times_ns"], host_ns, setup_ns, sum(charges.values()),
+                           gkr["cold_ns"] + source["cold_ns"], qualifications))
+    return dict(cpu_commit=mac[0]["commit"], h100_commit=hardware["commit"], calibration_commit=calibration["commit"],
+                setup_calibration_commit=setup_calibration["commit"], charges_ns=charges, oracle_qualification_ns=qualifications, samples=out,
+                whole_prover_type="cross-host projection", measured_full_gpu_inference_proofs=0)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in ("hardware_ledger", "public_archive", "mac_gkr_ledger", "mac_setup_ledger"):
+        parser.add_argument(name, type=Path)
+    parser.add_argument("cpu_ledgers", nargs=3, type=Path)
+    args = parser.parse_args()
+    def read(p):
+        return json.loads(p.read_bytes())
+    hardware = read(args.hardware_ledger)
+    result, log, statement = capture(args.public_archive, hardware["model_config"]["evidence_sha256"])
+    report = calculate([read(p) for p in args.cpu_ledgers], read(args.mac_gkr_ledger), read(args.mac_setup_ledger),
+                       hardware, log, result, statement)
+    print(json.dumps(report, sort_keys=True, indent=2))

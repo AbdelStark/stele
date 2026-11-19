@@ -1,0 +1,137 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "0a59b59428e4653fde5fe73bc98cd632f4d3fc2c",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 95830 MiB",
+  "driver": "570.211.01",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "admitted_compact_leaf_steps": 20,
+    "budget_rejections": 2,
+    "d2h_bytes": 540224,
+    "h2d_bytes": 289153392,
+    "on_device": 383,
+    "pool_reserved_high": 30098325504,
+    "pool_used_high": 29259566480,
+    "steps": 385
+  },
+  "kind": "micro",
+  "model_config": {
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "cli_sha256": "21b2633c281771a548980e7c081b7d9d844777c5da67ebc6c747610adae93030",
+    "evidence_archive_sha256": "02abc7e701ce07b23ca149036dfbec0e8eb0737c350165608c2633137614d716",
+    "evidence_location": "lucid-cluster:~/stele-codex/e16-40v-t32-retry/public-6781.tar.gz",
+    "inputs": {
+      "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+      "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+      "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+      "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+    },
+    "job": "6781",
+    "plan": {
+      "checked": "23..32",
+      "inputs": {
+        "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+        "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+        "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+        "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+      },
+      "lifetime_capacity": 8,
+      "lifetime_index": 0,
+      "profile": "dev-zk",
+      "stages": [
+        "gkr_factors",
+        "gkr_rounds"
+      ],
+      "tokens": 32,
+      "workload": "dev/stories42m-t32"
+    },
+    "profile": "dev-zk",
+    "proof_sha256": "0d699228518f1995b7d193bb4d46b3b8710d6003e86e6c281789b4aeae5d2252",
+    "public_evidence_sha256": {
+      "machine/slurm-final.txt": "9740bb85b585d8a8ce329398f00f252cba2af8e0eaf7da93ddc8c5bfa5726146",
+      "run/prove.err": "e087a12eb481e4a24ffb0057c8674474bac9eab83e9a4f03ab6445c99a10a5f8",
+      "run/prove.time": "207a39c0cb92c46327d944b470d8490e3308ccad4cf9ab240192d02ff36c674a",
+      "run/result.json": "fd050a7e4730268450afdb2e923a7689cc21e7a126dc424bd92ce4746515dfa1",
+      "run/verify.out": "e6505c555878bf9af17aa39db77693ba6c7fe395723a1fdeb56e01d9caa7f86f",
+      "run/wrong.out": "cdb67c4c9febc2c988be3b9189837f48995bef5d593a0e566d2cdc388d55ca8c"
+    },
+    "public_sha256": "b2282901358de82047efff6ec5335a04ebf448fa53115ee1bd79089cb1978e1f",
+    "skipped_steps": [
+      {
+        "attempt_ns": 206183,
+        "available_bytes": 21793040006,
+        "cpu_factors_ns": 16669020008,
+        "cpu_wall_ns": 10574044011,
+        "lookup": 5,
+        "required_bytes": 24159292848,
+        "step": 96,
+        "variables": 27
+      },
+      {
+        "attempt_ns": 443884360,
+        "available_bytes": 38972909158,
+        "cpu_factors_ns": 32717671152,
+        "cpu_wall_ns": 35593995432,
+        "lookup": 5,
+        "required_bytes": 39728566300,
+        "step": 97,
+        "variables": 28
+      }
+    ],
+    "source_archive_sha256": "7161873eca27c8bab1db9afbc148b0195535c0ff5b0c9f162df679c57bdcc065",
+    "verifier_sha256": "b16646342de292f1d4733b9ccb80cff4d857ea550cb522581453249a1feb77dc",
+    "workload": "dev/stories42m-t32"
+  },
+  "note": "GKR component of the single combined Lucid 6781 dev-zk proof. The CPU wrote the proof and a separate verifier accepted the pinned model and rejected the changed model. The observer compared admitted unmasked polynomials and compact finals at actual transcript challenges. The device path includes attempted preflight, construction, round, fold and final downloads. Its build interval includes child-view logging to the shared filesystem. Retained CPU time includes both fallback steps and non-arithmetic round work. Compact-leaf CPU factor preparation also builds the host expansion map. For any offload projection add admitted_compact_leaf_factor_upper to retained_cpu_ns until the expansion-map cost is measured separately. Transfer counters exclude launch arguments. Cold setup is separate. Pool highs cover the timeline through GKR including retained lookup trees. The micro ledger top-level profile identifies its schema. The process wall includes both backends. Stage subtotals overlap their aggregates.",
+  "plan_digest": "32a7b4698d9303466584429ab745b15f75f18f60c5a665de5cb94db5d6357d97",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 1139900000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "admitted/build_ns": 30946730585,
+    "admitted/finish_ns": 443809821,
+    "admitted/fold_ns": 1098918999,
+    "admitted/round_ns": 2599610249,
+    "admitted_compact_leaf_factor_upper": 26579185839,
+    "cpu_factors_ns": 119985928169,
+    "cpu_rounds_wall_ns": 112631143071,
+    "device_path_ns": 35533160197,
+    "gpu_cold": 5227358038,
+    "retained_cpu_ns": 100611039110,
+    "skipped_cpu_factors": 49386691160,
+    "skipped_cpu_rounds_wall": 46168039443,
+    "skipped_preflight": 444090543
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-stories42m-t32-resident-gkr-h100"
+}

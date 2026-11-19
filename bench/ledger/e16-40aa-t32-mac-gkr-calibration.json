@@ -1,0 +1,213 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "e825e390f17c4c4cb99b5bd3d7d2fa8a00540ae2",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "Apple M4 Max (48 GiB), 16 CPU threads",
+  "driver": "native",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "compact_leaves_per_proof": 21,
+    "proofs": 3,
+    "steps_per_proof": 385,
+    "whole_process_peak_rss_bytes": 33800437760
+  },
+  "kind": "micro",
+  "model_config": {
+    "actual_profile": "dev-zk",
+    "evidence_sha256": "b5e203eeb62ed9d4bf91b699e75e30c2c413d7fdb6ff4a216ef298b2165e34c1",
+    "plan": {
+      "checked": "23..32",
+      "inputs": {
+        "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+        "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+        "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+        "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+      },
+      "lifetime_capacity": 8,
+      "lifetime_indices": [
+        0,
+        1,
+        2
+      ],
+      "profile": "dev-zk",
+      "stages": [
+        "gkr_factors",
+        "gkr_tables",
+        "gkr_rounds",
+        "gkr_arithmetic"
+      ],
+      "tokens": 32,
+      "workload": "dev/stories42m-t32"
+    },
+    "process": {
+      "build": [
+        "cargo",
+        "+1.90.0",
+        "build",
+        "--release",
+        "--locked",
+        "--offline",
+        "-p",
+        "stele-cli"
+      ],
+      "capture_sha256": "476f75549dfe02ede4c39f3b0dee40a5d13920109f48d5c16fabeeaf9c1f324e",
+      "cli_sha256": "88a346ea8b49c6a7c2dcb9c7e3ef2644f9304a01de05558ff8242e972bb97ec1",
+      "cpu": "hw.model: Mac16,5\nmachdep.cpu.brand_string: Apple M4 Max\nhw.memsize: 51539607552\nhw.physicalcpu: 16",
+      "input_sha256": {
+        "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+        "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+        "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+        "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+      },
+      "instrumentation": "e825e390f17c4c4cb99b5bd3d7d2fa8a00540ae2",
+      "instrumented_sha256": {
+        "mac_gkr.rs": "568b4889a0a38902f5147cc7b69f7ee58df429f6f744dae20fdbdeeaf9853968",
+        "zk_claims.rs": "57bd8c252eed2de1d3355069e780a00dd336dc2d4045520517818755e3b240aa",
+        "zk_lookup.rs": "03a4f8e138877e192bc7b141143bb26f826cee1ccd893c070439c16fb6602d9d"
+      },
+      "operation_source": "392afdaaf50b09bb895c6ad1222685fc743051d7",
+      "threads": 16,
+      "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+      "verifier_sha256": "39b67b4be396eb74097c4634d114f46d2aab73e71aacb3b5665eabc3575112de"
+    },
+    "reference_geometry_sha256": "e087a12eb481e4a24ffb0057c8674474bac9eab83e9a4f03ab6445c99a10a5f8",
+    "sample_count": 3,
+    "samples": [
+      {
+        "evidence_sha256": {
+          "prove.command.json": "232e22195b14fc326963a4c15e4a6c684c7d8dbd7980a1972706c8afcef6034c",
+          "prove.err": "a15f921982baf4e630976702060248e4f9635dcc244bf576a2ac8984c3353c60",
+          "prove.time": "13b353efbd4fe83c0e047d9483a0a7aba8c513dcba90508f5a771d90e9546c30",
+          "verify.command.json": "2ca43b9c267c1d67233e923f571e8a18040a83d270cac1b70c23ff4128d9f90f",
+          "verify.out": "b597d97d123223be0639a0b67a86a26b65daf1bd33f29cc427a21f827fe1ce19",
+          "wrong.command.json": "0eef6f8e293621493debe276bf1b0806cf46cb6af0dea7b025bccbc77436272d",
+          "wrong.out": "38d18ad297a912082be6ca76649bf3351fc88427ff20264b746f3bf4ee0e89d3"
+        },
+        "index": 0,
+        "load_before_thousandths": [
+          2970,
+          5914,
+          7312
+        ],
+        "peak_rss_bytes": 33800437760,
+        "proof_sha256": "331d75b89ffea6c5d1fc8ddbe2655d6554be59dc5ddcc05ca13977d67c54aaba",
+        "public_sha256": "a6d7607f111c517fddac2c2460f9708510c9f22a97602930f1e3748e28424523",
+        "stages": {
+          "arithmetic_ns": 100882060352,
+          "compact_host_factor_ns": 457939259,
+          "factor_ns": 27883265454,
+          "host_factor_ns": 460232431,
+          "host_round_ns": 4211022053,
+          "rounds_ns": 105093082405,
+          "table_ns": 27423033023
+        },
+        "wall_ns": 243840000000
+      },
+      {
+        "evidence_sha256": {
+          "prove.command.json": "ecdc8220e510c5aac15ac31afd017f9f6670e2a27f0a23e88f4ea49ba17bcaf5",
+          "prove.err": "56e379fbb842d4e1fb9560ec224e9cbe8a998ba03fcadd73bc3957b48b38e482",
+          "prove.time": "77961a3690fb4a57bf296052bcd4ef3b2bcf23e48eedb79c5218e2eb35cda2ca",
+          "verify.command.json": "dc7ad5f2ec169487154104e44162008d5caf47c0157e9eb4910075804e4d8726",
+          "verify.out": "2dc8d7cb19b7940476966ccb6276c5230552c9bb632901c316a48c37a5eda037",
+          "wrong.command.json": "99e38aa8ccd0a4b0ecd0940ac9ff7085229c60892e1faf0da441316f25cf9518",
+          "wrong.out": "927beda20aad071beb2e3aa4dfc79bd2a47270cd218c3264acce66054b348010"
+        },
+        "index": 1,
+        "load_before_thousandths": [
+          2869,
+          7626,
+          8263
+        ],
+        "peak_rss_bytes": 30883758080,
+        "proof_sha256": "0df7efe7916f58fc36707357564d281e0593e1368abfcd01eb818d73f799eda8",
+        "public_sha256": "c33492dbd9c299e560bbc872dd0e4725af53700de753d0cabbb3ddaa651434f5",
+        "stages": {
+          "arithmetic_ns": 99979084985,
+          "compact_host_factor_ns": 512848502,
+          "factor_ns": 30286720717,
+          "host_factor_ns": 515711920,
+          "host_round_ns": 3851976483,
+          "rounds_ns": 103831061468,
+          "table_ns": 29771008797
+        },
+        "wall_ns": 253150000000
+      },
+      {
+        "evidence_sha256": {
+          "prove.command.json": "28364383bdb3b6f001f96cd14803a2fccf50eb12311407c02dfb7feff465f2eb",
+          "prove.err": "1c9e2d0e3ac755cb993dce9fffd52de596cc1d8a2ce81dab6999a6513047f70b",
+          "prove.time": "5e8326e681d9671b88ab6dcfa59972b4eaa019897ebed08f7d0e714cd77e6246",
+          "verify.command.json": "b88eb8f292ad4fe4f4641db381f48797e6e2c1c13c923d21cc11748d48c2e191",
+          "verify.out": "ed8b3b768e1ba93cbd9e424fe49cb1050227fff9c431f589bcaa25ce8f313ce4",
+          "wrong.command.json": "3a862fab8e8fa7b361031218a7fc7d4166a7b6ffa0dea6b543e1f454adeb4fcc",
+          "wrong.out": "5d47e01d7270fa78600bcb7f852a0571a16b4be59022d3f9870d79a361f11d4b"
+        },
+        "index": 2,
+        "load_before_thousandths": [
+          2894,
+          6539,
+          8123
+        ],
+        "peak_rss_bytes": 29750476800,
+        "proof_sha256": "d634d31c64de008fb10a8485ec5c91dfa192e3c669af031b58a0cc78bf0ee653",
+        "public_sha256": "1541acf2b6dbccb75aa15cf80db314d22d7d256fbeb480b10f4aa85802c5a4a9",
+        "stages": {
+          "arithmetic_ns": 96291955114,
+          "compact_host_factor_ns": 505440625,
+          "factor_ns": 26349447865,
+          "host_factor_ns": 506901926,
+          "host_round_ns": 3962954765,
+          "rounds_ns": 100254909879,
+          "table_ns": 25842545939
+        },
+        "wall_ns": 234190000000
+      }
+    ],
+    "unmodified_baseline": [
+      {
+        "commit": "392afdaaf50b09bb895c6ad1222685fc743051d7",
+        "proof_sha256": "6cc591dd10992911b6f3490a55c8511af835fb85dfa52f5d2b358f04afca0e35",
+        "wall_ns": 232930000000
+      },
+      {
+        "commit": "392afdaaf50b09bb895c6ad1222685fc743051d7",
+        "proof_sha256": "0792de7e1ef59b3c1fc00e6874ff974caa44399c8fe2cd8dd4b11a0bf1690081",
+        "wall_ns": 243110000000
+      },
+      {
+        "commit": "392afdaaf50b09bb895c6ad1222685fc743051d7",
+        "proof_sha256": "1cde1786ce4989657f4c8df553187ae601db247369b19f39b7f174f4a7aaeebf",
+        "wall_ns": 240100000000
+      }
+    ]
+  },
+  "note": "The micro record uses the schema profile for component measurements. The actual inference profile is development byte 4. Three serial CPU CLI proofs of the same T32 workload, at distinct indices of one fresh model commitment. The separately built ordinary verifier checks every proof and rejects its changed model pin. The 385 original steps in each sample agree with the H100 GKR lookup order and dimensions. Host factor time retains expansion metadata and original column copies. Host round time retains mask, transcript, final expansion and step destruction. Median fields describe their individual distributions, and disjoint sums are checked per trial. The outer wall includes all CPU proof construction. These measurements calibrate the laps host only.",
+  "plan_digest": "dee9cccf9f483e974557d300b8f0972a8ac950c6ed2f62511a925f239fc551bf",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 243840000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "arithmetic_ns": 99979084985,
+    "compact_host_factor_ns": 505440625,
+    "factor_ns": 27883265454,
+    "host_factor_ns": 506901926,
+    "host_round_ns": 3962954765,
+    "rounds_ns": 103831061468,
+    "table_ns": 27423033023
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-stories42m-t32-original-gkr-m4"
+}

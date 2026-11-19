@@ -10,7 +10,7 @@ pub(crate) const SEED: u64 = 0x40_2000_0001;
 pub(crate) const ELL: u8 = 3;
 pub(crate) const M: u8 = 9;
 
-fn source_seed(seed: u64) -> [u8; 32] {
+pub(crate) fn source_seed(seed: u64) -> [u8; 32] {
     let mut rng = Rng::new(seed);
     core::array::from_fn(|_| rng.next() as u8)
 }
@@ -59,6 +59,11 @@ pub(crate) fn claims(message: &[M31], seed: u64) -> (Vec<Claim<K>>, Vec<K>) {
         ];
         weights
             .extend((0..1 + seed % 13).map(|_| ((rng.next() % half as u64) as usize, rng.qm31())));
+        if seed % 8 == 1 {
+            let tile = crate::batch::TILE;
+            weights.extend((tile - 2..2 * tile + 3).map(|p| (p, rng.qm31())));
+            weights.extend((tile + 1..tile + 9).map(|p| (p, rng.qm31())));
+        }
         let value = weights.iter().fold(K::ZERO, |sum, (p, w)| {
             sum + *w * K::from_i64(i64::from(message[p / cols * 2 * cols + p % cols].as_u32()))
         });
@@ -72,6 +77,34 @@ pub(crate) fn claims(message: &[M31], seed: u64) -> (Vec<Claim<K>>, Vec<K>) {
         });
     }
     (claims, gammas)
+}
+
+#[test]
+fn matches_reference_overlapping_runs_at_tile_boundaries() {
+    use crate::batch::{Prepared, TILE};
+    let message = message(SEED);
+    let source = prepared(&message, SEED);
+    let claim = |positions: &[usize]| Claim {
+        value: K::ZERO,
+        weights: positions.iter().map(|p| (*p, K::ONE)).collect(),
+    };
+    let claims = [
+        claim(&[TILE - 1, TILE, TILE + 1, TILE, TILE + 1]),
+        claim(&[TILE, TILE + 1]),
+    ];
+    let p = Prepared::new(source.source(), &message, &claims, &[K::ZERO, K::ONE]).unwrap();
+    assert_eq!(p.offsets[..3], [0, 1, 4]);
+    assert_eq!(
+        p.runs[..],
+        [
+            [(TILE - 1) as u64, TILE as u64, 0, 0],
+            [TILE as u64, (TILE + 2) as u64, 1, 0],
+            [TILE as u64, (TILE + 2) as u64, 3, 0],
+            [TILE as u64, (TILE + 2) as u64, 5, 1],
+        ]
+    );
+    assert_eq!(p.weights.len(), 7);
+    assert_eq!(p.gammas.len(), 2);
 }
 
 #[test]
@@ -165,20 +198,40 @@ fn matches_reference_batch_kernels_on_host() {
                 .chain(reference.face.iter().map(|x| crate::lookup::words(*x)[0]))
                 .collect::<Vec<_>>(),
         );
+        let start = std::time::Instant::now();
         let p = crate::batch::Prepared::new(prepared.source(), &message, &claims, &gammas).unwrap();
         assert_eq!(
             p.upload_bytes(),
-            4 * (p.message.len() + p.pairs.len()) + 8 * p.offsets.len()
+            4 * p.message.len()
+                + 16 * (p.weights.len() + p.gammas.len())
+                + 32 * p.runs.len()
+                + 8 * p.offsets.len()
+        );
+        assert!(p.host_buffer_bytes() >= p.upload_bytes());
+        assert!(p.index_time <= start.elapsed());
+        assert_eq!(
+            p.schedule_checks,
+            p.offsets.last().unwrap() * crate::batch::TILE as u64
         );
         for raw in [0, 1] {
-            input.extend([p.len as u32, p.columns as u32, p.pairs.len() as u32, raw]);
+            input.extend([
+                p.len as u32,
+                p.columns as u32,
+                p.offsets.len() as u32,
+                p.runs.len() as u32,
+                p.weights.len() as u32,
+                p.gammas.len() as u32,
+                crate::batch::TILE as u32,
+                raw,
+            ]);
             input.extend(
                 p.offsets
                     .iter()
+                    .chain(p.runs.iter().flatten())
                     .flat_map(|x| [*x as u32, (*x >> 32) as u32]),
             );
             input.extend_from_slice(&p.message);
-            input.extend_from_slice(&p.pairs);
+            input.extend(p.weights.iter().chain(&p.gammas).flatten().copied());
         }
     }
     let source = format!("#include <cstdio>\n#include <vector>\n#define __device__\n#define __global__\n#define __forceinline__ inline\n{}\n#define GRID_STRIDE(j,n) for(u64 j=0;j<(n);++j)\n{}\n{}", crate::host_probe::helpers(), include_str!("batch.cu"), include_str!("batch_host.cuh"));
@@ -191,4 +244,42 @@ fn matches_reference_batch_kernels_on_host() {
             assert_eq!(output[at..at + len * 5], *expected, "case {case} raw={raw}");
         }
     }
+}
+
+#[test]
+fn matches_reference_disjoint_claim_pack_and_rejects_bounds() {
+    let message = message(SEED);
+    let source = prepared(&message, SEED);
+    let empty = Claim {
+        value: K::ONE,
+        weights: vec![],
+    };
+    for i in 0..1000 {
+        let (mut claims, mut gammas) = claims(&message, SEED + i);
+        if i == 0 {
+            let mut rng = Rng::new(SEED);
+            claims.push(Claim {
+                value: rng.qm31(),
+                weights: (0..(1 << 17)).map(|p| (p % 1024, rng.qm31())).collect(),
+            });
+            gammas.push(K::ONE);
+        }
+        if !claims.is_empty() {
+            for slot in [claims.len(), claims.len() / 2, 0] {
+                claims.insert(slot, empty.clone());
+                gammas.insert(slot, K::ONE);
+            }
+        }
+        let (reference, _) =
+            crate::batch::pack::<false>(source.source(), &message, &claims, &gammas).unwrap();
+        let (candidate, _) =
+            crate::batch::pack::<true>(source.source(), &message, &claims, &gammas).unwrap();
+        assert!(reference.matches(&candidate), "case {i}");
+    }
+    let invalid = [Claim {
+        value: K::ZERO,
+        weights: vec![(message.len() / 4, K::ZERO)],
+    }];
+    assert!(crate::batch::pack::<true>(source.source(), &message, &invalid, &[K::ZERO]).is_none());
+    assert!(crate::batch::pack::<true>(source.source(), &message, &invalid, &[]).is_none());
 }

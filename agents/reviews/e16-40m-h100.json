@@ -1,0 +1,133 @@
+{
+  "result": {
+    "status": "passed",
+    "source": "86d503b3edbc3379a5887d656b858c1e334d09fd",
+    "pins_sha256": "7878bd1e3f338a751d4af8bb77f52d27c8182e17b568cae1347d6f9cb732da93",
+    "completed": [
+      "host",
+      "packing",
+      "malformed",
+      "device"
+    ],
+    "binary_sha256": "4068c06d586f26a48d48fd9cb077ce82a5913ff36c8b6005513cb835a12da77b",
+    "corpus": {
+      "statements": 1000,
+      "step_counts": [
+        799,
+        929,
+        1000,
+        1000
+      ],
+      "representations": 5456,
+      "rounds": 25800,
+      "seed": 275683213313
+    }
+  },
+  "host": {
+    "hostname": "h100-nvl-1-1-cc",
+    "job": "6733",
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "cuda_visible_devices": "0"
+  },
+  "resources": {
+    "gpu": {
+      "wall_ns": 40000000,
+      "max_rss_bytes": 21331968
+    },
+    "extract": {
+      "wall_ns": 3660000000,
+      "max_rss_bytes": 2981888
+    },
+    "toolchain": {
+      "wall_ns": 3370000000,
+      "max_rss_bytes": 28442624
+    },
+    "fetch": {
+      "wall_ns": 1610000000,
+      "max_rss_bytes": 28442624
+    },
+    "build": {
+      "wall_ns": 54870000000,
+      "max_rss_bytes": 608202752
+    },
+    "host": {
+      "wall_ns": 123730000000,
+      "max_rss_bytes": 11767808
+    },
+    "packing": {
+      "wall_ns": 0,
+      "max_rss_bytes": 2293760
+    },
+    "malformed": {
+      "wall_ns": 10000000,
+      "max_rss_bytes": 2523136
+    },
+    "device": {
+      "wall_ns": 163770000000,
+      "max_rss_bytes": 151019520
+    }
+  },
+  "files": {
+    "malformed.time": "1903f2c62dabfe15a8cb38f6fdc1b2ac6e1705925964840839189a6e38425369",
+    "host.time": "39c0994768197a533f78f8021f20a7bc459b0370d5990f64a3a7c371cebcb915",
+    "malformed.json": "c2e0707b5dde28c29d4c01c606e3f5780afc478c2c6d16b3d43c62fdbe74d19e",
+    "extract.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "packing.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fetch.json": "99548e66b769c204eebe5b6678bafd6b555d5be854ca78a1f03123774aaba88e",
+    "machine.json": "444297d4e04f5bc87a40420b97c9a2b3bb8d9639faedc59597aefb0f51cd14bc",
+    "device.json": "b686081f7cb6616cc532e044b1c1d1b68423f1b1fb9c44b357e8c0d3c87fd8a2",
+    "host.out": "526a469d246e0adf36dc021aeda0a28e44ee50bec97d56d687e7f5b07be9b7a4",
+    "device.out": "dee4e777b284b6e2a0c57b959bbdb1aff95129924b4e61ba3eaeb00c402c5eed",
+    "gpu.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "toolchain.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result.json": "4f9d14451eaaca6f3f562d03e4391be4bb8e8155ab0922e71fbb4f24ca03a59a",
+    "toolchain.out": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3",
+    "extract.json": "b850b425db28c049902f8a4de19f365a531a26c0f7a3715fec9f1d9acdbe8120",
+    "extract.time": "56ea51bbd8c0bbce4f4b8e846ae5d544cf3bb12487db75dbc460718b524d7959",
+    "device.err": "81b4f06147a704502ecbcb1b1050e5546a83a22fb9aebcd5b63cd8d18e4d78a6",
+    "build.out": "57c44f293ea97489e4ab36689e5db27dffec970f5590e9f05930fe6389b6cca5",
+    "malformed.out": "b83baf30eac5bc1b41fe6f3db7b58fdddcdd64ad35081a7115d52057380c0fc8",
+    "gpu.out": "d34ee2cdb823d5397408734aef8b15ea8104016a97db8986818f6c792b3055ca",
+    "fetch.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "device.time": "22c94c9bfd0acdd4a95af87fb95ef15b273b1c87db23b0b4b4073246e5c64664",
+    "packing.time": "1b77dd210b6db09fbeaaa95a2227a6283cb72f5cab0f2db163ced18897737b79",
+    "gpu.json": "82d13e753bd4c4e8752df5c3b6f44b665ffe955e7492ceaf675fb26368b87950",
+    "host.err": "25a0b10893846fbb7275517c483680c7263252ce63347ffcbb44a7a9b3a62941",
+    "gpu.time": "e119893bd2a3f8e12df8c81416b3fed3784caef2d0d50045fc704905fa817917",
+    "toolchain.time": "a523d10cf37a196750bc316ff12e18a9ebd8327737775f0898dde4c5332cc91e",
+    "host.json": "856138f80bbf41281c421a9cb993cb2ceb115bede1a4b047b401c04c01c3fe22",
+    "extract.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "packing.out": "a6ad94fd9d4d98698bb922692058961139b30d6ccfafc4d5cd84e8699134098e",
+    "fetch.time": "c89ef03ea204ac16330955d3ca7ce8b931d4addd956d625c1824e82f48baae87",
+    "toolchain.json": "2a73649dd60c6874d229f3db848c0c57463c7ba40a96e205bcf5e5f3fed857cd",
+    "build.err": "686955436b3ab2275ffdfd01f18100c48f3bcdd6832a751defcbceb788dfd1cf",
+    "packing.json": "cabdc8d5fdd1a420df7fd2eb266b0ffadf7d895cb9b24e41094be2be5d766b01",
+    "build.json": "0de9e108c20ab12dcc883a91d853e35bc88d79ebde8c7b055cb510a4dc1e0e08",
+    "build.time": "b26a6c8f09048422158d128e635cbd92bf7d028650471787ad8df871f09aff11",
+    "malformed.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fetch.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "manifest_sha256": "a67dbdf2ef28c1508a540aa060bdc36d90a30d68075f2c81f4e16e8e6a8514bc",
+  "raw_archive_sha256": "1ddd80ca91c28cbac7898cfec9790e8638fbd724c0e4323d7b8c68494289eac4",
+  "terminal_sha256": "da7d2b60cd3453336904972c4d80ebb10da4df145ee39ee2e51871a0c86f5e19",
+  "source_archive_sha256": "4ca000b764aa46b4a7282f718dd3257ddf2a7803d4bfc7d3d9108ec5e042e772",
+  "verifier_sha256": "907966639277c44f470541fe6834668b74f96a63b5f2d9f1df3cf58d1ed22889",
+  "scope": "Genuine production GKR with small synthetic statements and CPU-built tables; no integrated proof, performance, complete device-memory or ADR-127 GO credit."
+}

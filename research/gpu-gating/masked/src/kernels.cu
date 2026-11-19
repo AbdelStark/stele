@@ -1,6 +1,6 @@
 // E16-35 (ADR-123): device kernels for the dev-zk masked rounds (RFC-0013 A5 item 2,
-// RFC-0008 A7 item 4). Compiled at run time by NVRTC; the round kernel is generated per
-// round shape by gpu.rs and appended to this source. Integer arithmetic only; every
+// RFC-0008 A7 item 4). Compiled at run time by NVRTC with the fixed descriptor round
+// program in round.cuh/round.cu. Integer arithmetic only; every
 // value leaving a kernel is canonical in [0, p). E16-40h extends the field helpers
 // to raw lazy limbs; older E16-21 measurements retain their original source.
 typedef unsigned int u32;
@@ -69,7 +69,11 @@ extern "C" __global__ void tile_kernel(u32 *out, const u32 *period, u64 mask, u6
 
 // x[half + i] = x[i] (zk_lookup's `both`).
 extern "C" __global__ void dup_kernel(u32 *x, u64 half) {
-  GRID_STRIDE(i, half) qstore(x, half + i, qload(x, i));
+  GRID_STRIDE(i, half) {
+    Q v = qload(x, i);
+    qstore(x, i, v);
+    qstore(x, half + i, v);
+  }
 }
 
 // The mask table r̂(X) = r̃(X_u) (zk_claims block_table): entry bits from u, MSB first.
@@ -77,7 +81,7 @@ extern "C" __global__ void mask_kernel(u32 *out, const u32 *block, const u32 *u,
   GRID_STRIDE(i, count) {
     u64 e = 0;
     for (int k = 0; k < ulen; k++) e |= ((i >> (n - 1 - (int)u[k])) & 1) << (ulen - 1 - k);
-    out[i] = block[e];
+    out[i] = mcanon(block[e]);
   }
 }
 

@@ -23,15 +23,88 @@ fn matches_reference_batch_on_h100() {
         let (claims, gammas) = claims(&message, seed);
         let reference = BatchInputs::new(7, &source, &claims, &gammas).unwrap();
         for raw in [false, true] {
+            let actual = source.source();
+            let upload = if raw {
+                super::super::OriginalMessage::upload_raw
+            } else {
+                super::super::OriginalMessage::upload
+            };
+            let owner = upload(
+                &dev,
+                actual.descriptor().id,
+                actual.rows(),
+                actual.columns(),
+                &message,
+            )
+            .unwrap();
+            assert!(owner
+                .words(
+                    &dev,
+                    actual.descriptor().id + 1,
+                    actual.rows(),
+                    actual.columns()
+                )
+                .is_err());
+            assert!(owner
+                .words(
+                    &dev,
+                    actual.descriptor().id,
+                    2 * actual.rows(),
+                    actual.columns() / 2
+                )
+                .is_err());
             let (mut state, sum, timing) = if raw {
-                let mut p = Prepared::new(source.source(), &message, &claims, &gammas).unwrap();
-                for word in p.message.iter_mut().chain(&mut p.pairs) {
+                let (mut p, _) =
+                    crate::batch::pack_with_message::<true>(actual, None, &claims, &gammas)
+                        .unwrap();
+                for word in p
+                    .message
+                    .iter_mut()
+                    .chain(p.weights.iter_mut().flatten())
+                    .chain(p.gammas.iter_mut().flatten())
+                {
                     *word += M31::MODULUS;
                 }
-                let (state, time) = build(&dev, &p).unwrap();
+                let (state, time) = build(
+                    &dev,
+                    &p,
+                    Some(
+                        owner
+                            .words(
+                                &dev,
+                                actual.descriptor().id,
+                                actual.rows(),
+                                actual.columns(),
+                            )
+                            .unwrap(),
+                    ),
+                )
+                .unwrap();
                 (state, p.claimed_sum, time)
             } else {
-                prepare(&dev, &source, &claims, &gammas).unwrap()
+                let (selected, claim, _) =
+                    prepare_original(&dev, actual, &owner, &claims, &gammas).unwrap();
+                let (p, _) =
+                    crate::batch::pack_with_message::<true>(actual, None, &claims, &gammas)
+                        .unwrap();
+                let (parallel, t) = build(
+                    &dev,
+                    &p,
+                    Some(
+                        owner
+                            .words(
+                                &dev,
+                                actual.descriptor().id,
+                                actual.rows(),
+                                actual.columns(),
+                            )
+                            .unwrap(),
+                    ),
+                )
+                .unwrap();
+                assert_eq!(selected.tables().unwrap(), parallel.tables().unwrap());
+                assert_eq!(claim, p.claimed_sum);
+                (parallel, claim, t)
             };
             assert_eq!(sum, reference.instance.claimed_sum);
             let mut tables = vec![reference.weights.clone(), reference.face.clone()];
@@ -106,5 +179,5 @@ fn matches_reference_batch_on_h100() {
     let (mut state, sum, _) = prepare(&dev, &source, &claims, &gammas).unwrap();
     let round = state.round().unwrap();
     assert_ne!(sum, round[0] + round[1], "one claimed value near miss");
-    eprintln!("batch_device_cases={CASES} source_cases={CASES} raw_weight_cases={CASES} raw_face_cases={CASES} dense_cases={CASES} raw_dense_cases={CASES} near_miss_cases=1 seed={SEED} device={}", dev.name);
+    eprintln!("parallel_pack_cases=2000 pinned_batch_owner_cases=2000 batch_device_cases={CASES} source_cases={CASES} raw_weight_cases={CASES} raw_face_cases={CASES} dense_cases={CASES} raw_dense_cases={CASES} near_miss_cases=1 seed={SEED} device={}", dev.name);
 }
