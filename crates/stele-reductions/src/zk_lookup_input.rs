@@ -1,6 +1,6 @@
 //! RFC-0014 A6. The source-message layout supplies every original column interval.
 use super::{Error, LookupPlan, Plan};
-use alloc::{vec, vec::Vec};
+use alloc::vec::Vec;
 use stele_field::M31;
 use stele_hash::ChallengeField;
 use stele_kernels::{
@@ -37,14 +37,13 @@ pub(in crate::zk::claims) fn descriptors<'a, K: ChallengeField + CodeField>(
     plan: &'a Plan<K>,
     original: &[Vec<M31>],
 ) -> Result<Vec<Descriptor<'a>>, Error> {
-    let mut slots = vec![0; plan.early()];
+    let early = plan.layouts.get(..plan.early()).ok_or(Error::Statement)?;
     let mut columns = Vec::with_capacity(original.len());
     for (index, values) in original.iter().enumerate() {
         let c = plan.columns.get(index).ok_or(Error::Statement)?;
-        let layout = plan.layouts.get(c.source).ok_or(Error::Statement)?;
-        let slot = slots.get_mut(c.source).ok_or(Error::Statement)?;
-        let &(at, blocks) = layout.offsets.get(*slot).ok_or(Error::Statement)?;
-        *slot += 1;
+        let layout = early.get(c.source).ok_or(Error::Statement)?;
+        // Offsets are source-local, indexed by the original global column number.
+        let &(at, blocks) = plan.offsets.get(index).ok_or(Error::Statement)?;
         let len = 1usize.checked_shl(c.log_len).ok_or(Error::Statement)?;
         if len != values.len() || c.limbs != 1 || at.checked_add(len) != Some(blocks) {
             return Err(Error::Statement);
