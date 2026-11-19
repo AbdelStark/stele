@@ -48,6 +48,8 @@ use stele_sumcheck::{Dense, Instance, Reduction, Summand, Term};
 
 #[path = "zk_lookup.rs"]
 mod lookup;
+#[path = "zk_occurrence_weight.rs"]
+mod occurrence_weight;
 
 #[cfg(feature = "bench")]
 #[path = "zk_gkr_bench.rs"]
@@ -706,12 +708,10 @@ struct PlanColumn {
     limbs: usize,
 }
 
-/// A claim source's layout: `R = 2^ell`, `C = 2^m`, each column's offset and its
-/// first block's offset.
+/// A claim source's layout: `R = 2^ell`, `C = 2^m`.
 struct Layout {
     ell: u8,
     m: u8,
-    offsets: Vec<(usize, usize)>,
 }
 
 struct Plan<K> {
@@ -719,7 +719,8 @@ struct Plan<K> {
     steps: Vec<Step<K>>,
     lookups: Vec<lookup::LookupPlan>,
     gkr: Vec<lookup::GkrStep>,
-    /// Per column: (offset, first block offset) in its source; per source: (ell, m).
+    /// Source-local (column offset, first block offset), in global column order.
+    offsets: Vec<(usize, usize)>,
     layouts: Vec<Layout>,
     /// Sources with at least one claim, in order.
     batched: Vec<usize>,
@@ -1419,14 +1420,7 @@ fn plan_with<K: ChallengeField + CodeField>(
         if m >= 30 {
             return Err(Error::Statement);
         }
-        layouts.push(Layout {
-            ell,
-            m,
-            offsets: Vec::new(),
-        });
-    }
-    for (x, offset) in columns.iter().zip(offsets) {
-        layouts[x.source].offsets.push(offset);
+        layouts.push(Layout { ell, m });
     }
     let batched: Vec<usize> = (0..sources)
         .filter(|&source| {
@@ -1473,6 +1467,7 @@ fn plan_with<K: ChallengeField + CodeField>(
         lookups: lookup_plans,
         gkr,
         layouts,
+        offsets,
         batched,
         masks,
         shared_offsets,
@@ -1484,15 +1479,6 @@ fn plan_with<K: ChallengeField + CodeField>(
         reserved,
         lifetime: lifetime.cloned(),
     })
-}
-
-/// The column's position within its source's `offsets`.
-fn slot<K>(plan: &Plan<K>, column: usize) -> usize {
-    let source = plan.columns[column].source;
-    plan.columns[..column]
-        .iter()
-        .filter(|x| x.source == source)
-        .count()
 }
 
 /// A column point: its `Var` coordinates at `ρ`, its `Free` ones at `free`.
@@ -1521,21 +1507,27 @@ where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     let column = plan.columns[occurrence.column];
-    let (at, blocks) = plan.layouts[column.source].offsets[slot(plan, occurrence.column)];
-    let x = stele_poly::eq_table(&column_point(&occurrence.coords, point, free))
+    let (at, blocks) = plan.offsets[occurrence.column];
+    let x = stele_sumcheck::parallel::eq_table(&column_point(&occurrence.coords, point, free))
         .map_err(|_| Error::Statement)?;
     let u: Vec<K> = occurrence.u.iter().map(|q| point[*q]).collect();
     let r = stele_poly::eq_table(&u).map_err(|_| Error::Statement)?;
     let k = kappa(point[occurrence.v]);
     let first = blocks + occurrence.block * dim::<K>();
     let len = 1usize << column.log_len;
+    let capacity = x
+        .len()
+        .checked_mul(column.limbs)
+        .and_then(|n| n.checked_add(r.len()))
+        .ok_or(Error::Statement)?;
     let mut weights = Vec::new();
-    for d in 0..column.limbs {
-        let e = if column.limbs == 1 {
-            K::from_i64(1)
-        } else {
-            basis::<K>(d)?
-        };
+    weights
+        .try_reserve_exact(capacity)
+        .map_err(|_| Error::Statement)?;
+    // RFC-0013 A5: the first limb uses the unit basis element, including base columns.
+    weights.extend(x.iter().enumerate().map(|(p, w)| (at + p, *w)));
+    for d in 1..column.limbs {
+        let e = basis::<K>(d)?;
         weights.extend(
             x.iter()
                 .enumerate()
@@ -1649,6 +1641,18 @@ fn batch_instance<K: ChallengeField>(
     claims: &[Claim<K>],
     gammas: &[K],
 ) -> Instance<K> {
+    let claimed_sum = claims
+        .iter()
+        .zip(gammas)
+        .fold(zero::<K>(), |s, (c, g)| s + *g * c.value);
+    batch_instance_sum(id, source, claimed_sum)
+}
+
+fn batch_instance_sum<K: ChallengeField>(
+    id: u64,
+    source: &Source<K>,
+    claimed_sum: K,
+) -> Instance<K> {
     let num_vars = source.rows().trailing_zeros() + source.columns().trailing_zeros() - 1;
     Instance {
         id,
@@ -1658,10 +1662,7 @@ fn batch_instance<K: ChallengeField>(
             coefficient: K::from_i64(1),
             factors: vec![0, 1],
         }],
-        claimed_sum: claims
-            .iter()
-            .zip(gammas)
-            .fold(zero::<K>(), |s, (c, g)| s + *g * c.value),
+        claimed_sum,
     }
 }
 
@@ -1682,21 +1683,48 @@ fn opening_point<K: ChallengeField>(point: &[K], ell: usize) -> Vec<K> {
     full
 }
 
+/// A5 item 5 and NC-0915: all batch weight evaluators are zero on the mask face.
+/// Check the complete source point and one draw per claim before evaluating its data face.
+fn on_data_face<K: ChallengeField>(
+    source: &Source<K>,
+    point: &[K],
+    claims: usize,
+    coefficients: usize,
+    evaluate: impl FnOnce(&[K]) -> Result<K, Error>,
+) -> Result<K, Error> {
+    let (w, coordinates) = point.split_first().ok_or(Error::Statement)?;
+    let dimension = (source.rows() / 2)
+        .checked_ilog2()
+        .ok_or(Error::Statement)?
+        + (source.columns() / 2)
+            .checked_ilog2()
+            .ok_or(Error::Statement)?;
+    if coordinates.len() != dimension as usize || claims != coefficients {
+        return Err(Error::Statement);
+    }
+    Ok((K::from_i64(1) - *w) * evaluate(coordinates)?)
+}
+
 /// The verifier's `W'(ρ) = (1 − w*)·W̃(row*, col*)`, zero weight on `w = 1`.
-// shortcut: O(R·C) dense evaluation; a succinct eq-sum per claim when sources grow.
+/// Linearity lets each claim accumulate against the same equality table before batching.
 fn expected_weight<K: ChallengeField>(
     source: &Source<K>,
     claims: &[Claim<K>],
     gammas: &[K],
     point: &[K],
 ) -> Result<K, Error> {
-    let table = weight_table(source, claims, gammas)?;
-    let eq = stele_poly::eq_table(&point[1..]).map_err(|_| Error::Statement)?;
-    let data = eq
-        .iter()
-        .zip(&table)
-        .fold(zero::<K>(), |s, (e, w)| s + *e * *w);
-    Ok((K::from_i64(1) - point[0]) * data)
+    on_data_face(source, point, claims.len(), gammas.len(), |coordinates| {
+        let eq = stele_sumcheck::parallel::eq_table(coordinates).map_err(|_| Error::Statement)?;
+        let mut data = zero::<K>();
+        for (claim, gamma) in claims.iter().zip(gammas) {
+            let mut value = zero::<K>();
+            for (position, weight) in &claim.weights {
+                value = value + *eq.get(*position).ok_or(Error::Statement)? * *weight;
+            }
+            data = data + *gamma * value;
+        }
+        Ok(data)
+    })
 }
 
 /// Prove one A5 item-5 batch of `claims` on a hiding source, with its plain mask
@@ -1774,13 +1802,39 @@ pub fn verify_batch<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    verify_batch_using(
+        id,
+        verified,
+        claims.iter().map(|c| c.value),
+        batch,
+        binding,
+        t,
+        |source, gammas, point| expected_weight(source, claims, gammas, point),
+    )
+}
+
+fn verify_batch_using<K: ChallengeField + CodeField + Eq>(
+    id: u64,
+    verified: &VerifiedCertificate<K>,
+    values: impl ExactSizeIterator<Item = K>,
+    batch: &Batch<K>,
+    binding: &[u8],
+    t: &mut Transcript<K>,
+    weight: impl FnOnce(&Source<K>, &[K], &[K]) -> Result<K, Error>,
+) -> Result<masked::Reduction<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let source = verified.record().source();
-    let gammas = coefficients(t, claims.len())?;
-    let i = batch_instance(id, source, claims, &gammas);
+    let gammas = coefficients(t, values.len())?;
+    let claimed_sum = values
+        .zip(&gammas)
+        .fold(zero::<K>(), |sum, (v, g)| sum + *g * v);
+    let i = batch_instance_sum(id, source, claimed_sum);
     let result =
         masked::verify_degree(&i, 2, &batch.sumcheck, binding, t).map_err(Error::Sumcheck)?;
     let point = &result.reduction.point;
-    if result.reduction.claims[0].1 != expected_weight(source, claims, &gammas, point)? {
+    if result.reduction.claims[0].1 != weight(source, &gammas, point)? {
         return Err(Error::Sumcheck(
             stele_sumcheck::Error::FinalEvaluationMismatch,
         ));
@@ -2199,41 +2253,76 @@ fn bit(index: usize, var: usize, n: usize) -> usize {
 /// `x̂` over the domain: the column at its `Free` coordinates, broadcast over the
 /// variables it does not read.
 fn domain_table<K: ChallengeField>(column: &[K], coords: &[Coord], free: &[K], n: usize) -> Vec<K> {
-    let len = coords.len();
-    let mut partial = vec![zero::<K>(); 1 << n];
-    let mut read = 0usize;
-    for c in coords {
-        if let Coord::Var(q) = c {
-            read |= 1 << (n - 1 - q);
-        }
-    }
-    for (index, value) in column.iter().enumerate() {
-        let mut weight = K::from_i64(1);
-        let mut target = 0usize;
-        for (j, c) in coords.iter().enumerate() {
-            let b = bit(index, j, len);
-            match c {
-                Coord::Var(q) => target |= b << (n - 1 - q),
-                Coord::Free(i) => {
-                    weight = weight
-                        * if b == 1 {
-                            free[*i]
-                        } else {
-                            K::from_i64(1) - free[*i]
-                        }
-                }
-                Coord::Fixed(bit) => {
-                    if b != usize::from(*bit) {
-                        weight = zero::<K>();
-                    }
-                }
+    use alloc::borrow::Cow;
+    // At a fixed assignment of the read variables, only the free axes vary.
+    // Interpolate directly on that subcube; never allocate a half-column.
+    fn interpolate<K: ChallengeField>(column: &[K], offset: usize, free: &[(usize, K)]) -> K {
+        match free.split_first() {
+            None => column[offset],
+            Some((&(stride, z), rest)) => {
+                let low = interpolate(column, offset, rest);
+                let high = interpolate(column, offset | stride, rest);
+                low + z * (high - low)
             }
         }
-        partial[target] = partial[target] + weight * *value;
     }
-    (0..1usize << n)
-        .map(|index| partial[index & read])
-        .collect()
+
+    let mut vars = Vec::new();
+    let mut source_bits = Vec::new();
+    let mut free_axes = Vec::new();
+    let mut fixed = 0;
+    for (j, coord) in coords.iter().enumerate() {
+        let shift = coords.len() - 1 - j;
+        match coord {
+            Coord::Var(q) => {
+                vars.push(*q);
+                source_bits.push(shift);
+            }
+            Coord::Fixed(b) => fixed |= usize::from(*b) << shift,
+            Coord::Free(q) => free_axes.push((1 << shift, free[*q])),
+        }
+    }
+    let table = if vars.len() == coords.len() {
+        Cow::Borrowed(column)
+    } else {
+        let mut projected = vec![zero::<K>(); 1 << vars.len()];
+        stele_sumcheck::parallel::for_each_chunk_weighted(
+            &mut projected,
+            1 << free_axes.len(),
+            |start, chunk| {
+                for (i, value) in (start..).zip(chunk) {
+                    let offset = source_bits
+                        .iter()
+                        .enumerate()
+                        .fold(fixed, |at, (j, shift)| {
+                            at | (bit(i, j, vars.len()) << shift)
+                        });
+                    *value = interpolate(column, offset, &free_axes);
+                }
+            },
+        );
+        Cow::Owned(projected)
+    };
+    let len = 1 << n;
+    let Some(&last) = vars.last() else {
+        return vec![table[0]; len];
+    };
+    let contiguous = vars.windows(2).all(|pair| pair[1] == pair[0] + 1);
+    if contiguous && table.len() == len {
+        return table.into_owned();
+    }
+    let mut out = vec![zero::<K>(); len];
+    stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+        for (i, value) in (start..).zip(chunk) {
+            let index = if contiguous {
+                (i >> (n - 1 - last)) & (table.len() - 1)
+            } else {
+                vars.iter().fold(0, |index, q| (index << 1) | bit(i, *q, n))
+            };
+            *value = table[index];
+        }
+    });
+    out
 }
 
 /// `r̂(X) = r̃_x(a, X_u)` over the domain.
@@ -2258,7 +2347,7 @@ impl<K: ChallengeField + CodeField> Plan<K> {
     /// An occurrence's claim-mask block, read from its source's message.
     fn block(&self, messages: &[&[M31]], o: &Occurrence) -> Vec<M31> {
         let source = self.columns[o.column].source;
-        let (_, blocks) = self.layouts[source].offsets[slot(self, o.column)];
+        let (_, blocks) = self.offsets[o.column];
         let width = 1usize << self.layouts[source].m;
         let first = blocks + o.block * dim::<K>();
         (first..first + dim::<K>())
@@ -2392,14 +2481,15 @@ fn source_message<K: ChallengeField + CodeField>(
         .iter()
         .enumerate()
         .filter(|(_, c)| c.source == source);
-    for ((index, column), (at, blocks)) in members.zip(&layout.offsets) {
+    for (index, column) in members {
+        let (at, blocks) = plan.offsets[index];
         let len = 1usize << column.log_len;
         for (p, value) in columns[index].iter().enumerate() {
             for (d, limb) in limbs(*value)?.into_iter().take(column.limbs).enumerate() {
                 x[at + d * len + p] = limb;
             }
         }
-        for value in &mut x[*blocks..*blocks + plan.reserved[index] * dim::<K>()] {
+        for value in &mut x[blocks..blocks + plan.reserved[index] * dim::<K>()] {
             let drawn = stream.m31();
             if claim_masks {
                 *value = drawn;
@@ -3382,12 +3472,12 @@ where
                 route: &route,
             })?;
         }
-        for (source, claim) in finals.claims.iter().cloned() {
+        for (source, claim) in finals.claims {
             claims[source].push(claim);
         }
         mus.push(mask_claim(&plan, index, &point, mu)?);
-        mus.extend(finals.blocks.iter().cloned());
-        lookup::advance(step, run, &point, &finals, t)?;
+        mus.extend(finals.blocks);
+        lookup::advance(step, run, &point, finals.layers, t)?;
         gkr.push(proof);
         detail.lap("zk/detail/gkr_claims");
     }
@@ -3617,7 +3707,8 @@ where
     t.absorb(AbsorbLabel::FieldSources, &proof.sources[early..].concat())
         .map_err(fail)?;
     let binding = &proof.sources[shared_index];
-    let mut claims: Vec<Vec<Claim<K>>> = vec![Vec::new(); plan.layouts.len()];
+    let mut claims: Vec<Vec<occurrence_weight::Routed<K>>> =
+        (0..plan.layouts.len()).map(|_| Vec::new()).collect();
     let mut mus = Vec::new();
     let mut reductions = Vec::new();
     let mut records = Vec::new();
@@ -3639,7 +3730,8 @@ where
         public_finals(step, point, &free, finals)?;
         let first = step.first();
         for (k, o) in step.occurrences.iter().enumerate() {
-            let (source, claim) = occurrence_claim(&plan, o, point, &free, finals[first + k])?;
+            let (source, claim) =
+                occurrence_weight::route(&plan, o, point, &free, finals[first + k])?;
             claims[source].push(claim);
         }
         mus.push(mask_claim(&plan, j, point, result.mask_final)?);
@@ -3660,25 +3752,36 @@ where
         ledger.add(Line::Rlc, &name, line, r + 2);
         ledger.masked(&name, &result);
         let point = &result.reduction.point;
-        let finals = lookup::finals(&plan, step, run, point, &sumcheck.final_values)?;
-        for (source, claim) in finals.claims.iter().cloned() {
+        let finals = lookup::finals_with(
+            &plan,
+            step,
+            run,
+            point,
+            &sumcheck.final_values,
+            |o, value| occurrence_weight::route(&plan, o, point, &[], value),
+        )?;
+        for (source, claim) in finals.claims {
             claims[source].push(claim);
         }
         mus.push(mask_claim(&plan, index, point, result.mask_final)?);
-        mus.extend(finals.blocks.iter().cloned());
-        lookup::advance(step, run, point, &finals, t)?;
+        mus.extend(finals.blocks);
+        lookup::advance(step, run, point, finals.layers, t)?;
         reductions.push(result.reduction);
         records.push(result.mask);
     }
     for (b, (source, batch)) in plan.batched.iter().zip(&proof.batches).enumerate() {
         let index = plan.steps.len() + plan.gkr.len() + b;
-        let result = verify_batch(
+        let source_claims = &claims[*source];
+        let result = verify_batch_using(
             plan.masks[index].0,
             &verified[*source],
-            &claims[*source],
+            source_claims.iter().map(|c| c.value),
             batch,
             binding,
             t,
+            |source, gammas, point| {
+                occurrence_weight::expected(source, source_claims, gammas, point)
+            },
         )?;
         let name = alloc::format!("batch source {source}");
         let count = claims[*source].len() as u64;
@@ -4196,6 +4299,152 @@ mod tests {
         }
     }
 
+    #[test]
+    fn matches_reference_projected_relation_columns() {
+        // Project each input axis independently. Variable axes cannot repeat (the plan validates distinct).
+        let choices = [
+            Coord::Var(0),
+            Coord::Var(1),
+            Coord::Var(2),
+            Coord::Free(1),
+            Coord::Free(0),
+            Coord::Fixed(0),
+            Coord::Fixed(1),
+        ];
+        let q = |i: i64| {
+            basis::<QM31>(2).expect("extension basis") * QM31::from_i64(i * i + 1)
+                + QM31::from_i64(i.pow(3) - i + 1)
+        };
+        for ncoords in 0..=3 {
+            let column: Vec<_> = (0..1usize << ncoords)
+                .map(|i| q(1 + 3 * i as i64))
+                .collect();
+            for mut code in 0..choices.len().pow(ncoords as u32) {
+                let mut coords = Vec::new();
+                for _ in 0..ncoords {
+                    coords.push(choices[code % choices.len()]);
+                    code /= choices.len();
+                }
+                if [0, 1, 2].iter().any(|v| {
+                    coords
+                        .iter()
+                        .filter(|c| matches!(c, Coord::Var(i) if i == v))
+                        .count()
+                        > 1
+                }) {
+                    continue;
+                }
+                for free in [[q(7), q(-3)], [zero::<QM31>(), QM31::from_i64(1)]] {
+                    let got = domain_table(&column, &coords, &free, 3);
+                    assert_eq!(got.len(), 8);
+                    for (i, value) in got.into_iter().enumerate() {
+                        let point: Vec<_> = (0..3)
+                            .map(|j| QM31::from_i64(bit(i, j, 3) as i64))
+                            .collect();
+                        let w = stele_poly::eq_table(&column_point(&coords, &point, &free))
+                            .expect("dense column oracle");
+                        let expected = column
+                            .iter()
+                            .zip(w)
+                            .fold(zero::<QM31>(), |s, (x, w)| s + *x * w);
+                        assert_eq!(value, expected);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn matches_reference_wide_column_on_a_small_domain() {
+        // One live or no live variables: fixed/free column width never sets the scratch size.
+        let unit = basis::<QM31>(1).expect("extension basis");
+        let column: Vec<_> = (0..1 << 16)
+            .map(|i| unit * QM31::from_i64(i) + QM31::from_i64(i * i))
+            .collect();
+        let mut fixed = vec![Coord::Fixed(1); 16];
+        fixed[7] = Coord::Var(2);
+        for (i, value) in domain_table(&column, &fixed, &[], 3)
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(value, column[0xffff ^ ((1 - bit(i, 2, 3)) << 8)]);
+        }
+        let free: Vec<_> = (0..16).map(|i| unit + QM31::from_i64(i)).collect();
+        let eq = stele_poly::eq_table(&free).expect("dense free-coordinate table");
+        let expected = column
+            .iter()
+            .zip(eq)
+            .fold(zero::<QM31>(), |s, (v, w)| s + *v * w);
+        assert_eq!(
+            domain_table(
+                &column,
+                &(0..16).map(Coord::Free).collect::<Vec<_>>(),
+                &free,
+                3
+            ),
+            vec![expected; 8]
+        );
+    }
+
+    #[test]
+    fn matches_reference_sparse_batch_weight() {
+        let q = |n| basis::<QM31>(1).expect("extension basis") + QM31::from_i64(n);
+        for ell in [3, 4] {
+            let source =
+                Source::<QM31>::hiding(0, ell, MIN_M, BLOWUP, [0; 32]).expect("hiding source");
+            let last = (source.rows() / 2) * (source.columns() / 2) - 1;
+            let claims = [
+                Claim {
+                    weights: vec![(0, q(2)), (last, q(3)), (0, q(5))],
+                    value: q(7),
+                },
+                Claim {
+                    weights: vec![(last, q(11)), (2, q(13))],
+                    value: q(17),
+                },
+                Claim {
+                    weights: vec![],
+                    value: q(19),
+                },
+            ];
+            let gammas = [q(23), q(29), q(31)];
+            let table = weight_table(&source, &claims, &gammas).expect("dense weights");
+            let mut point: Vec<_> = (0..table.len().ilog2()).map(|i| q(i64::from(i))).collect();
+            for w in [QM31::from_i64(0), QM31::from_i64(1), q(37)] {
+                point[0] = w;
+                let eq = stele_poly::eq_table(&point).expect("dense equality table");
+                let dense = eq
+                    .iter()
+                    .zip(&table)
+                    .fold(zero::<QM31>(), |s, (a, b)| s + *a * *b);
+                assert_eq!(
+                    expected_weight(&source, &claims, &gammas, &point),
+                    Ok(dense)
+                );
+            }
+            assert_eq!(
+                expected_weight(&source, &[], &[], &point),
+                Ok(zero::<QM31>())
+            );
+            assert_eq!(
+                expected_weight(&source, &claims, &gammas[..2], &point),
+                Err(Error::Statement)
+            );
+            assert_eq!(
+                expected_weight(&source, &claims, &gammas, &point[1..]),
+                Err(Error::Statement)
+            );
+            let bad = Claim {
+                weights: vec![(last + 1, q(41))],
+                value: q(43),
+            };
+            assert_eq!(
+                expected_weight(&source, &[bad], &[zero::<QM31>()], &point),
+                Err(Error::Statement)
+            );
+        }
+    }
+
     /// E12-26: the ledger's integer log2 and its round security, rounded toward the
     /// larger error; the eight-layer byte-4 LU and witness tensor rounds.
     #[test]
@@ -4475,7 +4724,7 @@ mod tests {
                 blocks: vec![t],
             };
             let plan = plan_with(&statement, Some(&life)).expect("plan");
-            let (_, first) = plan.layouts[1].offsets[0];
+            let (_, first) = plan.offsets[1];
             assert_eq!(plan.reserved[1], 3 * t);
             let mut out: Vec<usize> = plan
                 .steps

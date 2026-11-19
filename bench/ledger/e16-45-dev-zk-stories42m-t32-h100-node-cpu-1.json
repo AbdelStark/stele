@@ -1,0 +1,136 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "02afacd991a501f5908432f32f9a50450a9b0b40",
+  "controls": {
+    "failed": 0,
+    "passed": 1,
+    "total": 1
+  },
+  "device": "06/cf (CPU on Lucid h100-nvl-1-1-cc)",
+  "driver": "not-applicable",
+  "generated_tokens": 8,
+  "kernel_counters": {
+    "checked_positions": 9,
+    "commit_peak_rss_bytes": 36196868096,
+    "model_commitment_bytes": 638,
+    "prove_peak_rss_bytes": 88561152000,
+    "public_bytes": 243863,
+    "verify_peak_rss_bytes": 16825892864
+  },
+  "kind": "inference",
+  "model_config": {
+    "binary_sha256": "f6cc8c3b2d8669754530e377b2d009cb04b3311eef51cad71a45700104237697",
+    "command": "stele commit-model --zk / prove-dev --zk / verify-dev --expect-model",
+    "controls": {
+      "pin": "model differs from --expect-model"
+    },
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "evidence": {
+      "campaign_sha256": "5320f6c01901f1677a88a2741109c07c21e351002e98101ed60182058d4c24c8",
+      "capture_program_sha256": "a96465d83006af52f52727e4c18dad61f1f6ba3aeec6e4584c82e5b31112ccb2",
+      "input_hashes": {
+        "artifact": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+        "model": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+        "preparation": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+        "scales": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8"
+      },
+      "public_file_sha256": {
+        "1/pin.command.json": "d50a991c35c9e5f076fa230daedeef178a8133e7a0180102381f95a5ffd81f98",
+        "1/pin.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "1/pin.out": "b38a28a8eeb93769da30fb72aeff88536a4f18ccd63792fd671e9215e325405b",
+        "1/pin.time": "36ecd7cab4096b94ede36c196a678e8dd7d58ec1d750c6bd72f88e615f7e58ad",
+        "1/prove.command.json": "1d037cc552b4860713215549eba738e858feaff219de4d0f12565ebdd6964888",
+        "1/prove.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "1/prove.out": "0d424c2f1746d8aba33f973e57f39d976acf38dabb070207f85d1de400477fd8",
+        "1/prove.time": "ec7b712c46f43bbeea6f6137a56cd48d61da2cf99ce32c515f36f544b914dbce",
+        "1/verify.command.json": "f099906fd1a60bcc8667f27873581186d6a1ea608729fe6fa7b3aa59121b7fb3",
+        "1/verify.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "1/verify.out": "c6cf396c91bbd771c3dae4f5705ef2d2c4bf963b524970babab9ac062d8dd736",
+        "1/verify.time": "75c42fd0fb7ee090b8b271cd7d537b1b1e1384c48a8adea3fd2167a597186e09",
+        "allocation.txt": "0eb1a247b17ade7f151454ffd9eea034ad124704ad240f4224b1acffb337b086",
+        "commit.command.json": "25800c255b91ea178e3f79cf0df283d9d66c858b486577abb8d61779df96ab22",
+        "commit.out": "8695019efb84e36d8c46d349107cef4d37db578122fa2f4d74a02555425ea5f9",
+        "commit.time": "e060b6cdd645c77cf980005db55b1449500ee201ac05792c886237dbf7149e56",
+        "host.json": "c8b2fa42129d8c9b8f5d9da74e6c0b459c427978b36485d0a688d213eabf53e8"
+      },
+      "raw_ledger_sha256": "4b07143df7887c0c30dc2dfd2e35599b87aada93dd0cad5bd10c90aad3a425b5",
+      "slurm_allocation": "6803|COMPLETED|0:0|00:24:39|h100-nvl-1-1-cc|billing=16,cpu=16,mem=160G,node=1",
+      "source_package_sha256": "42b06104137f6bce857fe74a95619047a43ee4e36b24c6835acdfa14d56bf837"
+    },
+    "host": "h100-nvl-1-1-cc",
+    "host_context": "Three uninstrumented pristine CPU CLI proofs on the Lucid H100 measurement node. 16 pinned threads, independently verified at consecutive indices of one fresh model state. Wrong expected-model control on every proof. No device code runs in this baseline.",
+    "job": "6803",
+    "measurement_mode": "plain",
+    "model": {
+      "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+      "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
+      "fidelity": "agents/reviews/e16-11-stories42m/fidelity.json",
+      "model_sha256": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+      "name": "llama2.c stories42M (MIT), converted by research/cqis-model-contract/stories42m.py",
+      "preparation_sha256": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+      "scales_sha256": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8",
+      "shape": {
+        "context": 1024,
+        "d": 512,
+        "head_width": 64,
+        "heads": 8,
+        "hidden": 1376,
+        "kv_heads": 8,
+        "layers": 8,
+        "vocabulary": 32000
+      },
+      "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
+    },
+    "profile_byte": 4,
+    "proof_index": 1,
+    "proof_sha256": "27457d0939d351a6ec02bd21576b1b7d008f827cd82b0ba50c75495fc64ef9cc",
+    "proofs": 8,
+    "public_sha256": "b5fcd3154340aa296d0ba40ba33d22fc5cb6dbbf867d5e80265d0964db727d65",
+    "statement": {
+      "T": "32",
+      "checked": "23..32",
+      "cqis_id": "551b6f3e0a5518bf66dabd6c31dc9bbdf603684013f99322e7bdd78178ef3b14",
+      "model": "98d468b314409590116cc556e4ae544ca3b7e98b60e7ce9528bdb9e6e315a549",
+      "next": "2654",
+      "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,29892"
+    },
+    "threads": 16,
+    "verifier_sha256": "b16646342de292f1d4733b9ccb80cff4d857ea550cb522581453249a1feb77dc"
+  },
+  "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile byte 4 (balanced policy-2 hiding sources, RFC-0013 A8; RFC-0026 A9), development tier; zero knowledge is conditional and computational (seed-derived masks). The weights and the 1-D records (RFC-0013 A7) are committed once by commit-model as one published commitment for P = 8 proofs (A6), recorded as stage model_commitment_once and not part of the prove time. Prover time is the prove-dev --zk process wall time of proof index 1: Artifact decode, executor capture, plain check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; another proof against the same commitment also verifies. The control is verify-dev of a proof pinned to another model digest. Repeats, if any, are in model_config.host_context. Soundness ledger (verify-dev, E12-26): eps_interactive <= 731241032/p^4; worst round LU+ZD check 5, 2^-95.4, grinding 0 bits. CPU only, no GPU. Peak RSS is the GNU time -v maximum resident set size. Not a cost-model fit input.",
+  "plan_digest": "7d3df59837934e3bb733dce195d3596147c19dd8deca3b3498ab8380ea61984e",
+  "profile": "development",
+  "prompt_tokens": 24,
+  "proof_size_bytes": 21411006,
+  "prover_time_ns": 400970000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "model_commitment_once": 42970000000,
+    "prove_dev_wall": 400970000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 57360000000
+  },
+  "witness_recompute_ns": 0,
+  "workload": "dev/stories42m-t32"
+}
