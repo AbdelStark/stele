@@ -36,6 +36,8 @@ All commands below exited zero. Both Rust workspace suites and Clippy ran on the
 
 The H100 parity gate compared 50 distinct complete proof and public bundle pairs with the original independent manifest. The gate also verified the replay, changed-model pins and backend rejection controls. [Complete corpus ledger](../../bench/ledger/e20-22-e45-h100-complete-shared-proof-parity.json)
 
+The shipping composition at `5d96c2b2` includes the global-column adapter, the interleaving regression and the native inventory control. Its production crates match the measured release tree `9d9d5b59` except for one diagnostic in `stele-gpu/src/gkr.rs`. When a device allocation is rejected and stage timing is enabled, the diagnostic reports the requested byte count. The allocation limit, successful proof path, parity gate and inference counter validator match the measured release.
+
 ## Three-pair H100 confirmation
 
 Lucid job 6964 used one NVIDIA H100 SXM and the same pinned 16 CPU threads on eight physical cores for all six ordinary proofs. Each process used the same public Stories42M-T32 request and a distinct reservation under one fresh eight-proof model commitment. The Rust CPU-only verifier built from this candidate and the separately pinned older verifier each accepted every proof and rejected its changed model digest.
