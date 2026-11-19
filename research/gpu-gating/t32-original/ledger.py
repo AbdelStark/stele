@@ -42,7 +42,7 @@ def clock_ns(gnu):
     return round(seconds * 1e9)
 
 
-def ledger(archive, verified):
+def ledger(archive, verified, *, seeded_counts=None):
     here = Path(__file__).resolve().parent
     repo = here.parents[2]
     z_name = "e16-40z-t32-gkr-memory-h100.json"
@@ -122,8 +122,9 @@ def ledger(archive, verified):
     for i in (96,97):
         for k in ("variables","construction_bytes","first_fold_bytes","input_bytes","released_bytes"):
             counters[f"gkr/{i}/{k}"] = steps[i][k]
-    seeded = dict(pcs=1000,batch_owners=2000,gkr=1000,gkr_steps=2728,
-                  gkr_representations=5456,canonical_original_lookups=1000,raw_original_lookups=1000)
+    seeded = (seeded_counts(raw) if seeded_counts else
+              dict(pcs=1000,batch_owners=2000,gkr=1000,gkr_steps=2728,gkr_representations=5456,
+                   canonical_original_lookups=1000,raw_original_lookups=1000))
     m = re.search(rb"periodic_rounds=(\d+) period_transitions=(\d+)", raw["machine/gkr.err"])
     seeded.update(periodic_rounds=int(m[1]),period_transitions=int(m[2]))
     assert seeded["periodic_rounds"] > seeded["period_transitions"] > 0
