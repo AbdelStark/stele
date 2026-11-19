@@ -38,25 +38,109 @@ from hiding_source_counts import proof_inventory, check_source_work
 from lookup_tree_counts import check_lookup_work
 
 
-def gnu_time(path):
-    """Wall seconds and maximum RSS bytes from GNU time -v, or from BSD (macOS) time -l."""
+def gnu_time_with_resolution(path):
+    """Wall nanoseconds, maximum RSS bytes, and display resolution (ns) from GNU time -v or BSD time -l."""
     text = Path(path).read_text()
     bsd = re.search(r'^\s*([\d.]+) real\b', text, re.M)
     if bsd:  # BSD time reports RSS in bytes and no exit status; the caller checks the outputs.
         rss = int(re.search(r'^\s*(\d+)\s+maximum resident set size$', text, re.M).group(1))
-        return round(float(bsd.group(1)) * 1e9), rss
+        raw = bsd.group(1)
+        res_ns = 10_000_000 if '.' in raw else 1_000_000_000
+        return round(float(raw) * 1e9), rss, res_ns
     clock = re.search(r'Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): (\S+)', text).group(1)
     seconds = 0.0
     for part in clock.split(':'):
         seconds = seconds * 60 + float(part)
     rss = int(re.search(r'Maximum resident set size \(kbytes\): (\d+)', text).group(1)) * 1024
     assert 'Exit status: 0' in text, 'NonzeroExit'
-    return round(seconds * 1e9), rss
+    res_ns = 10_000_000 if '.' in clock else 1_000_000_000
+    return round(seconds * 1e9), rss, res_ns
+
+
+def gnu_time(path):
+    """Wall nanoseconds and maximum RSS bytes from GNU time -v, or from BSD (macOS) time -l."""
+    ns, rss, _ = gnu_time_with_resolution(path)
+    return ns, rss
+
+
+def external_wall_ns(run, time_ns, resolution_ns):
+    """Use nanosecond external wall time in `prove.wall_ns` when present, checked against `prove.time`."""
+    wall_path = Path(run) / 'prove.wall_ns'
+    if not wall_path.exists():
+        return time_ns
+    raw = wall_path.read_text().strip()
+    if not re.fullmatch(r'[0-9]+', raw):
+        raise ValueError(f'invalid prove.wall_ns: {raw!r}')
+    wall_ns = int(raw)
+    if wall_ns <= 0 or abs(wall_ns - time_ns) > resolution_ns:
+        raise ValueError(
+            f'prove.wall_ns ({wall_ns} ns) disagrees with prove.time ({time_ns} ns, '
+            f'resolution {resolution_ns} ns)'
+        )
+    return wall_ns
 
 
 def statement(path):
     lines = dict(line.split(' ', 1) for line in Path(path).read_text().splitlines() if ' ' in line)
     return {k: lines[k] for k in ('cqis_id', 'model', 'T', 'tokens', 'checked', 'next')}
+
+
+REQUIRED_STAGES = frozenset({
+    'model_commitment', 'witness', 'plain_check', 'plan', 'commitment', 'multiplicities',
+    'zerochecks', 'lookups', 'reductions', 'openings',
+})
+RESERVED_STAGES = frozenset({'prove_dev_wall', 'model_commitment_once'})
+SECTION_BYTE_COUNTERS = frozenset({
+    'proof_section_groups_bytes', 'proof_section_multiplicities_bytes',
+    'proof_section_identities_bytes', 'proof_section_lookups_bytes',
+    'proof_section_matmuls_bytes', 'proof_section_openings_bytes',
+})
+REQUIRED_COUNTERS = frozenset({
+    'committed_cells', 'lookup_positions', 'weight_reads',
+}) | SECTION_BYTE_COUNTERS
+
+
+def parse_report(text, *, proof_bytes=None, require_nonempty=False):
+    """Parse E17-01 `stage_ns <name> <ns>` and `counter <name> <val>` lines from `prove.out`."""
+    stages, counters = {}, {}
+    for line in text.splitlines():
+        if not re.match(r'^(?:stage_ns|counter)(?:\s|$)', line):
+            continue
+        if line.startswith('stage_ns'):
+            m = re.fullmatch(r'stage_ns ([a-z0-9_]+) ([0-9]+)', line)
+            if m is None or m.group(1) in stages or m.group(1) in RESERVED_STAGES:
+                raise ValueError(f'invalid, reserved, or duplicate stage_ns line: {line!r}')
+            stages[m.group(1)] = int(m.group(2))
+        else:
+            m = re.fullmatch(r'counter ([a-z0-9_]+) ([0-9]+)', line)
+            if m is None or m.group(1) in counters:
+                raise ValueError(f'invalid or duplicate counter line: {line!r}')
+            counters[m.group(1)] = int(m.group(2))
+    if not stages and not counters:
+        if require_nonempty:
+            raise ValueError(
+                'missing RFC-0018 A2 stage_ns / counter report in prove.out '
+                '(pass --legacy-no-stages for pre-E17-01 runs)'
+            )
+        return stages, counters
+    missing_stages = REQUIRED_STAGES - stages.keys()
+    missing_counters = REQUIRED_COUNTERS - counters.keys()
+    if missing_stages or missing_counters:
+        raise ValueError(f'incomplete prove-dev report: missing stages={sorted(missing_stages)} '
+                         f'counters={sorted(missing_counters)}')
+    per_check_sum = sum(v for k, v in counters.items() if k.startswith('lookup_positions_check_'))
+    if per_check_sum != counters['lookup_positions']:
+        raise ValueError(
+            f'lookup_positions ({counters["lookup_positions"]}) differs from sum of '
+            f'lookup_positions_check_* ({per_check_sum})'
+        )
+    if proof_bytes is not None:
+        section_sum = sum(counters[k] for k in SECTION_BYTE_COUNTERS)
+        if section_sum > proof_bytes:
+            raise ValueError(
+                f'sum of proof_section_*_bytes ({section_sum}) exceeds proof size ({proof_bytes})'
+            )
+    return stages, counters
 
 
 ZK_NOTE = ('RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. '
@@ -189,6 +273,8 @@ def main():
     p.add_argument('--host-context', required=True)
     p.add_argument('--counters', type=Path, help='JSON object of extra unsigned integer counters')
     p.add_argument('--rung', help='ladder rung, for example L1 or L2a (RFC-0018 A2)')
+    p.add_argument('--legacy-no-stages', action='store_true',
+                   help='allow a pre-E17-01 prove.out without in-process stage_ns/counter lines')
     p.add_argument('--zk', action='store_true', help='a dev-zk run against a published model commitment')
     p.add_argument('--cuda-driver', help='observed driver version for a CUDA development proof')
     a = p.parse_args()
@@ -197,7 +283,8 @@ def main():
     run = a.run
     assert (run / 'verify.out').read_text().splitlines()[-1] == 'YES', 'NotAccepted'
     assert (run / 'prove.out').read_text().splitlines()[-1] == 'PROOF WRITTEN', 'NotProved'
-    prove_ns, prove_rss = gnu_time(run / 'prove.time')
+    prove_time_ns, prove_rss, prove_res_ns = gnu_time_with_resolution(run / 'prove.time')
+    prove_ns = external_wall_ns(run, prove_time_ns, prove_res_ns)
     timer = 'BSD /usr/bin/time -l' if re.search(r'^\s*[\d.]+ real\b', (run / 'prove.time').read_text(), re.M) else 'GNU time -v'
     verify_ns, verify_rss = gnu_time(run / 'verify.time')
     s = statement(run / 'prove.out')
@@ -212,15 +299,21 @@ def main():
         assert [c for c, _ in controls] == ['next', 'token', 'weight', 'gain'], controls
         assert 'test result: ok. 1 passed' in (run / 'controls.log').read_text()
     proof, public = (run / 'proof.bin').read_bytes(), (run / 'public.bin').read_bytes()
-    stages = {'prove_dev_wall': prove_ns}
-    if (run / 'commit.log').exists():  # separate process: Artifact decode and model commitment only
+    prove_text = (run / 'prove.out').read_text()
+    reported_stages, reported_counters = parse_report(
+        prove_text, proof_bytes=len(proof), require_nonempty=(not a.zk and not a.legacy_no_stages),
+    )
+    assert not (RESERVED_STAGES & set(reported_stages)), 'StageNames'
+    stages = {'prove_dev_wall': prove_ns, **reported_stages}
+    if 'model_commitment' not in stages and (run / 'commit.log').exists():
+        # Legacy separate process: Artifact decode and model commitment only.
         stages['model_commitment'] = int(re.search(r'^model commitment: (\d+) ns$',
                                                    (run / 'commit.log').read_text(), re.M).group(1))
     start, end = map(int, s['checked'].split('..'))
     t = int(s['T'])
     plan = dict(command='stele prove-dev / verify-dev', statement=s, threads=a.threads,
                 model=json.loads(Path(a.model_config).read_text()))
-    extra_counters = {}
+    extra_counters = dict(reported_counters)
     if a.zk:
         commit_ns, commit_rss = gnu_time(run / 'commit.time')
         stages['model_commitment_once'] = commit_ns
@@ -235,12 +328,25 @@ def main():
         device = device_counters(log.read_text() if log.exists() else '', verified, byte, a.cuda_driver, proof)
         if device:
             plan['backend'] = 'cuda'
-        extra_counters = {'commit_peak_rss_bytes': commit_rss,
-                          'model_commitment_bytes': (run / 'model.commit').stat().st_size, **device}
+        zk_fixed = {'commit_peak_rss_bytes': commit_rss,
+                    'model_commitment_bytes': (run / 'model.commit').stat().st_size}
+        assert not (set(zk_fixed) & set(device)), 'CounterNames'
+        zk_counters = {**zk_fixed, **device}
+        assert not (set(extra_counters) & set(zk_counters)), 'CounterNames'
+        extra_counters.update(zk_counters)
+    over = [(k, v) for k, v in stages.items() if k != 'model_commitment_once' and v > prove_ns]
+    if over:
+        detail = ', '.join(f'{k}={v}ns' for k, v in sorted(over))
+        raise ValueError(
+            f'stage time exceeds prover_time_ns ({prove_ns}ns): {detail}; '
+            'if GNU/BSD time rounded down, record exact external wall nanoseconds in prove.wall_ns'
+        )
     if a.rung:
         plan['rung'] = a.rung
-    counters = {'prove_peak_rss_bytes': prove_rss, 'verify_peak_rss_bytes': verify_rss,
-                'public_bytes': len(public), 'checked_positions': end - start, **extra_counters}
+    base_counters = {'prove_peak_rss_bytes': prove_rss, 'verify_peak_rss_bytes': verify_rss,
+                     'public_bytes': len(public), 'checked_positions': end - start}
+    assert not (set(base_counters) & set(extra_counters)), 'CounterNames'
+    counters = {**base_counters, **extra_counters}
     if a.counters:
         extra = json.loads(a.counters.read_text())
         assert isinstance(extra, dict) and not set(extra) & set(counters), 'CounterNames'
@@ -260,6 +366,27 @@ def main():
         if 'sources_original_h2d_bytes' in device:
             families.append('the shared batch and its standalone mask certificate and opening')
         execution = 'CUDA supplied ' + ', '.join(families) + '.'
+    witness_ns = stages.get('witness', 0) if not a.zk else 0
+    dev_note = (
+        'RFC-0026 development profile (RFC-0018 A1, A2): no security level, FS unproven, PCS conjectural, '
+        'no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight '
+        'commitment, executor capture (witness), plain check and proof. '
+        + (
+            'In-process stage timings (stage_times_ns, RFC-0018 A2) time model_commitment, witness, '
+            'plain_check (running beside the relation engine under std), plan, commitment (overlapping '
+            'multiplicity counting in parallel::join), multiplicities, zerochecks, lookups, reductions '
+            'and openings; witness_recompute_ns equals stage witness. '
+            if reported_stages else
+            'The witness is not timed separately (witness_recompute_ns 0). Stage model_commitment, when '
+            'present, is Artifact decode plus model commitment timed in a separate test process; it is '
+            'part of prove_dev_wall. '
+        )
+        + 'Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware '
+        'thread count available to the process. Peak RSS is the ' + timer + ' maximum resident set size. '
+        'Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this '
+        'proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 '
+        'records; not a cost-model fit input.'
+    )
     ledger = {
         'schema_version': 1, 'kind': 'inference', 'workload': a.workload, 'commit': a.commit,
         'toolchain': a.toolchain, 'device': a.device, 'driver': a.cuda_driver or 'not-applicable',
@@ -269,22 +396,14 @@ def main():
         'plan_digest': hashlib.sha256(json.dumps(plan, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
         'profile': 'development', 'bindings_all_on': True, 'batch_size': 1,
         'prompt_tokens': a.prompt_tokens, 'generated_tokens': t - a.prompt_tokens,
-        'prover_time_ns': prove_ns, 'witness_recompute_ns': 0,
+        'prover_time_ns': prove_ns, 'witness_recompute_ns': witness_ns,
         'stage_times_ns': stages,
         'kernel_counters': counters,
         'proof_size_bytes': len(proof), 'verifier_time_ns': {'rust': verify_ns, 'python': 0},
         'controls': {'total': len(controls), 'passed': len(controls), 'failed': 0},
         'note': ZK_NOTE.format(timer=timer, byte=plan['profile_byte'], sources=ZK_SOURCES[plan['profile_byte']],
                                proofs=plan['proofs'], index=plan['proof_index'],
-                               ledger=zk_ledger(verified), execution=execution) if a.zk else ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '
-                 'no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight '
-                 'commitment, executor capture (witness), plain check and proof; the witness is not timed '
-                 'separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact '
-                 'decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. '
-                 'CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is the ' + timer + ' maximum resident set size. Controls '
-                 'are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each '
-                 'rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a '
-                 'cost-model fit input.'),
+                               ledger=zk_ledger(verified), execution=execution) if a.zk else dev_note,
     }
     a.out.write_text(json.dumps(ledger, indent=1, sort_keys=True) + '\n')
     subprocess.run(['cargo', 'run', '-q', '-p', 'stele-bench', '--locked', '--offline', '--', 'ledger', 'validate',

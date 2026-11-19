@@ -2193,3 +2193,94 @@ fn matches_reference_request_layout_variants() {
         }
     }
 }
+
+/// E17-01 (RFC-0018 A2): measured proving preserves pinned L0 proof bytes, reports
+/// in-process stage nanoseconds and emits thread-count-independent counters.
+#[test]
+fn accepts_one_layer_measured_with_unchanged_proof_bytes_and_stage_counters() {
+    let case = load("one-layer");
+    let base = Statement {
+        tokens: vec![1],
+        start: 0,
+        end: 1,
+        next: None,
+    };
+    for (profile, expected_hash) in [
+        (3u8, 0x61d3_c199_0e56_1b8fu64),
+        (5u8, 0x59ee_67e3_9aa2_5d4b),
+    ] {
+        let (public, statement, proof, report) =
+            stele_prover::development::prove_window_development_measured(
+                case.bytes[0],
+                case.bytes[2],
+                case.bytes[1],
+                &case.artifact,
+                base.clone(),
+                16,
+                profile,
+            )
+            .expect("measured prove");
+        assert_eq!(fnv(&proof), expected_hash);
+        verify(&public, &statement, &proof).expect("verify");
+        assert!(report.model_commitment_ns > 0);
+        assert!(report.witness_ns > 0);
+        assert!(report.plain_check_ns > 0);
+        let e = &report.engine;
+        assert!(e.commitment_ns > 0);
+        assert!(e.multiplicities_ns > 0);
+        assert!(e.zerochecks_ns > 0);
+        assert!(e.lookups_ns > 0);
+        assert!(e.reductions_ns > 0);
+        assert!(e.openings_ns > 0);
+        assert!(e.committed_cells > 0);
+        assert!(e.stacked_source_cells_padded >= e.committed_cells);
+        assert!(e.lookup_positions > 0);
+        assert!(!e.lookup_checks.is_empty());
+        assert_eq!(
+            e.lookup_checks.iter().map(|(_, n)| *n).sum::<u64>(),
+            e.lookup_positions
+        );
+        // Development-tier weights currently undergo 4 physical passes: Step 3 Range counts,
+        // Step 5 Range originals, Step 6 matmul, and Step 7 model opening.
+        assert_eq!(e.weight_reads, 4);
+        assert!(e.weight_elements_read > 0);
+        let sections = container::decode(&proof).expect("container");
+        let sum_len = |v: &[Vec<u8>]| -> u64 { v.iter().map(|s| s.len() as u64).sum() };
+        assert_eq!(e.groups_bytes, sum_len(&sections.groups));
+        assert_eq!(e.multiplicities_bytes, sum_len(&sections.multiplicities));
+        assert_eq!(e.identities_bytes, sum_len(&sections.identities));
+        assert_eq!(e.lookups_bytes, sum_len(&sections.lookups));
+        assert_eq!(e.matmuls_bytes, sum_len(&sections.matmuls));
+        assert_eq!(e.openings_bytes, sum_len(&sections.openings));
+        // Deterministic counters across runs.
+        let (_, _, proof2, report2) = stele_prover::development::prove_window_development_measured(
+            case.bytes[0],
+            case.bytes[2],
+            case.bytes[1],
+            &case.artifact,
+            base.clone(),
+            16,
+            profile,
+        )
+        .expect("second measured prove");
+        assert_eq!(proof, proof2);
+        assert_eq!(
+            report.engine.committed_cells,
+            report2.engine.committed_cells
+        );
+        assert_eq!(
+            report.engine.stacked_source_cells_padded,
+            report2.engine.stacked_source_cells_padded
+        );
+        assert_eq!(
+            report.engine.lookup_positions,
+            report2.engine.lookup_positions
+        );
+        assert_eq!(report.engine.lookup_checks, report2.engine.lookup_checks);
+        assert_eq!(report.engine.weight_reads, report2.engine.weight_reads);
+        assert_eq!(
+            report.engine.weight_elements_read,
+            report2.engine.weight_elements_read
+        );
+    }
+}

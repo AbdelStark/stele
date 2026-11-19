@@ -11,6 +11,8 @@
 //! bit `j` of a `Ref` sits at coordinate `n-1-j` and reads domain coordinate
 //! `m-1-vars[j]`. A group source puts the column index in the high (leading) bits.
 use crate::lookup::{mu_source, Layout};
+#[cfg(feature = "std")]
+extern crate std;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -328,6 +330,80 @@ pub struct Proof {
     pub matmuls: Vec<Vec<u8>>,
     /// Per opened source: claim-batch rounds, final value, opening.
     pub openings: Vec<Vec<u8>>,
+}
+
+/// Nanosecond stage stopwatch behind `std` (RFC-0018 A2, task E17-01).
+/// Under `no_std` every measurement returns zero. Never touches transcripts or bytes.
+pub struct Stopwatch {
+    #[cfg(feature = "std")]
+    start: std::time::Instant,
+}
+
+impl Stopwatch {
+    /// Start timing a prover stage.
+    pub fn start() -> Self {
+        Self {
+            #[cfg(feature = "std")]
+            start: std::time::Instant::now(),
+        }
+    }
+
+    /// Elapsed nanoseconds since [`Self::start`], saturating at `u64::MAX` (0 without `std`).
+    pub fn elapsed_ns(&self) -> u64 {
+        #[cfg(feature = "std")]
+        {
+            u64::try_from(self.start.elapsed().as_nanos()).unwrap_or(u64::MAX)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            0
+        }
+    }
+}
+
+/// Prover stage timings (behind `std`; zero under `no_std`) and thread-count-independent
+/// counters for one relation-engine proof (RFC-0018 A2, task E17-01).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Metrics {
+    /// Relation planning nanoseconds.
+    pub plan_ns: u64,
+    /// Stacked witness source commitment (prepare + certificate) nanoseconds.
+    pub commitment_ns: u64,
+    /// Multiplicity counting, encoding and certificate nanoseconds.
+    pub multiplicities_ns: u64,
+    /// Zerocheck (step 4) nanoseconds.
+    pub zerochecks_ns: u64,
+    /// LogUp lookup proof (step 5) nanoseconds.
+    pub lookups_ns: u64,
+    /// Matmul / reduction sumchecks (step 6) nanoseconds.
+    pub reductions_ns: u64,
+    /// Claim batching and source openings (step 7) nanoseconds.
+    pub openings_ns: u64,
+    /// Exact committed witness cells (`sum 2^log_len` over `Kind::Witness` columns).
+    pub committed_cells: u64,
+    /// Padded stacked-source cell count (`2^bits`), or 0 when there is no stack.
+    pub stacked_source_cells_padded: u64,
+    /// Total unpadded lookup positions across all checks (`sum_{check, member} 2^m`).
+    pub lookup_positions: u64,
+    /// Per-check `(check.name, unpadded_positions)` in plan order.
+    pub lookup_checks: Vec<(String, u64)>,
+    /// Proof section byte counts by RFC-0026 §4.1 section.
+    pub groups_bytes: u64,
+    pub multiplicities_bytes: u64,
+    pub identities_bytes: u64,
+    pub lookups_bytes: u64,
+    pub matmuls_bytes: u64,
+    pub openings_bytes: u64,
+    /// Maximum physical passes over any weight column during proving, computed as
+    /// `max_w ceil(col_reads[w] / 2^(w.n))` across Steps 3–7 (RFC-0027 §7, INV-7).
+    pub weight_reads: u64,
+    /// Total unpadded `Kind::Weight` column element reads across Steps 3 (`lookup::counts`,
+    /// selected positions), 4 (`zerochecks`), 5 (`lookup::prove` `originals`), 6 (`matmuls`,
+    /// counting `2^(w.n) >> fixed_bits` for RFC-0026 A6 row-blocked `lhs`/`rhs` operands and
+    /// `2^(w.n)` for `out`), and 7 (one logical opening pass per weight column in each opened
+    /// model source; the unoptimised development `Opening::prove` reads both `values` and
+    /// `prepared.message()` to support controls before opening).
+    pub weight_elements_read: u64,
 }
 impl Proof {
     /// All sections concatenated, for size accounting; not a verifier input.
@@ -1379,11 +1455,28 @@ pub fn prove(
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
     sources: Sources,
 ) -> Result<Proof, Error> {
+    prove_measured(t, relation, values, model, sources).map(|(proof, _)| proof)
+}
+
+/// [`prove`] together with stage timings (behind `std`) and deterministic counters
+/// (RFC-0018 A2, task E17-01). Proof bytes are identical to [`prove`].
+pub fn prove_measured(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+) -> Result<(Proof, Metrics), Error> {
     // E16-22: stage timing, off unless STELE_STAGE_TIMES.
     let mut laps = parallel::Laps::start();
+    let plan_timer = Stopwatch::start();
     let plan = plan(relation, sources)?;
+    let plan_ns = plan_timer.elapsed_ns();
     laps.lap("dev/plan");
-    prove_plan(t, relation, &plan, values, values, model, None)
+    let (proof, mut metrics) =
+        prove_plan_measured(t, relation, &plan, values, values, model, None)?;
+    metrics.plan_ns = plan_ns;
+    Ok((proof, metrics))
 }
 
 /// A malicious prover for controls (feature `controls`; never a verifier input).
@@ -1491,6 +1584,7 @@ pub fn prove_forged(
 /// The prover. `committed` fills the group messages (step 2); `values` drives every
 /// later message and claim. Controls alone may supply `round_values` for zerocheck
 /// rounds while retaining genuine `values` finals (RFC-0026 §9 NC-1302).
+#[cfg(any(test, feature = "controls"))]
 fn prove_plan(
     t: &mut Transcript<K>,
     relation: &Relation,
@@ -1500,6 +1594,19 @@ fn prove_plan(
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
     round_values: Option<&Values>,
 ) -> Result<Proof, Error> {
+    prove_plan_measured(t, relation, plan, committed, values, model, round_values)
+        .map(|(proof, _)| proof)
+}
+
+fn prove_plan_measured(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    plan: &Plan,
+    committed: &Values,
+    values: &Values,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    round_values: Option<&Values>,
+) -> Result<(Proof, Metrics), Error> {
     let certificates: Vec<&VerifiedCertificate<K>> = model.iter().map(|(_, c)| *c).collect();
     model_check(plan, &certificates)?;
     if model
@@ -1510,6 +1617,42 @@ fn prove_plan(
     }
     let mut proof = Proof::default();
     let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
+    let mut metrics = Metrics {
+        committed_cells: relation
+            .columns
+            .iter()
+            .filter(|c| matches!(c.kind, Kind::Witness(_)))
+            .map(|c| 1u64 << c.log_len)
+            .sum(),
+        stacked_source_cells_padded: plan.stack.as_ref().map_or(0, |s| 1u64 << s.bits),
+        lookup_checks: plan
+            .checks
+            .iter()
+            .map(|c| {
+                let positions: u64 = c.members.iter().map(|m| 1u64 << m.m).sum();
+                (c.name.clone(), positions)
+            })
+            .collect(),
+        ..Metrics::default()
+    };
+    metrics.lookup_positions = metrics.lookup_checks.iter().map(|(_, n)| *n).sum();
+    // Track exact unpadded element reads per weight column across Steps 3-7 (INV-7).
+    let mut weight_index: Vec<Option<usize>> = vec![None; relation.columns.len()];
+    for (w_idx, w) in plan.weights.iter().enumerate() {
+        weight_index[w.column.0 as usize] = Some(w_idx);
+    }
+    let mut col_reads = vec![0u64; plan.weights.len()];
+    let member_selected = |member: &Member| -> u64 {
+        match &member.selector {
+            None => 1u64 << member.m,
+            Some(sel) => match &relation.columns[sel.column.0 as usize].kind {
+                Kind::Public(v) => (0..(1u64 << member.m))
+                    .filter(|&x| v[sel.index(x)] != 0)
+                    .count() as u64,
+                _ => 0,
+            },
+        }
+    };
     // E16-22: stage timing, off unless STELE_STAGE_TIMES.
     let mut laps = parallel::Laps::start();
     // Step 1.
@@ -1530,15 +1673,19 @@ fn prove_plan(
         }
         Ok(message)
     };
+    let commit_msg_timer = Stopwatch::start();
     let committed_message = match &plan.stack {
         Some(stack) => message(stack, committed)?,
         None => Vec::new(),
     };
+    let commit_msg_ns = commit_msg_timer.elapsed_ns();
     // Steps 2 and 3 are independent of every challenge: the stacked source and each
     // check's counts, multiplicity source and certificate are pool tasks, and the
     // roots are absorbed in step order below (task E16-23). Errors keep that order.
     let stack_source = || {
-        plan.stack
+        let timer = Stopwatch::start();
+        let res = plan
+            .stack
             .as_ref()
             .map(|stack| {
                 let p =
@@ -1548,18 +1695,23 @@ fn prove_plan(
                 let (section, handle) = register(&p)?;
                 Ok::<_, Error>((p, handle, section))
             })
-            .transpose()
+            .transpose();
+        (res, timer.elapsed_ns())
     };
     let mu_messages = |i: usize| {
         let counts = lookup::counts(&plan.checks[i], relation, values)?;
         let message = lookup::multiplicities(&plan.checks[i], &counts)?;
         Ok::<_, Error>((counts, message))
     };
-    let (stacked, mu_messages) = parallel::join(stack_source, || {
-        parallel::map(plan.checks.len(), mu_messages)
-            .into_iter()
-            .collect::<Result<Vec<_>, Error>>()
-    });
+    let ((stacked, commit_prep_ns), (mu_messages, mu_count_ns)) =
+        parallel::join(stack_source, || {
+            let timer = Stopwatch::start();
+            let res = parallel::map(plan.checks.len(), mu_messages)
+                .into_iter()
+                .collect::<Result<Vec<_>, Error>>();
+            (res, timer.elapsed_ns())
+        });
+    metrics.commitment_ns = commit_msg_ns.saturating_add(commit_prep_ns);
     let stacked = stacked?.map(|(p, handle, section)| {
         proof.groups.push(section);
         (p, handle)
@@ -1568,6 +1720,7 @@ fn prove_plan(
         t.absorb(AbsorbLabel::RelationRoots, &p.source().root())?;
     }
     let (counts, mu_messages): (Vec<_>, Vec<_>) = mu_messages?.into_iter().unzip();
+    let mu_commit_timer = Stopwatch::start();
     let mu = parallel::map(plan.checks.len(), |i| {
         let layout = plan.checks[i].layout;
         let code = mu_code(&plan.checks[i])?;
@@ -1585,11 +1738,35 @@ fn prove_plan(
         Ok((p, handle))
     })
     .collect::<Result<Vec<_>, Error>>()?;
+    metrics.multiplicities_ns = mu_count_ns.saturating_add(mu_commit_timer.elapsed_ns());
+    // Step 3 (`lookup::counts`) reads each weight tuple column at every selected position.
+    for check in &plan.checks {
+        for member in &check.members {
+            let mut selected: Option<u64> = None;
+            for (r, _) in &member.tuple {
+                if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                    let count = *selected.get_or_insert_with(|| member_selected(member));
+                    col_reads[w_idx] = col_reads[w_idx].saturating_add(count);
+                }
+            }
+        }
+    }
     laps.lap("dev/sources_and_counts");
     // Step 4: one zerocheck per identity domain size.
+    let zerocheck_timer = Stopwatch::start();
     for &m in &plan.sizes {
         let lambdas = identity_lambdas(t, relation, m)?;
         let (inputs, instance) = combine(relation, m, &lambdas);
+        let zc_reads = if round_values.is_some() {
+            2u64 << m
+        } else {
+            1u64 << m
+        };
+        for r in &inputs {
+            if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                col_reads[w_idx] = col_reads[w_idx].saturating_add(zc_reads);
+            }
+        }
         let tables_for = |values: &Values| -> Result<Vec<Vec<K>>, Error> {
             let mut tables = Vec::new();
             for r in &inputs {
@@ -1625,9 +1802,19 @@ fn prove_plan(
         }
         proof.identities.push(out);
     }
+    metrics.zerochecks_ns = zerocheck_timer.elapsed_ns();
     laps.lap("dev/zerocheck");
     // Step 5.
+    let lookup_timer = Stopwatch::start();
     for ((check, (p, handle)), counts) in plan.checks.iter().zip(&mu).zip(&counts) {
+        // `lookup::prove` (`originals`) reads every member position unconditionally.
+        for member in &check.members {
+            for (r, _) in &member.tuple {
+                if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                    col_reads[w_idx] = col_reads[w_idx].saturating_add(1u64 << member.m);
+                }
+            }
+        }
         let mut out = Vec::new();
         lookup::prove(
             t,
@@ -1641,9 +1828,23 @@ fn prove_plan(
         )?;
         proof.lookups.push(out);
     }
+    metrics.lookups_ns = lookup_timer.elapsed_ns();
     laps.lap("dev/logup");
     // Step 6.
+    let matmul_timer = Stopwatch::start();
     for (i, mm) in relation.matmuls.iter().enumerate() {
+        // `mle` reads all `2^n` entries of `mm.out`; `MatmulShape::table` skips entries
+        // outside `Ref::fixed` bits (RFC-0026 A6), reading `2^n >> fixed_bits` entries.
+        if let Some(w_idx) = weight_index[mm.out.column.0 as usize] {
+            col_reads[w_idx] = col_reads[w_idx].saturating_add(1u64 << plan.weights[w_idx].n);
+        }
+        for r in [&mm.lhs, &mm.rhs] {
+            if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                let fixed_bits = r.vars.iter().filter(|d| Ref::fixed(**d).is_some()).count() as u32;
+                let elems = (1u64 << plan.weights[w_idx].n) >> fixed_bits;
+                col_reads[w_idx] = col_reads[w_idx].saturating_add(elems);
+            }
+        }
         let shape = MatmulShape::new(t, mm)?;
         let out = column(relation, values, mm.out.column)?;
         let out_value = mle(out, &restrict(&mm.out, &shape.rho))?;
@@ -1669,8 +1870,10 @@ fn prove_plan(
         shape.route(mm, &sc, &sp.final_values, out_value, &mut claims);
         proof.matmuls.push(out);
     }
+    metrics.reductions_ns = matmul_timer.elapsed_ns();
     laps.lap("dev/matmul");
     // Step 7: one claim batch and one opening of the stack, then per weight source.
+    let openings_timer = Stopwatch::start();
     if let (Some(stack), Some((prepared, handle))) = (&plan.stack, &stacked) {
         let batch = group_claims(plan, stack, &claims);
         #[cfg(feature = "controls")]
@@ -1698,6 +1901,12 @@ fn prove_plan(
     for (k, (prepared, certificate)) in model.iter().enumerate() {
         let batch = weight_claims(plan, k, &claims);
         if !batch.is_empty() {
+            // One logical opening pass over every weight column in source `k` (unpadded).
+            for (w_idx, w) in plan.weights.iter().enumerate() {
+                if w.source == k {
+                    col_reads[w_idx] = col_reads[w_idx].saturating_add(1u64 << w.n);
+                }
+            }
             let stack = &plan.model[k];
             let opening = Opening {
                 id: BATCH | (1 + k as u64),
@@ -1711,8 +1920,25 @@ fn prove_plan(
                 .push(opening.prove(t, table, prepared, certificate)?);
         }
     }
+    metrics.openings_ns = openings_timer.elapsed_ns();
     laps.lap("dev/batch_and_openings");
-    Ok(proof)
+    let section_bytes =
+        |sections: &[Vec<u8>]| -> u64 { sections.iter().map(|s| s.len() as u64).sum() };
+    metrics.groups_bytes = section_bytes(&proof.groups);
+    metrics.multiplicities_bytes = section_bytes(&proof.multiplicities);
+    metrics.identities_bytes = section_bytes(&proof.identities);
+    metrics.lookups_bytes = section_bytes(&proof.lookups);
+    metrics.matmuls_bytes = section_bytes(&proof.matmuls);
+    metrics.openings_bytes = section_bytes(&proof.openings);
+    metrics.weight_elements_read = col_reads.iter().copied().fold(0u64, u64::saturating_add);
+    metrics.weight_reads = plan
+        .weights
+        .iter()
+        .enumerate()
+        .map(|(w_idx, w)| col_reads[w_idx].div_ceil(1u64 << w.n))
+        .max()
+        .unwrap_or(0);
+    Ok((proof, metrics))
 }
 
 /// Dense strategy that records the engine's challenges (as in stele-lookup's tree).

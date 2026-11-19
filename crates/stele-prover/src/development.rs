@@ -460,6 +460,20 @@ fn sections(proof: Proof, cqis_id: [u8; 32], statement: [u8; 32]) -> Container {
     }
 }
 
+/// Stage timings (nanoseconds, behind `std`) and thread-count-independent counters for
+/// one development proof (RFC-0018 A2, task E17-01).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Report {
+    /// In-process model commitment (Artifact weight decode + PCS commit) nanoseconds.
+    pub model_commitment_ns: u64,
+    /// Witness preparation (executor init, greedy extension, capture, layout, assign) nanoseconds.
+    pub witness_ns: u64,
+    /// Plain-checker (`stele_ir::relation::check`) nanoseconds; runs beside the engine under `std`.
+    pub plain_check_ns: u64,
+    /// Relation-engine stage timings and deterministic counters.
+    pub engine: relation::Metrics,
+}
+
 /// Prove one window. `executor` must be loaded from the same Model, Scales,
 /// Preparation and Artifact as `public` and `weights`.
 pub fn prove(
@@ -469,6 +483,18 @@ pub fn prove(
     committed: &Committed<'_>,
     statement: &Statement,
 ) -> Result<Vec<u8>, Error> {
+    prove_inner(public, executor, weights, committed, statement, None).map(|(proof, _)| proof)
+}
+
+/// [`prove`] together with in-process stage timings and deterministic counters
+/// (RFC-0018 A2, task E17-01). Proof bytes are identical to [`prove`].
+pub fn prove_measured(
+    public: &Public,
+    executor: &mut Executor<'_>,
+    weights: &Weights,
+    committed: &Committed<'_>,
+    statement: &Statement,
+) -> Result<(Vec<u8>, Report), Error> {
     prove_inner(public, executor, weights, committed, statement, None)
 }
 
@@ -487,7 +513,7 @@ pub fn prove_tampered(
     statement: &Statement,
     hook: Hook<'_>,
 ) -> Result<Vec<u8>, Error> {
-    prove_inner(public, executor, weights, committed, statement, Some(hook))
+    prove_inner(public, executor, weights, committed, statement, Some(hook)).map(|(proof, _)| proof)
 }
 
 fn prove_inner(
@@ -497,15 +523,17 @@ fn prove_inner(
     committed: &Committed<'_>,
     statement: &Statement,
     hook: Option<Hook<'_>>,
-) -> Result<Vec<u8>, Error> {
+) -> Result<(Vec<u8>, Report), Error> {
     // E16-22: stage timing, off unless STELE_STAGE_TIMES.
     let mut laps = parallel::Laps::start();
+    let witness_timer = relation::Stopwatch::start();
     let d = decode(public)?;
     let mut layout = layout(&d, public, statement)?;
     let capture = executor
         .capture(&statement.tokens)
         .map_err(|_| Error::Witness)?;
     let mut values = layout.assign(&capture, &weights.codes)?;
+    let witness_ns = witness_timer.elapsed_ns();
     laps.lap("witness/layout_capture_assign");
     let checked = hook.is_none();
     if let Some(hook) = hook {
@@ -520,23 +548,32 @@ fn prove_inner(
         .collect::<Vec<_>>();
     // The plain checker runs beside the engine and decides: a false witness fails
     // with `Check` even if the engine errs or panics on it (E16-23).
-    let proof = parallel::gated(
+    let mut plain_check_ns = 0u64;
+    let (proof, engine) = parallel::gated(
         || {
             let mut laps = parallel::Laps::start();
+            let check_timer = relation::Stopwatch::start();
             let result = if checked {
                 check(&layout.relation, &values).map_err(Error::Check)
             } else {
                 Ok(())
             };
+            plain_check_ns = check_timer.elapsed_ns();
             laps.lap("dev/plain_check (beside the engine)");
             result
         },
-        || relation::prove(&mut t, &layout.relation, &values, &model, public.sources),
+        || relation::prove_measured(&mut t, &layout.relation, &values, &model, public.sources),
     )?
     .map_err(Error::Engine)?;
     laps.lap("dev/check_and_engine");
     let digest = statement_digest(&input, &relation::digest(&layout.relation));
-    Ok(sections(proof, d.cqis_id, digest).encode())
+    let report = Report {
+        model_commitment_ns: 0,
+        witness_ns,
+        plain_check_ns,
+        engine,
+    };
+    Ok((sections(proof, d.cqis_id, digest).encode(), report))
 }
 
 /// The statement digest the verifier derives for `(public, statement)`, the value an
@@ -712,12 +749,35 @@ pub fn prove_window_development(
     length: usize,
     profile: u8,
 ) -> Result<(Public, Statement, Vec<u8>), Error> {
+    prove_window_development_measured(
+        model,
+        preparation,
+        scales,
+        artifact,
+        statement,
+        length,
+        profile,
+    )
+    .map(|(public, statement, proof, _)| (public, statement, proof))
+}
+
+/// [`prove_window_development`] together with in-process stage timings (including
+/// separate `model_commitment_ns`) and deterministic counters (RFC-0018 A2, task E17-01).
+pub fn prove_window_development_measured(
+    model: &[u8],
+    preparation: &[u8],
+    scales: &[u8],
+    artifact: &[u8],
+    statement: Statement,
+    length: usize,
+    profile: u8,
+) -> Result<(Public, Statement, Vec<u8>, Report), Error> {
     let sources = match profile {
         CIRCLE_ALL_PROFILE => Sources::CircleAll,
         GRIND_PROFILE => Sources::CircleAllGrind,
         _ => return Err(Error::StatementMismatch),
     };
-    prove_window_sources(
+    prove_window_sources_measured(
         model,
         preparation,
         scales,
@@ -736,12 +796,38 @@ fn prove_window_sources(
     preparation: &[u8],
     scales: &[u8],
     artifact: &[u8],
-    mut statement: Statement,
+    statement: Statement,
     length: usize,
     zk: Option<zk::Window<'_>>,
     sources: Sources,
     execution: Option<zk::BatchExecution<'_, K>>,
 ) -> Result<(Public, Statement, Vec<u8>), Error> {
+    prove_window_sources_measured(
+        model,
+        preparation,
+        scales,
+        artifact,
+        statement,
+        length,
+        zk,
+        sources,
+        execution,
+    )
+    .map(|(public, statement, proof, _)| (public, statement, proof))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prove_window_sources_measured(
+    model: &[u8],
+    preparation: &[u8],
+    scales: &[u8],
+    artifact: &[u8],
+    mut statement: Statement,
+    length: usize,
+    zk: Option<zk::Window<'_>>,
+    sources: Sources,
+    execution: Option<zk::BatchExecution<'_, K>>,
+) -> Result<(Public, Statement, Vec<u8>, Report), Error> {
     let m = Model::decode(model).map_err(|_| Error::StatementMismatch)?;
     let p = stele_reductions::stele_cqis::model::Preparation::decode(&m, preparation)
         .map_err(|_| Error::StatementMismatch)?;
@@ -749,6 +835,7 @@ fn prove_window_sources(
     let id = artifact_id(artifact);
     // E16-22: stage timing, off unless STELE_STAGE_TIMES.
     let mut laps = parallel::Laps::start();
+    let witness_pre_timer = relation::Stopwatch::start();
     let mut executor =
         Executor::new(&m, &p, &s, artifact, &id, 1 << 36).map_err(|_| Error::Witness)?;
     if statement.tokens.len() < length {
@@ -778,6 +865,9 @@ fn prove_window_sources(
         let max = last.iter().max().ok_or(Error::Witness)?;
         statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
     }
+    let witness_pre_ns = witness_pre_timer.elapsed_ns();
+    // E17-01: model commitment (Artifact weight decode + PCS commit) timed in process.
+    let model_commit_timer = relation::Stopwatch::start();
     let weights = Weights::from_artifact_sources(&m, artifact, sources)?;
     laps.lap("witness/decode_extend_weights");
     if let Some(window) = zk {
@@ -834,9 +924,10 @@ fn prove_window_sources(
                 proof
             }
         };
-        return Ok((public, statement, proof));
+        return Ok((public, statement, proof, Report::default()));
     }
     let committed = Committed::new(&weights)?;
+    let model_commitment_ns = model_commit_timer.elapsed_ns();
     laps.lap("dev/model_sources");
     let public = Public {
         model: model.to_vec(),
@@ -846,8 +937,11 @@ fn prove_window_sources(
         commitment: committed.commitment.clone(),
         sources: weights.sources,
     };
-    let proof = prove(&public, &mut executor, &weights, &committed, &statement)?;
-    Ok((public, statement, proof))
+    let (proof, mut report) =
+        prove_measured(&public, &mut executor, &weights, &committed, &statement)?;
+    report.model_commitment_ns = model_commitment_ns;
+    report.witness_ns = report.witness_ns.saturating_add(witness_pre_ns);
+    Ok((public, statement, proof, report))
 }
 
 /// The Artifact identity the executor expects: BLAKE3 of its canonical bytes.
