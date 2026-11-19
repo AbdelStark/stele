@@ -4712,6 +4712,36 @@ tasks:
   - Produce 50 pinned ordinary CPU/CUDA byte-identical complete proofs and the balanced T32 with independent positive and wrong-model verification and all earlier live stages
   - Report actual top, rebuild, resident child and total memory counters, transfers and same-host whole-proof costs
 
+- id: E20-21
+  epic: E20
+  title: Specify the live balanced shared batch and standalone mask source
+  lane: E
+  depends:
+  - E20-20
+  rfc: [RFC-0014 A7, RFC-0020 A15, RFC-0026 A24, RFC-0013 A4/A5]
+  skill: rfc-author
+  crate: docs
+  status: done
+  agent: codex-source-visits
+  branch: task/E20-21-shared-batch-contract
+  acceptance:
+  - Independently review the fifth original, two-block opening purpose, shared dense arithmetic, transcript order, source reuse and transactional aborts
+
+- id: E20-22
+  epic: E20
+  title: Produce the final shared batch and standalone mask material on the selected device
+  lane: E
+  depends:
+  - E20-21
+  rfc: [RFC-0014 A7, RFC-0020 A15, RFC-0026 A24, RFC-0013 A4/A5]
+  skill: cuda-kernel-author
+  crate: stele-reductions+stele-cli
+  status: ready
+  acceptance:
+  - Compare 50 pinned complete CPU and selected proofs including all sources and batch families, deterministic replay and independent verifier outcomes
+  - Reject altered shared round, standalone root, standalone sibling, two-block rank or owner, and restore the original reservation after device failure
+  - Account for all five sources and four batches on genuine T32 with independent geometry, realized device counters, A1 peak and paired same-host proof time
+
 - id: E21-01
   epic: E21
   title: RFC-0030 accepted; per-round ledger

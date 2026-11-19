@@ -374,3 +374,60 @@ visits and confirmed each consumed layer against the scalar tree.
 The cost terms are lookup tree construction, GKR child construction and
 transfers. This change adds no challenge, error term, source, proof byte or
 verifier operation. E20-20 validates the combined normal path.
+
+### A7 — Prove the balanced shared batch and its two-block mask source on the selected device
+
+Status: Accepted (development tier under RFC-0027 §2). Task E20-21.
+[Independent review](../../agents/reviews/e20-21-shared-batch.md)
+
+For an RFC-0013 A8 byte-4 proof, the final shared source batches the ordered
+mask-evaluation and layer-block claims under RFC-0013 A5 item 5a. Keep the
+actual transcript coefficients and the public sum of each value times its
+coefficient. Use A2's field operation on the existing A5 original backing
+the shared source. Construct the same weight on data rows, zero on the other
+rows, and the actual source face at column-coordinate zero. Each of its
+`n = log₂(physical rows × physical columns) − 1` degree-two rounds supplies
+three field elements. The ordinary A4 prover adds its bound two-block mask,
+checks the running sum, absorbs the round and draws the challenge before the
+backend folds. It checks the two final product factors and emits the original
+mask evaluation. The independent verifier evaluates the expected weight from
+the original ordered claims and authenticates the face by its shared opening.
+
+For precisely this instance, extend A5's material operations to the
+standalone RFC-0013 A4 mask-polynomial source. The host derives its distinct
+shared-batch instance ID, the two mask blocks and source-specific streams
+from the original seed. Preserve the canonical layout of each block, limb,
+variable and node, all padding and both hiding quadrants. Its data rows are
+`2D`; its data column count is the smallest `2^m ≥ 3n` with `m ≥ 9`.
+The physical rows and columns are twice those data extents. The standalone original
+is the exact immutable message that A4 binds. It belongs to the same proof
+session, with a distinct ID from the shared claim source and every other
+source and instance except its own shared batch. The message may have a
+shorter lifetime than earlier sources. Use the A16 mask-polynomial purpose.
+Complete the certificate and ordinary certificate verification before the
+mask-source bytes bind the first round. Rebuild its opening tree from that
+original and seed and require the certified root; account for both visits.
+
+Preserve the A4 nonzero mask weight and public abort at final coordinate zero
+or one half. The host derives the opening row coefficients
+`(1−ρₙ)e_d, ρₙe_d` on the two data blocks, zero on mask rows; it derives the
+original Lagrange column coefficients and zero padding. Open the mask source
+exactly once at the sumcheck's returned mask evaluation. Only then apply the
+existing nonzero shared batch face-point check and open the shared source
+at its second factor. The sources have separate IDs, ranks, certificates,
+transcript contexts, budgets and histories. Keep the A16 certificate and
+opening predicates, challenge labels, grinding, rank checks, model pin and
+lifetime reservation. A device or malformed field response fails the attempt.
+
+Qualify the combined path with 50 distinct pinned full CPU/device proof pairs,
+public-byte equality, deterministic replay, independent expected-model
+verification and wrong-model refusal. Derive expected work from each original
+proof, including its standalone source and shared batch. In Stories42M T32,
+all five originals have certificate and opening visits and all four degree-two
+batch sumchecks return actual device rounds, folds and two final factors.
+Count responses on each visit including duplicates. Exercise a changed shared
+round rejected before a fold, a changed standalone rebuilt root and a changed selected sibling,
+the wrong two-block opening row, a duplicate/foreign owner and reservation
+rollback. Record same-host proof wall time, transfers, original and scratch
+lifetimes, and A1 total peak under four earlier stage families. No new source,
+challenge, loss, security tier or encoded proof element is introduced.
