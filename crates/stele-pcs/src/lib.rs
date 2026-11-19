@@ -10,6 +10,7 @@ extern crate alloc;
 mod certificate;
 mod expansion;
 mod hiding;
+mod material;
 mod opening;
 mod preparation;
 mod producer;
@@ -21,6 +22,7 @@ pub use certificate::{
 };
 pub use expansion::{expand, Embedding, Value};
 pub use hiding::hiding_message;
+pub use material::{ColumnMaterial, ColumnResponse, HidingUse, HostColumns};
 pub use opening::{
     verify_opening, verify_opening_measured, verify_point, verify_point_measured, Functional,
     OpeningRecord, RetainedRow, RetainedRowWork,
