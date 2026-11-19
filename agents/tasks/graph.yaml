@@ -4721,7 +4721,7 @@ tasks:
   rfc: [RFC-0014 A7, RFC-0020 A15, RFC-0026 A24, RFC-0013 A4/A5]
   skill: rfc-author
   crate: docs
-  status: in_progress
+  status: done
   agent: codex-source-visits
   branch: task/E20-21-shared-batch-contract
   acceptance:
