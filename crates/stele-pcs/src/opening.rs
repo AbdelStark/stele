@@ -424,7 +424,7 @@ fn matches_reference_opening_source_reads() {
     assert_eq!(work.source_elements, 0);
 }
 
-impl<K: ChallengeField> PreparedSource<'_, K> {
+impl<K: ChallengeField, M: crate::ColumnMaterial> PreparedSource<'_, K, M> {
     /// Produce an A9 opening at the canonical tensor point. The expected source's
     /// own row split determines weights; no stacked layer width is substituted.
     pub fn opening_point(
@@ -556,18 +556,7 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
                 let index = t
                     .opening_column(source.descriptor().count)
                     .map_err(Error::Transcript)?;
-                let response = self.response(index)?;
-                work.path_peak_bytes = work.path_peak_bytes.max(bytes(&response.siblings)?);
-                work.peak_owned_bytes = work
-                    .peak_owned_bytes
-                    .max(add(bytes(&proof)?, bytes(&response.siblings)?)?);
-                work.responses = add(work.responses, 1)?;
-                work.column_bytes_copied = add(work.column_bytes_copied, response.payload.len())?;
-                proof.extend_from_slice(response.payload);
-                for sibling in response.siblings {
-                    work.path_bytes_copied = add(work.path_bytes_copied, sibling.len())?;
-                    proof.extend_from_slice(&sibling);
-                }
+                self.append_response(index, &mut proof, &mut work)?;
             }
             t.absorb(AbsorbLabel::OpeningColumns, &proof[start..])
                 .map_err(Error::Transcript)?;
