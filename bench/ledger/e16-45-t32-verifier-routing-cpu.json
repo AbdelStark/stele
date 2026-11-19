@@ -1,0 +1,233 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "392afdaaf50b09bb895c6ad1222685fc743051d7",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "Lucid rtx-cc-0 CPU (16 allocated threads)",
+  "driver": "not-applicable",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "maximum_process_rss_bytes": 12587630592,
+    "occurrence_claims": 13217,
+    "trials": 3
+  },
+  "kind": "micro",
+  "model_config": {
+    "binary_sha256": "ba64610d102409baecdeee23440b3f282d7b978ae220dbccd51e5650b1dfbae7",
+    "harness_sha256": {
+      "SHA256SUMS": "9fb12ac7365c532f94d9c69ca30fdd909e15db7be74a415cfd7dcaacfa8fd212",
+      "campaign.sbatch": "b2ec81bc3c1586a070057a8f52c09ca6558da4dd6c7de99d25ee1272f90e5542",
+      "commit.txt": "f23770bd753fb3d0a000283b4c98f057df81a82d1531c11ca430b887fd52d741",
+      "install.py": "331e3320d13d67b1414773632eb3be6813e016791751254c79a677ea92bcf30b",
+      "public-pins.txt": "9f509928dfb57440c8cc3e64c78efa26bc9cb4d8d0f61fd33880ff6e3234ba82",
+      "source.tar.gz": "fc01a1c89479369e58fab2d5fc53e3030b91f380ab82666ccc6bd2b31d635e3d"
+    },
+    "job": 6786,
+    "parent_proof_ledger": "e16-44-t32-lookup-multiplicities-cpu.json",
+    "plan": {
+      "model": "c8f7d65526a062e2bd8239aa2624ee351dac53478516faa53830faa7095922d0",
+      "operation": "verify-dev original proof, with aggregate occurrence and expected-weight timers",
+      "original_artifacts_from_job": 6783,
+      "proof_sha256": "0551a8043664fd5e996ba4817aa28a0a4321a5603de167837d94631c1eb306fb",
+      "public_sha256": "9a829f5a60ffb04b92f69a3186b2cf418ba0209717f2030b85ad711b6622d850",
+      "source": "392afdaaf50b09bb895c6ad1222685fc743051d7"
+    },
+    "public_evidence_sha256": {
+      "0.err": "2c16580131d9cd1332024dd93e3d958de9f2987d00d2f40ea86ed95ffe7cd704",
+      "0.out": "443356554ac0a1e091a3e231ec9a5586e2f4f24e552471b4610d252d124cb610",
+      "0.time": "42651455f9677c01a448c983f1e7f024371b50e867db177bda92658d80513ea8",
+      "1.err": "be032dcd6c99050b9932cc588ad53a49191ec14778a2deee092cf5c5ed9651d5",
+      "1.out": "443356554ac0a1e091a3e231ec9a5586e2f4f24e552471b4610d252d124cb610",
+      "1.time": "1a685629105377c9ff208abb2ae19a9f7e3d4d95292b6f9f5736af2d5f4c70cc",
+      "2.err": "5c49a4d4e87033d6dca84ebf863284dfa70513a3d5b727bdddc2faf5d4bd5fac",
+      "2.out": "443356554ac0a1e091a3e231ec9a5586e2f4f24e552471b4610d252d124cb610",
+      "2.time": "d79a48ce5926ab8a509abc7520d05ad28e248530fb1781d95003391918bf69c2",
+      "binary.sha256": "59cc04856dfc53edd96974b492d0602b4e28f2bf0dca70e63a06d66f8bd08cd8",
+      "sacct.txt": "ea3fe9a0e6df421e1d13b98518f9c5c7680c44ea883262ba6c77b27018ad86aa",
+      "toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3"
+    },
+    "samples": [
+      {
+        "occurrence": {
+          "calls": 13217,
+          "ns": 36982902210
+        },
+        "process_peak_rss_bytes": 12587630592,
+        "slot": {
+          "calls": 13217,
+          "ns": 74312641
+        },
+        "trial": 0,
+        "wall_ns": 87010000000,
+        "weights": [
+          {
+            "claims": 12688,
+            "domain": 134217728,
+            "dot_ns": 3947207960,
+            "entries": 221697374,
+            "eq_ns": 1557663234,
+            "largest": 1048580
+          },
+          {
+            "claims": 403,
+            "domain": 134217728,
+            "dot_ns": 3132085847,
+            "entries": 176284236,
+            "eq_ns": 1546517424,
+            "largest": 16777220
+          },
+          {
+            "claims": 126,
+            "domain": 4096,
+            "dot_ns": 112532,
+            "entries": 4536,
+            "eq_ns": 3149153,
+            "largest": 36
+          },
+          {
+            "claims": 1992,
+            "domain": 262144,
+            "dot_ns": 4542257,
+            "entries": 240140,
+            "eq_ns": 4563368,
+            "largest": 784
+          }
+        ]
+      },
+      {
+        "occurrence": {
+          "calls": 13217,
+          "ns": 37305060776
+        },
+        "process_peak_rss_bytes": 12587548672,
+        "slot": {
+          "calls": 13217,
+          "ns": 79431733
+        },
+        "trial": 1,
+        "wall_ns": 84250000000,
+        "weights": [
+          {
+            "claims": 12688,
+            "domain": 134217728,
+            "dot_ns": 2803528274,
+            "entries": 221697374,
+            "eq_ns": 1514159535,
+            "largest": 1048580
+          },
+          {
+            "claims": 403,
+            "domain": 134217728,
+            "dot_ns": 2230079392,
+            "entries": 176284236,
+            "eq_ns": 1040771795,
+            "largest": 16777220
+          },
+          {
+            "claims": 126,
+            "domain": 4096,
+            "dot_ns": 123746,
+            "entries": 4536,
+            "eq_ns": 2430282,
+            "largest": 36
+          },
+          {
+            "claims": 1992,
+            "domain": 262144,
+            "dot_ns": 3286344,
+            "entries": 240140,
+            "eq_ns": 3755972,
+            "largest": 784
+          }
+        ]
+      },
+      {
+        "occurrence": {
+          "calls": 13217,
+          "ns": 37010058637
+        },
+        "process_peak_rss_bytes": 12587536384,
+        "slot": {
+          "calls": 13217,
+          "ns": 73182780
+        },
+        "trial": 2,
+        "wall_ns": 86750000000,
+        "weights": [
+          {
+            "claims": 12688,
+            "domain": 134217728,
+            "dot_ns": 3977539380,
+            "entries": 221697374,
+            "eq_ns": 1563138057,
+            "largest": 1048580
+          },
+          {
+            "claims": 403,
+            "domain": 134217728,
+            "dot_ns": 3159044317,
+            "entries": 176284236,
+            "eq_ns": 1518842846,
+            "largest": 16777220
+          },
+          {
+            "claims": 126,
+            "domain": 4096,
+            "dot_ns": 112229,
+            "entries": 4536,
+            "eq_ns": 3298563,
+            "largest": 36
+          },
+          {
+            "claims": 1992,
+            "domain": 262144,
+            "dot_ns": 4601776,
+            "entries": 240140,
+            "eq_ns": 4636725,
+            "largest": 784
+          }
+        ]
+      }
+    ]
+  },
+  "note": "Original dev-zk verifier calibration. The enclosing micro duration is the longest external verification. Slot intervals are nested in occurrence assembly. Every independent verifier replay used the existing public file and proof, gave the original full audit output and accepted the pinned model.",
+  "plan_digest": "146a476cb5ea06c0a2e83b248a93a3f1515f7fabab41448087a12cfd42b48599",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 87010000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "expected_weight_dot/0": 7083948596,
+    "expected_weight_dot/1": 5037017756,
+    "expected_weight_dot/2": 7141297702,
+    "expected_weight_dot/median": 7083948596,
+    "expected_weight_eq/0": 3111893179,
+    "expected_weight_eq/1": 2561117584,
+    "expected_weight_eq/2": 3089916191,
+    "expected_weight_eq/median": 3089916191,
+    "occurrence/0": 36982902210,
+    "occurrence/1": 37305060776,
+    "occurrence/2": 37010058637,
+    "occurrence/median": 37010058637,
+    "slot_nested_in_occurrence/0": 74312641,
+    "slot_nested_in_occurrence/1": 79431733,
+    "slot_nested_in_occurrence/2": 73182780,
+    "slot_nested_in_occurrence/median": 74312641,
+    "whole_verify/0": 87010000000,
+    "whole_verify/1": 84250000000,
+    "whole_verify/2": 86750000000,
+    "whole_verify/median": 86750000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/dev-zk-stories42m-t32-verifier-routing-cpu"
+}
