@@ -19,55 +19,206 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[2]
 # Guard only crates that can introduce the corresponding proof obligations.
 SCOPES = {
-    'digest': ('prover', 'proof'),
+    'digest': (),
     'negative-controls': ('verifier',),
     'soundness-accounting': ('verifier',),
     'parity': ('kernels',),
 }
 OWNERS = {
-    'digest': 'E8-06', 'negative-controls': 'E0-03',
+    'digest': 'E17-03', 'negative-controls': 'E0-03',
     'soundness-accounting': 'E2-01 / E8-05', 'parity': 'E10-01',
 
 }
 ARTIFACTS = {
-    'digest': ('tests/digests',),
+    'digest': (),
     'negative-controls': (),
     'soundness-accounting': ('tests/soundness',),
     'parity': (),
 }
 
+REQUIRED_DEVELOPMENT_DIGESTS = (
+    ('L0', 'one-layer', 16, 'CircleAll', 3),
+    ('L0', 'one-layer', 16, 'CircleAllGrind', 5),
+    ('L1', 'eight-layer', 64, 'CircleAll', 3),
+    ('L1', 'eight-layer', 64, 'CircleAllGrind', 5),
+)
 
-# RFC-0026 §1.2/§8 (task E16-10): the development profile claims no profile, so it has
-# no reference digest (E8-06). Its module is admitted by exact surface; the rest of the
-# scaffold stays guarded.
-DEVELOPMENT = {
-    'prover': {
-        'files': ('src/development.rs', 'src/development/plan.rs', 'src/development/bundle.rs',
-                  'src/development/zk.rs', 'src/development/registry.rs',
-                  'tests/development.rs', 'tests/fixtures/synthetic-e2e.bin',
-                  'tests/fixtures/synthetic-e2e.json'),
-        'library': '//! stele-prover — governed by RFC-0007 §4 RFC-0014 §4 and, for `development`, '
-                   'RFC-0026 §8. No behaviour exists here that is not specified there (INV-1).\n'
-                   '#![forbid(unsafe_code)]\n#![no_std]\n'
-                   '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-                   'extern crate alloc;\npub mod development;\n',
-        # E16-15: the prover opts in to stele-reductions' threaded dense rounds.
-        'dependencies': {'stele-reductions': {'path': '../stele-reductions', 'features': ['std']},
-                         'stele-proof': {'path': '../stele-proof'},
-                         'blake3': {'version': '=1.8.7', 'default-features': False}},
-        'dev-dependencies': {'serde_json': '=1.0.154'},
-    },
-    'proof': {
-        'files': ('src/development.rs',),
-        'library': '//! stele-proof — governed by RFC-0016 §1 and, for `development`, RFC-0026 '
-                   '§4.1. No behaviour exists here that is not specified there (INV-1).\n'
-                   '#![forbid(unsafe_code)]\n#![no_std]\n'
-                   '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-                   'extern crate alloc;\npub mod development;\n',
-        'dependencies': {'stele-field': {'path': '../stele-field'}},
-        'dev-dependencies': None,
-    },
-}
+
+def _fnv1a_64(data):
+    """64-bit FNV-1a matching `crates/stele-prover/tests/development.rs::fnv`."""
+    h = 0xcbf29ce484222325
+    for byte in data:
+        h = ((h ^ byte) * 0x0100000001b3) & 0xffffffffffffffff
+    return f'{h:016x}'
+
+
+def _load_json_unique(path):
+    """Parse JSON while rejecting duplicate object keys."""
+    def no_dups(pairs):
+        obj = {}
+        for k, v in pairs:
+            if k in obj:
+                raise ValueError(f'digest: duplicate JSON key {k!r} in {path.name}')
+            obj[k] = v
+        return obj
+    return json.loads(path.read_text(), object_pairs_hook=no_dups)
+
+
+def _strip_fenced_blocks(text):
+    """Remove Markdown fenced code blocks line-by-line (fail-closed on unclosed fences)."""
+    out = []
+    fence = None
+    for line in text.splitlines(keepends=True):
+        stripped = line.lstrip()
+        if fence is None:
+            match = re.match(r'^(`{3,}|~{3,})', stripped)
+            if match:
+                fence = match.group(1)[0] * len(match.group(1))
+                out.append('\n')
+                continue
+            out.append(line)
+        else:
+            if stripped.startswith(fence) and stripped[len(fence):].strip() == '':
+                fence = None
+            out.append('\n')
+    return ''.join(out)
+
+
+def _verify_accepted_amendment(root, ref):
+    """Verify `RFC-xxxx A<n>` names a unique Accepted amendment inside an Accepted RFC."""
+    if not isinstance(ref, str):
+        raise ValueError(f'digest: amendment must be a string, got {ref!r}')
+    match = re.fullmatch(r'RFC-([0-9]{4}) A([0-9]+)', ref)
+    if not match:
+        raise ValueError(f'digest: invalid amendment reference {ref!r} (expected RFC-xxxx A<n>)')
+    rfc_num, amend_num = match.groups()
+    rfcs = [p for p in (root / 'docs/rfcs').glob(f'RFC-{rfc_num}-*.md') if p.is_file() and not p.is_symlink()]
+    if len(rfcs) != 1:
+        raise ValueError(f'digest: amendment {ref} does not resolve to a unique RFC document')
+    text = _strip_fenced_blocks(rfcs[0].read_text())
+    first_heading = re.search(r'^#{2,6}\s', text, re.M)
+    preamble = text[:first_heading.start()] if first_heading else text
+    statuses = re.findall(r'^Status:\s*(.+)$', preamble, re.M)
+    if len(statuses) != 1 or not re.match(r'^Accepted\b', statuses[0]):
+        raise ValueError(f'digest: RFC-{rfc_num} for amendment {ref} is not Accepted')
+    log_headings = list(re.finditer(r'^##\s+(?:[0-9]+\.\s+)?Amendment log\b.*$', text, re.M))
+    if len(log_headings) != 1:
+        raise ValueError(f'digest: RFC-{rfc_num} lacks a unique Amendment log section for {ref}')
+    log_tail = text[log_headings[0].end():]
+    next_h12 = re.search(r'^#{1,2}\s', log_tail, re.M)
+    log = log_tail[:next_h12.start()] if next_h12 else log_tail
+    headings = list(re.finditer(rf'^###\s+A{amend_num}(?=\s+[—–-]|[:]|$).*$', log, re.M))
+    bullets = list(re.finditer(rf'^- \*\*A{amend_num}\s+[—–-][^\n]*?\*\*(.*)$', log, re.M))
+    if len(headings) + len(bullets) != 1:
+        raise ValueError(f'digest: amendment {ref} is missing or duplicated in {rfcs[0].name}')
+    if headings:
+        tail = log[headings[0].end():]
+        next_h = re.search(r'^#{1,3}\s', tail, re.M)
+        section = tail[:next_h.start()] if next_h else tail
+        nonempty = [line.strip() for line in section.splitlines() if line.strip()]
+        if not nonempty or not re.match(r'^Status:\s*Accepted\b', nonempty[0]):
+            raise ValueError(f'digest: amendment {ref} is not Accepted')
+        return
+    bullet = bullets[0]
+    if not re.match(r'^\s+(?:Status:\s*)?Accepted\b', bullet.group(1)):
+        raise ValueError(f'digest: amendment {ref} is not Accepted')
+    preceding = log[:bullet.start()]
+    prev_h3s = list(re.finditer(r'^###\s+.*$', preceding, re.M))
+    if prev_h3s:
+        prev_tail = preceding[prev_h3s[-1].end():]
+        prev_nonempty = [line.strip() for line in prev_tail.splitlines() if line.strip()]
+        if not prev_nonempty or not re.match(r'^Status:\s*Accepted\b', prev_nonempty[0]):
+            raise ValueError(f'digest: amendment {ref} appears under a non-Accepted subsection')
+
+
+def development_digests(root):
+    """RFC-0020 §5, RFC-0027 §7 (task E17-03): prove L0 and L1 fixtures and compare recorded digests."""
+    digest_dir = root / 'tests/digests'
+    if digest_dir.is_symlink() or not digest_dir.is_dir():
+        raise ValueError('digest: tests/digests directory missing or symlink')
+    allowed_files = {'development.json', 'README.md', '.gitkeep', 'catalog.md'}
+    for path in sorted(digest_dir.rglob('*')):
+        if path.is_symlink():
+            raise ValueError(f'digest: symlink not allowed in {path.relative_to(root)}')
+        if path.is_file() and (path.parent != digest_dir or path.name not in allowed_files):
+            raise ValueError(f'digest: validator not wired for {path.relative_to(root)} (task E17-03)')
+    manifest_path = digest_dir / 'development.json'
+    if not manifest_path.is_file():
+        raise ValueError('digest: missing tests/digests/development.json')
+    manifest = _load_json_unique(manifest_path)
+    expected_top = {'schema_version', 'fixture_manifest', 'entries'}
+    if not isinstance(manifest, dict) or set(manifest) != expected_top:
+        raise ValueError('digest: tests/digests/development.json has missing or unknown top-level keys')
+    if type(manifest['schema_version']) is not int or manifest['schema_version'] != 1:
+        raise ValueError('digest: unsupported schema_version in tests/digests/development.json')
+    expected_fixture = 'crates/stele-prover/tests/fixtures/synthetic-e2e.json'
+    if manifest['fixture_manifest'] != expected_fixture or not (root / expected_fixture).is_file():
+        raise ValueError('digest: invalid or missing fixture_manifest in tests/digests/development.json')
+    entries = manifest['entries']
+    if not isinstance(entries, list):
+        raise ValueError('digest: entries must be a list in tests/digests/development.json')
+    entry_keys = {'rung', 'case', 't', 'sources', 'profile_byte', 'proof_bytes', 'fnv1a_64', 'sha256', 'amendment'}
+    by_spec = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != entry_keys:
+            raise ValueError('digest: entry has missing or unknown fields in tests/digests/development.json')
+        if (not isinstance(entry['rung'], str)
+                or not isinstance(entry['case'], str)
+                or type(entry['t']) is not int
+                or not isinstance(entry['sources'], str)
+                or type(entry['profile_byte']) is not int):
+            raise ValueError(f'digest: invalid entry field types in tests/digests/development.json: {entry!r}')
+        spec = (entry['rung'], entry['case'], entry['t'], entry['sources'], entry['profile_byte'])
+        if spec in by_spec:
+            raise ValueError(f'digest: duplicate entry {spec} in tests/digests/development.json')
+        if type(entry['proof_bytes']) is not int or entry['proof_bytes'] <= 0:
+            raise ValueError(f'digest: invalid proof_bytes for {spec}')
+        if not isinstance(entry['fnv1a_64'], str) or not re.fullmatch(r'[0-9a-f]{16}', entry['fnv1a_64']):
+            raise ValueError(f'digest: invalid fnv1a_64 for {spec}')
+        if not isinstance(entry['sha256'], str) or not re.fullmatch(r'[0-9a-f]{64}', entry['sha256']):
+            raise ValueError(f'digest: invalid sha256 for {spec}')
+        _verify_accepted_amendment(root, entry['amendment'])
+        by_spec[spec] = entry
+    if set(by_spec) != set(REQUIRED_DEVELOPMENT_DIGESTS):
+        raise ValueError(
+            f'digest: recorded entries {sorted(by_spec)} do not match required L0/L1 fixtures '
+            f'{sorted(REQUIRED_DEVELOPMENT_DIGESTS)}'
+        )
+    with tempfile.TemporaryDirectory() as dump_dir:
+        env = dict(os.environ, STELE_DIGEST_DIR=dump_dir)
+        result = subprocess.run(
+            ['cargo', 'test', '--release', '-p', 'stele-prover', '--test', 'development',
+             'dumps_development_digests', '--locked', '--offline', '--', '--ignored', '--exact', '--nocapture'],
+            cwd=root, text=True, capture_output=True, env=env,
+        )
+        if result.returncode or 'test dumps_development_digests ... ok' not in result.stdout.splitlines():
+            raise ValueError(f'digest: L0/L1 digest producer failed: {result.stderr[-2000:]}')
+        dump_path = Path(dump_dir)
+        expected_files = {f"{e['rung']}-{e['sources']}.proof" for e in entries}
+        actual_files = {p.name for p in dump_path.iterdir() if p.is_file()}
+        if actual_files != expected_files:
+            raise ValueError(f'digest: dumped proofs {sorted(actual_files)} differ from expected {sorted(expected_files)}')
+        stderr_lines = result.stderr.splitlines()
+        for spec in REQUIRED_DEVELOPMENT_DIGESTS:
+            entry = by_spec[spec]
+            rung, case, t, sources, _ = spec
+            raw = (dump_path / f'{rung}-{sources}.proof').read_bytes()
+            actual_bytes = len(raw)
+            actual_fnv = _fnv1a_64(raw)
+            actual_sha = hashlib.sha256(raw).hexdigest()
+            receipt = f'digest {rung} {case} T={t} {sources} bytes={actual_bytes} fnv1a={actual_fnv}'
+            if stderr_lines.count(receipt) != 1:
+                raise ValueError(f'digest: missing producer receipt {receipt!r}')
+            if (actual_bytes != entry['proof_bytes']
+                    or actual_fnv != entry['fnv1a_64']
+                    or actual_sha != entry['sha256']):
+                raise ValueError(
+                    f'digest: proof digest mismatch for {rung} {case} ({sources}): '
+                    f'got bytes={actual_bytes} fnv1a={actual_fnv} sha256={actual_sha}, '
+                    f'expected bytes={entry["proof_bytes"]} fnv1a={entry["fnv1a_64"]} sha256={entry["sha256"]}; '
+                    'update tests/digests/development.json only with an Accepted RFC amendment'
+                )
+    print(f'gate digest: verified L0 and L1 development proof digests ({len(entries)} proofs, SHA-256 + FNV-1a)')
 
 
 # RFC-0012 A17 item 4 (task E8-05b): the profile admission decision is admitted by exact
@@ -308,21 +459,6 @@ def accounting_admission(root):
           'trusted plan registry; development: no security level')
 
 
-def development_surface(crate, name, actual, expected):
-    """Strip the admitted RFC-0026 development module; anything else stays guarded."""
-    spec = DEVELOPMENT[name]
-    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
-    if ((crate / 'src/lib.rs').read_text() != spec['library']
-            or manifest.get('dependencies') != spec['dependencies']
-            or manifest.get('dev-dependencies') != spec['dev-dependencies']
-            or set(manifest) - {'package', 'dependencies', 'dev-dependencies', 'lints'}):
-        return actual
-    kept = {path: digest for path, digest in actual.items() if path not in spec['files']}
-    kept['src/lib.rs'] = expected['src/lib.rs']
-    kept['Cargo.toml'] = expected['Cargo.toml']
-    return kept
-
-
 def scalar_kernel_surface(root, actual, expected):
     """E20-11. Execute the independently reviewed scalar operations before the CUDA differential."""
     name = 'stele-kernels'
@@ -372,8 +508,6 @@ def bootstrap_guard(root, gate):
                   for p in crate.rglob('*') if p.is_file()}
         if gate == 'parity' and name == 'kernels':
             actual = scalar_kernel_surface(root, actual, expected)
-        if gate == 'digest' and name in DEVELOPMENT:
-            actual = development_surface(crate, name, actual, expected)
         if name == 'verifier':
             actual = accounting_surface(crate, actual, expected)
         if actual != expected:
@@ -2252,6 +2386,7 @@ def main():
                 bootstrap_guard(ROOT, gate)
             if combined or args.gate == 'digest':
                 native_encoder(ROOT)
+                development_digests(ROOT)
             if combined or args.gate in ('negative-controls', 'soundness-accounting'):
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)

@@ -4052,7 +4052,9 @@ tasks:
   skill: integrator
   crate: ci
   lane: B
-  status: ready
+  status: done
+  agent: antigravity-lane-b
+  branch: task/E17-03-digest-gate-l0-ci
   acceptance:
   - scripts/gates/digest.sh proves the L0 and L1 fixtures and compares recorded proof digests; a byte change without a recorded amendment fails
   - L0 prove and verify run in required CI (INV-15); a failing run blocks merge

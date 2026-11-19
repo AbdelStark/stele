@@ -23,14 +23,6 @@
     "Cargo.toml": "44d756138043268dfdbdc7ba1d625cf41c450e99f1df331d813831f3fbcd0b4f",
     "src/lib.rs": "bea2ddc10a78ed7d7a80d428a3f0b1832f849a8ca9721f3863a7667beed20b5c"
   },
-  "stele-proof": {
-    "Cargo.toml": "8cfe42c53a8d1feb69b7b7f9711f674e95013375870324d950b2bfe988e9caf1",
-    "src/lib.rs": "cea7adedd549d5eb950c36f6126f36435243da16c1a84fc10b10c020b42f29f0"
-  },
-  "stele-prover": {
-    "Cargo.toml": "9c5318e8b49388bd295497654841e5c347f79418c6decc6b5ede094897e55404",
-    "src/lib.rs": "9cc9b128c408e1f96dc3d409f8b1dfa378c8872edd9014f495bd8a7953cf63d3"
-  },
   "stele-reductions": {
     "Cargo.toml": "1bff9b95bf010328bdc295f03b9b1e9e78b78cb619056684a48b30292bc31145",
     "src/lib.rs": "b940c184684cb97563d958162efa688ec9cb1b4686908d3e947f84c3f9a084a9"

@@ -26,7 +26,7 @@ class GateTests(unittest.TestCase):
                               cwd='/', text=True, capture_output=True)
 
     def test_rejects_unvalidated_implementation(self):
-        for gate, crate in [('digest', 'prover'), ('negative-controls', 'gkr'),
+        for gate, crate in [('negative-controls', 'gkr'),
                             ('soundness-accounting', 'gkr'), ('parity', 'gpu')]:
             with self.subTest(gate=gate):
                 source = self.root / f'crates/stele-{crate}/src/lib.rs'
@@ -470,13 +470,31 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('transcript primitive tests failed', result.stderr)
 
-    def test_rejects_deleted_or_additional_source(self):
-        source = self.root / 'crates/stele-prover/src/lib.rs'
-        source.unlink()
-        self.assertNotEqual(self.run_gate('digest').returncode, 0)
-        source.write_bytes((ROOT / 'crates/stele-prover/src/lib.rs').read_bytes())
-        (source.parent / 'unchecked.rs').write_text('pub fn unvalidated() {}')
-        self.assertNotEqual(self.run_gate('digest').returncode, 0)
+    def test_accepts_development_digests_and_rejects_tamper(self):
+        # Honest L0/L1 digest gate passes (reusing self.root/target across sub-checks).
+        honest = self.run_gate('digest')
+        self.assertEqual(honest.returncode, 0, honest.stderr)
+        self.assertIn('verified L0 and L1 development proof digests', honest.stdout)
+
+        # Draft amendment is rejected before running the prover.
+        manifest_path = self.root / 'tests/digests/development.json'
+        original = manifest_path.read_text()
+        manifest = json.loads(original)
+        manifest['entries'][0]['amendment'] = 'RFC-0026 A7'
+        manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
+        draft = self.run_gate('digest')
+        self.assertNotEqual(draft.returncode, 0)
+        self.assertIn('not Accepted', draft.stderr)
+
+        # Tampered recorded digest fails against the real L0/L1 proofs.
+        manifest = json.loads(original)
+        sha = manifest['entries'][2]['sha256']
+        manifest['entries'][2]['sha256'] = ('0' if sha[0] != '0' else '1') + sha[1:]
+        manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
+        tampered = self.run_gate('digest')
+        self.assertNotEqual(tampered.returncode, 0)
+        self.assertIn('proof digest mismatch', tampered.stderr)
+        manifest_path.write_text(original)
 
     def test_rejects_unvalidated_artifacts(self):
         for gate, path in [('ledger-validate', 'bench/ledger/invalid.json'),

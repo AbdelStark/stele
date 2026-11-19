@@ -38,7 +38,7 @@ The remaining replacement contracts are:
 
 | Gate | Replacement task | Required validator |
 |---|---|---|
-| digest | E8-06 | Generate fixed W8 proofs and compare reference digests |
+| digest | Implemented in E17-03 | Prove L0 and L1 fixtures and compare `tests/digests/development.json` (Accepted RFC amendments only); W8 digest coverage remains in E8-06 |
 | negative-controls | E8-04 | Expand the E0-03 harness to actual protocol bindings |
 | soundness-accounting | E2-01, E8-05 | Compare transcript challenges to ledger enumeration |
 | parity | E10-01 | Compare real CPU/CUDA bytes on the GPU runner |

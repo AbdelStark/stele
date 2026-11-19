@@ -19,9 +19,9 @@ SPEC = importlib.util.spec_from_file_location('native_gate', ROOT / 'scripts/gat
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
 VALIDATORS = ('controls_layout', 'field_source_codec', 'field_sources', 'bootstrap_guard', 'native_encoder',
-              'public_coefficients', 'transcript_registry', 'sumcheck_corpus', 'fraction_reductions',
-              'small_strategy', 'small_corpus', 'batch_instances', 'batch_claims', 'batch_corpus',
-              'zerocheck', 'zero_corpus', 'buffered_engine', 'streaming_strategy', 'file_source',
+              'development_digests', 'public_coefficients', 'transcript_registry', 'sumcheck_corpus',
+              'fraction_reductions', 'small_strategy', 'small_corpus', 'batch_instances', 'batch_claims',
+              'batch_corpus', 'zerocheck', 'zero_corpus', 'buffered_engine', 'streaming_strategy', 'file_source',
               'streaming_corpus', 'merkle_vectors', 'accounting_admission')
 
 
@@ -231,6 +231,210 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                         gate.buffered_engine(root)
                     run.assert_not_called()
                 path.write_bytes(saved)
+
+    def test_accepts_development_digests_and_rejects_tamper_or_unaccepted_amendment(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / 'docs/rfcs', root / 'docs/rfcs')
+            fixture = root / 'crates/stele-prover/tests/fixtures/synthetic-e2e.json'
+            fixture.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / 'crates/stele-prover/tests/fixtures/synthetic-e2e.json', fixture)
+            digests_dir = root / 'tests/digests'
+            digests_dir.mkdir(parents=True)
+
+            payloads = {
+                ('L0', 'one-layer', 16, 'CircleAll', 3): (b'l0-a12-proof-bytes', 'RFC-0026 A12'),
+                ('L0', 'one-layer', 16, 'CircleAllGrind', 5): (b'l0-a14-proof-bytes', 'RFC-0026 A14'),
+                ('L1', 'eight-layer', 64, 'CircleAll', 3): (b'l1-a12-proof-bytes', 'RFC-0026 A12'),
+                ('L1', 'eight-layer', 64, 'CircleAllGrind', 5): (b'l1-a14-proof-bytes', 'RFC-0026 A14'),
+            }
+            manifest = {
+                'schema_version': 1,
+                'fixture_manifest': 'crates/stele-prover/tests/fixtures/synthetic-e2e.json',
+                'entries': [
+                    {
+                        'rung': rung, 'case': case, 't': t, 'sources': sources,
+                        'profile_byte': pbyte, 'proof_bytes': len(raw),
+                        'fnv1a_64': gate._fnv1a_64(raw),
+                        'sha256': hashlib.sha256(raw).hexdigest(),
+                        'amendment': amendment,
+                    }
+                    for (rung, case, t, sources, pbyte), (raw, amendment) in payloads.items()
+                ],
+            }
+            manifest_path = digests_dir / 'development.json'
+            manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
+
+            def producer(command, **kwargs):
+                out_dir = Path(kwargs['env']['STELE_DIGEST_DIR'])
+                err_lines = []
+                for (rung, case, t, sources, _), (raw, _) in payloads.items():
+                    (out_dir / f'{rung}-{sources}.proof').write_bytes(raw)
+                    err_lines.append(
+                        f'digest {rung} {case} T={t} {sources} bytes={len(raw)} fnv1a={gate._fnv1a_64(raw)}'
+                    )
+                return subprocess.CompletedProcess(
+                    command, 0, 'test dumps_development_digests ... ok\n', '\n'.join(err_lines) + '\n'
+                )
+
+            with patch.object(gate.subprocess, 'run', side_effect=producer) as run:
+                gate.development_digests(root)
+                self.assertEqual(run.call_count, 1)
+
+            # 1-byte proof tamper fails digest comparison.
+            def tampered_producer(command, **kwargs):
+                res = producer(command, **kwargs)
+                p = Path(kwargs['env']['STELE_DIGEST_DIR']) / 'L1-CircleAll.proof'
+                b = bytearray(p.read_bytes())
+                b[0] ^= 1
+                p.write_bytes(bytes(b))
+                err = res.stderr.replace(
+                    f'fnv1a={gate._fnv1a_64(payloads[("L1", "eight-layer", 64, "CircleAll", 3)][0])}',
+                    f'fnv1a={gate._fnv1a_64(bytes(b))}',
+                )
+                return subprocess.CompletedProcess(command, 0, res.stdout, err)
+
+            with patch.object(gate.subprocess, 'run', side_effect=tampered_producer):
+                with self.assertRaisesRegex(ValueError, 'proof digest mismatch'):
+                    gate.development_digests(root)
+
+            # Missing producer ok receipt or non-zero exit fails.
+            with patch.object(gate.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, '', 'boom')):
+                with self.assertRaisesRegex(ValueError, 'digest producer failed'):
+                    gate.development_digests(root)
+            with patch.object(gate.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, '', '')):
+                with self.assertRaisesRegex(ValueError, 'digest producer failed'):
+                    gate.development_digests(root)
+
+            # Unaccepted (Draft / missing / malformed) amendments fail before invoking cargo.
+            for bad_amend in ('RFC-0026 A7', 'RFC-0026 A99', 'RFC-0028 A1', 'RFC-0026', 'none'):
+                bad = json.loads(json.dumps(manifest))
+                bad['entries'][0]['amendment'] = bad_amend
+                manifest_path.write_text(json.dumps(bad))
+                with self.subTest(bad_amend=bad_amend), patch.object(gate.subprocess, 'run') as run:
+                    with self.assertRaises(ValueError):
+                        gate.development_digests(root)
+                    run.assert_not_called()
+
+            # Missing L1 entry fails before invoking cargo.
+            missing = json.loads(json.dumps(manifest))
+            missing['entries'].pop()
+            manifest_path.write_text(json.dumps(missing))
+            with patch.object(gate.subprocess, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'required L0/L1 fixtures'):
+                    gate.development_digests(root)
+                run.assert_not_called()
+
+            # Extra unvalidated file in tests/digests/ fails with 'not wired'.
+            manifest_path.write_text(json.dumps(manifest))
+            extra = digests_dir / 'unvalidated.bin'
+            extra.write_bytes(b'{}')
+            with patch.object(gate.subprocess, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'not wired'):
+                    gate.development_digests(root)
+                run.assert_not_called()
+            extra.unlink()
+
+            # Duplicate JSON key in manifest fails.
+            manifest_path.write_text('{"schema_version": 1, "schema_version": 1}\n')
+            with patch.object(gate.subprocess, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'duplicate JSON key'):
+                    gate.development_digests(root)
+                run.assert_not_called()
+
+            # Loose field types (float/bool/list) on tuple-key fields fail with ValueError before cargo.
+            for field, bad_val in [('t', 16.0), ('profile_byte', 3.0), ('t', True), ('rung', ['L0'])]:
+                bad = json.loads(json.dumps(manifest))
+                bad['entries'][0][field] = bad_val
+                manifest_path.write_text(json.dumps(bad))
+                with self.subTest(field=field, bad_val=bad_val), patch.object(gate.subprocess, 'run') as run:
+                    with self.assertRaisesRegex(ValueError, 'invalid entry field types'):
+                        gate.development_digests(root)
+                    run.assert_not_called()
+
+            # Synthetic RFC edge cases for `_verify_accepted_amendment` (F1/F2/F3).
+            gate._verify_accepted_amendment(root, 'RFC-0018 A2')
+            synthetic_cases = [
+                (
+                    'no-preamble-status',
+                    '# RFC-9001\n\n## 1. Amendment log\n\n### A1 — x\n\nStatus: Accepted.\n',
+                    'RFC-9001 A1',
+                ),
+                (
+                    'draft-rfc-with-accepted-amendment',
+                    '# RFC-9002\n\nStatus: Draft\n\n## 1. Amendment log\n\n### A1 — x\n\nStatus: Accepted.\n',
+                    'RFC-9002 A1',
+                ),
+                (
+                    'preamble-accepted-prefix-spoof',
+                    '# RFC-9003\n\nStatus: AcceptedNot\n\n## 1. Amendment log\n\n### A1 — x\n\nStatus: Accepted.\n',
+                    'RFC-9003 A1',
+                ),
+                (
+                    'section-accepted-prefix-spoof',
+                    '# RFC-9004\n\nStatus: Accepted\n\n## 1. Amendment log\n\n### A1 — x\n\nStatus: AcceptedPending.\n',
+                    'RFC-9004 A1',
+                ),
+                (
+                    'negated-draft-bullet',
+                    '# RFC-9005\n\nStatus: Accepted\n\n## 1. Amendment log\n\n- **A1 — x.** Draft; not yet Accepted.\n',
+                    'RFC-9005 A1',
+                ),
+                (
+                    'bullet-under-draft-subsection',
+                    '# RFC-9006\n\nStatus: Accepted\n\n## 1. Amendment log\n\n### A7 — d\n\nStatus: Draft.\n\n- **A1 — x.** Accepted.\n',
+                    'RFC-9006 A1',
+                ),
+                (
+                    'heading-outside-amendment-log',
+                    '# RFC-9007\n\nStatus: Accepted\n\n## 1. Body\n\n### A1 — x\n\nStatus: Accepted.\n\n## 2. Amendment log\n\nNone.\n',
+                    'RFC-9007 A1',
+                ),
+                (
+                    'heading-inside-fenced-code-block',
+                    '# RFC-9008\n\nStatus: Accepted\n\n## 1. Amendment log\n\n```md\n### A1 — x\n\nStatus: Accepted.\n```\n',
+                    'RFC-9008 A1',
+                ),
+                (
+                    'duplicate-headings',
+                    '# RFC-9009\n\nStatus: Accepted\n\n## 1. Amendment log\n\n### A1 — x\n\nStatus: Accepted.\n\n### A1 — y\n\nStatus: Accepted.\n',
+                    'RFC-9009 A1',
+                ),
+                (
+                    'colliding-heading-and-bullet',
+                    '# RFC-9010\n\nStatus: Accepted\n\n## 1. Amendment log\n\n### A1 — x\n\nStatus: Accepted.\n\n- **A1 — y.** Accepted.\n',
+                    'RFC-9010 A1',
+                ),
+                (
+                    'duplicate-draft-and-accepted-bullets',
+                    '# RFC-9011\n\nStatus: Accepted\n\n## 1. Amendment log\n\n- **A1 — x.** Draft.\n- **A1 — y.** Accepted.\n',
+                    'RFC-9011 A1',
+                ),
+                (
+                    'punctuation-suffixed-id',
+                    '# RFC-9012\n\nStatus: Accepted\n\n## 1. Amendment log\n\n### A1-draft — x\n\nStatus: Accepted.\n\n### A12 — y\n\nStatus: Accepted.\n',
+                    'RFC-9012 A1',
+                ),
+                (
+                    'greedy-bold-draft-bullet',
+                    '# RFC-9013\n\nStatus: Accepted\n\n## 1. Amendment log\n\n- **A1 — x.** Status: Draft. **Note:** Accepted A0 is unchanged.\n',
+                    'RFC-9013 A1',
+                ),
+                (
+                    'h3-before-h2-preamble-leak',
+                    '# RFC-9014\n\n### A1 — x\n\nStatus: Accepted.\n\n## 1. Amendment log\n\n### A1 — x\n\nStatus: Accepted.\n',
+                    'RFC-9014 A1',
+                ),
+            ]
+            for label, body, ref in synthetic_cases:
+                rfc_num = ref.split()[0]
+                rfc_file = root / f'docs/rfcs/{rfc_num}-synthetic.md'
+                rfc_file.write_text(body)
+                with self.subTest(synthetic=label):
+                    with self.assertRaises(ValueError):
+                        gate._verify_accepted_amendment(root, ref)
+                rfc_file.unlink()
 
 
 if __name__ == '__main__':
