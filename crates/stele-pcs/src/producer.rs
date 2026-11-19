@@ -12,7 +12,7 @@ pub struct CertificateFailure {
     /// Local hash work, including discarded draws; not an adversarial query cap.
     pub usage: HashUsage,
 }
-impl<K: ChallengeField> PreparedSource<'_, K> {
+impl<K: ChallengeField, M: crate::ColumnMaterial> PreparedSource<'_, K, M> {
     /// Produce the complete canonical certificate, including every repeated response.
     /// This returns unverified bytes and local transcript work, with no ID or handle.
     pub fn certificate(&self) -> Result<(Vec<u8>, HashUsage), CertificateFailure> {
@@ -46,8 +46,8 @@ fn transcript<K: ChallengeField>(source: &Source<K>) -> Result<Transcript<K>, Er
     public[PUBLIC.len()..end].copy_from_slice(&bytes);
     Transcript::new(&public[..end]).map_err(Error::Transcript)
 }
-fn produce_inner<K: ChallengeField>(
-    prepared: &PreparedSource<'_, K>,
+fn produce_inner<K: ChallengeField, M: crate::ColumnMaterial>(
+    prepared: &PreparedSource<'_, K, M>,
     t: &mut Transcript<K>,
     work: &mut ProverWork,
 ) -> Result<Vec<u8>, Error> {
@@ -103,18 +103,7 @@ fn produce_inner<K: ChallengeField>(
         let index = t
             .certificate_column(source.descriptor().count)
             .map_err(Error::Transcript)?;
-        let response = prepared.response(index)?;
-        work.path_peak_bytes = work.path_peak_bytes.max(bytes(&response.siblings)?);
-        work.peak_owned_bytes = work
-            .peak_owned_bytes
-            .max(add(bytes(&proof)?, bytes(&response.siblings)?)?);
-        work.responses = add(work.responses, 1)?;
-        work.column_bytes_copied = add(work.column_bytes_copied, response.payload.len())?;
-        proof.extend_from_slice(response.payload);
-        for sibling in response.siblings {
-            work.path_bytes_copied = add(work.path_bytes_copied, sibling.len())?;
-            proof.extend_from_slice(&sibling);
-        }
+        prepared.append_response(index, &mut proof, work)?;
     }
     t.absorb(AbsorbLabel::CertificateColumns, &proof[start..])
         .map_err(Error::Transcript)?;
