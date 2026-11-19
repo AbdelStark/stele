@@ -6014,7 +6014,8 @@ tasks:
   epic: E16
   title: Capture complete CPU proof bytes on 50 seeded synthetic inference models
   lane: V
-  depends: [E16-40a]
+  depends:
+  - E16-40a
   rfc: [RFC-0014 §5, RFC-0013 A5 and A6]
   skill: benchmark-runner
   crate: research
@@ -6030,7 +6031,8 @@ tasks:
   epic: E16
   title: Build lookup leaves from the original base-field columns on the device
   lane: V
-  depends: [E16-40u]
+  depends:
+  - E16-40u
   rfc: [RFC-0008 A7, RFC-0014 §5 and A1]
   skill: cuda-kernel-author
   crate: research
@@ -6046,7 +6048,8 @@ tasks:
   epic: E16
   title: Schedule final child ownership and GKR promotions under the device budget
   lane: V
-  depends: [E16-40y]
+  depends:
+  - E16-40y
   rfc: [RFC-0008 A7, RFC-0014 §5 and A1]
   skill: cuda-kernel-author
   crate: research
@@ -6062,7 +6065,9 @@ tasks:
   epic: E16
   title: Calibrate original GKR construction and rounds on the T32 laps host
   lane: V
-  depends: [E16-40o, E16-40t]
+  depends:
+  - E16-40o
+  - E16-40t
   rfc: [RFC-0008 A7, RFC-0014 §5 and A1, RFC-0018 A1]
   skill: benchmark-runner
   crate: research
@@ -6078,7 +6083,8 @@ tasks:
   epic: E16
   title: Compare parallel host claim packing on original T32 batch weights
   lane: V
-  depends: [E16-40v]
+  depends:
+  - E16-40v
   rfc: [RFC-0013 A5, RFC-0014 §5]
   skill: benchmark-runner
   crate: research
@@ -6094,7 +6100,9 @@ tasks:
   epic: E16
   title: Reuse immutable source messages across PCS, GKR and claim batches within the device budget
   lane: V
-  depends: [E16-40ab, E16-40z]
+  depends:
+  - E16-40ab
+  - E16-40z
   rfc: [RFC-0008 A7, RFC-0013 A5/A6, RFC-0014 §5 and A1]
   skill: cuda-kernel-author
   crate: research
@@ -6111,7 +6119,9 @@ tasks:
   epic: E16
   title: Produce bound masked sumcheck subproofs with device-authored round messages
   lane: V
-  depends: [E16-40j, E16-40l]
+  depends:
+  - E16-40j
+  - E16-40l
   rfc: [RFC-0013 A4, RFC-0014 §5]
   skill: cuda-kernel-author
   crate: research
@@ -6127,7 +6137,9 @@ tasks:
   epic: E16
   title: Read compact lookup columns from their original hiding-source messages
   lane: V
-  depends: [E16-40y, E16-40ac]
+  depends:
+  - E16-40y
+  - E16-40ac
   rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
   skill: cuda-kernel-author
   crate: research
@@ -6143,7 +6155,8 @@ tasks:
   epic: E16
   title: Read original GKR column gathers from their authenticated source messages
   lane: V
-  depends: [E16-40ae]
+  depends:
+  - E16-40ae
   rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
   skill: cuda-kernel-author
   crate: research
@@ -6158,7 +6171,11 @@ tasks:
   epic: E16
   title: Recompute the resident T32 prover ceiling from a complete original-source run
   lane: V
-  depends: [E16-40z, E16-40aa, E16-40ac, E16-40ae]
+  depends:
+  - E16-40z
+  - E16-40aa
+  - E16-40ac
+  - E16-40ae
   rfc: [RFC-0014 §5 and A1, RFC-0018 A1]
   skill: benchmark-runner
   crate: research
@@ -6173,7 +6190,8 @@ tasks:
   epic: E16
   title: Qualify masked relation sumchecks on the original T32 workload
   lane: V
-  depends: [E16-40ag]
+  depends:
+  - E16-40ag
   rfc: [RFC-0009, RFC-0013 A4, RFC-0014 §5]
   skill: cuda-kernel-author
   crate: research
@@ -6189,7 +6207,8 @@ tasks:
   epic: E16
   title: Borrow occurrence masks and shared layer blocks from their certified source messages
   lane: V
-  depends: [E16-40ah]
+  depends:
+  - E16-40ah
   rfc: [RFC-0008 A7, RFC-0013 A5, RFC-0014 §5]
   skill: cuda-kernel-author
   crate: research
@@ -6204,7 +6223,9 @@ tasks:
   epic: E16
   title: Compare complete inference proof bytes when the H100 authors masked relation rounds
   lane: V
-  depends: [E16-40x, E16-40ah]
+  depends:
+  - E16-40x
+  - E16-40ah
   rfc: [RFC-0013 A5, RFC-0014 §5, RFC-0026 §7]
   skill: cuda-kernel-author
   crate: research
