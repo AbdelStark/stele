@@ -4623,7 +4623,7 @@ tasks:
   rfc: [RFC-0014 A4, RFC-0020 A12, RFC-0026 A21]
   skill: cuda-kernel-author
   crate: stele-kernels+stele-reductions+stele-gpu+stele-cli
-  status: in_progress
+  status: done
   agent: codex-source-visits
   branch: task/E20-16-live-relations
   acceptance:
