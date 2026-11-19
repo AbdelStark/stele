@@ -35,6 +35,8 @@ use super::{basis, prove_at, verify_with, Error, Seed, BLOWUP, MIN_M};
 mod backend;
 #[path = "zk_gkr_backend.rs"]
 mod gkr_backend;
+#[path = "zk_projected_relations.rs"]
+mod projected_relations;
 use crate::relation::Line;
 use alloc::string::{String, ToString};
 use alloc::vec;
@@ -3261,60 +3263,73 @@ where
         let gammas = step_draws(t, step)?;
         let free = draws(t, step.label, step.draws)?;
         detail.lap("zk/detail/relation_prefix");
-        let n = step.num_vars as usize;
-        let mut factors = Vec::new();
-        if step.eq.is_some() {
-            factors.push(Factor {
-                x: eq_input(&step.tau(&free), n)?,
-                r: Vec::new(),
-                v: None,
-            });
-        }
-        for o in &step.occurrences {
-            factors.push(Factor {
-                x: domain_table(&data[o.column], &o.coords, &free, n),
-                r: block_table(&block_of(o), &o.u, n),
-                v: Some(o.v),
-            });
-        }
-        for p in &step.publics {
-            factors.push(Factor {
-                x: domain_table(&p.values, &p.coords, &free, n),
-                r: Vec::new(),
-                v: None,
-            });
-        }
         let i = step_instance(step, &gammas);
-        if let Some(Forgery::Substitute(Substitute::Shared(x), delta)) = forgery {
-            if x == j {
-                if step.eq.is_none() {
+        let (proof, point, truth, mu) =
+            if let Some(backend) = execution.and_then(|b| b.relations()) {
+                if forgery.is_some() {
                     return Err(Error::Statement);
                 }
-                substitute(&mut factors, &i.terms, 0, K::from_i64(delta))?;
-            }
-        }
-        let summand = Occurrences {
-            factors,
-            terms: i.terms.clone(),
-            degree: step.degree,
-            num_vars: step.num_vars,
-            bound: 0,
-            expand: None,
-        };
-        let here = forgery == Some(Forgery::Relation(j))
-            || plan
-                .lookups
-                .iter()
-                .enumerate()
-                .any(|(l, lp)| forgery == Some(Forgery::Ratio(l)) && lp.identity == Some(j));
-        detail.lap("zk/detail/relation_factors");
-        summand.profile("relation");
-        detail.lap("zk/detail/relation_setup");
-        let (proof, point, truth, mu) = if forgery == Some(Forgery::Unchecked(j)) {
-            unchecked(&i, summand, &masks[j], &binding, t)?
-        } else {
-            masked_instance(&i, step.degree, summand, &masks[j], &binding, here, None, t)?
-        };
+                let mut prepared = projected_relations::prepare(step, &data, &free, &block_of)?;
+                let input = projected_relations::construction(&mut prepared, &i, step.degree);
+                detail.lap("zk/detail/relation_factors");
+                detail.lap("zk/detail/relation_setup");
+                let (proof, point) = backend.prove_relation(&i, &input, &masks[j], &binding, t)?;
+                let truth = proof.final_values.clone();
+                let mu = proof.mask_final;
+                (proof, point, truth, mu)
+            } else {
+                let n = step.num_vars as usize;
+                let mut factors = Vec::new();
+                if step.eq.is_some() {
+                    factors.push(Factor {
+                        x: eq_input(&step.tau(&free), n)?,
+                        r: Vec::new(),
+                        v: None,
+                    });
+                }
+                for o in &step.occurrences {
+                    factors.push(Factor {
+                        x: domain_table(&data[o.column], &o.coords, &free, n),
+                        r: block_table(&block_of(o), &o.u, n),
+                        v: Some(o.v),
+                    });
+                }
+                for p in &step.publics {
+                    factors.push(Factor {
+                        x: domain_table(&p.values, &p.coords, &free, n),
+                        r: Vec::new(),
+                        v: None,
+                    });
+                }
+                if let Some(Forgery::Substitute(Substitute::Shared(x), delta)) = forgery {
+                    if x == j {
+                        if step.eq.is_none() {
+                            return Err(Error::Statement);
+                        }
+                        substitute(&mut factors, &i.terms, 0, K::from_i64(delta))?;
+                    }
+                }
+                let summand = Occurrences {
+                    factors,
+                    terms: i.terms.clone(),
+                    degree: step.degree,
+                    num_vars: step.num_vars,
+                    bound: 0,
+                    expand: None,
+                };
+                let here = forgery == Some(Forgery::Relation(j))
+                    || plan.lookups.iter().enumerate().any(|(l, lp)| {
+                        forgery == Some(Forgery::Ratio(l)) && lp.identity == Some(j)
+                    });
+                detail.lap("zk/detail/relation_factors");
+                summand.profile("relation");
+                detail.lap("zk/detail/relation_setup");
+                if forgery == Some(Forgery::Unchecked(j)) {
+                    unchecked(&i, summand, &masks[j], &binding, t)?
+                } else {
+                    masked_instance(&i, step.degree, summand, &masks[j], &binding, here, None, t)?
+                }
+            };
         detail.lap("zk/detail/relation_rounds");
         let first = step.first();
         for (k, o) in step.occurrences.iter().enumerate() {
@@ -4769,6 +4784,20 @@ mod tests {
             )
         };
         let (reference, previously_revealed) = produce(None).expect("CPU reference");
+        assert!(!reference.relations.is_empty());
+        let relations_session = stele_kernels::Scalar::<QM31>::new();
+        let (all_relations, revealed) =
+            produce(Some(BatchExecution::with_relations(&relations_session)))
+                .expect("selected relation, GKR and batch execution");
+        assert_eq!(encode(&reference), encode(&all_relations));
+        assert_eq!(previously_revealed, revealed);
+        verify_lifetime(
+            statement,
+            Some(&lifetime),
+            &all_relations,
+            &mut transcript(),
+        )
+        .expect("all selected proof");
         let complete_session = stele_kernels::Scalar::<QM31>::new();
         let (all_stages, all_revealed) = produce(Some(BatchExecution::with_gkr(&complete_session)))
             .expect("live GKR field execution");

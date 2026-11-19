@@ -16,6 +16,7 @@ use stele_sumcheck::{
 pub struct BatchExecution<'a, K> {
     batches: &'a dyn Arithmetic<K>,
     gkr: Option<&'a dyn super::gkr_backend::Arithmetic<K>>,
+    relations: Option<&'a dyn super::gkr_backend::Relations<K>>,
 }
 
 impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
@@ -24,6 +25,7 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
         Self {
             batches: session,
             gkr: None,
+            relations: None,
         }
     }
 
@@ -32,7 +34,21 @@ impl<'a, K: ChallengeField + CodeField + Eq> BatchExecution<'a, K> {
         Self {
             batches: session,
             gkr: Some(session),
+            relations: None,
         }
+    }
+
+    /// Select live relation, GKR and ordinary batch operations together (RFC-0014 A4).
+    pub fn with_relations<B: stele_kernels::gkr::RelationBackend<K>>(session: &'a B) -> Self {
+        Self {
+            batches: session,
+            gkr: Some(session),
+            relations: Some(session),
+        }
+    }
+
+    pub(super) fn relations(self) -> Option<&'a dyn super::gkr_backend::Relations<K>> {
+        self.relations
     }
 
     pub(super) fn gkr(self) -> Option<&'a dyn super::gkr_backend::Arithmetic<K>> {

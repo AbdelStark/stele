@@ -149,3 +149,27 @@ pub enum GkrFactor<'a, K> {
         vanishing: usize,
     },
 }
+
+/// RFC-0014 A4. A real A5 relation uses the same masked field arithmetic as A3.
+pub trait RelationBackend<K: Field>: GkrBackend<K> {
+    /// Construct ordered projected factors for a relation in this proof attempt.
+    fn relation_start<'s>(
+        &'s self,
+        input: &RelationConstruction<'_, K>,
+    ) -> Result<Self::Gkr<'s>, Self::Error>;
+}
+
+/// RFC-0014 A4. Every collection is in the original relation instance's order.
+pub struct RelationConstruction<'a, K> {
+    pub num_vars: u32,
+    pub degree: usize,
+    pub terms: Vec<Term<K>>,
+    pub factors: Vec<Projected<'a, K>>,
+}
+
+/// An MSB-first projection into the full domain and its original occurrence mask, if any.
+pub struct Projected<'a, K> {
+    pub values: &'a [K],
+    pub coordinates: Vec<usize>,
+    pub mask: Option<GkrMask<'a>>,
+}

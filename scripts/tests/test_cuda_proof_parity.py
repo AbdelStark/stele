@@ -27,3 +27,15 @@ class DeviceCounts(unittest.TestCase):
                 words = good.split()
                 words[i] = str(change)
                 parity.gkr_counts(" ".join(words), expected)
+
+    def test_requires_all_relation_rounds_and_original_final_fields(self):
+        schedule = (5,14,58,20)
+        row = [5,14,14,14,5,4096,16*(58+20),2048,512,8192,10000]
+        def check(values):
+            return parity.relation_counts(" ".join(map(str, values)), schedule)
+        self.assertEqual(check(row), (5,14))
+        for i,value in [(0,4),(1,13),(2,15),(3,13),(4,4),(5,2048),(6,1232),(7,0),(8,0),(9,0),(10,0)]:
+            changed = row.copy()
+            changed[i] = value
+            with self.subTest(i=i), self.assertRaises(ValueError):
+                check(changed)

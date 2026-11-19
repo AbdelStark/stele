@@ -4625,7 +4625,9 @@ tasks:
   rfc: [RFC-0014 A4, RFC-0020 A12, RFC-0026 A21]
   skill: cuda-kernel-author
   crate: stele-kernels+stele-reductions+stele-gpu+stele-cli
-  status: ready
+  status: done
+  agent: codex-source-visits
+  branch: task/E20-16-live-relations
   acceptance:
   - Borrow genuine projected columns and mask blocks or charge actual host preparation, retain the original checked transcript and authenticate all finals
   - Compare 1000 seeded scalar and hardware cases per operation and reject malformed field inputs and one changed real device round

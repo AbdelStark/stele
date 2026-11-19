@@ -36,3 +36,16 @@ class DeviceLedger(unittest.TestCase):
                             ('bytes=399', 'bytes=401'), ('bytes=9000', 'bytes=13000')]:
             with self.subTest(left=left), self.assertRaises(ValueError):
                 device_counters(capture.replace(left, right), self.verified, 4, '580')
+
+    def test_requires_verified_relations_and_live_peak(self):
+        gkr = ('cuda_gkr steps=385 expected_rounds=900 rounds=900 folds=900 finals=385 '
+               'h2d_bytes=12000 d2h_bytes=48000 streamed_layer_bytes=9000 planned_peak_bytes=370 observed_peak_bytes=399')
+        rel = ('cuda_relations steps=876 expected_rounds=4900 rounds=4900 folds=4900 finals=876 '
+               'h2d_bytes=4000 d2h_bytes=100000 value_bytes=2800 mask_bytes=700 planned_peak_bytes=390 observed_peak_bytes=398')
+        capture = self.receipt.replace('cuda_memory', gkr + '\n' + rel + '\ncuda_memory')
+        self.assertEqual(device_counters(capture, self.verified, 4, '580')['relations_rounds'], 4900)
+        for before, after in [(gkr+'\n',''), ('steps=876','steps=875'), ('folds=4900','folds=4899'),
+                              ('mask_bytes=700','mask_bytes=0'), ('value_bytes=2800','value_bytes=3900'),
+                              ('d2h_bytes=100000','d2h_bytes=99999'), ('observed_peak_bytes=398','observed_peak_bytes=401')]:
+            with self.subTest(before=before), self.assertRaises(ValueError):
+                device_counters(capture.replace(before, after), self.verified, 4, '580')
