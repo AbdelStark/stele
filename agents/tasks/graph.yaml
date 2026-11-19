@@ -4664,7 +4664,7 @@ tasks:
   skill: cuda-kernel-author
   crate: stele-kernels+stele-gpu+stele-reductions+stele-cli
   lane: E
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E20-18-live-source-material
   acceptance:
