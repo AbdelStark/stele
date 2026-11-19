@@ -1324,7 +1324,7 @@ pub(super) fn advance<K: ChallengeField + CodeField>(
     step: &GkrStep,
     run: &mut Run<K>,
     point: &[K],
-    layers: &Finals<K>,
+    layers: [[K; 2]; 2],
     t: &mut Transcript<K>,
 ) -> Result<(), Error> {
     if step.leaf {
@@ -1332,8 +1332,7 @@ pub(super) fn advance<K: ChallengeField + CodeField>(
     }
     let tstar = draw(t, ChallengeLabel::FractionFold)?;
     let u: Vec<K> = step.y.iter().map(|j| point[*j]).collect();
-    for poly in 0..2 {
-        let [a, b] = layers.layers[poly];
+    for (poly, [a, b]) in layers.into_iter().enumerate() {
         run.claims[poly] = a + tstar * (b - a);
         let k = kappa(point[step.xo + poly]);
         run.incoming[poly] = (k, u.clone());
