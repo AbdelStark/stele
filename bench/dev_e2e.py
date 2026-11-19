@@ -9,7 +9,7 @@ commitment time (measured in its own process) as stage `model_commitment`.
 
   python3 bench/dev_e2e.py RUN_DIR OUT.json --workload dev/<name> --commit <sha> \
       --device "<cpu>" --toolchain "$(rustc -V)" --prompt-tokens P --threads N \
-      --model-config config.json --host-context "<host>" [--rung L1] [--counters extra.json]
+      --model-config config.json --host-context "<host>" --rung L1 [--counters extra.json]
 
 `--zk` reads a dev-zk run against one published model commitment (RFC-0013 A6, A7):
 `commit.out` and `commit.time` from `stele commit-model --zk`, `model.commit`, one
@@ -98,6 +98,9 @@ SECTION_BYTE_COUNTERS = frozenset({
 REQUIRED_COUNTERS = frozenset({
     'committed_cells', 'lookup_positions', 'weight_reads',
 }) | SECTION_BYTE_COUNTERS
+VALID_RUNGS = frozenset({
+    'L0', 'L1', 'L2a', 'L2b', 'L2c', 'L3a', 'L3b', 'L3c', 'L4', 'L5', 'L6',
+})
 
 
 def parse_report(text, *, proof_bytes=None, require_nonempty=False):
@@ -280,6 +283,10 @@ def main():
     a = p.parse_args()
     if a.cuda_driver and not a.zk:
         p.error('--cuda-driver requires --zk')
+    if a.rung is not None and a.rung not in VALID_RUNGS:
+        p.error(f'--rung must be one of {sorted(VALID_RUNGS)}')
+    if a.rung is None and not a.legacy_no_stages:
+        p.error('--rung is required for post-E17-02 development records (RFC-0018 A2)')
     run = a.run
     assert (run / 'verify.out').read_text().splitlines()[-1] == 'YES', 'NotAccepted'
     assert (run / 'prove.out').read_text().splitlines()[-1] == 'PROOF WRITTEN', 'NotProved'

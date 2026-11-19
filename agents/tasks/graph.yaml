@@ -4034,7 +4034,9 @@ tasks:
   skill: benchmark-runner
   crate: stele-bench
   lane: B
-  status: ready
+  status: done
+  agent: antigravity-lane-b
+  branch: task/E17-02-scoreboard-ladder
   acceptance:
   - stele-bench scoreboard writes bench/scoreboard.md from bench/ledger with the bytes bench/scoreboard.py writes today; CI fails when the committed file differs
   - the validator admits the rung ids of RFC-0018 A2 and requires model_config.rung on development records made after this task

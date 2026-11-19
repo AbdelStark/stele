@@ -14,9 +14,28 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'bench/scoreboard.md'
-# Records made before task E17-01 carry no model_config.rung.
-RUNGS = {'dev/synthetic-8layer-t64': 'L1', 'dev/stories42m-t64': 'L2a', 'dev/stories110m-t64': 'L2c'}
+# Records made before task E17-01 carry no model_config.rung; RFC-0018 A2 / RFC-0027 §3 map W1/W3/W4-W6.
+RUNGS = {
+    'dev/synthetic-8layer-t64': 'L1',
+    'dev/stories42m-t64': 'L2a',
+    'dev/stories110m-t64': 'L2c',
+    'W1': 'L3c',
+    'W3': 'L4',
+    'W4': 'L6',
+    'W5': 'L6',
+    'W6': 'L6',
+}
 ORDER = ['L0', 'L1', 'L2a', 'L2b', 'L2c', 'L3a', 'L3b', 'L3c', 'L4', 'L5', 'L6']
+
+
+def fmt_fixed(num, den, decimals):
+    """Exact integer round-half-to-even rational formatting matching stele-bench scoreboard."""
+    scale = 10 ** decimals
+    q, r = divmod(num * scale, den)
+    if r > den - r or (r == den - r and (q & 1) == 1):
+        q += 1
+    whole, frac = divmod(q, scale)
+    return f'{whole}.{frac:0{decimals}d}'
 
 
 def rows():
@@ -30,15 +49,18 @@ def rows():
         k = r['kernel_counters']
         cells = k.get('committed_cells', k.get('stacked_source_cells_padded'))
         lookups = k.get('lookup_positions', k.get('lookup_ledger_numerator_sum'))
-        prove = r['prover_time_ns'] / 1e9
+        prove_ns = r['prover_time_ns']
         out.append((ORDER.index(rung) if rung in ORDER else len(ORDER), rung, path.name, [
             rung, r['profile'] + {1: ' (dev-zk)', 4: ' (dev-zk, A8 sources)'}.get(
                 r['model_config'].get('profile_byte'), '')
             # E12-32: a privacy-test record's time is the whole test (two proofs and their checks).
             + (' privacy test, whole-test time' if 'privacy' in r['workload'] else ''),
             r['device'], str(r['model_config'].get('threads', '—')),
-            f'{prove:.2f}', '—' if 'privacy' in r['workload'] else f'{tokens / prove:.3f}', f"{r['verifier_time_ns']['rust'] / 1e9:.2f}",
-            f"{r['proof_size_bytes'] / 1e6:.1f}", f"{k['prove_peak_rss_bytes'] / 1e9:.1f}"
+            fmt_fixed(prove_ns, 1_000_000_000, 2),
+            '—' if 'privacy' in r['workload'] else fmt_fixed(tokens * 1_000_000_000, prove_ns, 3),
+            fmt_fixed(r['verifier_time_ns']['rust'], 1_000_000_000, 2),
+            fmt_fixed(r['proof_size_bytes'], 1_000_000, 1),
+            fmt_fixed(k['prove_peak_rss_bytes'], 1_000_000_000, 1)
             if 'prove_peak_rss_bytes' in k else '—',
             f'{cells // tokens:,}' if cells else '—', f'{lookups // tokens:,}' if lookups else '—',
             str(k.get('weight_reads', '—')), 'none' if r['profile'] == 'development' else '?',

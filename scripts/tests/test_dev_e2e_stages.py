@@ -1,5 +1,6 @@
 """RFC-0018 A2 (task E17-01): stage_ns and counter parsing in bench/dev_e2e.py."""
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -92,6 +93,26 @@ class DevE2EStageReportTests(unittest.TestCase):
             wall.write_text('not-a-number\n')
             with self.assertRaises(ValueError):
                 external_wall_ns(tmp, 120_000_000, 10_000_000)
+
+    def test_cli_requires_valid_rung_for_post_e17_02_records(self):
+        base = [
+            sys.executable, str(ROOT / 'bench/dev_e2e.py'),
+            '/nonexistent/run', '/nonexistent/out.json',
+            '--workload', 'dev/sample',
+            '--commit', '0' * 40,
+            '--device', 'cpu',
+            '--model-config', '/nonexistent/config.json',
+            '--toolchain', 'rustc 1.0',
+            '--prompt-tokens', '1',
+            '--threads', '1',
+            '--host-context', 'test',
+        ]
+        missing = subprocess.run(base, capture_output=True, text=True)
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn('--rung is required', missing.stderr)
+        bad = subprocess.run(base + ['--rung', 'L9'], capture_output=True, text=True)
+        self.assertNotEqual(bad.returncode, 0)
+        self.assertIn('--rung must be one of', bad.stderr)
 
 
 if __name__ == '__main__':
