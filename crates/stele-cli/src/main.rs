@@ -46,8 +46,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use stele_prover::development::{
-    bundle, model_identity, prove_window_development, prove_window_profile, registry, verify, zk,
-    Statement,
+    bundle, model_identity, prove_window_development_measured, prove_window_profile, registry,
+    verify, zk, Report, Statement,
 };
 
 const USAGE: &str = "usage: stele commit-model --zk --model M --preparation P --scales S \
@@ -309,6 +309,80 @@ fn commit_model(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
     Ok("COMMITMENT WRITTEN".into())
 }
 
+fn sanitize_counter_name(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut prev_underscore = false;
+    let push_sep = |out: &mut String, prev: &mut bool| {
+        if !*prev && !out.is_empty() {
+            out.push('_');
+            *prev = true;
+        }
+    };
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() {
+            out.push(c.to_ascii_lowercase());
+            prev_underscore = false;
+        } else if c == '-' {
+            push_sep(&mut out, &mut prev_underscore);
+            out.push_str("neg_");
+            prev_underscore = true;
+        } else {
+            push_sep(&mut out, &mut prev_underscore);
+        }
+    }
+    while out.ends_with('_') {
+        out.pop();
+    }
+    out
+}
+
+/// Deterministic, collision-free counter key for plan check `index` (RFC-0018 A2, E17-01).
+/// Prefixing the plan check index guarantees uniqueness even when tables share a name,
+/// differ only by punctuation, or have an empty/punctuation-only name.
+fn lookup_check_counter_name(index: usize, name: &str) -> String {
+    let key = sanitize_counter_name(name);
+    let suffix = if key.is_empty() { "unnamed" } else { &key };
+    format!("lookup_positions_check_{index}_{suffix}")
+}
+
+/// Emit E17-01 (RFC-0018 A2) in-process stage nanoseconds and deterministic counters.
+fn print_report(report: &Report) {
+    let e = &report.engine;
+    for (stage, ns) in [
+        ("model_commitment", report.model_commitment_ns),
+        ("witness", report.witness_ns),
+        ("plain_check", report.plain_check_ns),
+        ("plan", e.plan_ns),
+        ("commitment", e.commitment_ns),
+        ("multiplicities", e.multiplicities_ns),
+        ("zerochecks", e.zerochecks_ns),
+        ("lookups", e.lookups_ns),
+        ("reductions", e.reductions_ns),
+        ("openings", e.openings_ns),
+    ] {
+        println!("stage_ns {stage} {ns}");
+    }
+    for (name, value) in [
+        ("committed_cells", e.committed_cells),
+        ("stacked_source_cells_padded", e.stacked_source_cells_padded),
+        ("lookup_positions", e.lookup_positions),
+        ("proof_section_groups_bytes", e.groups_bytes),
+        ("proof_section_multiplicities_bytes", e.multiplicities_bytes),
+        ("proof_section_identities_bytes", e.identities_bytes),
+        ("proof_section_lookups_bytes", e.lookups_bytes),
+        ("proof_section_matmuls_bytes", e.matmuls_bytes),
+        ("proof_section_openings_bytes", e.openings_bytes),
+        ("weight_reads", e.weight_reads),
+        ("weight_elements_read", e.weight_elements_read),
+    ] {
+        println!("counter {name} {value}");
+    }
+    for (index, (name, positions)) in e.lookup_checks.iter().enumerate() {
+        let key = lookup_check_counter_name(index, name);
+        println!("counter {key} {positions}");
+    }
+}
+
 fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     if o.contains_key("relation") && o.get("dev-profile") != Some(&"5") {
         return Err(usage("--relation needs --dev-profile 5"));
@@ -335,8 +409,9 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
             "5" => 5,
             _ => return Err(usage("--dev-profile is 3 or 5")),
         };
-        let (public, statement, proof) =
-            prove_window_development(&m, &p, &s, &a, statement, length, profile).map_err(reject)?;
+        let (public, statement, proof, report) =
+            prove_window_development_measured(&m, &p, &s, &a, statement, length, profile)
+                .map_err(reject)?;
         let relation = o
             .get("relation")
             .map(|_| registry::publish(&public, &statement).map(|(_, relation)| relation))
@@ -353,6 +428,7 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
         let (cqis_id, model) = model_identity(&public).map_err(reject)?;
         identity(&cqis_id, &model, &statement);
         println!("proof {} bytes", proof.len());
+        print_report(&report);
         return Ok("PROOF WRITTEN".into());
     }
     // Ownership covers both reads, the counter update, proof, and any rollback (A6.5).
@@ -634,5 +710,48 @@ fn main() -> ExitCode {
             println!("NO: {reason}");
             ExitCode::from(2)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeSet;
+
+    #[test]
+    fn matches_reference_unique_lookup_check_counter_names() {
+        let inputs = [
+            "silu_q",
+            "silu_q",
+            "exp/[10, 7]",
+            "exp/[-10, 7]",
+            "range/8",
+            "range_8",
+            "",
+            "///",
+            "---",
+        ];
+        let mut seen = BTreeSet::new();
+        let keys: Vec<String> = inputs
+            .iter()
+            .enumerate()
+            .map(|(i, name)| lookup_check_counter_name(i, name))
+            .collect();
+        for key in &keys {
+            assert!(
+                key.starts_with("lookup_positions_check_")
+                    && key
+                        .bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_'),
+                "invalid counter key {key:?}"
+            );
+            assert!(seen.insert(key.clone()), "duplicate counter key {key:?}");
+        }
+        assert_eq!(keys[0], "lookup_positions_check_0_silu_q");
+        assert_eq!(keys[1], "lookup_positions_check_1_silu_q");
+        assert_eq!(keys[2], "lookup_positions_check_2_exp_10_7");
+        assert_eq!(keys[3], "lookup_positions_check_3_exp_neg_10_7");
+        assert_eq!(keys[6], "lookup_positions_check_6_unnamed");
+        assert_eq!(keys[7], "lookup_positions_check_7_unnamed");
     }
 }

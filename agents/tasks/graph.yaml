@@ -4015,7 +4015,9 @@ tasks:
   skill: benchmark-runner
   crate: stele-prover+stele-reductions+stele-bench
   lane: B
-  status: ready
+  status: done
+  agent: antigravity-lane-b
+  branch: task/E17-01-stage-timers-counters
   acceptance:
   - prove-dev reports nanoseconds for witness capture, plain check, commitment, multiplicities, zerochecks, lookups, matmuls or reductions, openings, and for model commitment separately, in process; this replaces the separate-process model_commitment stage of E16-18
   - counters for committed cells, lookup positions per check, proof section bytes and weight reads; bench/dev_e2e.py writes them to stage_times_ns and kernel_counters; none depends on the thread count (ADR-090 keeps the encoder work counters out of ledgers)

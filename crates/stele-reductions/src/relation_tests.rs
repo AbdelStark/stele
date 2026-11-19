@@ -965,3 +965,188 @@ fn accepts_rate_quarter_multiplicity_sources_and_rejects_the_a11_set() {
         Some(Error::ProofShape)
     );
 }
+
+/// E17-01 (RFC-0018 A2): `prove_measured` emits byte-identical proofs to `prove`,
+/// deterministic thread-count-independent counters, and `std`-gated nanosecond timers.
+#[test]
+fn accepts_measured_proof_with_identical_bytes_and_deterministic_counters() {
+    let (rel, values) = batched();
+    let mut t1 = Transcript::new(PUBLIC).expect("transcript");
+    let plain = prove(&mut t1, &rel, &values, &[], Sources::CircleAll).expect("plain");
+    let mut t2 = Transcript::new(PUBLIC).expect("transcript");
+    let (measured, metrics) =
+        prove_measured(&mut t2, &rel, &values, &[], Sources::CircleAll).expect("measured");
+    assert_eq!(measured, plain);
+    let expected_cells: u64 = rel
+        .columns
+        .iter()
+        .filter(|c| matches!(c.kind, Kind::Witness(_)))
+        .map(|c| 1u64 << c.log_len)
+        .sum();
+    assert_eq!(metrics.committed_cells, expected_cells);
+    assert!(metrics.stacked_source_cells_padded >= expected_cells);
+    let check_sum: u64 = metrics.lookup_checks.iter().map(|(_, n)| *n).sum();
+    assert_eq!(metrics.lookup_positions, check_sum);
+    assert!(metrics.lookup_positions > 0);
+    assert_eq!(metrics.weight_reads, 0);
+    assert_eq!(metrics.weight_elements_read, 0);
+    let sum_len = |v: &[Vec<u8>]| -> u64 { v.iter().map(|s| s.len() as u64).sum() };
+    assert_eq!(metrics.groups_bytes, sum_len(&measured.groups));
+    assert_eq!(
+        metrics.multiplicities_bytes,
+        sum_len(&measured.multiplicities)
+    );
+    assert_eq!(metrics.identities_bytes, sum_len(&measured.identities));
+    assert_eq!(metrics.lookups_bytes, sum_len(&measured.lookups));
+    assert_eq!(metrics.matmuls_bytes, sum_len(&measured.matmuls));
+    assert_eq!(metrics.openings_bytes, sum_len(&measured.openings));
+    #[cfg(not(feature = "std"))]
+    {
+        assert_eq!(metrics.plan_ns, 0);
+        assert_eq!(metrics.commitment_ns, 0);
+        assert_eq!(metrics.multiplicities_ns, 0);
+        assert_eq!(metrics.zerochecks_ns, 0);
+        assert_eq!(metrics.lookups_ns, 0);
+        assert_eq!(metrics.reductions_ns, 0);
+        assert_eq!(metrics.openings_ns, 0);
+    }
+
+    // Weight-bearing relation with Range checks only: Step 3 counts + Step 5 originals +
+    // Step 7 opening => 3 physical passes over each weight column (16 + 32 = 48 entries × 3 = 144).
+    let lengths = [4u8, 5];
+    let wrel = weights(&lengths);
+    let wvalues = weight_values(&wrel, &lengths);
+    let messages = model_messages(&wrel, &wvalues).expect("messages");
+    let layouts = model_layout(&wrel, Sources::CircleAll).expect("layout");
+    let prepared: Vec<_> = layouts
+        .iter()
+        .zip(&messages)
+        .map(|(l, m)| l.sources.prepare(l.id, l.ell, &l.code, m).expect("model"))
+        .collect();
+    let certificates: Vec<_> = prepared
+        .iter()
+        .map(|p| {
+            let (bytes, _) = p.certificate().expect("certificate");
+            verify_certificate(*p.source(), &bytes)
+                .expect("certificate")
+                .0
+        })
+        .collect();
+    let model: Vec<_> = prepared.iter().zip(&certificates).collect();
+    let mut t3 = Transcript::new(PUBLIC).expect("transcript");
+    let (wproof, wmetrics) =
+        prove_measured(&mut t3, &wrel, &wvalues, &model, Sources::CircleAll).expect("wproof");
+    let mut t4 = Transcript::new(PUBLIC).expect("transcript");
+    let wplain = prove(&mut t4, &wrel, &wvalues, &model, Sources::CircleAll).expect("wplain");
+    assert_eq!(wproof, wplain);
+    assert_eq!(wmetrics.weight_reads, 3);
+    assert_eq!(
+        wmetrics.weight_elements_read,
+        3 * ((1u64 << 4) + (1u64 << 5))
+    );
+}
+
+/// E17-01 review F1 & F2: `weight_reads` and `weight_elements_read` count actual physical
+/// weight passes without a boolean cap, and RFC-0026 A6 row-blocked matmuls read
+/// `2^(w.n) >> fixed_bits` elements per block so `2^f` blocks equal one pass in total.
+#[test]
+fn matches_reference_weight_reads_for_repeated_and_row_blocked_matmuls() {
+    let build_and_measure = |split_max_vars: Option<u8>, repeat: usize| -> Metrics {
+        let mut rel = Relation::default();
+        let g = Kind::Witness(rel.add_group("G/wmm", 2));
+        let x = rel.add_column("x", g.clone(), Width::signed(4), 2);
+        let w = rel.add_column("w", Kind::Weight, Width::signed(4), 2);
+        let mut outs = Vec::new();
+        for r in 0..repeat {
+            outs.push(rel.add_column(&alloc::format!("y{r}"), g.clone(), Width::signed(10), 2));
+        }
+        for (column, name) in [(x, "rx"), (w, "rw")] {
+            rel.ranges.push(Range {
+                name: name.into(),
+                column,
+                width: Width::signed(4),
+            });
+        }
+        // Matrix multiply y[i, j] = sum_k x[i, k] * w[j, k] over 2x2 matrices (free=2, summed=1).
+        for (r, &y) in outs.iter().enumerate() {
+            let mm = stele_ir::relation::Matmul {
+                name: alloc::format!("xw_{r}"),
+                free: 2,
+                summed: 1,
+                out: Ref {
+                    column: y,
+                    vars: vec![0, 1],
+                },
+                lhs: Ref {
+                    column: x,
+                    vars: vec![2, 1],
+                },
+                rhs: Ref {
+                    column: w,
+                    vars: vec![2, 0],
+                },
+            };
+            match split_max_vars {
+                Some(cap) => rel.add_matmul_within(mm, cap),
+                None => rel.add_matmul(mm),
+            }
+        }
+        let mut values = Values::new(&rel);
+        let xv = vec![1i64, 2, -1, 3];
+        let wv = vec![2i64, -1, 1, 2];
+        // index = k + 2*row for x and w; index = j + 2*i for y.
+        let mut yv = vec![0i64; 4];
+        for i in 0..2 {
+            for j in 0..2 {
+                yv[j + 2 * i] = xv[2 * i] * wv[2 * j] + xv[1 + 2 * i] * wv[1 + 2 * j];
+            }
+        }
+        values.set(&rel, x, xv).expect("x");
+        values.set(&rel, w, wv).expect("w");
+        for &y in &outs {
+            values.set(&rel, y, yv.clone()).expect("y");
+        }
+        assert_eq!(stele_ir::relation::check(&rel, &values), Ok(()));
+        let messages = model_messages(&rel, &values).expect("messages");
+        let layouts = model_layout(&rel, Sources::CircleAll).expect("layout");
+        let prepared: Vec<_> = layouts
+            .iter()
+            .zip(&messages)
+            .map(|(l, m)| l.sources.prepare(l.id, l.ell, &l.code, m).expect("model"))
+            .collect();
+        let certificates: Vec<_> = prepared
+            .iter()
+            .map(|p| {
+                let (bytes, _) = p.certificate().expect("certificate");
+                verify_certificate(*p.source(), &bytes)
+                    .expect("certificate")
+                    .0
+            })
+            .collect();
+        let model: Vec<_> = prepared.iter().zip(&certificates).collect();
+        let mut t = Transcript::new(PUBLIC).expect("transcript");
+        let (proof, metrics) =
+            prove_measured(&mut t, &rel, &values, &model, Sources::CircleAll).expect("prove");
+        let refs: Vec<_> = certificates.iter().collect();
+        let mut tv = Transcript::new(PUBLIC).expect("transcript");
+        assert!(verify(&mut tv, &rel, &refs, &proof, Sources::CircleAll).is_ok());
+        metrics
+    };
+
+    // Weight `w` has a Range check (Step 3 counts + Step 5 originals = 2 passes) +
+    // 1 unblocked matmul (1 pass) + Step 7 opening (1 pass) => 4 passes, 16 elements.
+    let single = build_and_measure(None, 1);
+    assert_eq!(single.weight_reads, 4);
+    assert_eq!(single.weight_elements_read, 16);
+
+    // 2 unblocked matmuls over the same weight column => 5 passes (not capped), 20 elements.
+    let double = build_and_measure(None, 2);
+    assert_eq!(double.weight_reads, 5);
+    assert_eq!(double.weight_elements_read, 20);
+
+    // 1 matmul split into 2 RFC-0026 A6 row blocks (cap = 2 vars): each block reads 4 >> 1 = 2
+    // weight elements, summing to 1 matmul pass (4 elements) => 4 passes, 16 elements.
+    let blocked = build_and_measure(Some(2), 1);
+    assert_eq!(blocked.weight_reads, 4);
+    assert_eq!(blocked.weight_elements_read, 16);
+}
