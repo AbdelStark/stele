@@ -4527,3 +4527,25 @@ Key choices:
 - Version-1 non-wide models preserve bit-identical relations, digests, and proof bytes.
 
 Promotion to `standard` or `treaty` is not granted (Workflow 10).
+
+## ADR-147 — Accept RFC-0026 A26: `stele-dev-e2e-v2` segmented proof container (E18-06 Lane V interface)
+
+Segmented development proofs (task E18-06) group commitment, lookup, identity, matmul,
+reduction, and witness-opening sections per segment while opening model weight sources
+once after the final segment. Per Workflow 12 item 2, the proof container interface in
+`crates/stele-proof` (Lane V) moves first in a standalone interface change before Lane P
+wires segmented proving and verification.
+
+Accepted RFC-0026 A26 at the development tier under RFC-0027 §2 / Workflow 02 item 4
+following independent Lane V review ([E18-06b review](../reviews/e18-06b-proof-container-v2.md);
+ADR-146 / RFC-0026 A25 reserved for task E22-03 per Workflow 12 item 4).
+Key choices:
+- Preserve `stele-dev-e2e-v1` (`Container`, `decode`) byte-identically for unsegmented proofs.
+- Add `stele-dev-e2e-v2` (`ContainerV2`, `SegmentSections`, `decode_v2`, `Decoded`,
+  `decode_any`) with seven uniform per-segment section lists (`groups`, `multiplicities`,
+  `identities`, `lookups`, `matmuls`, `reductions`, `openings`) and top-level
+  `model_openings`, keeping `reductions` empty until virtual-column reductions land.
+- Enforce `seg_count >= 1`, `remaining >= 4`, pre-allocation length bounding
+  (`seg_count <= (remaining - 4) / 28`) with fallible `try_reserve_exact`, and reject
+  any trailing byte with `Error::ProofShape`.
+- Framing only: no new challenge, no new soundness ledger line, no profile promotion.

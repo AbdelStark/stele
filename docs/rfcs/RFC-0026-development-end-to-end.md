@@ -2562,3 +2562,52 @@ end-to-end byte-5 prove+verify plus next-token tamper rejection on the
 `one-layer-wide-gqa` fixture.
 
 **Affected tasks:** E22-03, E22-04. Promotion to `standard`: not granted (Workflow 10).
+
+### A26 — Segmented development proof container `stele-dev-e2e-v2`
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E18-06 (Lane V
+interface preparation per Workflow 12; A25 reserved for task E22-03). Decision: ADR-147.
+[Independent review](../../agents/reviews/e18-06b-proof-container-v2.md)
+
+Section 4.1 defines `stele-dev-e2e-v1` for unsegmented development proofs. That container
+stays byte-identical and remains the codec for single-segment proofs without virtual
+columns. This amendment adds the `stele-dev-e2e-v2` container in `stele_proof::development`
+to frame segmented development proofs while keeping `stele-proof` `no_std` and independent
+of prover and verifier internals.
+
+#### 1. Byte layout (little endian)
+
+- Header (82 bytes): 16-byte ASCII magic `stele-dev-e2e-v2`, `u16` version `2`,
+  32-byte `cqis_id`, 32-byte `statement` digest.
+- Segment count: `u32` `S` with `S >= 1`. Zero segments is rejected with `ProofShape`.
+- `S` segment blocks in segment order `0 .. S`. Each segment block encodes seven
+  section lists in fixed order: `groups`, `multiplicities`, `identities`, `lookups`,
+  `matmuls`, `reductions`, `openings`. Each section list is a `u32` count followed by
+  that many `(u32 byte_len, bytes)` pairs.
+- Model openings: one section list `model_openings` after the final segment block.
+
+There is no compression and no optional section. Matching A15 §4, fewer than 18 bytes,
+a wrong magic, or a wrong version is `Header`. Truncation at any byte offset from 18
+onward (including inside `cqis_id` or `statement`), zero segments (`S == 0`), over-long
+counts or lengths, allocation capacity failure, or any trailing byte is `ProofShape`.
+Before allocating, `decode_v2` enforces `remaining >= 4` and `S <= (remaining - 4) / 28`
+(equivalently `28 * S + 4 <= remaining`) and uses fallible reservation, and each section
+list enforces the inherited `count <= remaining / 4` bound. `decode_any` dispatches on
+the 16-byte magic between `stele-dev-e2e-v1` and `stele-dev-e2e-v2` and rejects fewer
+than 18 bytes or any other magic/version with `Header`.
+
+#### 2. Soundness accounting, cost, controls and tier
+
+- **Soundness accounting:** Framing only; no Fiat–Shamir challenge, no new check, and no
+  new §6 ledger line. Every section count and byte length inside a decoded container
+  remains the verifier's to derive and check against the plan-derived relation.
+- **Cells, lookups, proof bytes:** No change to witness cells, lookup positions, or v1
+  proof bytes. Compared with v1, v2 framing adds `12 + 28 * (S - 1)` bytes (4 bytes for
+  `S`, 4 bytes for segment 0's `reductions` list count, 4 bytes for `model_openings`,
+  and 28 bytes for each additional segment's seven list counts).
+- **Controls:** Unit tests in `stele_proof::development` cover v1/v2 round-trips, cross-
+  version rejection, truncation at every offset, trailing bytes, zero segments, and
+  inflated counts/lengths; segmented relation and root-order negative controls land in
+  task E18-06.
+- **Tier:** Development tier (RFC-0027 §2); promotion to `standard` or `treaty` is not
+  granted (Workflow 10).
