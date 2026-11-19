@@ -5234,6 +5234,26 @@ tasks:
   - compare the verifier's direct evaluation of sparse claim weights with its dense reference on ordinary and shared sources, covering duplicate positions, field-valued coefficients, invalid positions and the mask face
   - compare the stories42M T32 claim-routing and self-verification stages with the immediate baseline on the same host and thread count, and keep pinned proof bytes and mandatory gates green
 
+- id: E16-43
+  epic: E16
+  title: Fold fixed and free relation coordinates before broadcasting domain tables
+  lane: Z
+  depends:
+  - E16-24
+  rfc:
+  - RFC-0013 A5 item 2
+  - RFC-0026 A6, A9
+  - RFC-0008 A7
+  skill: performance-engineer
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E16-43-relation-projection
+  acceptance:
+  - reduce the work of constructing a masked relation factor from a column under fixed bits, free challenges and permuted or broadcast domain variables; preserve the GKR caller
+  - compare every result of the projection with an independent multilinear evaluation over mixed coordinates, Boolean and extension points, padding, scalars and permutations
+  - measure the same stories42M T32 relation-factors lap and total prover time on the same host and threads; preserve pinned proof bytes and negative controls
+
 - id: E16-40a
   epic: E16
   title: Separate development-ZK GPU-candidate CPU stage costs and shape inventory

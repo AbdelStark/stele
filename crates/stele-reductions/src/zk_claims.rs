@@ -2218,41 +2218,76 @@ fn bit(index: usize, var: usize, n: usize) -> usize {
 /// `x̂` over the domain: the column at its `Free` coordinates, broadcast over the
 /// variables it does not read.
 fn domain_table<K: ChallengeField>(column: &[K], coords: &[Coord], free: &[K], n: usize) -> Vec<K> {
-    let len = coords.len();
-    let mut partial = vec![zero::<K>(); 1 << n];
-    let mut read = 0usize;
-    for c in coords {
-        if let Coord::Var(q) = c {
-            read |= 1 << (n - 1 - q);
-        }
-    }
-    for (index, value) in column.iter().enumerate() {
-        let mut weight = K::from_i64(1);
-        let mut target = 0usize;
-        for (j, c) in coords.iter().enumerate() {
-            let b = bit(index, j, len);
-            match c {
-                Coord::Var(q) => target |= b << (n - 1 - q),
-                Coord::Free(i) => {
-                    weight = weight
-                        * if b == 1 {
-                            free[*i]
-                        } else {
-                            K::from_i64(1) - free[*i]
-                        }
-                }
-                Coord::Fixed(bit) => {
-                    if b != usize::from(*bit) {
-                        weight = zero::<K>();
-                    }
-                }
+    use alloc::borrow::Cow;
+    // At a fixed assignment of the read variables, only the free axes vary.
+    // Interpolate directly on that subcube; never allocate a half-column.
+    fn interpolate<K: ChallengeField>(column: &[K], offset: usize, free: &[(usize, K)]) -> K {
+        match free.split_first() {
+            None => column[offset],
+            Some((&(stride, z), rest)) => {
+                let low = interpolate(column, offset, rest);
+                let high = interpolate(column, offset | stride, rest);
+                low + z * (high - low)
             }
         }
-        partial[target] = partial[target] + weight * *value;
     }
-    (0..1usize << n)
-        .map(|index| partial[index & read])
-        .collect()
+
+    let mut vars = Vec::new();
+    let mut source_bits = Vec::new();
+    let mut free_axes = Vec::new();
+    let mut fixed = 0;
+    for (j, coord) in coords.iter().enumerate() {
+        let shift = coords.len() - 1 - j;
+        match coord {
+            Coord::Var(q) => {
+                vars.push(*q);
+                source_bits.push(shift);
+            }
+            Coord::Fixed(b) => fixed |= usize::from(*b) << shift,
+            Coord::Free(q) => free_axes.push((1 << shift, free[*q])),
+        }
+    }
+    let table = if vars.len() == coords.len() {
+        Cow::Borrowed(column)
+    } else {
+        let mut projected = vec![zero::<K>(); 1 << vars.len()];
+        stele_sumcheck::parallel::for_each_chunk_weighted(
+            &mut projected,
+            1 << free_axes.len(),
+            |start, chunk| {
+                for (i, value) in (start..).zip(chunk) {
+                    let offset = source_bits
+                        .iter()
+                        .enumerate()
+                        .fold(fixed, |at, (j, shift)| {
+                            at | (bit(i, j, vars.len()) << shift)
+                        });
+                    *value = interpolate(column, offset, &free_axes);
+                }
+            },
+        );
+        Cow::Owned(projected)
+    };
+    let len = 1 << n;
+    let Some(&last) = vars.last() else {
+        return vec![table[0]; len];
+    };
+    let contiguous = vars.windows(2).all(|pair| pair[1] == pair[0] + 1);
+    if contiguous && table.len() == len {
+        return table.into_owned();
+    }
+    let mut out = vec![zero::<K>(); len];
+    stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+        for (i, value) in (start..).zip(chunk) {
+            let index = if contiguous {
+                (i >> (n - 1 - last)) & (table.len() - 1)
+            } else {
+                vars.iter().fold(0, |index, q| (index << 1) | bit(i, *q, n))
+            };
+            *value = table[index];
+        }
+    });
+    out
 }
 
 /// `r̂(X) = r̃_x(a, X_u)` over the domain.
@@ -4213,6 +4248,93 @@ mod tests {
             candidate.fill(&mut actual);
             assert_eq!(actual, expected);
         }
+    }
+
+    #[test]
+    fn matches_reference_projected_relation_columns() {
+        // Project each input axis independently. Variable axes cannot repeat (the plan validates distinct).
+        let choices = [
+            Coord::Var(0),
+            Coord::Var(1),
+            Coord::Var(2),
+            Coord::Free(1),
+            Coord::Free(0),
+            Coord::Fixed(0),
+            Coord::Fixed(1),
+        ];
+        let q = |i: i64| {
+            basis::<QM31>(2).expect("extension basis") * QM31::from_i64(i * i + 1)
+                + QM31::from_i64(i.pow(3) - i + 1)
+        };
+        for ncoords in 0..=3 {
+            let column: Vec<_> = (0..1usize << ncoords)
+                .map(|i| q(1 + 3 * i as i64))
+                .collect();
+            for mut code in 0..choices.len().pow(ncoords as u32) {
+                let mut coords = Vec::new();
+                for _ in 0..ncoords {
+                    coords.push(choices[code % choices.len()]);
+                    code /= choices.len();
+                }
+                if [0, 1, 2].iter().any(|v| {
+                    coords
+                        .iter()
+                        .filter(|c| matches!(c, Coord::Var(i) if i == v))
+                        .count()
+                        > 1
+                }) {
+                    continue;
+                }
+                for free in [[q(7), q(-3)], [zero::<QM31>(), QM31::from_i64(1)]] {
+                    let got = domain_table(&column, &coords, &free, 3);
+                    assert_eq!(got.len(), 8);
+                    for (i, value) in got.into_iter().enumerate() {
+                        let point: Vec<_> = (0..3)
+                            .map(|j| QM31::from_i64(bit(i, j, 3) as i64))
+                            .collect();
+                        let w = stele_poly::eq_table(&column_point(&coords, &point, &free))
+                            .expect("dense column oracle");
+                        let expected = column
+                            .iter()
+                            .zip(w)
+                            .fold(zero::<QM31>(), |s, (x, w)| s + *x * w);
+                        assert_eq!(value, expected);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn matches_reference_wide_column_on_a_small_domain() {
+        // One live or no live variables: fixed/free column width never sets the scratch size.
+        let unit = basis::<QM31>(1).expect("extension basis");
+        let column: Vec<_> = (0..1 << 16)
+            .map(|i| unit * QM31::from_i64(i) + QM31::from_i64(i * i))
+            .collect();
+        let mut fixed = vec![Coord::Fixed(1); 16];
+        fixed[7] = Coord::Var(2);
+        for (i, value) in domain_table(&column, &fixed, &[], 3)
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(value, column[0xffff ^ ((1 - bit(i, 2, 3)) << 8)]);
+        }
+        let free: Vec<_> = (0..16).map(|i| unit + QM31::from_i64(i)).collect();
+        let eq = stele_poly::eq_table(&free).expect("dense free-coordinate table");
+        let expected = column
+            .iter()
+            .zip(eq)
+            .fold(zero::<QM31>(), |s, (v, w)| s + *v * w);
+        assert_eq!(
+            domain_table(
+                &column,
+                &(0..16).map(Coord::Free).collect::<Vec<_>>(),
+                &free,
+                3
+            ),
+            vec![expected; 8]
+        );
     }
 
     #[test]
