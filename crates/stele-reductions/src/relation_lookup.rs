@@ -15,7 +15,7 @@ use crate::lookup::{functionals, phase};
 use alloc::vec::Vec;
 use stele_field::{Field, Serialize, M31};
 use stele_hash::{AbsorbLabel, ChallengeLabel, Transcript};
-use stele_ir::relation::Relation;
+use stele_ir::relation::{Indexer, Relation};
 use stele_lookup::fraction::{self, BaseLeaves, LeafDescriptor, SelectedProduct};
 use stele_pcs::{verify_opening, Functional, PreparedSource, Source, VerifiedCertificate};
 use stele_sumcheck::parallel::{for_each_chunk, join, sum_ranges};
@@ -76,11 +76,12 @@ fn originals_base(check: &Check, resolved: &ResolvedColumns<'_>) -> Result<Vec<V
         for (x, (r, offset)) in out.iter_mut().zip(&member.tuple) {
             let col = resolved.get(r.column)?;
             let shift = M31::from_i64(*offset);
+            let at = Indexer::new(r, 1 << member.m);
             let block = &mut x[member.offset..member.offset + (1 << member.m)];
             for_each_chunk(block, |start, chunk| {
                 for (j, v) in chunk.iter_mut().enumerate() {
                     let dom = (block_base | (start + j)) as u64;
-                    *v = M31::from_i64(col.at(r.index(dom))) + shift;
+                    *v = M31::from_i64(col.at(at.index(dom))) + shift;
                 }
             });
         }
@@ -172,6 +173,7 @@ pub(super) fn counts(
             // One histogram per piece of the block, added in piece order.
             let (r, col, shift) = xs[0];
             let len = 1usize << member.m;
+            let at = Indexer::new(r, len);
             let pieces = len.div_ceil(HISTOGRAM_PIECE);
             let parts = stele_sumcheck::parallel::map(pieces, |p| {
                 let mut part = alloc::vec![0i64; check.t];
@@ -180,7 +182,7 @@ pub(super) fn counts(
                         continue;
                     }
                     let dom = (block_base | local) as u64;
-                    let value = (M31::from_i64(col.at(r.index(dom))) + shift).as_u32() as usize;
+                    let value = (M31::from_i64(col.at(at.index(dom))) + shift).as_u32() as usize;
                     // Unmatched values stay in the lookup leaves; the roots decide.
                     if let Some(count) = part.get_mut(value) {
                         *count += 1;

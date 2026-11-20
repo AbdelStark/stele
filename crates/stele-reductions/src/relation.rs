@@ -20,8 +20,8 @@ use core::fmt;
 use stele_field::{Field, Serialize, M31, QM31};
 use stele_hash::{AbsorbLabel, ChallengeLabel, HashUsage, Transcript};
 use stele_ir::relation::{
-    ColumnId, ColumnSlice, Def, Identity, Invalid, Kind, Ref, Relation, Term as IdentityTerm,
-    Values,
+    ColumnId, ColumnSlice, Def, Identity, Indexer, Invalid, Kind, Ref, Relation,
+    Term as IdentityTerm, Values,
 };
 use stele_pcs::{
     verify_certificate, verify_point, PreparedSource, ProofKind, Source, VerifiedCertificate,
@@ -1215,9 +1215,15 @@ impl<'a> ResolvedColumns<'a> {
             match &col.kind {
                 Kind::Virtual(Def::Linear { constant, terms }) => {
                     let n = 1usize << col.log_len;
-                    let ops: Vec<(i128, ColumnSlice<'_>, &Ref)> = terms
+                    let ops: Vec<(i128, ColumnSlice<'_>, Indexer<'_>)> = terms
                         .iter()
-                        .map(|(c, r)| Ok::<_, Error>((i128::from(*c), this.get(r.column)?, r)))
+                        .map(|(c, r)| {
+                            Ok::<_, Error>((
+                                i128::from(*c),
+                                this.get(r.column)?,
+                                Indexer::new(r, n),
+                            ))
+                        })
                         .collect::<Result<_, _>>()?;
                     let c0 = i128::from(*constant);
                     let mut out = vec![0i64; n];
@@ -1226,7 +1232,7 @@ impl<'a> ResolvedColumns<'a> {
                         for (j, slot) in chunk.iter_mut().enumerate() {
                             let x = (start + j) as u64;
                             let mut acc = Some(c0);
-                            for &(coeff, data, r) in &ops {
+                            for (coeff, data, r) in &ops {
                                 acc = acc.and_then(|a| {
                                     coeff
                                         .checked_mul(i128::from(data.at(r.index(x))))
@@ -1248,7 +1254,7 @@ impl<'a> ResolvedColumns<'a> {
                     if out.contains(&i64::MIN) {
                         for (x, slot) in out.iter_mut().enumerate() {
                             let mut acc = c0;
-                            for &(coeff, data, r) in &ops {
+                            for (coeff, data, r) in &ops {
                                 let prod = coeff
                                     .checked_mul(i128::from(data.at(r.index(x as u64))))
                                     .ok_or(Error::Capacity)?;
@@ -1301,7 +1307,7 @@ impl<'a> ResolvedColumns<'a> {
                     this.computed[id.0 as usize] = Some(VirtualBuf::from_i64(out));
                 }
                 Kind::Virtual(Def::Pointwise { terms }) => {
-                    type PointwiseTerm<'b> = (i128, Vec<(ColumnSlice<'b>, &'b Ref)>);
+                    type PointwiseTerm<'b> = (i128, Vec<(ColumnSlice<'b>, Indexer<'b>)>);
                     let n = 1usize << col.log_len;
                     let ops: Vec<PointwiseTerm<'_>> = terms
                         .iter()
@@ -1309,7 +1315,7 @@ impl<'a> ResolvedColumns<'a> {
                             let factors = t
                                 .factors
                                 .iter()
-                                .map(|r| Ok::<_, Error>((this.get(r.column)?, r)))
+                                .map(|r| Ok::<_, Error>((this.get(r.column)?, Indexer::new(r, n))))
                                 .collect::<Result<Vec<_>, _>>()?;
                             Ok::<_, Error>((i128::from(t.coeff), factors))
                         })
@@ -1322,7 +1328,7 @@ impl<'a> ResolvedColumns<'a> {
                             let mut acc = Some(0i128);
                             for (coeff, factors) in &ops {
                                 let mut prod = Some(*coeff);
-                                for &(data, r) in factors {
+                                for (data, r) in factors {
                                     prod = prod.and_then(|p| {
                                         p.checked_mul(i128::from(data.at(r.index(x))))
                                     });
@@ -1343,7 +1349,7 @@ impl<'a> ResolvedColumns<'a> {
                             let mut acc = 0i128;
                             for (coeff, factors) in &ops {
                                 let mut prod = *coeff;
-                                for &(data, r) in factors {
+                                for (data, r) in factors {
                                     prod = prod
                                         .checked_mul(i128::from(data.at(r.index(x as u64))))
                                         .ok_or(Error::Capacity)?;

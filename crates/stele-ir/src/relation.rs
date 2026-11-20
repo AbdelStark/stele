@@ -19,8 +19,10 @@ use alloc::vec::Vec;
 
 mod check;
 mod contract;
+mod index;
 pub use check::{check, check_except, check_segment, eval_column};
 pub use contract::contract;
+pub use index::Indexer;
 
 /// M31 modulus `p = 2^31 - 1` (RFC-0003 §1). Every identity is wrap-free below it.
 pub const MODULUS: u128 = (1 << 31) - 1;
