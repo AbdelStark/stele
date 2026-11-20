@@ -4780,8 +4780,13 @@ Consequences:
 - **Consequences:**
   - `RFC-0026 A29` is added as an Accepted development-tier amendment in
     `docs/rfcs/RFC-0026-development-end-to-end.md` and indexed in `RFC-0000`.
-  - L2a (`stories42M`, `T = 64`) proof size under `--dev-profile 6` is recorded below 4 MB in
-    `bench/ledger/` alongside deterministic replay and composed `NC-0630..0635` controls.
+  - L2a (`stories42M`, `T = 64`) under `--dev-profile 6`: the proof is 3,927,613 bytes
+    (`bench/ledger/e19-04-dev-stories42m-t64-byte6-24t.json`; 15.6 MB under byte 3), with the
+    same bytes in three runs on the 24-thread class and on an arm64 host. The public bundle
+    grows to 17.3 MB: it carries the registration certificates of the certified model
+    sources, made once per model. Controls: `NC-0631` and `NC-0633..0636` through the
+    engine verifier on the composed proof; `NC-0630` and `NC-0632` on the joined recursion
+    in `stele-pcs` (review `agents/reviews/e19-04-joined-recursion-e2e.md`).
   - Development tier only: no security level or profile promotion is granted (Workflow 10).
 
 ## ADR-155 — Accept RFC-0026 A8, the plan-fixed split of lookup checks, at the development tier (task E20-02)

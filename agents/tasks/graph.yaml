@@ -4308,7 +4308,9 @@ tasks:
   skill: pcs-engineer
   crate: stele-reductions+stele-pcs
   lane: C
-  status: ready
+  status: done
+  agent: claude
+  branch: task/E19-04-joined-recursion
   acceptance:
   - the row combinations of segments, multiplicity sources and model sources join one recursion; a segment leaves memory when its queries are answered
   - L2a proof at most 4 MB at the development query counts of Policy 3
