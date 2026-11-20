@@ -1267,48 +1267,37 @@ impl<'a> ResolvedColumns<'a> {
                 }) => {
                     let lhs_data = this.get(lhs.column)?;
                     let rhs_data = this.get(rhs.column)?;
-                    let n_out = 1usize
-                        .checked_shl(u32::from(*free))
-                        .ok_or(Error::Capacity)?;
-                    let n_sum = 1usize
-                        .checked_shl(u32::from(*summed))
-                        .ok_or(Error::Capacity)?;
-                    let free_u32 = u32::from(*free);
-                    let max_abs = |slice: ColumnSlice<'_>| -> u128 {
-                        slice
-                            .iter()
-                            .fold(0u128, |m, v| m.max(v.unsigned_abs() as u128))
-                    };
-                    let safe_i64 = max_abs(lhs_data)
-                        .checked_mul(max_abs(rhs_data))
-                        .and_then(|p| p.checked_mul(n_sum as u128))
-                        .is_some_and(|b| b <= i64::MAX as u128);
-                    let mut out = vec![0i64; n_out];
-                    if safe_i64 {
-                        stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
-                            for (j, slot) in chunk.iter_mut().enumerate() {
-                                let x = (start + j) as u64;
-                                let mut acc = 0i64;
-                                for y in 0..n_sum as u64 {
-                                    let xy = x | (y << free_u32);
-                                    acc += lhs_data.at(lhs.index(xy)) * rhs_data.at(rhs.index(xy));
+                    let out = match stele_ir::relation::contract(
+                        *free,
+                        *summed,
+                        (lhs, lhs_data),
+                        (rhs, rhs_data),
+                    ) {
+                        Some(out) => out,
+                        // Past the typed paths: the checked wide loop decides.
+                        None => {
+                            let n_out = 1usize
+                                .checked_shl(u32::from(*free))
+                                .ok_or(Error::Capacity)?;
+                            let n_sum = 1u64
+                                .checked_shl(u32::from(*summed))
+                                .ok_or(Error::Capacity)?;
+                            let free_u32 = u32::from(*free);
+                            let mut out = vec![0i64; n_out];
+                            for (x, slot) in out.iter_mut().enumerate() {
+                                let mut acc = 0i128;
+                                for y in 0..n_sum {
+                                    let xy = (x as u64) | (y << free_u32);
+                                    let prod = i128::from(lhs_data.at(lhs.index(xy)))
+                                        .checked_mul(i128::from(rhs_data.at(rhs.index(xy))))
+                                        .ok_or(Error::Capacity)?;
+                                    acc = acc.checked_add(prod).ok_or(Error::Capacity)?;
                                 }
-                                *slot = acc;
+                                *slot = i64::try_from(acc).map_err(|_| Error::Capacity)?;
                             }
-                        });
-                    } else {
-                        for (x, slot) in out.iter_mut().enumerate() {
-                            let mut acc = 0i128;
-                            for y in 0..n_sum as u64 {
-                                let xy = (x as u64) | (y << free_u32);
-                                let prod = i128::from(lhs_data.at(lhs.index(xy)))
-                                    .checked_mul(i128::from(rhs_data.at(rhs.index(xy))))
-                                    .ok_or(Error::Capacity)?;
-                                acc = acc.checked_add(prod).ok_or(Error::Capacity)?;
-                            }
-                            *slot = i64::try_from(acc).map_err(|_| Error::Capacity)?;
+                            out
                         }
-                    }
+                    };
                     this.computed[id.0 as usize] = Some(VirtualBuf::from_i64(out));
                 }
                 Kind::Virtual(Def::Pointwise { terms }) => {
