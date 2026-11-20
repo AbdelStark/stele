@@ -27,6 +27,7 @@ class QuarantineTests(unittest.TestCase):
 
     def test_rejects_development_entry_point_in_forbidden_crate(self):
         for call in ('Source::<K>::from_code_id_development(0, 0, &c, r)',
+                     'PreparedSource::<K>::from_code_id_development_owned(0, 0, &c, m, &mut u)',
                      'resolve_pcs_like(Profile::Development)', 'let s = Sources::Circle;',
                      'let s = Sources::CircleAll;', 'let s = Sources::CircleAllGrind;'):
             with self.subTest(call=call), tempfile.TemporaryDirectory() as directory:

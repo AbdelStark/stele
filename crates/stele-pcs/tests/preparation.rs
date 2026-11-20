@@ -145,3 +145,186 @@ fn rejects_preparation_shape_and_hash_overflow() {
     );
     assert_eq!(usage, before);
 }
+
+#[test]
+fn matches_reference_owned_prepared_source() {
+    use stele_hash::Transcript;
+    use stele_pcs::{verify_certificate, verify_opening, verify_point, Policy, RetainedRow};
+    let (ell, m, b) = (2u8, 4u8, 2u8);
+    let message: Vec<M31> = (0..1 << (ell + m))
+        .map(|i| M31::from_i64(i as i64 * 7 - 19))
+        .collect();
+    let base_source = stele_pcs::Source::<QM31>::new(77, ell, m, b, [0; 32]).expect("source");
+    let code = base_source.code_id().to_vec();
+    let point: Vec<QM31> = (0..(ell + m) as i64)
+        .map(|i| QM31::from_i64(i + 5))
+        .collect();
+    let value = stele_poly::Mle::new(
+        message
+            .iter()
+            .map(|&v| QM31::from_i64(i64::from(v.as_u32())))
+            .collect(),
+    )
+    .expect("mle")
+    .partial_evaluate(&point)
+    .expect("eval")
+    .values()[0];
+
+    for development in [false, true] {
+        let mut usage_borrowed = HashUsage::default();
+        let mut usage_owned = HashUsage::default();
+        let borrowed = if development {
+            PreparedSource::<QM31>::from_code_id_development(
+                77,
+                ell,
+                &code,
+                &message,
+                &mut usage_borrowed,
+            )
+            .expect("borrowed dev")
+        } else {
+            PreparedSource::<QM31>::from_code_id_policy(
+                77,
+                ell,
+                &code,
+                &message,
+                &mut usage_borrowed,
+                Policy::One,
+            )
+            .expect("borrowed p1")
+        };
+        let owned: PreparedSource<'static, QM31> = if development {
+            PreparedSource::<QM31>::from_code_id_development_owned(
+                77,
+                ell,
+                &code,
+                message.clone(),
+                &mut usage_owned,
+            )
+            .expect("owned dev")
+        } else {
+            PreparedSource::<QM31>::from_code_id_policy_owned(
+                77,
+                ell,
+                &code,
+                message.clone(),
+                &mut usage_owned,
+                Policy::One,
+            )
+            .expect("owned p1")
+        };
+        assert_eq!(usage_owned, usage_borrowed);
+        assert_eq!(owned.source().bytes(), borrowed.source().bytes());
+        assert_eq!(owned.message(), message.as_slice());
+        assert_eq!(borrowed.message(), message.as_slice());
+        assert_eq!(owned.message_reads(), message.len());
+        assert_eq!(owned.message_reads(), borrowed.message_reads());
+        assert_eq!(owned.work().borrowed_message_bytes, 0);
+        assert_eq!(
+            owned.work().peak_owned_bytes,
+            borrowed.work().peak_owned_bytes + 4 * message.len()
+        );
+        let (cert_b, _) = borrowed.certificate().expect("cert b");
+        let (cert_o, _) = owned.certificate().expect("cert o");
+        assert_eq!(cert_o, cert_b);
+        assert_eq!(owned.message_reads(), borrowed.message_reads());
+        let (verified, _) = verify_certificate(*owned.source(), &cert_o).expect("verify cert");
+        let mut tb = Transcript::<QM31>::new(b"owned-test").expect("tb");
+        let mut to = Transcript::<QM31>::new(b"owned-test").expect("to");
+        let (open_b, _) = borrowed
+            .opening_point(&mut tb, &verified, 0, &point, value)
+            .expect("open b");
+        let (open_o, _) = owned
+            .opening_point(&mut to, &verified, 0, &point, value)
+            .expect("open o");
+        assert_eq!(open_o, open_b);
+        assert_eq!(owned.message_reads(), borrowed.message_reads());
+        assert!(owned.message_reads() >= 3 * message.len());
+        let mut tv = Transcript::<QM31>::new(b"owned-test").expect("tv");
+        verify_point(&mut tv, &verified, 0, &point, value, &open_o).expect("verify owned");
+
+        // RetainedRow over PreparedSource<'static, QM31> reads zero extra source elements at opening.
+        let a: Vec<QM31> = (0..1 << ell)
+            .map(|i| QM31::from_i64(i as i64 + 3))
+            .collect();
+        let b_vec: Vec<QM31> = (0..1 << m).map(|i| QM31::from_i64(i as i64 + 11)).collect();
+        let retained = RetainedRow::new(&owned, &a).expect("retained");
+        let retained_val: QM31 = retained
+            .values()
+            .iter()
+            .zip(&b_vec)
+            .fold(QM31::ZERO, |acc, (&r, &bv)| acc + r * bv);
+        let functional = stele_pcs::Functional {
+            id: 1,
+            a: &a,
+            b: &b_vec,
+            value: retained_val,
+        };
+        let mut tr = Transcript::<QM31>::new(b"retained-owned").expect("tr");
+        let (ropen, _, work) = retained
+            .opening_measured(&mut tr, &verified, functional)
+            .expect("retained open");
+        assert_eq!(work.source_elements, 0);
+        let mut trv = Transcript::<QM31>::new(b"retained-owned").expect("trv");
+        verify_opening(&mut trv, &verified, functional, &ropen).expect("verify retained");
+
+        // Spare Vec capacity is counted in owned peak bytes.
+        let mut over = Vec::with_capacity(message.len() + 64);
+        over.extend_from_slice(&message);
+        let cap = over.capacity();
+        assert!(cap >= message.len() + 64);
+        let mut usage_over = HashUsage::default();
+        let owned_over = if development {
+            PreparedSource::<QM31>::from_code_id_development_owned(
+                77,
+                ell,
+                &code,
+                over,
+                &mut usage_over,
+            )
+            .expect("owned over dev")
+        } else {
+            PreparedSource::<QM31>::from_code_id_policy_owned(
+                77,
+                ell,
+                &code,
+                over,
+                &mut usage_over,
+                Policy::One,
+            )
+            .expect("owned over p1")
+        };
+        assert_eq!(
+            owned_over.work().peak_owned_bytes,
+            borrowed.work().peak_owned_bytes + 4 * cap
+        );
+    }
+
+    // Wrong message length rejected cleanly on both owned constructors.
+    let mut usage = HashUsage::default();
+    assert_eq!(
+        PreparedSource::<QM31>::from_code_id_development_owned(
+            77,
+            ell,
+            &code,
+            vec![M31::ONE],
+            &mut usage,
+        )
+        .err(),
+        Some(Error::MessageShape)
+    );
+    assert_eq!(usage, HashUsage::default());
+    assert_eq!(
+        PreparedSource::<QM31>::from_code_id_policy_owned(
+            77,
+            ell,
+            &code,
+            vec![M31::ONE],
+            &mut usage,
+            Policy::One,
+        )
+        .err(),
+        Some(Error::MessageShape)
+    );
+    assert_eq!(usage, HashUsage::default());
+}

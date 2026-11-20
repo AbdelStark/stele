@@ -1423,11 +1423,15 @@ def field_source_codec(root):
         ('fn', 'hiding'), ('fn', 'hiding_with'),  # RFC-0013 A8, E12-28
         # RFC-0013 A6, E12-25: a lifetime hiding source.
         ('fn', 'hiding_lifetime'), ('fn', 'hiding_lifetime_with'), ('fn', 'hiding_mask'),
-        ('fn', 'hiding_mask_with'), ('fn', 'response'), ('fn', 'work'), ('fn','hiding_material'),
+        ('fn', 'hiding_mask_with'), ('fn', 'response'), ('fn', 'work'),
+        # Workflow 12 / E18-06: owned-message PreparedSource for bounded segment residency.
+        ('fn', 'from_code_id_policy_owned'), ('fn', 'from_code_id_development_owned'),
+        ('fn', 'hiding_material'),
         ('fn', 'source'), ('fn', 'message'), ('fn', 'message_reads')]
         and len(prepared_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', prepared))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
             == ["impl<'a,K:ChallengeField>PreparedSource<'a,K>{",
+                "impl<K:ChallengeField>PreparedSource<'static,K>{",
                 "impl<'a,K:ChallengeField,M:ColumnMaterial>PreparedSource<'a,K,M>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', prepared)] == [
             'usecrate::{ColumnMaterial,ColumnResponse,Error,HidingUse,HostColumns,Policy,ProverWork,Source,};',
@@ -1561,6 +1565,7 @@ def field_source_codec(root):
           'test work::tests::matches_reference_capacity_observations ... ok',
           'test matches_reference_qm31_prepared_columns ... ok',
           'test matches_reference_om31_prepared_columns ... ok',
+          'test matches_reference_owned_prepared_source ... ok',
           'test rejects_preparation_shape_and_hash_overflow ... ok',
           'test producer::tests::matches_reference_qm31_certificate_production ... ok',
           'test producer::tests::matches_reference_om31_certificate_production ... ok',
@@ -2347,8 +2352,9 @@ def standard_quarantine(root):
                    'crates/stele-reductions/src/zk.rs', 'crates/stele-reductions/src/zk_claims.rs',
                    'crates/stele-reductions/tests/batch_bench.rs',
                    'crates/stele-reductions/tests/gkr_bench.rs',
-                   'crates/stele-pcs/src/producer_tests.rs', 'crates/stele-pcs/tests/selected_material.rs'}
-    dev_pattern = re.compile(r'\bfrom_code_id_development\b|\bProfile\s*::\s*Development\b'
+                   'crates/stele-pcs/src/producer_tests.rs', 'crates/stele-pcs/tests/selected_material.rs',
+                   'crates/stele-pcs/tests/preparation.rs'}
+    dev_pattern = re.compile(r'\bfrom_code_id_development(?:_owned)?\b|\bProfile\s*::\s*Development\b'
                              r'|\bSources\s*::\s*Circle\w*\b'  # Circle (A11), CircleAll (A12)
                              r'|\bhiding(?:_lifetime|_mask)?_with\b|\bhiding_material\b'  # RFC-0013 A8, RFC-0010 A16
                              r'|\bGeometry\s*::\s*Balanced\b')  # RFC-0013 A8's dev-zk geometry

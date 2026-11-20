@@ -50,7 +50,7 @@ pub struct PreparedColumn<'a> {
 /// ```
 pub struct PreparedSource<'a, K: ChallengeField, M = HostColumns> {
     source: Source<K>,
-    message: &'a [M31],
+    message: Cow<'a, [M31]>,
     material: M,
     borrows: AtomicUsize,
     openings: AtomicUsize,
@@ -105,7 +105,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
     ) -> Result<Self, Error> {
         let source = Source::<K>::from_code_id_policy(id, ell, code, [0; 32], policy)?;
         let rebuild = |root| Source::from_code_id_policy(id, ell, code, root, policy);
-        Self::prepare(source, rebuild, message, None, usage)
+        Self::prepare(source, rebuild, Cow::Borrowed(message), None, usage)
     }
 
     /// [`Source::from_code_id_development`] prepared (RFC-0026 A11): the development
@@ -119,7 +119,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
     ) -> Result<Self, Error> {
         let source = Source::<K>::from_code_id_development(id, ell, code, [0; 32])?;
         let rebuild = |root| Source::from_code_id_development(id, ell, code, root);
-        Self::prepare(source, rebuild, message, None, usage)
+        Self::prepare(source, rebuild, Cow::Borrowed(message), None, usage)
     }
 
     /// Prepare a version-3 hiding source (RFC-0010 A15) over the full message
@@ -151,7 +151,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
     ) -> Result<Self, Error> {
         let source = Source::<K>::hiding_with(id, ell, m, blowup, [0; 32], policy)?;
         let rebuild = |root| Source::hiding_with(id, ell, m, blowup, root, policy);
-        Self::prepare(source, rebuild, message, Some(seed), usage)
+        Self::prepare(source, rebuild, Cow::Borrowed(message), Some(seed), usage)
     }
 
     /// Prepare a lifetime hiding source (RFC-0013 A6): a weight source
@@ -258,7 +258,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
     fn prepare<F: FnOnce(merkle::Digest) -> Result<Source<K>, Error>>(
         source: Source<K>,
         rebuild: F,
-        message: &'a [M31],
+        message: Cow<'a, [M31]>,
         seed: Option<&[u8; 32]>,
         usage: &mut HashUsage,
     ) -> Result<Self, Error> {
@@ -279,12 +279,20 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
                 .and_then(|n| n.checked_sub(1))
                 .ok_or(Error::Capacity)?,
         )?;
-        bytes
-            .checked_add(refs)
+        let owned_message_bytes = match &message {
+            Cow::Borrowed(_) => 0,
+            Cow::Owned(values) => checked_bytes::<M31>(values.capacity())?,
+        };
+        owned_message_bytes
+            .checked_add(bytes)
+            .and_then(|n| n.checked_add(refs))
             .and_then(|n| n.checked_add(nodes))
             .ok_or(Error::Capacity)?;
         let mut work = PreparationWork {
-            borrowed_message_bytes: checked_bytes::<M31>(count)?,
+            borrowed_message_bytes: match &message {
+                Cow::Borrowed(_) => checked_bytes::<M31>(count)?,
+                Cow::Owned(_) => 0,
+            },
             ..PreparationWork::default()
         };
         let encoder = Encoder::from_code_id(source.code_id()).map_err(Error::Encoder)?;
@@ -360,15 +368,16 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         )
         .map_err(Error::Merkle)?;
         work.merkle_nodes_bytes = tree.owned_bytes();
-        work.peak_owned_bytes = work
-            .encoded_columns_bytes
-            .checked_add(
-                work.encoder_peak_bytes.max(
-                    work.leaf_references_bytes
-                        .checked_add(work.merkle_nodes_bytes)
-                        .ok_or(Error::Capacity)?,
-                ),
-            )
+        work.peak_owned_bytes = owned_message_bytes
+            .checked_add(work.encoded_columns_bytes)
+            .and_then(|n| {
+                n.checked_add(
+                    work.encoder_peak_bytes.max(
+                        work.leaf_references_bytes
+                            .checked_add(work.merkle_nodes_bytes)?,
+                    ),
+                )
+            })
             .ok_or(Error::Capacity)?;
         let source = rebuild(tree.root())?;
         let material = HostColumns {
@@ -391,8 +400,39 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
     }
 }
 
+impl<K: ChallengeField> PreparedSource<'static, K> {
+    /// Like [`PreparedSource::from_code_id_policy`], taking ownership of the canonical
+    /// row-major M31 message so the source and its message drop together without borrowing
+    /// external storage (RFC-0010 A9 §1).
+    pub fn from_code_id_policy_owned(
+        id: u64,
+        ell: u8,
+        code: &[u8],
+        message: Vec<M31>,
+        usage: &mut HashUsage,
+        policy: Policy,
+    ) -> Result<Self, Error> {
+        let source = Source::<K>::from_code_id_policy(id, ell, code, [0; 32], policy)?;
+        let rebuild = |root| Source::from_code_id_policy(id, ell, code, root, policy);
+        Self::prepare(source, rebuild, Cow::Owned(message), None, usage)
+    }
+
+    /// Like [`PreparedSource::from_code_id_development`], taking ownership of the message.
+    pub fn from_code_id_development_owned(
+        id: u64,
+        ell: u8,
+        code: &[u8],
+        message: Vec<M31>,
+        usage: &mut HashUsage,
+    ) -> Result<Self, Error> {
+        let source = Source::<K>::from_code_id_development(id, ell, code, [0; 32])?;
+        let rebuild = |root| Source::from_code_id_development(id, ell, code, root);
+        Self::prepare(source, rebuild, Cow::Owned(message), None, usage)
+    }
+}
+
 impl<'a, K: ChallengeField, M: ColumnMaterial> PreparedSource<'a, K, M> {
-    fn from_material(source: Source<K>, message: &'a [M31], material: M) -> Self {
+    fn from_material(source: Source<K>, message: Cow<'a, [M31]>, material: M) -> Self {
         Self {
             source,
             message,
@@ -455,7 +495,8 @@ impl<'a, K: ChallengeField, M: ColumnMaterial> PreparedSource<'a, K, M> {
         if material.descriptor() != source.descriptor() {
             return Err(Error::CertificateContext);
         }
-        let mut result = Self::from_material(context(material.root())?, message, material);
+        let mut result =
+            Self::from_material(context(material.root())?, Cow::Borrowed(message), material);
         match purpose {
             HidingUse::Single => {}
             HidingUse::MaskPolynomial => result.mask_polynomial = true,
@@ -485,11 +526,11 @@ impl<'a, K: ChallengeField, M: ColumnMaterial> PreparedSource<'a, K, M> {
         &self.source
     }
 
-    /// Original row-major input, retained by immutable borrow for row functionals.
+    /// Original row-major input, retained immutably for row functionals.
     /// This is the only accessor; each call is charged as one full R*C read.
-    pub fn message(&self) -> &'a [M31] {
+    pub fn message(&self) -> &[M31] {
         self.borrows.fetch_add(1, Ordering::Relaxed);
-        self.message
+        self.message.as_ref()
     }
 
     /// RFC-0013 A2 item 1: a hiding source admits one opening over its lifetime.
