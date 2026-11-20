@@ -217,15 +217,62 @@ impl CircleCoeff {
 
     /// Encode `row` into a caller-reused buffer `out` (`len == N`), avoiding per-row allocation.
     pub fn encode_into<K: Field>(&self, row: &[K], out: &mut Vec<K>) -> Result<(), Error> {
+        self.encode_into_with(row, out, &self.twiddles()?)
+    }
+
+    /// The twiddles of this code's `N`-point transform, made once for the rows of a source.
+    pub fn twiddles(&self) -> Result<Twiddles, Error> {
+        twiddles(
+            self.log_message + self.log_blowup,
+            &mut Measurement::default(),
+        )
+        .map(Twiddles)
+    }
+
+    /// [`Self::encode_into`] with the twiddles of [`Self::twiddles`]. The coefficients are
+    /// placed in bit-reversed order directly, so no swap pass runs: the same codeword.
+    pub fn encode_into_with<K: Field>(
+        &self,
+        row: &[K],
+        out: &mut Vec<K>,
+        twiddles: &Twiddles,
+    ) -> Result<(), Error> {
         self.validate(row)?;
+        let log = self.log_message + self.log_blowup;
+        if twiddles.0.len() != log as usize {
+            return Err(Error::RowShape);
+        }
         out.clear();
         if out.capacity() < self.codeword_len {
             out.try_reserve_exact(self.codeword_len - out.len())
                 .map_err(|_| Error::Capacity)?;
         }
-        out.extend_from_slice(row);
         out.resize(self.codeword_len, K::from_i64(0));
-        transform_recorded(out, false, &mut Measurement::default())?;
+        if log == 0 {
+            out[0] = row[0];
+            return Ok(());
+        }
+        let place = |j: usize, slot: &mut K| {
+            if let Some(value) = row.get(j.reverse_bits() >> (usize::BITS - log)) {
+                *slot = *value;
+            }
+        };
+        #[cfg(feature = "std")]
+        if out.len() >= PARALLEL_LEN {
+            out.par_iter_mut()
+                .enumerate()
+                .with_min_len(PARALLEL_GRAIN)
+                .for_each(|(j, slot)| place(j, slot));
+        } else {
+            out.iter_mut()
+                .enumerate()
+                .for_each(|(j, slot)| place(j, slot));
+        }
+        #[cfg(not(feature = "std"))]
+        out.iter_mut()
+            .enumerate()
+            .for_each(|(j, slot)| place(j, slot));
+        forward_butterflies(out, &twiddles.0);
         Ok(())
     }
 
@@ -374,6 +421,53 @@ fn bit_reverse<K>(values: &mut [K], log: u32) {
     }
 }
 
+/// Twiddle levels of one transform size (see [`CircleCoeff::twiddles`]).
+pub struct Twiddles(Vec<Vec<M31>>);
+
+/// The butterfly levels of a forward transform over bit-reversed input.
+fn forward_butterflies<K: Field>(values: &mut [K], levels: &[Vec<M31>]) {
+    for level in levels.iter().rev() {
+        let width = 2 * level.len();
+        let butterflies = |block: &mut [K]| {
+            block[level.len()..].reverse();
+            for (j, twiddle) in level.iter().enumerate() {
+                let opposite = width - 1 - j;
+                let a = block[j];
+                let b = block[opposite].mul_m31(*twiddle);
+                block[j] = a + b;
+                block[opposite] = a - b;
+            }
+        };
+        // Blocks, and the pairs of one block, are independent: any split gives the
+        // same values as the loop.
+        #[cfg(feature = "std")]
+        if values.len() >= PARALLEL_LEN {
+            if width <= PARALLEL_GRAIN {
+                values
+                    .par_chunks_exact_mut(width)
+                    .with_min_len(PARALLEL_GRAIN / width)
+                    .for_each(butterflies);
+            } else {
+                for block in values.chunks_exact_mut(width) {
+                    let (low, high) = block.split_at_mut(level.len());
+                    low.par_iter_mut()
+                        .zip(high.par_iter_mut())
+                        .zip(level.par_iter())
+                        .with_min_len(PARALLEL_GRAIN)
+                        .for_each(|((a, b), twiddle)| {
+                            let (x, y) = (*a, b.mul_m31(*twiddle));
+                            *a = x + y;
+                            *b = x - y;
+                        });
+                    high.reverse();
+                }
+            }
+            continue;
+        }
+        values.chunks_exact_mut(width).for_each(butterflies);
+    }
+}
+
 /// A forward transform of at least this many values splits its butterflies on the work pool.
 #[cfg(feature = "std")]
 const PARALLEL_LEN: usize = 1 << 16;
@@ -420,46 +514,7 @@ fn transform_recorded<K: Field>(
         }
     } else {
         bit_reverse(values, log);
-        for level in levels.iter().rev() {
-            let width = 2 * level.len();
-            let butterflies = |block: &mut [K]| {
-                block[level.len()..].reverse();
-                for (j, twiddle) in level.iter().enumerate() {
-                    let opposite = width - 1 - j;
-                    let a = block[j];
-                    let b = block[opposite].mul_m31(*twiddle);
-                    block[j] = a + b;
-                    block[opposite] = a - b;
-                }
-            };
-            // Blocks, and the pairs of one block, are independent: any split gives the
-            // same values as the loop.
-            #[cfg(feature = "std")]
-            if values.len() >= PARALLEL_LEN {
-                if width <= PARALLEL_GRAIN {
-                    values
-                        .par_chunks_exact_mut(width)
-                        .with_min_len(PARALLEL_GRAIN / width)
-                        .for_each(butterflies);
-                } else {
-                    for block in values.chunks_exact_mut(width) {
-                        let (low, high) = block.split_at_mut(level.len());
-                        low.par_iter_mut()
-                            .zip(high.par_iter_mut())
-                            .zip(level.par_iter())
-                            .with_min_len(PARALLEL_GRAIN)
-                            .for_each(|((a, b), twiddle)| {
-                                let (x, y) = (*a, b.mul_m31(*twiddle));
-                                *a = x + y;
-                                *b = x - y;
-                            });
-                        high.reverse();
-                    }
-                }
-                continue;
-            }
-            values.chunks_exact_mut(width).for_each(butterflies);
-        }
+        forward_butterflies(values, &levels);
     }
     measured.release(level_bytes);
     Ok(())

@@ -963,17 +963,24 @@ impl CommittedLevel {
         let mut column_bytes = reserve_vec(total_bytes)?;
         column_bytes.resize(total_bytes, 0u8);
 
-        // Encode all R rows independently with CircleCoeff (one forward circle transform per row).
+        // Encode all R rows independently with CircleCoeff (one forward circle transform per
+        // row, sharing one set of twiddles).
+        let twiddles = code.twiddles()?;
+        let encode = |row: &[M31]| -> Result<Vec<M31>, RecursiveError> {
+            let mut out = reserve_vec(n)?;
+            code.encode_into_with(row, &mut out, &twiddles)?;
+            Ok(out)
+        };
         #[cfg(feature = "std")]
         let encoded_rows: Vec<Vec<M31>> = message
             .par_chunks_exact(cols)
-            .map(|row| code.encode(row))
+            .map(encode)
             .collect::<Result<Vec<_>, _>>()?;
         #[cfg(not(feature = "std"))]
         let encoded_rows: Vec<Vec<M31>> = {
             let mut v = reserve_vec(rows)?;
             for row in message.chunks_exact(cols) {
-                v.push(code.encode(row)?);
+                v.push(encode(row)?);
             }
             v
         };
@@ -1028,16 +1035,22 @@ impl CommittedLevel {
         let mut column_bytes = reserve_vec(total_bytes)?;
         column_bytes.resize(total_bytes, 0u8);
 
+        let twiddles = code.twiddles()?;
+        let encode = |row: &[K]| -> Result<Vec<K>, RecursiveError> {
+            let mut out = reserve_vec(n)?;
+            code.encode_into_with(row, &mut out, &twiddles)?;
+            Ok(out)
+        };
         #[cfg(feature = "std")]
         let encoded_rows: Vec<Vec<K>> = message
             .par_chunks_exact(cols)
-            .map(|row| code.encode(row))
+            .map(encode)
             .collect::<Result<Vec<_>, _>>()?;
         #[cfg(not(feature = "std"))]
         let encoded_rows: Vec<Vec<K>> = {
             let mut v = reserve_vec(rows)?;
             for row in message.chunks_exact(cols) {
-                v.push(code.encode(row)?);
+                v.push(encode(row)?);
             }
             v
         };
@@ -2738,10 +2751,11 @@ fn recompute_queried_columns(
             }
         }
     }
+    let twiddles = code.twiddles()?;
     let fill = |(mut outs, block): (Vec<&mut [u8]>, &[M31])| -> Result<(), RecursiveError> {
         let mut row_buf = reserve_vec::<M31>(n)?;
         for (r, row) in block.chunks_exact(cols).enumerate() {
-            code.encode_into(row, &mut row_buf)?;
+            code.encode_into_with(row, &mut row_buf, &twiddles)?;
             for (out, &j) in outs.iter_mut().zip(&columns) {
                 out[r * 4..r * 4 + 4].copy_from_slice(&row_buf[j].to_le_bytes());
             }
@@ -2765,7 +2779,11 @@ fn recompute_queried_columns(
             .try_for_each(fill)?;
         1
     };
-    let peak_bytes = add_usize(mul_usize(mul_usize(resident, n)?, 4)?, payloads.capacity())?;
+    // One row buffer per running block, and the shared twiddles (`N - 1` elements).
+    let peak_bytes = add_usize(
+        mul_usize(mul_usize(resident + 1, n)?, 4)?,
+        payloads.capacity(),
+    )?;
     Ok((payloads, peak_bytes))
 }
 
