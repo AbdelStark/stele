@@ -800,7 +800,6 @@ fn nc_0635() -> Result<(), String> {
     }
 }
 
-/// Dispatch NC-0630..0635 through the actual recursive opening verifiers.
 /// NC-0636 (RFC-0026 A29 item 3, RFC-0029 Q51): the `eq` final of a multiplicity prefix
 /// sumcheck against the closed form of the row mask, through `relation::verify_recursive`.
 /// The 3-row table is read only under an all-zero selector, so its multiplicities are
@@ -863,6 +862,7 @@ fn nc_0636() -> Result<(), String> {
 /// The lookup section of NC-0636's table: checks are in first-use order, tables first.
 const MASKED_SECTION: usize = 0;
 
+/// Dispatch NC-0630..0636 through the actual verifiers.
 pub fn run(id: u16) -> Result<(), String> {
     match id {
         630 => nc_0630(),

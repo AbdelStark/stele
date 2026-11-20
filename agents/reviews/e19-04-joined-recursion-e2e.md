@@ -233,9 +233,106 @@ Fixed in the change that carries this record, on top of the audited commit.
 | Finding | Resolution |
 |---|---|
 | F1 | NC-0636 added. Catalogue row and registered control `pcs_recursive::nc_0636`, through `relation::verify_recursive`: a 3-row table read only under an all-zero selector, one bit of the `eq` final of its prefix sumcheck, `EqMismatch` exactly. The engine unit test runs the same control on the composed fixture. With the mask check removed the control fails. A29 item 5 names it. |
-| F2 | The engine tests assert exact reasons and are labelled as what they run: NC-0631 (a level-0 close and the joined tail), NC-0633, NC-0634, NC-0635, NC-0636. NC-0635 is no longer skipped: the unit fixture has a 128-entry weight column (certified radius 7) and a certificate registered at radius 6 is `CertificateContext`; the `stele-prover` test changes the radius field of the registration certificate, also `CertificateContext`. NC-0630 and NC-0632 are stated as run on the joined recursion in `stele-pcs` (A29 item 5 and the catalogue note). |
+| F2 | The engine tests assert exact reasons and are labelled as what they run: NC-0631 (a level-0 close and the joined tail), NC-0633, NC-0634, NC-0635, NC-0636. NC-0635 is no longer skipped: the unit fixture has a 128-entry weight column (certified radius 15) and a certificate registered at radius 14 is `CertificateContext`; the `stele-prover` test changes the radius field of the registration certificate, also `CertificateContext`. NC-0630 and NC-0632 are stated as run on the joined recursion in `stele-pcs` (A29 item 5 and the catalogue note). |
 | F3 | Not fixed here. A29 item 5 makes it a condition of promotion, and task `E19-10` (a dependency of `E21-09`) carries it: the NC-13xx development controls under profile byte 6, with a control that fails for each of the ten removed checks. |
 | F4 | The identity RLC line charges `n`; the SC lines are those of `verify_segmented`. |
 | F5 | A segment without a witness stack must have no opening section; `ProofShape` otherwise. |
-| F6 | A29 item 5a defines the step-1 absorb and the lookup statement fields under byte 6. RFC-0029 A1 records Q51 for the development tier; RFC-0019, `docs/plan.md` and `agents/context/architecture.md` follow. `tests/digests/development.json` pins L0 and L1 under byte 6 (the digest gate checks six proofs). The L2a ledger is recorded with this change. |
+| F6 | A29 item 5a defines the step-1 absorb and the lookup statement fields under byte 6. RFC-0029 A1 records Q51 for the development tier; RFC-0019, `docs/plan.md` and `agents/context/architecture.md` follow. `tests/digests/development.json` pins L0 and L1 under byte 6 (the digest gate checks six proofs). The L2a ledger is `bench/ledger/e19-04-dev-stories42m-t64-byte6-24t.json`, in the next commit of the branch. |
 | F7 | Fixture comment corrected. The mask test adds 10^4 random `(k, t, z, r)`. `eq_prefix_mle` is crate-private. The planners of the older engine refuse `Sources::CircleRecursive`. The profile-mismatch control is unchanged: the container header decides first. |
+
+## Re-audit
+
+- **Commit:** `e85cae9b` (parent `0f1a932c`), branch `task/E19-04-joined-recursion`. The audited patch is `e3b0a864` there, with the same `git patch-id` as `b62e429e`.
+- **Verdict:** **APPROVE** (development tier)
+
+Both BLOCKING findings are resolved, and F4, F5 and F7 are fixed. F3 stays open under task `E19-10` as a promotion condition, which is what its MEDIUM rating asked for. F6 is fixed except for the L2a ledger. Five LOW items remain; R1 is a merge condition for the branch.
+
+Evidence labels are as above: **[ran]** on `git archive e85cae9b` exports outside the repository, test profile; **[read]** otherwise. "Deletion k" and "forging prover B" are the instruments of the first audit, re-applied to `e85cae9b`.
+
+### Findings of the first audit
+
+| Finding | Status | Evidence |
+|---|---|---|
+| F1 | Resolved | NC-0636 passes, and fails when the mask check is removed [ran] |
+| F2 | Resolved | Both tests return the exact reasons they assert; NC-0635 runs [ran] |
+| F3 | Open, tracked | `E19-10`, a dependency of `E21-09`; A29 item 5 [read] |
+| F4 | Resolved | Identity RLC numerators are 1 and 2 for one and two identities [ran] |
+| F5 | Resolved | An extra opening section on a witness-free segment is `ProofShape` [ran] |
+| F6 | Resolved except the ledger | Six digests reproduced [ran]; documents [read]; see R1 |
+| F7 | Resolved | Older entry points return `Unsupported` for `CircleRecursive` [ran] |
+
+F3 is unchanged in substance: deletions 2 to 10 are still unnoticed by both tests, and deletion 9 still accepts the false lookup [ran].
+
+### 1. NC-0636 [ran]
+
+- The registered control returns `Ok` with all features, as do NC-0630..0635.
+- Against a verifier built without the mask check it returns `expected EqMismatch, got Err(Fraction(Sumcheck(RoundSumMismatch)))`. The committed unit test fails at its NC-0636 assertion on the same build.
+- Against a verifier that compares with the unmasked closed form it returns `honest proof rejected: EqMismatch`.
+- Of the 128 single-bit changes of the `eq` final, 124 give `EqMismatch` and four give `NoncanonicalField`. The control's bit is one of the 124.
+- Forging prover B is still rejected with `EqMismatch`.
+- `MASKED_SECTION = 0` is sound, and needs no change:
+  - The plan puts tables before ranges in first-use order, so section 0 is `small3`.
+  - A wrong index fails closed. The same flip in section 1 gives `Fraction(Sumcheck(FinalEvaluationMismatch))`, and that relation has no other source of `EqMismatch`.
+
+### 2. Honest paths
+
+- **[ran]** One-layer proofs under bytes 3, 5 and 6, with `segment_layers` 0 and 1, all verify.
+- **[ran]** Eight-layer proofs under bytes 3, 5 and 6 verify (digest producer).
+- **[ran]** The existing one-layer tests for the Expander set and byte 2, and the segmented test, pass.
+- **[ran]** A witness-free relation verifies under byte 6. A small relation still verifies under `CircleAll` through the older engine.
+- **[read]** Every byte 6 path in `crates/stele-prover/src/development.rs` returns before the older engine (`749-835` for proving, `1033-1065` for verifying). The zk and registry paths refuse byte 6 earlier.
+- **[read]** An honest prover writes `openings` only inside the `witness_plan` branches (`relation_recursive.rs:1257-1304`), so the F5 check cannot reject it.
+
+### 3. A29 items 5 and 5a [read]
+
+They match the code: the step-1 frame, the lookup statement bytes, the multiplicity bundle, the opening-section rule and the ledger line. Three wording slips are listed under R3.
+
+### 4. Regressions and unbound values [ran]
+
+- 14,090 single tampers on the new composed fixture and 532 on the segmented one-layer proof: none accepted, no panic.
+- The four digests of bytes 3 and 5 are unchanged, and the two byte 6 pins reproduce.
+- Cross-profile rejections are unchanged, with the header restamped:
+  - byte 6 under 3 or 5: `Commitment(ProofShape)`
+  - byte 3 or 5 under 6: `Engine(Recursive(ProofShape))`
+  - `segment_layers` flipped: `Engine(ProofShape)`
+- The catalogue counts the harness asserts hold: 259 rows, 163 registered, 85 of 127 bindings, 96 missing.
+
+### Remaining findings (all LOW)
+
+- **R1 — L2a ledger.** ADR-154 (`agents/context/decision-log.md:4783`) and the F6 row of the Resolution table say it is recorded. `bench/` at `e85cae9b` has no byte 6 ledger. Land it or reword both before the branch merges (INV-14).
+- **R2 — Resolution table, F2 row.** It gives certified radius 7 and a certificate at radius 6. The fixture's plan is `(ell 4, m 4, b 2)` with radius 15, and the control registers at 14 [ran]. The test code is generic; only the record is wrong.
+- **R3 — A29 wording.**
+  - Item 5 lists NC-0635 under "through `relation::verify_recursive`". `relation::verify_recursive_model` decides it before that call.
+  - Item 5 says the NC-13xx controls run under bytes 3 and 5. Some run under byte 2 and the Expander set (`tests/negative-controls/src/development.rs:205`, `417-419`).
+  - Item 5a says the layout fields "name no committed source". Check 0's layout id `(s << 16) + 3` equals the `mu_stack` id, though its `ell` and `blowup` do not describe it.
+- **R4 — no test for the F5 check.** `relation_recursive.rs:1427-1435` is exercised only by my scratch run. Add a test or list it under `E19-10`.
+- **R5 — misplaced doc line.** `tests/negative-controls/src/pcs_recursive.rs:803`: "Dispatch NC-0630..0635 …" now heads `nc_0636`, and `run` has none.
+
+Two notes that are not findings:
+- `relation::model_layout` and `model_layout_for` still answer for `Sources::CircleRecursive` with a version-1 layout [ran]. Nothing can prove or verify with it.
+- The E19-04 acceptance line in `agents/tasks/graph.yaml` still reads "controls of E19-03 pass on the composed proof". A29 item 5 is now the text that says where NC-0630 and NC-0632 run.
+
+### What I ran
+
+- `cargo test -p stele-reductions --lib`: 189 passed, 1 ignored. `--test relation`: 21 passed, 5 ignored.
+- `cargo test -p stele-prover --test development accepts_ -- --skip dev_zk --skip eight_layer --skip registry`: 11 passed.
+- `dumps_development_digests`: six proofs equal `tests/digests/development.json`.
+- `pcs_recursive::run` for 630 to 636 with `--all-features`.
+- `cargo fmt --check` and `cargo clippy -- -D warnings` on `stele-reductions` (all targets), `stele-prover` (tests) and the `stele-negative-controls` lib: clean.
+- `rfc-status`, `docs-links`, `glossary-lint`, `rust-policy`; the static `standard_quarantine` check; the static part of `field_sources`; the digest method of `scripts/tests/test_native_gate.py`: pass.
+- Scratch drivers for everything marked [ran] above.
+
+### Not checked
+
+- The whole `stele-prover` development suite, and the negative-controls harness that executes all 163 controls.
+- `native.sh`, `digest.sh`, `negative-controls.sh`, and a `--release` build.
+- The cargo-driven part of `field_sources` and the other methods of `test_native_gate.py`.
+- The L2a ledger and size claim.
+- The later commits on `task/E22-10-capture-single-pass`.
+- The PCS core, as before.
+
+I tried to break it by removing the mask check, by swapping its closed form for the unmasked one, by aiming NC-0636 at the other lookup section, by replaying forging prover B, by adding an opening section to a witness-free segment, by sending `Sources::CircleRecursive` into the older planners, and by 14,622 single tampers of two proofs. Control NC-0636 failed on the first two as it should, the wrong section could not produce `EqMismatch`, and the verifier rejected the rest with `EqMismatch`, `ProofShape`, `Unsupported` and Merkle or sumcheck mismatches.
+
+### After the re-audit
+
+R1 to R5 are closed in the commits that follow `e85cae9b`: the L2a ledger is `bench/ledger/e19-04-dev-stories42m-t64-byte6-24t.json` (R1), the Resolution table gives radius 15 and 14 (R2), A29 items 5 and 5a are reworded (R3), the F5 check is an acceptance line of `E19-10` (R4), and the dispatch comment heads `run` (R5).

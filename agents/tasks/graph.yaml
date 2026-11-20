@@ -4400,6 +4400,7 @@ tasks:
   - the NC-13xx development controls run through relation::verify_recursive under Sources::CircleRecursive, or the steps copied from verify_segmented are shared with it
   - each of the ten checks listed in agents/reviews/e19-04-joined-recursion-e2e.md (F3) has a control that fails when the check is removed
   - NC-0630 and NC-0632 run on the composed proof through a forging prover, or the catalogue states where they run
+  - an opening section on a segment without a witness stack is rejected with ProofShape by a committed test
 - id: E20-01
   epic: E20
   title: Typed small-value columns and base-field first rounds in the relation engine
