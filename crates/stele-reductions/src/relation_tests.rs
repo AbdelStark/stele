@@ -3514,3 +3514,60 @@ fn rejects_a8_member_value_moved_across_instance_boundary_without_multiplicity()
         Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
     );
 }
+
+/// RFC-0026 A8 non-identity `Ref` and multi-member bucket split: verifies leading-bit
+/// block splitting preserves `Ref` variable maps (transposition + broadcast) across
+/// multiple members packed into one split bucket.
+#[test]
+fn accepts_a8_split_with_non_identity_ref_and_multi_member_bucket() {
+    use stele_ir::relation::{Lookup, Table};
+
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/a8ref/2", 2);
+    // Two 4-entry columns (`log_len = 2`), referenced with a 3-var (`8`-entry) transposed/broadcast Ref.
+    let a = rel.add_column("a", Kind::Witness(g), Width::unsigned(2), 2);
+    let b = rel.add_column("b", Kind::Witness(g), Width::unsigned(2), 2);
+    let tbl = rel.add_table(Table {
+        name: "u2".into(),
+        widths: vec![Width::unsigned(2)],
+        rows: vec![vec![0], vec![1], vec![2], vec![3]],
+    });
+    // `Ref` with swapped + broadcast vars: column bit 0 <- lookup var 2, column bit 1 <- lookup var 0.
+    // Lookup var 1 is ignored (broadcast). When split with B = 2 (leading bit = var 2 fixed),
+    // block 0 fixes var 2 = 0 (column bit 0 = 0) and block 1 fixes var 2 = 1 (column bit 0 = 1).
+    rel.lookups.push(Lookup {
+        name: "la".into(),
+        vars: 3,
+        selector: None,
+        tuple: vec![Ref {
+            column: a,
+            vars: vec![2, 0],
+        }],
+        table: tbl,
+    });
+    // Second 2-var member on `b` with swapped vars `[1, 0]`.
+    rel.lookups.push(Lookup {
+        name: "lb".into(),
+        vars: 2,
+        selector: None,
+        tuple: vec![Ref {
+            column: b,
+            vars: vec![1, 0],
+        }],
+        table: tbl,
+    });
+    let mut values = Values::new(&rel);
+    values.set(&rel, a, vec![0, 1, 2, 3]).expect("a");
+    values.set(&rel, b, vec![3, 2, 1, 0]).expect("b");
+    assert_eq!(stele_ir::relation::check(&rel, &values), Ok(()));
+
+    let p = plan_with_bound(&rel, Sources::CircleAll, 2).expect("plan");
+    assert!(p.checks.iter().all(|c| c.m <= 2));
+    assert_eq!(p.checks.len(), 3); // 2 split blocks for `la` + 1 unsplit for `lb`
+
+    let mut tp = Transcript::new(PUBLIC).expect("t");
+    let proof =
+        prove_with_instance_bound(&mut tp, &rel, &values, &[], Sources::CircleAll, 2).expect("p");
+    let mut tv = Transcript::new(PUBLIC).expect("t");
+    verify_with_instance_bound(&mut tv, &rel, &[], &proof, Sources::CircleAll, 2).expect("v");
+}

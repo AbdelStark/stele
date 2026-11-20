@@ -487,6 +487,15 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         tree: BuiltTree<K>,
         t: &mut Transcript<K>,
     ) -> Result<(Proof<K>, Reduction<K>), Error> {
+        if tree.levels.len() != self.m as usize + 1
+            || tree
+                .levels
+                .iter()
+                .enumerate()
+                .any(|(k, level)| level.len() != (1usize << k))
+        {
+            return Err(Error::SourceShape);
+        }
         self.prove_levels(tree.levels, t)
             .map(|(proof, reduction, _)| (proof, reduction))
     }
@@ -641,6 +650,15 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         t: &mut Transcript<K>,
     ) -> Result<(Proof<K>, Reduction<K>), Error> {
         leaves.validate(self.m)?;
+        if tree.levels.len() != self.m as usize
+            || tree
+                .levels
+                .iter()
+                .enumerate()
+                .any(|(k, level)| level.len() != (1usize << k))
+        {
+            return Err(Error::SourceShape);
+        }
         let root = tree.root;
         let mut values = root;
         let mut point = Vec::new();

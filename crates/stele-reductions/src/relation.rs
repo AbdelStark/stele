@@ -805,6 +805,99 @@ fn check(
     })
 }
 
+/// Build RFC-0026 A3 & A8 check instances for `targets` under domain bound `B = instance_bound`.
+/// Unsplit targets (`total <= 2^B`) keep identical ids, source ids and names.
+fn build_a8_checks(
+    targets: Vec<(Target, Vec<Member>)>,
+    relation: &Relation,
+    sources: Sources,
+    instance_bound: u8,
+    id_base: u64,
+    source_base: u64,
+    max_checks: Option<usize>,
+) -> Result<Vec<Check>, Error> {
+    if instance_bound == 0 || instance_bound > 30 {
+        return Err(Error::Unsupported);
+    }
+    let cap = 1usize << instance_bound;
+    let mut checks = Vec::new();
+    for (target, raw_members) in targets {
+        let (base_name, t, entries) = match target {
+            Target::Table(table) => {
+                let table = &relation.tables[table as usize];
+                let entries: Vec<i64> = table.rows.iter().flatten().copied().collect();
+                (table.name.clone(), table.rows.len(), entries)
+            }
+            Target::Range(bits) => {
+                let t = 1usize << bits;
+                (alloc::format!("range_{bits}"), t, (0..t as i64).collect())
+            }
+        };
+        // RFC-0026 A8: cut members larger than 2^B along their leading domain bits first,
+        // then sort in A3 descending-size order and split into <= 2^B instances.
+        let mut expanded = Vec::new();
+        for member in raw_members {
+            if member.m > instance_bound {
+                let block_bits = member.m - instance_bound;
+                let blocks = 1usize << block_bits;
+                for block_index in 0..blocks {
+                    expanded.push(Member {
+                        m: instance_bound,
+                        block_bits,
+                        block_index,
+                        tuple: member.tuple.clone(),
+                        selector: member.selector.clone(),
+                        offset: 0,
+                    });
+                }
+            } else {
+                expanded.push(member);
+            }
+        }
+        expanded.sort_by(|a, b| b.m.cmp(&a.m));
+        let mut buckets: Vec<Vec<Member>> = Vec::new();
+        let mut cur = Vec::new();
+        let mut cur_total = 0usize;
+        for member in expanded {
+            let size = 1usize << member.m;
+            if !cur.is_empty() && cur_total + size > cap {
+                buckets.push(cur);
+                cur = Vec::new();
+                cur_total = 0;
+            }
+            cur_total += size;
+            cur.push(member);
+        }
+        if !cur.is_empty() {
+            buckets.push(cur);
+        }
+        let multi = buckets.len() > 1;
+        for (inst_idx, members) in buckets.into_iter().enumerate() {
+            if let Some(limit) = max_checks {
+                if checks.len() >= limit {
+                    return Err(Error::Unsupported);
+                }
+            }
+            let idx = checks.len() as u64;
+            let name = if multi {
+                alloc::format!("{base_name}/inst{inst_idx}")
+            } else {
+                base_name.clone()
+            };
+            checks.push(check(
+                id_base | idx,
+                source_base + idx,
+                name,
+                members,
+                t,
+                entries.clone(),
+                sources,
+            )?);
+        }
+    }
+    Ok(checks)
+}
+
 fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
     plan_with_bound(relation, sources, DEFAULT_INSTANCE_BOUND)
 }
@@ -901,77 +994,7 @@ fn plan_with_bound(
             },
         );
     }
-    let cap = 1usize << instance_bound;
-    let mut checks = Vec::new();
-    for (target, raw_members) in targets {
-        let (base_name, t, entries) = match target {
-            Target::Table(table) => {
-                let table = &relation.tables[table as usize];
-                let entries: Vec<i64> = table.rows.iter().flatten().copied().collect();
-                (table.name.clone(), table.rows.len(), entries)
-            }
-            Target::Range(bits) => {
-                let t = 1usize << bits;
-                (alloc::format!("range_{bits}"), t, (0..t as i64).collect())
-            }
-        };
-        // RFC-0026 A8: cut members larger than 2^B along their leading domain bits first,
-        // then sort in A3 descending-size order and split into <= 2^B instances.
-        let mut expanded = Vec::new();
-        for member in raw_members {
-            if member.m > instance_bound {
-                let block_bits = member.m - instance_bound;
-                let blocks = 1usize << block_bits;
-                for block_index in 0..blocks {
-                    expanded.push(Member {
-                        m: instance_bound,
-                        block_bits,
-                        block_index,
-                        tuple: member.tuple.clone(),
-                        selector: member.selector.clone(),
-                        offset: 0,
-                    });
-                }
-            } else {
-                expanded.push(member);
-            }
-        }
-        expanded.sort_by(|a, b| b.m.cmp(&a.m));
-        let mut buckets: Vec<Vec<Member>> = Vec::new();
-        let mut cur = Vec::new();
-        let mut cur_total = 0usize;
-        for member in expanded {
-            let size = 1usize << member.m;
-            if !cur.is_empty() && cur_total + size > cap {
-                buckets.push(cur);
-                cur = Vec::new();
-                cur_total = 0;
-            }
-            cur_total += size;
-            cur.push(member);
-        }
-        if !cur.is_empty() {
-            buckets.push(cur);
-        }
-        let multi = buckets.len() > 1;
-        for (inst_idx, members) in buckets.into_iter().enumerate() {
-            let id = checks.len() as u64;
-            let name = if multi {
-                alloc::format!("{base_name}/inst{inst_idx}")
-            } else {
-                base_name.clone()
-            };
-            checks.push(check(
-                id,
-                base + id,
-                name,
-                members,
-                t,
-                entries.clone(),
-                sources,
-            )?);
-        }
-    }
+    let checks = build_a8_checks(targets, relation, sources, instance_bound, 0, base, None)?;
     let lengths: Vec<u8> = (0..relation.columns.len())
         .filter(|i| relation.columns[*i].kind == Kind::Weight)
         .map(|i| relation.columns[i].log_len)
@@ -3325,6 +3348,14 @@ fn pointwise_instance(
 }
 
 fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan, Error> {
+    plan_segmented_with_bound(relation, sources, DEFAULT_INSTANCE_BOUND)
+}
+
+fn plan_segmented_with_bound(
+    relation: &Relation,
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<SegmentedPlan, Error> {
     relation.validate().map_err(Error::StatementMismatch)?;
     // RFC-0028 §2.1: all three virtual kinds (`Linear`, `Pointwise`, `Contraction`) are admitted;
     // contractions must fit their sumcheck variables (`shared + summed`) within `MAX_VARS`.
@@ -3434,26 +3465,15 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
                 },
             );
         }
-        if targets.len() >= (1 << 16) - 3 {
-            return Err(Error::Unsupported);
-        }
-        let mut checks = Vec::with_capacity(targets.len());
-        for (j, (target, members)) in targets.into_iter().enumerate() {
-            let id = source_base | (j as u64);
-            let source_id = source_base + 3 + (j as u64);
-            let (name, t, entries) = match target {
-                Target::Table(table) => {
-                    let table = &relation.tables[table as usize];
-                    let entries = table.rows.iter().flatten().copied().collect();
-                    (table.name.clone(), table.rows.len(), entries)
-                }
-                Target::Range(bits) => {
-                    let t = 1usize << bits;
-                    (alloc::format!("range_{bits}"), t, (0..t as i64).collect())
-                }
-            };
-            checks.push(check(id, source_id, name, members, t, entries, sources)?);
-        }
+        let checks = build_a8_checks(
+            targets,
+            relation,
+            sources,
+            instance_bound,
+            source_base,
+            source_base + 3,
+            Some((1 << 16) - 3),
+        )?;
         let mut sizes: Vec<u8> = relation
             .identities
             .iter()
@@ -3553,6 +3573,33 @@ where
     F: FnMut(u32) -> Result<Values, Error>,
 {
     prove_segmented_measured(t, relation, segment_values, model, sources).map(|(p, _)| p)
+}
+
+/// [`prove_segmented_measured`] with an explicit RFC-0026 A8 lookup instance bound `B`.
+pub fn prove_segmented_measured_with_instance_bound<F>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    segment_values: F,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<(ProofV2, Metrics), Error>
+where
+    F: FnMut(u32) -> Result<Values, Error>,
+{
+    let plan_timer = Stopwatch::start();
+    let plan = plan_segmented_with_bound(relation, sources, instance_bound)?;
+    let plan_ns = plan_timer.elapsed_ns();
+    prove_segmented_with_plan(
+        t,
+        relation,
+        &plan,
+        plan_ns,
+        segment_values,
+        model,
+        None,
+        None,
+    )
 }
 
 /// [`prove_segmented`] together with stage timings and deterministic counters (RFC-0018 A2, RFC-0026 A27, RFC-0028 §2.4).
@@ -4575,7 +4622,19 @@ pub fn verify_segmented(
     proof: &ProofV2,
     sources: Sources,
 ) -> Result<Ledger, Error> {
-    let plan = plan_segmented(relation, sources)?;
+    verify_segmented_with_instance_bound(t, relation, model, proof, sources, DEFAULT_INSTANCE_BOUND)
+}
+
+/// [`verify_segmented`] with an explicit RFC-0026 A8 lookup instance bound `B`.
+pub fn verify_segmented_with_instance_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    model: &[&VerifiedCertificate<K>],
+    proof: &ProofV2,
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<Ledger, Error> {
+    let plan = plan_segmented_with_bound(relation, sources, instance_bound)?;
     model_check_stacks(&plan.model, model)?;
     if proof.segments.len() != plan.segments.len() {
         return Err(Error::ProofShape);
