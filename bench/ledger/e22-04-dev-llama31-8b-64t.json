@@ -1,7 +1,7 @@
 {
  "batch_size": 1,
  "bindings_all_on": true,
- "commit": "012a578c73f0e064a1242b1c1f49a6d62e9b856a",
+ "commit": "02c23dad3d230638404ed8f734572070d2fae16d",
  "controls": {
   "failed": 0,
   "passed": 4,
@@ -57,16 +57,16 @@
    "token": "Engine(Sumcheck(RoundSumMismatch))",
    "weight": "Commitment(Transcript(GrindMismatch))"
   },
-  "host_context": "Dedicated Slurm CPU allocation (x86_64 Intel(R) Xeon(R) Platinum 8480CL, 112 CPU threads, 512 GiB RAM, CPU-only, no GPU, MALLOC_ARENA_MAX=4); release build with --dev-profile 3 (CircleAll) --segment-layers 1 (RFC-0026 A25/A26/A27); Gate M1 first-light proof on real Llama-3.1-8B-Instruct with Python integer oracle full-step parity verified before proving.",
+  "host_context": "Dedicated Slurm CPU allocation (x86_64 Intel(R) Xeon(R) Platinum 8480CL, 112 CPU threads, 512 GiB RAM, CPU-only, no GPU, MALLOC_ARENA_MAX=4); release build with --dev-profile 3 (CircleAll) --segment-layers 1 (33 segments s0..s32, RFC-0026 A25/A26/A27); compiled from pre-rebase E18-06 plus the identical Row 6 attention.rs score_wbits fix (byte-identical crates/ tree to 02c23dad); Gate M1 first-light proof on real Llama-3.1-8B-Instruct with Python integer oracle full-step parity verified before proving.",
   "model": {
    "artifact_sha256": "fea18f29bf2cbedc4d560cc79527c8001373c96be6f6eafd5bdf37a9a20e00a4",
-   "cqis": "int8 matrices, int16 gains (G=8), F=7, int24 wide residuals (RFC-0004 A14), A15 groups of 128 on norm-fed inputs and head, GQA 32/8, direct exp (15,7,14), --segment-layers 1",
+   "cqis": "int8 matrices, int16 gains (G=8), F=10 wide residuals (f0=7, int24 under RFC-0004 A14), A15 groups of 128 on norm-fed inputs and head, GQA 32/8, direct exp (15,7,14), --segment-layers 1 (33 segments s0..s32)",
    "model_sha256": "31674e8b8364751da0a358cea6ef649f4f698a6bf52127dcb10db94505f997f0",
-   "name": "Meta Llama-3.1-8B-Instruct, prepared by stele prepare (G7 profile)",
+   "name": "Meta Llama-3.1-8B-Instruct, prepared by stele prepare_source (cqis-r24-f10-g128 G7 profile)",
    "preparation_sha256": "32eaedf8098d970271d5930d42dd39bc888303bd858ea7e70dace4842bc39542",
    "scales_sha256": "ff645f87d74f5f61783e9afe2413aa576c97e81bec67f73ff59cc2c749f0ea53",
    "shape": {
-    "context": 1024,
+    "context": 131072,
     "d": 4096,
     "head_width": 128,
     "heads": 32,
@@ -80,6 +80,8 @@
   "proof_sha256": "675eff5bd7ea433c7af9261944a608960417e36022409299f9a9cf37d1e77998",
   "public_sha256": "15972d48207fa766ba33fa78df4e52a82f3476e8abc47df1c34b681263f72300",
   "rung": "L3a",
+  "segment_layers": 1,
+  "segments": 33,
   "statement": {
    "T": "64",
    "checked": "22..64",
@@ -91,7 +93,7 @@
   "threads": 112
  },
  "note": "RFC-0026 development profile (RFC-0018 A1, A2): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof. In-process stage timings (stage_times_ns, RFC-0018 A2) time model_commitment, witness, plain_check (running beside the relation engine under std), plan, commitment (overlapping multiplicity counting in parallel::join), multiplicities, zerochecks, lookups, reductions and openings; witness_recompute_ns equals stage witness. Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is the GNU time -v maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
- "plan_digest": "f79a93a1af5ea9ff4ff11d447d7237b89b89fdfc8da40c2010803c063399f98e",
+ "plan_digest": "f8b69aa50728a2eea494a3e5760180dd842023f73b65aa4d9b02a4dade6fee0f",
  "profile": "development",
  "prompt_tokens": 23,
  "proof_size_bytes": 415769000,
