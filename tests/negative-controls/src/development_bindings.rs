@@ -140,6 +140,7 @@ pub fn run(id: u16) -> Result<(), String> {
                 scales: &scales,
                 vectors: &f.public.vectors,
                 zk: false,
+                segment_layers: 0,
             },
             &f.statement,
         )
@@ -147,7 +148,7 @@ pub fn run(id: u16) -> Result<(), String> {
         let values = layout
             .assign(
                 &executor.capture(&f.statement.tokens).map_err(err)?,
-                &weights.codes,
+                &weights,
             )
             .map_err(err)?;
         let rel = &layout.relation;

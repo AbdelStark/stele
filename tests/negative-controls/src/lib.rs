@@ -151,6 +151,18 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || registry::run(1334),
     },
     catalog::RegisteredControl {
+        id: 1335,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "StatementMismatch",
+        run: || development::run_segments(1335),
+    },
+    catalog::RegisteredControl {
+        id: 1336,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "Policy 1: RootMismatch; Policy 2: GrindMismatch",
+        run: || development::run_segments(1336),
+    },
+    catalog::RegisteredControl {
         id: 316,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",

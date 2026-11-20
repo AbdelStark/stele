@@ -332,6 +332,25 @@ pub struct Proof {
     pub openings: Vec<Vec<u8>>,
 }
 
+/// Per-segment sections of a segmented development proof (`stele-dev-e2e-v2`, RFC-0026 A26, A27).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SegmentProof {
+    pub groups: Vec<Vec<u8>>,
+    pub multiplicities: Vec<Vec<u8>>,
+    pub identities: Vec<Vec<u8>>,
+    pub lookups: Vec<Vec<u8>>,
+    pub matmuls: Vec<Vec<u8>>,
+    pub reductions: Vec<Vec<u8>>,
+    pub openings: Vec<Vec<u8>>,
+}
+
+/// Segmented proof sections (`stele-dev-e2e-v2`, RFC-0026 A26, A27).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ProofV2 {
+    pub segments: Vec<SegmentProof>,
+    pub model_openings: Vec<Vec<u8>>,
+}
+
 /// Nanosecond stage stopwatch behind `std` (RFC-0018 A2, task E17-01).
 /// Under `no_std` every measurement returns zero. Never touches transcripts or bytes.
 pub struct Stopwatch {
@@ -487,6 +506,28 @@ impl Sources {
         match self {
             Sources::Expander => PreparedSource::from_code_id(id, ell, code, message, usage),
             _ => PreparedSource::from_code_id_development(id, ell, code, message, usage),
+        }
+        .map_err(Error::Pcs)
+    }
+    /// Owned preparation for segmented witness stacks (RFC-0026 A27, task E18-06).
+    pub fn prepare_owned(
+        self,
+        id: u64,
+        ell: u8,
+        code: &[u8],
+        message: Vec<M31>,
+    ) -> Result<PreparedSource<'static, K>, Error> {
+        let usage = &mut HashUsage::default();
+        match self {
+            Sources::Expander => PreparedSource::from_code_id_policy_owned(
+                id,
+                ell,
+                code,
+                message,
+                usage,
+                stele_pcs::Policy::One,
+            ),
+            _ => PreparedSource::from_code_id_development_owned(id, ell, code, message, usage),
         }
         .map_err(Error::Pcs)
     }
@@ -958,16 +999,16 @@ fn put(out: &mut Vec<u8>, values: &[K]) {
 /// The combined identity polynomial of one domain size (RFC-0026 §4 step 4).
 /// Identities of domain size `m` in relation order, then each `Compose` over its
 /// column's domain as the identity `column - Σ 2^shift·limb = 0` (RFC-0026 §3.5a).
-fn identities(relation: &Relation, m: u8) -> Vec<Identity> {
+fn identities_for(relation: &Relation, segment: Option<u32>, m: u8) -> Vec<Identity> {
     let mut out: Vec<Identity> = relation
         .identities
         .iter()
-        .filter(|i| i.vars == m)
+        .filter(|i| i.vars == m && segment.is_none_or(|s| relation.identity_segment(i) == s))
         .cloned()
         .collect();
     for compose in &relation.composes {
         let log_len = relation.columns[compose.column.0 as usize].log_len;
-        if log_len != m {
+        if log_len != m || segment.is_some_and(|s| relation.compose_segment(compose) != s) {
             continue;
         }
         let read = |id| vec![Ref::identity(id, log_len)];
@@ -991,9 +1032,19 @@ fn identities(relation: &Relation, m: u8) -> Vec<Identity> {
 }
 
 fn combine(relation: &Relation, m: u8, lambdas: &[K]) -> (Vec<Ref>, Instance<K>) {
+    combine_for(relation, None, m, ZEROCHECK | u64::from(m), lambdas)
+}
+
+fn combine_for(
+    relation: &Relation,
+    segment: Option<u32>,
+    m: u8,
+    id: u64,
+    lambdas: &[K],
+) -> (Vec<Ref>, Instance<K>) {
     let mut inputs: Vec<Ref> = Vec::new();
     let mut terms = Vec::new();
-    for (identity, lambda) in identities(relation, m).iter().zip(lambdas) {
+    for (identity, lambda) in identities_for(relation, segment, m).iter().zip(lambdas) {
         for term in &identity.terms {
             let factors = term
                 .factors
@@ -1013,7 +1064,7 @@ fn combine(relation: &Relation, m: u8, lambdas: &[K]) -> (Vec<Ref>, Instance<K>)
         }
     }
     let instance = Instance {
-        id: ZEROCHECK | u64::from(m),
+        id,
         num_vars: u32::from(m),
         inputs: (0..inputs.len() as u64).collect(),
         terms,
@@ -1023,7 +1074,16 @@ fn combine(relation: &Relation, m: u8, lambdas: &[K]) -> (Vec<Ref>, Instance<K>)
 }
 
 fn identity_lambdas(t: &mut Transcript<K>, relation: &Relation, m: u8) -> Result<Vec<K>, Error> {
-    (0..identities(relation, m).len())
+    identity_lambdas_for(t, relation, None, m)
+}
+
+fn identity_lambdas_for(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    segment: Option<u32>,
+    m: u8,
+) -> Result<Vec<K>, Error> {
+    (0..identities_for(relation, segment, m).len())
         .map(|_| Ok(t.challenge(ChallengeLabel::RelationIdentity)?))
         .collect()
 }
@@ -1189,8 +1249,12 @@ fn bits_point(index: usize, c: u8, tail: &[K]) -> Vec<K> {
 /// `(bits(o/2^n + j) ‖ ρ)`, with the block and column index in the leading
 /// coordinates (RFC-0026 §2.3, A4). Exact: Boolean coordinates only.
 fn group_claims(plan: &Plan, stack: &Stack, claims: &Claims) -> Vec<(Vec<K>, K)> {
+    group_claims_for(&plan.groups, stack, claims)
+}
+
+fn group_claims_for(groups: &[Group], stack: &Stack, claims: &Claims) -> Vec<(Vec<K>, K)> {
     let mut out = Vec::new();
-    for group in &plan.groups {
+    for group in groups {
         for (j, column) in group.columns.iter().enumerate() {
             let index = (group.offset >> group.n) + j;
             for (point, value) in &claims.0[column.0 as usize] {
@@ -1392,10 +1456,17 @@ fn weights_message(
 
 /// The supplied model certificates must be the derived layouts under their roots.
 fn model_check(plan: &Plan, certificates: &[&VerifiedCertificate<K>]) -> Result<(), Error> {
-    if certificates.len() != plan.model.len() {
+    model_check_stacks(&plan.model, certificates)
+}
+
+fn model_check_stacks(
+    model_stacks: &[Stack],
+    certificates: &[&VerifiedCertificate<K>],
+) -> Result<(), Error> {
+    if certificates.len() != model_stacks.len() {
         return Err(Error::Weights);
     }
-    for (model, certificate) in plan.model.iter().zip(certificates) {
+    for (model, certificate) in model_stacks.iter().zip(certificates) {
         let source = certificate.record().source();
         if model.source(source.root())?.bytes() != source.bytes() {
             return Err(Error::Weights);
@@ -1407,9 +1478,18 @@ fn model_check(plan: &Plan, certificates: &[&VerifiedCertificate<K>]) -> Result<
 /// Model claims of source `k`: weight `w` at block offset `o` maps a claim at `ρ` to
 /// the model claim at `(bits(o/2^n) ‖ ρ)`, Boolean leading coordinates (A5).
 fn weight_claims(plan: &Plan, k: usize, claims: &Claims) -> Vec<(Vec<K>, K)> {
-    let model = &plan.model[k];
+    weight_claims_for(&plan.weights, &plan.model, k, claims)
+}
+
+fn weight_claims_for(
+    weights: &[Weight],
+    model_stacks: &[Stack],
+    k: usize,
+    claims: &Claims,
+) -> Vec<(Vec<K>, K)> {
+    let model = &model_stacks[k];
     let mut out = Vec::new();
-    for weight in plan.weights.iter().filter(|w| w.source == k) {
+    for weight in weights.iter().filter(|w| w.source == k) {
         for (point, value) in &claims.0[weight.column.0 as usize] {
             out.push((
                 bits_point(weight.offset >> weight.n, model.bits - weight.n, point),
@@ -1546,7 +1626,7 @@ pub fn prove_forged(
             let column = read.columns.get(c.0 as usize).ok_or(Error::Unsupported)?;
             if !matches!(column.kind, Kind::Witness(_))
                 || !plan.sizes.iter().any(|&m| {
-                    identities(&read, m).iter().any(|identity| {
+                    identities_for(&read, None, m).iter().any(|identity| {
                         identity
                             .terms
                             .iter()
@@ -2040,6 +2120,29 @@ impl Opening<'_> {
         out.extend_from_slice(&bytes);
         Ok(out)
     }
+
+    /// Honest opening directly from `prepared.message()` without cloning a second `Vec<K>`
+    /// (used by segmented proving where earlier segment `Values` have already been dropped,
+    /// RFC-0026 A27).
+    fn prove_committed(
+        &self,
+        t: &mut Transcript<K>,
+        prepared: &PreparedSource<'_, K>,
+        handle: &VerifiedCertificate<K>,
+    ) -> Result<Vec<u8>, Error> {
+        let committed = to_k(prepared.message());
+        let (bp, point) = self.batch().prove_with_point(committed, t)?;
+        let mut out = Vec::new();
+        for row in &bp.rounds {
+            put(&mut out, row);
+        }
+        put(&mut out, &bp.final_values);
+        let (bytes, _) = prepared
+            .opening_point(t, handle, self.tensor, &point, bp.final_values[0])
+            .map_err(|f| Error::Pcs(f.cause))?;
+        out.extend_from_slice(&bytes);
+        Ok(out)
+    }
     fn verify(
         &self,
         t: &mut Transcript<K>,
@@ -2286,6 +2389,885 @@ pub fn verify(
     }
     sections.end()?;
     // §8 step 4: public-column claims, evaluated by the verifier.
+    for (i, column) in relation.columns.iter().enumerate() {
+        if let Kind::Public(values) = &column.kind {
+            for (point, value) in &claims.0[i] {
+                if mle(values, point)? != *value {
+                    return Err(Error::PublicMismatch(ColumnId(i as u32)));
+                }
+            }
+        }
+    }
+    Ok(ledger)
+}
+
+/// Per-segment plan derived from a validated [`Relation`] (RFC-0026 A27).
+struct SegmentPlan {
+    segment: u32,
+    groups: Vec<Group>,
+    stack: Option<Stack>,
+    checks: Vec<Check>,
+    sizes: Vec<u8>,
+    matmuls: Vec<usize>,
+}
+
+/// Complete segmented plan (RFC-0026 A27).
+struct SegmentedPlan {
+    digest: [u8; 32],
+    segments: Vec<SegmentPlan>,
+    weights: Vec<Weight>,
+    model: Vec<Stack>,
+    sources: Sources,
+}
+
+fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan, Error> {
+    relation.validate().map_err(Error::StatementMismatch)?;
+    let seg_count = relation.segments();
+    if seg_count > u32::from(u16::MAX) {
+        return Err(Error::Unsupported);
+    }
+    let weight_segs = relation.weight_segments();
+    let mut segments = Vec::with_capacity(seg_count as usize);
+    for seg in 0..seg_count {
+        let seg_u64 = u64::from(seg);
+        let source_base = seg_u64 << 16;
+        let mut groups = Vec::new();
+        for (g, group_meta) in relation.groups.iter().enumerate() {
+            if group_meta.segment != seg {
+                continue;
+            }
+            let columns: Vec<ColumnId> = (0..relation.columns.len() as u32)
+                .map(ColumnId)
+                .filter(|id| {
+                    relation.columns[id.0 as usize].kind
+                        == Kind::Witness(stele_ir::relation::GroupId(g as u32))
+                })
+                .collect();
+            let c = ceil_log2(columns.len().max(1));
+            groups.push(Group {
+                columns,
+                n: group_meta.log_len,
+                c,
+                offset: 0,
+            });
+        }
+        let mut order: Vec<usize> = (0..groups.len()).collect();
+        order.sort_by(|a, b| (groups[*b].n + groups[*b].c).cmp(&(groups[*a].n + groups[*a].c)));
+        let mut total = 0usize;
+        for g in order {
+            let bits = u32::from(groups[g].n) + u32::from(groups[g].c);
+            if bits > 30 {
+                return Err(Error::Unsupported);
+            }
+            groups[g].offset = total;
+            total = total.checked_add(1 << bits).ok_or(Error::Unsupported)?;
+        }
+        let stack = match groups.is_empty() {
+            true => None,
+            false => {
+                let bits = ceil_log2(total);
+                if bits > 30 {
+                    return Err(Error::Unsupported);
+                }
+                Some(self::stack(source_base + 2, bits, sources)?)
+            }
+        };
+        let mut targets: Vec<(Target, Vec<Member>)> = Vec::new();
+        let mut add =
+            |target: Target, member: Member| match targets.iter_mut().find(|(t, _)| *t == target) {
+                Some((_, members)) => members.push(member),
+                None => targets.push((target, vec![member])),
+            };
+        for lookup in &relation.lookups {
+            if relation.lookup_segment(lookup) != seg {
+                continue;
+            }
+            add(
+                Target::Table(lookup.table.0),
+                Member {
+                    m: lookup.vars,
+                    tuple: lookup.tuple.iter().map(|r| (r.clone(), 0)).collect(),
+                    selector: lookup.selector.clone(),
+                    offset: 0,
+                },
+            );
+        }
+        for range in &relation.ranges {
+            if relation.range_segment_with(range, &weight_segs) != seg {
+                continue;
+            }
+            let log_len = relation.columns[range.column.0 as usize].log_len;
+            add(
+                Target::Range(range.width.bits),
+                Member {
+                    m: log_len,
+                    tuple: vec![(Ref::identity(range.column, log_len), -range.width.min())],
+                    selector: None,
+                    offset: 0,
+                },
+            );
+        }
+        if targets.len() >= (1 << 16) - 3 {
+            return Err(Error::Unsupported);
+        }
+        let mut checks = Vec::with_capacity(targets.len());
+        for (j, (target, members)) in targets.into_iter().enumerate() {
+            let id = source_base | (j as u64);
+            let source_id = source_base + 3 + (j as u64);
+            let (name, t, entries) = match target {
+                Target::Table(table) => {
+                    let table = &relation.tables[table as usize];
+                    let entries = table.rows.iter().flatten().copied().collect();
+                    (table.name.clone(), table.rows.len(), entries)
+                }
+                Target::Range(bits) => {
+                    let t = 1usize << bits;
+                    (alloc::format!("range_{bits}"), t, (0..t as i64).collect())
+                }
+            };
+            checks.push(check(id, source_id, name, members, t, entries, sources)?);
+        }
+        let mut sizes: Vec<u8> = relation
+            .identities
+            .iter()
+            .filter(|i| relation.identity_segment(i) == seg)
+            .map(|i| i.vars)
+            .collect();
+        sizes.extend(
+            relation
+                .composes
+                .iter()
+                .filter(|c| relation.compose_segment(c) == seg)
+                .map(|c| relation.columns[c.column.0 as usize].log_len),
+        );
+        sizes.sort_unstable();
+        sizes.dedup();
+        let matmuls: Vec<usize> = relation
+            .matmuls
+            .iter()
+            .enumerate()
+            .filter(|(_, mm)| relation.matmul_segment(mm) == seg)
+            .map(|(idx, _)| idx)
+            .collect();
+        segments.push(SegmentPlan {
+            segment: seg,
+            groups,
+            stack,
+            checks,
+            sizes,
+            matmuls,
+        });
+    }
+    let lengths: Vec<u8> = (0..relation.columns.len())
+        .filter(|i| relation.columns[*i].kind == Kind::Weight)
+        .map(|i| relation.columns[i].log_len)
+        .collect();
+    let (placement, model) = model_plan(&lengths, sources)?;
+    let weights: Vec<Weight> = (0..relation.columns.len() as u32)
+        .map(ColumnId)
+        .filter(|id| relation.columns[id.0 as usize].kind == Kind::Weight)
+        .zip(placement)
+        .map(|(column, (source, offset))| Weight {
+            column,
+            n: relation.columns[column.0 as usize].log_len,
+            source,
+            offset,
+        })
+        .collect();
+    Ok(SegmentedPlan {
+        digest: codec::digest(relation),
+        segments,
+        weights,
+        model,
+        sources,
+    })
+}
+
+fn segment_stack_message(
+    groups: &[Group],
+    stack: &Stack,
+    relation: &Relation,
+    values: &Values,
+) -> Result<Vec<M31>, Error> {
+    let mut message = vec![M31::from_i64(0); 1 << stack.bits];
+    for group in groups {
+        for (j, id) in group.columns.iter().enumerate() {
+            let col = column(relation, values, *id)?;
+            let start = group.offset + (j << group.n);
+            for (out, v) in message[start..].iter_mut().zip(col) {
+                *out = M31::from_i64(*v);
+            }
+        }
+    }
+    Ok(message)
+}
+
+/// Produce a segmented development proof (`stele-dev-e2e-v2`, RFC-0026 A27), streaming
+/// one segment's [`Values`] at a time via `segment_values(s)` and retaining at most two
+/// consecutive segments' witness commitment data in memory.
+pub fn prove_segmented<F>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    segment_values: F,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+) -> Result<ProofV2, Error>
+where
+    F: FnMut(u32) -> Result<Values, Error>,
+{
+    prove_segmented_measured(t, relation, segment_values, model, sources).map(|(p, _)| p)
+}
+
+/// [`prove_segmented`] together with stage timings and deterministic counters (RFC-0018 A2, RFC-0026 A27).
+pub fn prove_segmented_measured<F>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    mut segment_values: F,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+) -> Result<(ProofV2, Metrics), Error>
+where
+    F: FnMut(u32) -> Result<Values, Error>,
+{
+    let plan_timer = Stopwatch::start();
+    let plan = plan_segmented(relation, sources)?;
+    let plan_ns = plan_timer.elapsed_ns();
+    let certificates: Vec<&VerifiedCertificate<K>> = model.iter().map(|(_, c)| *c).collect();
+    model_check_stacks(&plan.model, &certificates)?;
+    if model
+        .iter()
+        .any(|(p, c)| p.source().bytes() != c.record().source().bytes())
+    {
+        return Err(Error::Weights);
+    }
+
+    let mut lookup_checks: Vec<(String, u64)> = Vec::new();
+    for seg in &plan.segments {
+        for c in &seg.checks {
+            let positions: u64 = c.members.iter().map(|m| 1u64 << m.m).sum();
+            if let Some((_, total)) = lookup_checks.iter_mut().find(|(n, _)| *n == c.name) {
+                *total = total.saturating_add(positions);
+            } else {
+                lookup_checks.push((c.name.clone(), positions));
+            }
+        }
+    }
+    let mut metrics = Metrics {
+        plan_ns,
+        committed_cells: relation
+            .columns
+            .iter()
+            .filter(|c| matches!(c.kind, Kind::Witness(_)))
+            .map(|c| 1u64 << c.log_len)
+            .sum(),
+        stacked_source_cells_padded: plan
+            .segments
+            .iter()
+            .filter_map(|seg| seg.stack.as_ref().map(|s| 1u64 << s.bits))
+            .sum(),
+        lookup_positions: lookup_checks.iter().map(|(_, n)| *n).sum(),
+        lookup_checks,
+        ..Metrics::default()
+    };
+
+    let mut weight_index: Vec<Option<usize>> = vec![None; relation.columns.len()];
+    for (w_idx, w) in plan.weights.iter().enumerate() {
+        weight_index[w.column.0 as usize] = Some(w_idx);
+    }
+    let mut col_reads = vec![0u64; plan.weights.len()];
+    let member_selected = |member: &Member| -> u64 {
+        match &member.selector {
+            None => 1u64 << member.m,
+            Some(sel) => match &relation.columns[sel.column.0 as usize].kind {
+                Kind::Public(v) => (0..(1u64 << member.m))
+                    .filter(|&x| v[sel.index(x)] != 0)
+                    .count() as u64,
+                _ => 0,
+            },
+        }
+    };
+
+    let mut proof = ProofV2 {
+        segments: vec![SegmentProof::default(); plan.segments.len()],
+        model_openings: Vec::new(),
+    };
+    let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
+
+    // Step 1: statement digest and model roots.
+    t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
+    absorb_model(t, &certificates)?;
+
+    // At most two segments' prepared witness stacks live at any time: `prev` and `curr`.
+    let mut prev: Option<(usize, PreparedSource<'static, K>, VerifiedCertificate<K>)> = None;
+
+    for (s, seg) in plan.segments.iter().enumerate() {
+        let values = segment_values(seg.segment)?;
+
+        // Step 2.1 + 2.2: commit segment `s`'s witness stack (owned) alongside multiplicity counts.
+        let commit_msg_timer = Stopwatch::start();
+        let committed_message = match &seg.stack {
+            Some(stack) => Some(segment_stack_message(
+                &seg.groups,
+                stack,
+                relation,
+                &values,
+            )?),
+            None => None,
+        };
+        let commit_msg_ns = commit_msg_timer.elapsed_ns();
+
+        let stack_source = || {
+            let timer = Stopwatch::start();
+            let res = match (&seg.stack, committed_message) {
+                (Some(stack), Some(msg)) => {
+                    let p = stack
+                        .sources
+                        .prepare_owned(stack.id, stack.ell, &stack.code, msg);
+                    p.and_then(|p| {
+                        let (section, handle) = register(&p)?;
+                        Ok((p, handle, section))
+                    })
+                    .map(Some)
+                }
+                _ => Ok(None),
+            };
+            (res, timer.elapsed_ns())
+        };
+        let mu_messages_fn = |i: usize| {
+            let counts = lookup::counts(&seg.checks[i], relation, &values)?;
+            let message = lookup::multiplicities(&seg.checks[i], &counts)?;
+            Ok::<_, Error>((counts, message))
+        };
+        let ((stacked, commit_prep_ns), (mu_messages, mu_count_ns)) =
+            parallel::join(stack_source, || {
+                let timer = Stopwatch::start();
+                let res = parallel::map(seg.checks.len(), mu_messages_fn)
+                    .into_iter()
+                    .collect::<Result<Vec<_>, Error>>();
+                (res, timer.elapsed_ns())
+            });
+        metrics.commitment_ns = metrics
+            .commitment_ns
+            .saturating_add(commit_msg_ns.saturating_add(commit_prep_ns));
+
+        let curr = stacked?.map(|(p, handle, section)| {
+            proof.segments[s].groups.push(section);
+            (s, p, handle)
+        });
+        if let Some((_, p, _)) = &curr {
+            t.absorb(AbsorbLabel::RelationRoots, &p.source().root())?;
+        }
+
+        let (counts, mu_messages): (Vec<_>, Vec<_>) = mu_messages?.into_iter().unzip();
+        let mu_commit_timer = Stopwatch::start();
+        let mu = parallel::map(seg.checks.len(), |i| {
+            let layout = seg.checks[i].layout;
+            let code = mu_code(&seg.checks[i])?;
+            let p = plan
+                .sources
+                .prepare(layout.id, layout.ell, code.code_id(), &mu_messages[i])?;
+            let (section, handle) = register(&p)?;
+            Ok::<_, Error>((p, handle, section))
+        })
+        .into_iter()
+        .map(|r| {
+            let (p, handle, section) = r?;
+            t.absorb(AbsorbLabel::RelationRoots, &p.source().root())?;
+            proof.segments[s].multiplicities.push(section);
+            Ok((p, handle))
+        })
+        .collect::<Result<Vec<_>, Error>>()?;
+        metrics.multiplicities_ns = metrics
+            .multiplicities_ns
+            .saturating_add(mu_count_ns.saturating_add(mu_commit_timer.elapsed_ns()));
+
+        for check in &seg.checks {
+            for member in &check.members {
+                let mut selected: Option<u64> = None;
+                for (r, _) in &member.tuple {
+                    if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                        let count = *selected.get_or_insert_with(|| member_selected(member));
+                        col_reads[w_idx] = col_reads[w_idx].saturating_add(count);
+                    }
+                }
+            }
+        }
+
+        // Step 2.3 (a): zerochecks for segment `s`.
+        let zerocheck_timer = Stopwatch::start();
+        let seg_zc_base = ZEROCHECK | (u64::from(seg.segment) << 16);
+        for &m in &seg.sizes {
+            let lambdas = identity_lambdas_for(t, relation, Some(seg.segment), m)?;
+            let (inputs, instance) = combine_for(
+                relation,
+                Some(seg.segment),
+                m,
+                seg_zc_base | u64::from(m),
+                &lambdas,
+            );
+            let zc_reads = 1u64 << m;
+            for r in &inputs {
+                if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                    col_reads[w_idx] = col_reads[w_idx].saturating_add(zc_reads);
+                }
+            }
+            let mut tables = Vec::with_capacity(inputs.len());
+            for r in &inputs {
+                let col = column(relation, &values, r.column)?;
+                let mut table = vec![K::from_i64(0); 1 << m];
+                stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
+                    for (j, out) in chunk.iter_mut().enumerate() {
+                        *out = K::from_i64(col[r.index((start + j) as u64)]);
+                    }
+                });
+                tables.push(table);
+            }
+            let z = zerocheck::Zerocheck {
+                instance: &instance,
+                skip: 0,
+            };
+            let (zp, point) = z.prove_with_point(&tables, t)?;
+            let mut out = Vec::new();
+            for row in &zp.rounds {
+                put(&mut out, row);
+            }
+            put(&mut out, &zp.final_values);
+            for (r, value) in inputs.iter().zip(&zp.final_values) {
+                claims.push(r, &point, *value);
+            }
+            proof.segments[s].identities.push(out);
+        }
+        metrics.zerochecks_ns = metrics
+            .zerochecks_ns
+            .saturating_add(zerocheck_timer.elapsed_ns());
+
+        // Step 2.3 (b): lookups for segment `s`.
+        let lookup_timer = Stopwatch::start();
+        for ((check, (p, handle)), counts) in seg.checks.iter().zip(&mu).zip(&counts) {
+            for member in &check.members {
+                for (r, _) in &member.tuple {
+                    if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                        col_reads[w_idx] = col_reads[w_idx].saturating_add(1u64 << member.m);
+                    }
+                }
+            }
+            let mut out = Vec::new();
+            lookup::prove(
+                t,
+                check,
+                relation,
+                &values,
+                counts,
+                (p, handle),
+                &mut out,
+                &mut claims,
+            )?;
+            proof.segments[s].lookups.push(out);
+        }
+        drop(mu);
+        drop(mu_messages);
+        drop(counts);
+        metrics.lookups_ns = metrics.lookups_ns.saturating_add(lookup_timer.elapsed_ns());
+
+        // Step 2.3 (c): matmuls for segment `s`.
+        let matmul_timer = Stopwatch::start();
+        for &mm_idx in &seg.matmuls {
+            let mm = &relation.matmuls[mm_idx];
+            if let Some(w_idx) = weight_index[mm.out.column.0 as usize] {
+                col_reads[w_idx] = col_reads[w_idx].saturating_add(1u64 << plan.weights[w_idx].n);
+            }
+            for r in [&mm.lhs, &mm.rhs] {
+                if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                    let fixed_bits =
+                        r.vars.iter().filter(|d| Ref::fixed(**d).is_some()).count() as u32;
+                    let elems = (1u64 << plan.weights[w_idx].n) >> fixed_bits;
+                    col_reads[w_idx] = col_reads[w_idx].saturating_add(elems);
+                }
+            }
+            let shape = MatmulShape::new(t, mm)?;
+            let out = column(relation, &values, mm.out.column)?;
+            let out_value = mle(out, &restrict(&mm.out, &shape.rho))?;
+            let instance = shape.instance(MATMUL | mm_idx as u64, out_value);
+            let mut tables = Vec::new();
+            if !shape.shared.is_empty() {
+                tables.push(shape.eq_table());
+            }
+            tables.push(shape.table(&mm.lhs, column(relation, &values, mm.lhs.column)?)?);
+            tables.push(shape.table(&mm.rhs, column(relation, &values, mm.rhs.column)?)?);
+            let mut sc = Vec::new();
+            let capture = Capture {
+                dense: Dense::new(&instance, tables)?,
+                point: &mut sc,
+            };
+            let sp = stele_sumcheck::prove(&instance, capture, t)?;
+            let mut out = Vec::new();
+            put(&mut out, &[out_value]);
+            for row in &sp.rounds {
+                put(&mut out, row);
+            }
+            put(&mut out, &sp.final_values);
+            shape.route(mm, &sc, &sp.final_values, out_value, &mut claims);
+            proof.segments[s].matmuls.push(out);
+        }
+        metrics.reductions_ns = metrics
+            .reductions_ns
+            .saturating_add(matmul_timer.elapsed_ns());
+
+        // Step 2.4: drop segment `s` witness/weight `Values` before opening `prev`.
+        drop(values);
+
+        // Step 2.5: all claims on segment `s - 1` are now complete; batch, open, and drop it.
+        let openings_timer = Stopwatch::start();
+        if let Some((prev_s, prev_prepared, prev_handle)) = prev.take() {
+            let prev_seg = &plan.segments[prev_s];
+            if let Some(prev_stack) = &prev_seg.stack {
+                let batch = group_claims_for(&prev_seg.groups, prev_stack, &claims);
+                if !batch.is_empty() {
+                    let opening = Opening {
+                        id: BATCH | ((prev_s as u64) << 32),
+                        tensor: prev_stack.id,
+                        bits: prev_stack.bits,
+                        batch: &batch,
+                    };
+                    proof.segments[prev_s]
+                        .openings
+                        .push(opening.prove_committed(t, &prev_prepared, &prev_handle)?);
+                }
+            }
+        }
+        metrics.openings_ns = metrics
+            .openings_ns
+            .saturating_add(openings_timer.elapsed_ns());
+        prev = curr;
+    }
+
+    // Step 3: open the last segment's witness stack, drop it, then open each model source once.
+    let openings_timer = Stopwatch::start();
+    if let Some((last_s, last_prepared, last_handle)) = prev.take() {
+        let last_seg = &plan.segments[last_s];
+        if let Some(last_stack) = &last_seg.stack {
+            let batch = group_claims_for(&last_seg.groups, last_stack, &claims);
+            if !batch.is_empty() {
+                let opening = Opening {
+                    id: BATCH | ((last_s as u64) << 32),
+                    tensor: last_stack.id,
+                    bits: last_stack.bits,
+                    batch: &batch,
+                };
+                proof.segments[last_s]
+                    .openings
+                    .push(opening.prove_committed(t, &last_prepared, &last_handle)?);
+            }
+        }
+    }
+    for (k, (prepared, certificate)) in model.iter().enumerate() {
+        let batch = weight_claims_for(&plan.weights, &plan.model, k, &claims);
+        if !batch.is_empty() {
+            for (w_idx, w) in plan.weights.iter().enumerate() {
+                if w.source == k {
+                    col_reads[w_idx] = col_reads[w_idx].saturating_add(1u64 << w.n);
+                }
+            }
+            let stack = &plan.model[k];
+            let opening = Opening {
+                id: BATCH | (1 + k as u64),
+                tensor: stack.id,
+                bits: stack.bits,
+                batch: &batch,
+            };
+            proof
+                .model_openings
+                .push(opening.prove_committed(t, prepared, certificate)?);
+        }
+    }
+    metrics.openings_ns = metrics
+        .openings_ns
+        .saturating_add(openings_timer.elapsed_ns());
+
+    let section_bytes =
+        |sections: &[Vec<u8>]| -> u64 { sections.iter().map(|s| s.len() as u64).sum() };
+    for seg in &proof.segments {
+        metrics.groups_bytes += section_bytes(&seg.groups);
+        metrics.multiplicities_bytes += section_bytes(&seg.multiplicities);
+        metrics.identities_bytes += section_bytes(&seg.identities);
+        metrics.lookups_bytes += section_bytes(&seg.lookups);
+        metrics.matmuls_bytes += section_bytes(&seg.matmuls) + section_bytes(&seg.reductions);
+        metrics.openings_bytes += section_bytes(&seg.openings);
+    }
+    metrics.openings_bytes += section_bytes(&proof.model_openings);
+    metrics.weight_elements_read = col_reads.iter().copied().fold(0u64, u64::saturating_add);
+    metrics.weight_reads = plan
+        .weights
+        .iter()
+        .enumerate()
+        .map(|(w_idx, w)| col_reads[w_idx].div_ceil(1u64 << w.n))
+        .max()
+        .unwrap_or(0);
+    Ok((proof, metrics))
+}
+
+/// Verify a segmented development proof (`stele-dev-e2e-v2`, RFC-0026 A27) and return its ledger.
+pub fn verify_segmented(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    model: &[&VerifiedCertificate<K>],
+    proof: &ProofV2,
+    sources: Sources,
+) -> Result<Ledger, Error> {
+    let plan = plan_segmented(relation, sources)?;
+    model_check_stacks(&plan.model, model)?;
+    if proof.segments.len() != plan.segments.len() {
+        return Err(Error::ProofShape);
+    }
+    let mut ledger = Ledger::default();
+    for (k, certificate) in model.iter().enumerate() {
+        ledger.certificate(&alloc::format!("model {k}"), certificate.record().source());
+    }
+    let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
+
+    // Step 1.
+    t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
+    absorb_model(t, model)?;
+
+    let mut prev: Option<(usize, VerifiedCertificate<K>)> = None;
+
+    for (s, (seg, seg_proof)) in plan.segments.iter().zip(&proof.segments).enumerate() {
+        // Step 2.1: witness stack certificate.
+        let mut sections = Sections(seg_proof.groups.iter());
+        let mut curr = None;
+        if let Some(stack) = &seg.stack {
+            let mut reader = sections.next()?;
+            let root = reader.root()?;
+            let source = stack.source(root)?;
+            let size = source
+                .proof_size(ProofKind::Certificate)
+                .map_err(Error::Pcs)?;
+            let (handle, _) =
+                verify_certificate(source, reader.take(size)?).map_err(|f| Error::Pcs(f.cause))?;
+            reader.end()?;
+            t.absorb(AbsorbLabel::RelationRoots, &root)?;
+            ledger.certificate(&alloc::format!("s{s}/stack"), &source);
+            curr = Some((s, handle));
+        }
+        sections.end()?;
+
+        // Step 2.2: multiplicity certificates.
+        let mut mu = Vec::with_capacity(seg.checks.len());
+        let mut sections = Sections(seg_proof.multiplicities.iter());
+        for check in &seg.checks {
+            let mut reader = sections.next()?;
+            let root = reader.root()?;
+            let l = check.layout;
+            let source = sources.source(l.id, l.ell, mu_code(check)?.code_id(), root)?;
+            let size = source
+                .proof_size(ProofKind::Certificate)
+                .map_err(Error::Pcs)?;
+            let bytes = reader.take(size)?;
+            reader.end()?;
+            let (handle, _) = verify_certificate(source, bytes).map_err(|f| Error::Pcs(f.cause))?;
+            t.absorb(AbsorbLabel::RelationRoots, &root)?;
+            mu.push(handle);
+            ledger.pcs_sources += 1;
+            ledger.certificate(&alloc::format!("s{s}/{}", check.name), &source);
+        }
+        sections.end()?;
+
+        // Step 2.3 (a): zerochecks.
+        let mut sections = Sections(seg_proof.identities.iter());
+        let seg_zc_base = ZEROCHECK | (u64::from(seg.segment) << 16);
+        for &m in &seg.sizes {
+            let mut reader = sections.next()?;
+            let lambdas = identity_lambdas_for(t, relation, Some(seg.segment), m)?;
+            let (inputs, instance) = combine_for(
+                relation,
+                Some(seg.segment),
+                m,
+                seg_zc_base | u64::from(m),
+                &lambdas,
+            );
+            let degree = instance
+                .terms
+                .iter()
+                .map(|t| t.factors.len())
+                .max()
+                .unwrap_or(0);
+            let mut rounds = Vec::new();
+            for _ in 0..m {
+                rounds.push(reader.ks(degree + 1)?);
+            }
+            let zp = zerocheck::Proof {
+                skip_values: Vec::new(),
+                rounds,
+                final_values: reader.ks(inputs.len())?,
+            };
+            let z = zerocheck::Zerocheck {
+                instance: &instance,
+                skip: 0,
+            };
+            reader.end()?;
+            let reduction = z.verify(&zp, t)?;
+            for (r, claim) in inputs.iter().zip(&reduction.claims) {
+                claims.push(r, &claim.point, claim.value);
+            }
+            let name = alloc::format!("s{s}/identities/{m}");
+            let lambdas = lambdas.len() as u64;
+            ledger.add(Line::Rlc, &name, lambdas, lambdas);
+            let [weights, skip, tail] = reduction.sc;
+            for (numerator, round) in [
+                (weights.numerator, weights.numerator),
+                (skip.numerator, skip.numerator),
+                (tail.numerator, u64::from(tail.degree)),
+            ] {
+                if numerator > 0 {
+                    ledger.add(Line::Sc, &name, numerator, round);
+                }
+            }
+        }
+        sections.end()?;
+
+        // Step 2.3 (b): lookups.
+        let mut sections = Sections(seg_proof.lookups.iter());
+        for (check, handle) in seg.checks.iter().zip(&mu) {
+            let mut reader = sections.next()?;
+            lookup::verify(
+                t,
+                check,
+                relation,
+                handle,
+                &mut reader,
+                &mut claims,
+                &mut ledger,
+            )?;
+            reader.end()?;
+        }
+        sections.end()?;
+
+        // Step 2.3 (c): matmuls.
+        let mut sections = Sections(seg_proof.matmuls.iter());
+        for &mm_idx in &seg.matmuls {
+            let mm = &relation.matmuls[mm_idx];
+            let mut reader = sections.next()?;
+            let shape = MatmulShape::new(t, mm)?;
+            let out_value = reader.k()?;
+            let instance = shape.instance(MATMUL | mm_idx as u64, out_value);
+            let width = if shape.shared.is_empty() { 3 } else { 4 };
+            let mut rounds = Vec::new();
+            for _ in 0..shape.vars.len() {
+                rounds.push(reader.ks(width)?);
+            }
+            let sp = stele_sumcheck::Proof {
+                rounds,
+                final_values: reader.ks(instance.inputs.len())?,
+            };
+            reader.end()?;
+            let reduction = stele_sumcheck::verify(&instance, &sp, t)?;
+            if !shape.shared.is_empty() && sp.final_values[0] != shape.eq_at(&reduction.point) {
+                return Err(Error::EqMismatch);
+            }
+            shape.route(
+                mm,
+                &reduction.point,
+                &sp.final_values,
+                out_value,
+                &mut claims,
+            );
+            ledger.add(Line::Sz, &mm.name, u64::from(mm.free), u64::from(mm.free));
+            ledger.add(
+                Line::Sc,
+                &mm.name,
+                reduction.sc.numerator,
+                u64::from(reduction.sc.degree),
+            );
+        }
+        sections.end()?;
+
+        // RFC-0026 A27 has no virtual columns, so `reductions` must be empty.
+        if !seg_proof.reductions.is_empty() {
+            return Err(Error::ProofShape);
+        }
+
+        // Step 2.5: open segment `s - 1`'s witness stack (all claims on it are complete).
+        if let Some((prev_s, prev_handle)) = prev.take() {
+            let prev_seg = &plan.segments[prev_s];
+            let mut open_sections = Sections(proof.segments[prev_s].openings.iter());
+            if let Some(prev_stack) = &prev_seg.stack {
+                let batch = group_claims_for(&prev_seg.groups, prev_stack, &claims);
+                if !batch.is_empty() {
+                    let opening = Opening {
+                        id: BATCH | ((prev_s as u64) << 32),
+                        tensor: prev_stack.id,
+                        bits: prev_stack.bits,
+                        batch: &batch,
+                    };
+                    let mut reader = open_sections.next()?;
+                    opening.verify(
+                        t,
+                        &prev_handle,
+                        &mut reader,
+                        &mut ledger,
+                        &alloc::format!("s{prev_s}/stack"),
+                    )?;
+                    reader.end()?;
+                }
+            }
+            open_sections.end()?;
+        } else if s > 0 && !proof.segments[s - 1].openings.is_empty() {
+            return Err(Error::ProofShape);
+        }
+
+        prev = curr;
+    }
+
+    // Step 3: verify the last segment's witness opening, then model openings.
+    if let Some((last_s, last_handle)) = prev.take() {
+        let last_seg = &plan.segments[last_s];
+        let mut open_sections = Sections(proof.segments[last_s].openings.iter());
+        if let Some(last_stack) = &last_seg.stack {
+            let batch = group_claims_for(&last_seg.groups, last_stack, &claims);
+            if !batch.is_empty() {
+                let opening = Opening {
+                    id: BATCH | ((last_s as u64) << 32),
+                    tensor: last_stack.id,
+                    bits: last_stack.bits,
+                    batch: &batch,
+                };
+                let mut reader = open_sections.next()?;
+                opening.verify(
+                    t,
+                    &last_handle,
+                    &mut reader,
+                    &mut ledger,
+                    &alloc::format!("s{last_s}/stack"),
+                )?;
+                reader.end()?;
+            }
+        }
+        open_sections.end()?;
+    } else if let Some(last) = proof.segments.last() {
+        if !last.openings.is_empty() {
+            return Err(Error::ProofShape);
+        }
+    }
+
+    let mut sections = Sections(proof.model_openings.iter());
+    for (k, certificate) in model.iter().enumerate() {
+        let batch = weight_claims_for(&plan.weights, &plan.model, k, &claims);
+        if !batch.is_empty() {
+            let stack = &plan.model[k];
+            let opening = Opening {
+                id: BATCH | (1 + k as u64),
+                tensor: stack.id,
+                bits: stack.bits,
+                batch: &batch,
+            };
+            let mut reader = sections.next()?;
+            opening.verify(t, certificate, &mut reader, &mut ledger, "model")?;
+            reader.end()?;
+        }
+    }
+    sections.end()?;
+
+    // Public-column claims, evaluated by the verifier.
     for (i, column) in relation.columns.iter().enumerate() {
         if let Kind::Public(values) = &column.kind {
             for (point, value) in &claims.0[i] {

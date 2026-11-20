@@ -18,7 +18,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 mod check;
-pub use check::{check, check_except};
+pub use check::{check, check_except, check_segment};
 
 /// M31 modulus `p = 2^31 - 1` (RFC-0003 §1). Every identity is wrap-free below it.
 pub const MODULUS: u128 = (1 << 31) - 1;
@@ -116,6 +116,8 @@ pub struct Column {
     pub kind: Kind,
     pub width: Width,
     pub log_len: u8,
+    /// RFC-0026 A27: witness column readable by segment `s + 1` (always `false` on non-witness columns).
+    pub carried: bool,
 }
 
 /// A column read inside a relation domain: column index bit `j` is domain bit `vars[j]`.
@@ -205,11 +207,13 @@ pub struct Matmul {
 }
 
 /// A commitment group: witness columns of one `log_len`, committed as one PCS source
-/// in `ColumnId` order (RFC-0026 §2.3). Names follow `L{layer}/{module}/{log_len}`.
+/// in `ColumnId` order (RFC-0026 §2.3, A27). Names follow `L{layer}/{module}/{log_len}`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Group {
     pub name: String,
     pub log_len: u8,
+    /// RFC-0026 A27: segment index (`0` for unsegmented relations; non-decreasing and contiguous).
+    pub segment: u32,
 }
 
 /// Limb composition (RFC-0026 §3.5): for every index `i`,
@@ -257,6 +261,8 @@ pub enum Invalid {
     Bound { relation: String, bound: u128 },
     /// A witness or weight column has no full-column range or unselected lookup enforcing its width.
     Undisciplined(ColumnId),
+    /// Violates the segment or carried-column boundary rule (RFC-0026 A27 §1).
+    Segment { relation: String },
 }
 
 /// The first failure found by [`check`].
@@ -351,13 +357,202 @@ impl Relation {
         self.columns.get(id.0 as usize)
     }
 
-    /// Register a commitment group; names must be unique.
+    /// Register a commitment group in segment 0; names must be unique.
     pub fn add_group(&mut self, name: &str, log_len: u8) -> GroupId {
+        self.add_group_in(name, log_len, 0)
+    }
+
+    /// Register a commitment group in an explicit segment (RFC-0026 A27).
+    pub fn add_group_in(&mut self, name: &str, log_len: u8, segment: u32) -> GroupId {
         self.groups.push(Group {
             name: name.into(),
             log_len,
+            segment,
         });
         GroupId((self.groups.len() - 1) as u32)
+    }
+
+    /// Assign every group from index `first_group` onward to `segment` (RFC-0026 A27).
+    pub fn set_groups_segment(&mut self, first_group: usize, segment: u32) {
+        if let Some(slice) = self.groups.get_mut(first_group..) {
+            for group in slice {
+                group.segment = segment;
+            }
+        }
+    }
+
+    /// Mark a witness column as carried across the boundary to segment `s + 1` (RFC-0026 A27).
+    pub fn mark_carried(&mut self, id: ColumnId) {
+        if let Some(column) = self.columns.get_mut(id.0 as usize) {
+            column.carried = true;
+        }
+    }
+
+    /// True if any group sits in a non-zero segment or any column is marked carried.
+    pub fn is_segmented(&self) -> bool {
+        self.groups.iter().any(|g| g.segment != 0) || self.columns.iter().any(|c| c.carried)
+    }
+
+    /// Number of segments (`>= 1`); for a validated relation, groups span `0..segments()`.
+    pub fn segments(&self) -> u32 {
+        self.groups
+            .iter()
+            .map(|g| g.segment)
+            .max()
+            .map_or(1, |m| m.saturating_add(1))
+    }
+
+    /// Segment owning `id` if it is a witness column with a valid group; `None` for weights/publics.
+    pub fn column_segment(&self, id: ColumnId) -> Option<u32> {
+        match self.column(id)?.kind {
+            Kind::Witness(group) => self.groups.get(group.0 as usize).map(|g| g.segment),
+            Kind::Weight | Kind::Public(_) => None,
+        }
+    }
+
+    /// Owning segment of each column index for weight-only constraints (RFC-0026 A27):
+    /// a `Kind::Weight` column's range/lookup runs in the earliest segment that reads it
+    /// alongside a witness column (or `0` when no witness-bearing item reads it).
+    pub fn weight_segments(&self) -> Vec<u32> {
+        let mut out = vec![u32::MAX; self.columns.len()];
+        let mut note = |cols: &[ColumnId], seg: u32| {
+            for &id in cols {
+                if let Some(c) = self.column(id) {
+                    if c.kind == Kind::Weight {
+                        let slot = &mut out[id.0 as usize];
+                        if seg < *slot {
+                            *slot = seg;
+                        }
+                    }
+                }
+            }
+        };
+        for identity in &self.identities {
+            if let Some(seg) = identity
+                .terms
+                .iter()
+                .flat_map(|t| t.factors.iter())
+                .filter_map(|f| self.column_segment(f.column))
+                .max()
+            {
+                let cols: Vec<ColumnId> = identity
+                    .terms
+                    .iter()
+                    .flat_map(|t| t.factors.iter().map(|f| f.column))
+                    .collect();
+                note(&cols, seg);
+            }
+        }
+        for compose in &self.composes {
+            let cols: Vec<ColumnId> = core::iter::once(compose.column)
+                .chain(compose.limbs.iter().map(|(l, _)| *l))
+                .collect();
+            if let Some(seg) = cols.iter().filter_map(|&id| self.column_segment(id)).max() {
+                note(&cols, seg);
+            }
+        }
+        for lookup in &self.lookups {
+            let cols: Vec<ColumnId> = lookup
+                .tuple
+                .iter()
+                .chain(lookup.selector.iter())
+                .map(|r| r.column)
+                .collect();
+            if let Some(seg) = cols.iter().filter_map(|&id| self.column_segment(id)).max() {
+                note(&cols, seg);
+            }
+        }
+        for matmul in &self.matmuls {
+            let cols = [matmul.out.column, matmul.lhs.column, matmul.rhs.column];
+            if let Some(seg) = cols.iter().filter_map(|&id| self.column_segment(id)).max() {
+                note(&cols, seg);
+            }
+        }
+        for slot in &mut out {
+            if *slot == u32::MAX {
+                *slot = 0;
+            }
+        }
+        out
+    }
+
+    /// Owning segment of an identity (valid after [`Self::validate`]).
+    pub fn identity_segment(&self, identity: &Identity) -> u32 {
+        identity
+            .terms
+            .iter()
+            .flat_map(|t| t.factors.iter())
+            .filter_map(|f| self.column_segment(f.column))
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// Owning segment of a composition (valid after [`Self::validate`]).
+    pub fn compose_segment(&self, compose: &Compose) -> u32 {
+        core::iter::once(compose.column)
+            .chain(compose.limbs.iter().map(|(l, _)| *l))
+            .filter_map(|id| self.column_segment(id))
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// Owning segment of a lookup (valid after [`Self::validate`]).
+    pub fn lookup_segment(&self, lookup: &Lookup) -> u32 {
+        lookup
+            .tuple
+            .iter()
+            .chain(lookup.selector.iter())
+            .filter_map(|r| self.column_segment(r.column))
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// Owning segment of a range, using `weight_segs = relation.weight_segments()` for
+    /// weight columns so each weight is range-checked in the segment that uses it.
+    pub fn range_segment_with(&self, range: &Range, weight_segs: &[u32]) -> u32 {
+        self.column_segment(range.column).unwrap_or_else(|| {
+            weight_segs
+                .get(range.column.0 as usize)
+                .copied()
+                .unwrap_or(0)
+        })
+    }
+
+    /// Owning segment of a range (valid after [`Self::validate`]).
+    pub fn range_segment(&self, range: &Range) -> u32 {
+        self.column_segment(range.column)
+            .unwrap_or_else(|| self.weight_segments()[range.column.0 as usize])
+    }
+
+    /// Owning segment of a matmul (valid after [`Self::validate`]).
+    pub fn matmul_segment(&self, matmul: &Matmul) -> u32 {
+        [matmul.out.column, matmul.lhs.column, matmul.rhs.column]
+            .into_iter()
+            .filter_map(|id| self.column_segment(id))
+            .max()
+            .unwrap_or(0)
+    }
+
+    fn validate_item_segment(
+        &self,
+        cols: impl Iterator<Item = ColumnId> + Clone,
+        relation: &str,
+    ) -> Result<u32, Invalid> {
+        let Some(max_seg) = cols.clone().filter_map(|id| self.column_segment(id)).max() else {
+            return Ok(0);
+        };
+        for id in cols {
+            if let Some(seg) = self.column_segment(id) {
+                let col = &self.columns[id.0 as usize];
+                let ok = seg == max_seg || (seg.checked_add(1) == Some(max_seg) && col.carried);
+                if !ok {
+                    return Err(Invalid::Segment {
+                        relation: relation.into(),
+                    });
+                }
+            }
+        }
+        Ok(max_seg)
     }
 
     pub fn add_column(&mut self, name: &str, kind: Kind, width: Width, log_len: u8) -> ColumnId {
@@ -366,6 +561,7 @@ impl Relation {
             kind,
             width,
             log_len,
+            carried: false,
         });
         ColumnId((self.columns.len() - 1) as u32)
     }
@@ -454,13 +650,29 @@ impl Relation {
             if !width_ok || column.log_len > MAX_VARS || !public_ok {
                 return Err(Invalid::Column(id));
             }
+            if column.carried && !matches!(column.kind, Kind::Witness(_)) {
+                return Err(Invalid::Segment {
+                    relation: column.name.clone(),
+                });
+            }
         }
+        let mut prev_segment: Option<u32> = None;
         for (i, group) in self.groups.iter().enumerate() {
             if self.groups[..i].iter().any(|g| g.name == group.name) {
                 return Err(Invalid::Shape {
                     relation: group.name.clone(),
                 });
             }
+            let seg_ok = match prev_segment {
+                None => group.segment == 0,
+                Some(prev) => group.segment == prev || prev.checked_add(1) == Some(group.segment),
+            };
+            if !seg_ok {
+                return Err(Invalid::Segment {
+                    relation: group.name.clone(),
+                });
+            }
+            prev_segment = Some(group.segment);
         }
         for table in &self.tables {
             let ok = !table.widths.is_empty()
@@ -565,6 +777,13 @@ impl Relation {
                 bound,
             });
         }
+        self.validate_item_segment(
+            identity
+                .terms
+                .iter()
+                .flat_map(|t| t.factors.iter().map(|f| f.column)),
+            name,
+        )?;
         Ok(())
     }
 
@@ -599,6 +818,14 @@ impl Relation {
                 }
             }
         }
+        self.validate_item_segment(
+            lookup
+                .tuple
+                .iter()
+                .chain(lookup.selector.iter())
+                .map(|r| r.column),
+            name,
+        )?;
         Ok(())
     }
 
@@ -624,6 +851,10 @@ impl Relation {
                 bound,
             });
         }
+        self.validate_item_segment(
+            [matmul.out.column, matmul.lhs.column, matmul.rhs.column].into_iter(),
+            name,
+        )?;
         Ok(())
     }
 
@@ -649,6 +880,10 @@ impl Relation {
                 bound,
             });
         }
+        self.validate_item_segment(
+            core::iter::once(compose.column).chain(compose.limbs.iter().map(|(l, _)| *l)),
+            &compose.name,
+        )?;
         Ok(())
     }
 

@@ -18,7 +18,7 @@ use stele_reductions::stele_ir::relation::{Kind, Width};
 /// publisher and pin the entry for the intended model. Success remains scoped to a
 /// trusted plan registry; development: no security level (A16 §§1,4).
 pub fn publish(public: &Public, statement: &Statement) -> Result<(Vec<u8>, Vec<u8>), Error> {
-    if public.sources != Sources::CircleAllGrind {
+    if public.sources != Sources::CircleAllGrind || public.segment_layers > 0 {
         return Err(Error::StatementMismatch);
     }
     let d = decode(public)?;
@@ -80,6 +80,7 @@ pub fn publish(public: &Public, statement: &Statement) -> Result<(Vec<u8>, Vec<u
         scales: &d.scales,
         vectors: &public.vectors,
         zk: false,
+        segment_layers: 0,
     };
     let token = plan.ordinal(Role::Token, None)?;
     let embedding = d.scales.matrix(token).ok_or(Error::UnsupportedModel)?;

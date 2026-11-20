@@ -244,6 +244,7 @@ fn fixture() -> Result<Fixture, String> {
         vectors: weights.vectors.clone(),
         commitment: committed.commitment.clone(),
         sources: set,
+        segment_layers: 0,
     };
     let mut captured: Option<(Relation, Values)> = None;
     let proof = development::prove_tampered(

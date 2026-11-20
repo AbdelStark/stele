@@ -7,6 +7,7 @@ use alloc::vec::Vec;
 use stele_ir::relation::{Kind, Ref, Relation, Width};
 
 const MAGIC: &[u8] = b"stele/v0.1/relation/encoding/v1";
+const MAGIC_V2: &[u8] = b"stele/v0.1/relation/encoding/v2";
 
 fn u32_len(out: &mut Vec<u8>, len: usize) {
     out.extend_from_slice(&(len as u32).to_le_bytes());
@@ -25,13 +26,19 @@ fn reference(out: &mut Vec<u8>, r: &Ref) {
 }
 
 /// Canonical bytes of a relation; prover and verifier derive them from the plan.
+/// Unsegmented relations keep `stele/v0.1/relation/encoding/v1` unchanged; segmented
+/// relations emit `stele/v0.1/relation/encoding/v2` (RFC-0026 A27 §2).
 pub fn encode(relation: &Relation) -> Vec<u8> {
+    let segmented = relation.is_segmented();
     let mut out = Vec::new();
-    out.extend_from_slice(MAGIC);
+    out.extend_from_slice(if segmented { MAGIC_V2 } else { MAGIC });
     u32_len(&mut out, relation.groups.len());
     for group in &relation.groups {
         name(&mut out, &group.name);
         out.push(group.log_len);
+        if segmented {
+            out.extend_from_slice(&group.segment.to_le_bytes());
+        }
     }
     u32_len(&mut out, relation.columns.len());
     for column in &relation.columns {
@@ -52,6 +59,9 @@ pub fn encode(relation: &Relation) -> Vec<u8> {
         }
         width(&mut out, column.width);
         out.push(column.log_len);
+        if segmented {
+            out.push(u8::from(column.carried));
+        }
     }
     u32_len(&mut out, relation.tables.len());
     for table in &relation.tables {

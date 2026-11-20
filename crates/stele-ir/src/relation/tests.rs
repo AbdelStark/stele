@@ -614,3 +614,180 @@ fn matmul_without_the_summed_table_matches() {
     assert_eq!(check::check_with(&f.relation, &f.values, &[], 0), expected);
     assert_eq!(check(&f.relation, &f.values), expected);
 }
+
+fn segmented_fixture() -> (Relation, ColumnId, ColumnId, ColumnId) {
+    let mut rel = Relation::default();
+    let g0 = Kind::Witness(rel.add_group_in("L0/main/2", 2, 0));
+    let g1 = Kind::Witness(rel.add_group_in("L1/main/2", 2, 1));
+    let s0_private = rel.add_column("s0_priv", g0.clone(), Width::signed(8), 2);
+    let s0_carried = rel.add_column("s0_out", g0, Width::signed(8), 2);
+    rel.mark_carried(s0_carried);
+    let s1_out = rel.add_column("s1_out", g1, Width::signed(8), 2);
+    range(&mut rel, s0_private, Width::signed(8));
+    range(&mut rel, s0_carried, Width::signed(8));
+    range(&mut rel, s1_out, Width::signed(8));
+    rel.identities.push(Identity {
+        name: "s0_step".to_string(),
+        vars: 2,
+        terms: vec![
+            Term {
+                coeff: 1,
+                factors: vec![r(s0_carried, &[0, 1])],
+            },
+            Term {
+                coeff: -1,
+                factors: vec![r(s0_private, &[0, 1])],
+            },
+            Term {
+                coeff: -1,
+                factors: vec![],
+            },
+        ],
+    });
+    rel.identities.push(Identity {
+        name: "s1_step".to_string(),
+        vars: 2,
+        terms: vec![
+            Term {
+                coeff: 1,
+                factors: vec![r(s1_out, &[0, 1])],
+            },
+            Term {
+                coeff: -1,
+                factors: vec![r(s0_carried, &[0, 1])],
+            },
+            Term {
+                coeff: -2,
+                factors: vec![],
+            },
+        ],
+    });
+    (rel, s0_private, s0_carried, s1_out)
+}
+
+#[test]
+fn accepts_segmented_relation_and_per_segment_plain_check() {
+    let (rel, s0_priv, s0_out, s1_out) = segmented_fixture();
+    assert!(rel.is_segmented());
+    assert_eq!(rel.segments(), 2);
+    assert_eq!(rel.validate(), Ok(()));
+
+    let mut v0 = Values::new(&rel);
+    v0.set(&rel, s0_priv, vec![1, 2, 3, 4]).expect("s0_priv");
+    v0.set(&rel, s0_out, vec![2, 3, 4, 5]).expect("s0_out");
+    // Segment 0 check succeeds without segment 1 columns assigned.
+    assert_eq!(check_segment(&rel, 0, &v0), Ok(()));
+
+    let mut v1 = Values::new(&rel);
+    v1.set(&rel, s0_out, vec![2, 3, 4, 5]).expect("carried");
+    v1.set(&rel, s1_out, vec![4, 5, 6, 7]).expect("s1_out");
+    // Segment 1 check succeeds without segment 0's non-carried column assigned.
+    assert_eq!(check_segment(&rel, 1, &v1), Ok(()));
+
+    // Tampering segment 1 fails check_segment(1) with exact Violation.
+    v1.set(&rel, s1_out, vec![4, 5, 99, 7]).expect("tamper");
+    assert_eq!(
+        check_segment(&rel, 1, &v1),
+        Err(Violation::Identity {
+            relation: "s1_step".to_string(),
+            point: 2
+        })
+    );
+}
+
+#[test]
+fn rejects_segment_boundary_and_carried_violations() {
+    // 1. Reading a non-carried column of segment 0 from segment 1 rejects (NC-1335 rule).
+    let (mut rel, s0_priv, s0_out, s1_out) = segmented_fixture();
+    rel.identities[1].terms[1].factors[0] = r(s0_priv, &[0, 1]);
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Segment {
+            relation: "s1_step".to_string()
+        })
+    );
+
+    // 2. Removing the carried flag on s0_out rejects.
+    let (mut rel, _, _, _) = segmented_fixture();
+    rel.columns[s0_out.0 as usize].carried = false;
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Segment {
+            relation: "s1_step".to_string()
+        })
+    );
+
+    // 3. Reading a carried column from two segments back (seg 0 from seg 2) rejects.
+    let (mut rel, _, s0_out, _) = segmented_fixture();
+    let g2 = Kind::Witness(rel.add_group_in("L2/main/2", 2, 2));
+    let s2_out = rel.add_column("s2_out", g2, Width::signed(8), 2);
+    range(&mut rel, s2_out, Width::signed(8));
+    rel.identities.push(Identity {
+        name: "s2_skip".to_string(),
+        vars: 2,
+        terms: vec![
+            Term {
+                coeff: 1,
+                factors: vec![r(s2_out, &[0, 1])],
+            },
+            Term {
+                coeff: -1,
+                factors: vec![r(s0_out, &[0, 1])],
+            },
+        ],
+    });
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Segment {
+            relation: "s2_skip".to_string()
+        })
+    );
+
+    // 4. Carried flag on non-witness column (Weight or Public) rejects.
+    let (mut rel, _, _, _) = segmented_fixture();
+    let w = rel.add_column("w", Kind::Weight, Width::signed(8), 2);
+    range(&mut rel, w, Width::signed(8));
+    rel.mark_carried(w);
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Segment {
+            relation: "w".to_string()
+        })
+    );
+    let (mut rel, _, _, _) = segmented_fixture();
+    let p = rel.add_column("p", Kind::Public(vec![0; 4]), Width::signed(8), 2);
+    rel.mark_carried(p);
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Segment {
+            relation: "p".to_string()
+        })
+    );
+
+    // 5. Non-contiguous or decreasing group segments reject.
+    let (mut rel, _, _, _) = segmented_fixture();
+    rel.groups[0].segment = 1;
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Segment {
+            relation: "L0/main/2".to_string()
+        })
+    );
+    let (mut rel, _, _, _) = segmented_fixture();
+    rel.groups[1].segment = 2;
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Segment {
+            relation: "L1/main/2".to_string()
+        })
+    );
+    let (mut rel, _, _, _) = segmented_fixture();
+    let _g2 = rel.add_group_in("L2/back/2", 2, 0);
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Segment {
+            relation: "L2/back/2".to_string()
+        })
+    );
+    let _ = s1_out;
+}

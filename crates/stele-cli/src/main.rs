@@ -46,15 +46,15 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use stele_prover::development::{
-    bundle, model_identity, prove_window_development_measured, prove_window_profile, registry,
-    verify, zk, Report, Statement,
+    bundle, model_identity, prove_window_development_segmented_measured, prove_window_profile,
+    registry, verify, zk, Report, Statement,
 };
 
 const USAGE: &str = "usage: stele commit-model --zk --model M --preparation P --scales S \
 --artifact A --length T --proofs N --commitment OUT --secret OUT [--zk-profile 4|1] | \
 stele prove-dev --model M --preparation P --scales S --artifact A \
 --tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT \
-[--dev-profile 3|5 [--relation OUT] | --zk --commitment FILE --secret FILE [--backend cpu|cuda]] | \
+[--dev-profile 3|5 [--segment-layers N] [--relation OUT] | --zk --commitment FILE --secret FILE [--backend cpu|cuda]] | \
 stele verify-dev --public FILE --proof FILE [--expect-model HEX] [--admit] | \
 stele plan-digest --public FILE --entry OUT | \
 stele verify-registered --public FILE --proof FILE --relation FILE --trusted-entry FILE \
@@ -402,16 +402,31 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     };
     let length = o.get("length").map(|t| number(t)).transpose()?.unwrap_or(0) as usize;
     if !zk {
+        let segment_layers = match o.get("segment-layers") {
+            Some(v) => u16::try_from(number(v)?).map_err(|_| usage("--segment-layers fits u16"))?,
+            None => 0,
+        };
+        if o.contains_key("relation") && segment_layers > 0 {
+            return Err(usage("--relation is not supported with --segment-layers"));
+        }
         let [m, p, s, a] = read_files()?;
-        // RFC-0026 A14 (Draft): `--dev-profile 5` grinds each check's (β, α) round.
+        // RFC-0026 A14: `--dev-profile 5` grinds each check's (β, α) round.
         let profile = match o.get("dev-profile").copied().unwrap_or("3") {
             "3" => 3,
             "5" => 5,
             _ => return Err(usage("--dev-profile is 3 or 5")),
         };
-        let (public, statement, proof, report) =
-            prove_window_development_measured(&m, &p, &s, &a, statement, length, profile)
-                .map_err(reject)?;
+        let (public, statement, proof, report) = prove_window_development_segmented_measured(
+            &m,
+            &p,
+            &s,
+            &a,
+            statement,
+            length,
+            profile,
+            segment_layers,
+        )
+        .map_err(reject)?;
         let relation = o
             .get("relation")
             .map(|_| registry::publish(&public, &statement).map(|(_, relation)| relation))
@@ -671,7 +686,7 @@ fn main() -> ExitCode {
             if zk {
                 allowed.extend(["commitment", "secret", "backend"]);
             } else {
-                allowed.extend(["dev-profile", "relation"]);
+                allowed.extend(["dev-profile", "relation", "segment-layers"]);
             }
             options(&rest, &allowed).and_then(|o| prove_dev(&o, zk))
         }

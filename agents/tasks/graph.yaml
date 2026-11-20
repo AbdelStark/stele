@@ -4175,7 +4175,7 @@ tasks:
   skill: protocol-architect
   crate: stele-ir+stele-reductions+stele-prover
   lane: P
-  status: ready
+  status: done
   acceptance:
   - a development-tier RFC-0026 amendment specifies segments and carried columns for committed columns (the text drafted in RFC-0028 §2.3 and §2.4, without virtual columns) and is Accepted in this task, with its control ids entered in the catalogue
   - validate enforces the segment rule; the engine commits, proves and opens one segment at a time and holds at most two

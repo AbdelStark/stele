@@ -12,20 +12,21 @@
 //! Public inputs (RFC-0026 §1.1 as amended by A2) are encoded by [`public_input`].
 use alloc::string::String;
 use alloc::vec::Vec;
-/// The `stele-dev-e2e-v1` codec (RFC-0026 §4.1), re-exported for verifier callers.
+/// The `stele-dev-e2e-v1` / `stele-dev-e2e-v2` codec (RFC-0026 §4.1, A26), re-exported for verifier callers.
 pub use stele_proof::development as container;
-use stele_proof::development::Container;
+use stele_proof::development::{Container, ContainerV2, SegmentSections};
 use stele_reductions::parallel;
-use stele_reductions::relation::{self, Proof, Sources};
+use stele_reductions::relation::{self, Proof, ProofV2, SegmentProof, Sources};
 /// The RFC-0026 §6 ledger and its enumerated rounds (E8-05c), for verifier callers.
 pub use stele_reductions::relation::{Entry, Ledger, Line, Round, RoundError};
+use stele_reductions::stele_cqis::execution::capture::Capture;
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{
     ArtifactLayout, Bounds, Model, NumericalIdentity, Registry, Role, Scales,
 };
 use stele_reductions::stele_field::{Field, M31};
 use stele_reductions::stele_hash::Transcript;
-use stele_reductions::stele_ir::relation::{check, Relation, Values, Violation};
+use stele_reductions::stele_ir::relation::{check, check_segment, Relation, Values, Violation};
 use stele_reductions::stele_pcs::{verify_certificate, PreparedSource, VerifiedCertificate};
 
 pub mod bundle;
@@ -105,6 +106,9 @@ pub struct Public {
     /// The source parameter set (RFC-0026 A11), bound by [`public_input`]. dev-zk
     /// inputs carry `Expander`: their hiding sources do not read it.
     pub sources: Sources,
+    /// RFC-0026 A27: `0` for unsegmented v1 proofs; `> 0` splits layers into segments of at most
+    /// `segment_layers` layers each (with `Finish` in its own segment) and emits `stele-dev-e2e-v2`.
+    pub segment_layers: u16,
 }
 
 struct Decoded {
@@ -169,8 +173,9 @@ pub const CIRCLE_ALL_PROFILE: u8 = 3;
 /// lookup `(β, α)` rounds grind (`Sources::CircleAllGrind`).
 pub const GRIND_PROFILE: u8 = 5;
 const STATEMENT_TAG: &[u8] = b"stele/v0.1/dev-e2e/statement";
+const SEGMENTED_INPUT_TAG: &[u8] = b"stele/v0.1/dev-e2e/segmented";
 
-/// Canonical RFC-0026 §1.1 public input (as amended by A2), the transcript's first frame.
+/// Canonical RFC-0026 §1.1 public input (as amended by A2, A27), the transcript's first frame.
 pub fn public_input(public: &Public, cqis_id: &[u8; 32], statement: &Statement) -> Vec<u8> {
     let mut out = PUBLIC_TAG.to_vec();
     out.extend_from_slice(cqis_id);
@@ -205,6 +210,10 @@ pub fn public_input(public: &Public, cqis_id: &[u8; 32], statement: &Statement) 
         Sources::Circle => out.push(CIRCLE_PROFILE),
         Sources::CircleAll => out.push(CIRCLE_ALL_PROFILE),
         Sources::CircleAllGrind => out.push(GRIND_PROFILE),
+    }
+    if public.segment_layers > 0 {
+        out.extend_from_slice(SEGMENTED_INPUT_TAG);
+        out.extend_from_slice(&public.segment_layers.to_le_bytes());
     }
     out
 }
@@ -251,6 +260,9 @@ fn layout_for(
     statement: &Statement,
     zk: bool,
 ) -> Result<Layout, Error> {
+    if zk && public.segment_layers > 0 {
+        return Err(Error::StatementMismatch);
+    }
     let shape = d.model.shape();
     statement.validate(shape.vocabulary(), shape.context())?;
     let plan = PlanData {
@@ -258,6 +270,7 @@ fn layout_for(
         scales: &d.scales,
         vectors: &public.vectors,
         zk,
+        segment_layers: public.segment_layers,
     };
     let layout = Layout::declare(&plan, statement)?;
     let roles = weight_roles(&d.model);
@@ -280,14 +293,35 @@ fn layout_for(
     Ok(layout)
 }
 
+const M31_P: u32 = (1u32 << 31) - 1;
+
+#[inline]
+fn m31_to_i64(v: M31) -> i64 {
+    let u = v.as_u32();
+    if u > M31_P / 2 {
+        i64::from(u) - i64::from(M31_P)
+    } else {
+        i64::from(u)
+    }
+}
+
+/// Location and logical dimensions of one weight role inside `Weights::stacked`.
+struct RoleLayout {
+    source: usize,
+    offset: usize,
+    rows: usize,
+    lanes: usize,
+}
+
 /// Weight codes of an Artifact in plan order, and its public 1-D records.
+/// Weight matrices are streamed directly into `stacked` (M31) without retaining
+/// duplicate `i16`/`i64` copies, and decoded per role on demand (RFC-0026 A27, task E18-06).
 pub struct Weights {
-    /// `[source][channel][lane]` codes.
-    pub codes: Vec<Vec<Vec<i64>>>,
     pub vectors: Vec<(u16, Vec<i16>)>,
     /// The model sources and their stacked messages (RFC-0026 A5).
     layouts: Vec<relation::ModelLayout>,
     stacked: Vec<Vec<M31>>,
+    roles: Vec<RoleLayout>,
     sources: Sources,
 }
 
@@ -303,6 +337,42 @@ impl Weights {
         self.sources
     }
 
+    /// Decode one logical row `[0..lanes]` of weight role `index` from `stacked`.
+    pub fn role_row(&self, index: usize, row: usize) -> Vec<i64> {
+        let loc = &self.roles[index];
+        let stride = loc.lanes.next_power_of_two();
+        let start = loc.offset + row * stride;
+        self.stacked[loc.source][start..start + loc.lanes]
+            .iter()
+            .map(|&v| m31_to_i64(v))
+            .collect()
+    }
+
+    /// Decode logical `[rows][lanes]` `i64` codes of weight role `index` on demand.
+    pub fn role_rows(&self, index: usize) -> Vec<Vec<i64>> {
+        let loc = &self.roles[index];
+        let stride = loc.lanes.next_power_of_two();
+        (0..loc.rows)
+            .map(|r| {
+                let start = loc.offset + r * stride;
+                self.stacked[loc.source][start..start + loc.lanes]
+                    .iter()
+                    .map(|&v| m31_to_i64(v))
+                    .collect()
+            })
+            .collect()
+    }
+
+    /// Decode the padded `2^log_len` `i64` column of weight role `index` on demand.
+    pub fn role_padded_i64(&self, index: usize, log_len: u8) -> Vec<i64> {
+        let loc = &self.roles[index];
+        let len = 1usize << log_len;
+        self.stacked[loc.source][loc.offset..loc.offset + len]
+            .iter()
+            .map(|&v| m31_to_i64(v))
+            .collect()
+    }
+
     /// The weights under an explicit source set; `Expander` reproduces pre-A11 proofs
     /// and `Circle` A11 (profile byte 2) proofs.
     pub fn from_artifact_sources(
@@ -312,7 +382,18 @@ impl Weights {
     ) -> Result<Self, Error> {
         let layout = ArtifactLayout::new(model).map_err(|_| Error::UnsupportedModel)?;
         let shape = model.shape();
-        let mut records = Vec::new();
+        let mut vectors = Vec::new();
+        // Record slices validated up front (payload bounds only; 2-D weights streamed below).
+        struct RawRecord<'a> {
+            role: Role,
+            layer: Option<u16>,
+            rows: usize,
+            lanes: usize,
+            bits: u8,
+            elements: usize,
+            raw: &'a [u8],
+        }
+        let mut matrices = Vec::new();
         for r in layout.records() {
             let start = usize::try_from(r.payload_offset()).map_err(|_| Error::Witness)?;
             let len = usize::try_from(r.payload_length()).map_err(|_| Error::Witness)?;
@@ -329,56 +410,89 @@ impl Weights {
             if need.is_none_or(|n| raw.len() < n) {
                 return Err(Error::Witness);
             }
-            let codes: Vec<i16> = (0..elements)
-                .map(|i| match r.bits() {
-                    16 => i16::from_le_bytes([raw[2 * i], raw[2 * i + 1]]),
-                    8 => i16::from(raw[i] as i8),
-                    _ => {
-                        let n = (raw[i / 2] >> (4 * (i % 2))) & 15;
-                        i16::from(n) - if n >= 8 { 16 } else { 0 }
-                    }
-                })
-                .collect();
             let physical = shape.physical(r.ordinal()).ok_or(Error::UnsupportedModel)?;
-            records.push((physical, codes));
+            let dims = physical.dimensions();
+            if dims.len() == 1 {
+                let codes: Vec<i16> = (0..elements)
+                    .map(|i| match r.bits() {
+                        16 => i16::from_le_bytes([raw[2 * i], raw[2 * i + 1]]),
+                        8 => i16::from(raw[i] as i8),
+                        _ => {
+                            let n = (raw[i / 2] >> (4 * (i % 2))) & 15;
+                            i16::from(n) - if n >= 8 { 16 } else { 0 }
+                        }
+                    })
+                    .collect();
+                vectors.push((physical.ordinal(), codes));
+            } else if dims.len() == 2 {
+                matrices.push(RawRecord {
+                    role: physical.role(),
+                    layer: physical.layer(),
+                    rows: dims[0] as usize,
+                    lanes: dims[1] as usize,
+                    bits: r.bits(),
+                    elements,
+                    raw,
+                });
+            }
         }
-        let vectors = records
-            .iter()
-            .filter(|(p, _)| p.dimensions().len() == 1)
-            .map(|(p, c)| (p.ordinal(), c.clone()))
-            .collect();
-        let mut codes = Vec::new();
-        let mut messages = Vec::new();
-        for (role, layer) in weight_roles(model) {
-            let (p, c) = records
+        let plan_roles = weight_roles(model);
+        let mut matched: Vec<&RawRecord<'_>> = Vec::with_capacity(plan_roles.len());
+        let mut lengths: Vec<u8> = Vec::with_capacity(plan_roles.len());
+        for (role, layer) in plan_roles {
+            let rec = matrices
                 .iter()
-                .find(|(p, _)| p.role() == role && p.layer() == layer)
+                .find(|m| m.role == role && m.layer == layer)
                 .ok_or(Error::UnsupportedModel)?;
-            let lanes = p.dimensions()[1] as usize;
-            let rows: Vec<Vec<i64>> = c
-                .chunks(lanes)
-                .map(|r| r.iter().map(|&v| i64::from(v)).collect())
-                .collect();
-            messages.push(
-                plan::pad(&rows, lanes)
-                    .into_iter()
-                    .map(M31::from_i64)
-                    .collect(),
-            );
-            codes.push(rows);
+            let padded = rec
+                .rows
+                .next_power_of_two()
+                .checked_mul(rec.lanes.next_power_of_two())
+                .ok_or(Error::UnsupportedModel)?;
+            lengths.push(padded.trailing_zeros() as u8);
+            matched.push(rec);
         }
-        let lengths: Vec<u8> = messages
-            .iter()
-            .map(|m: &Vec<M31>| m.len().trailing_zeros() as u8)
-            .collect();
         let layouts = relation::model_layout_for(&lengths, sources).map_err(Error::Engine)?;
-        let slices: Vec<&[M31]> = messages.iter().map(Vec::as_slice).collect();
-        let stacked = relation::stack_model(&layouts, &slices).map_err(Error::Engine)?;
+        let mut stacked: Vec<Vec<M31>> = layouts
+            .iter()
+            .map(|l| alloc::vec![M31::from_i64(0); 1 << l.bits])
+            .collect();
+        let mut roles: Vec<RoleLayout> = matched
+            .iter()
+            .map(|rec| RoleLayout {
+                source: 0,
+                offset: 0,
+                rows: rec.rows,
+                lanes: rec.lanes,
+            })
+            .collect();
+        for (source_idx, model_layout) in layouts.iter().enumerate() {
+            for &(w, offset) in &model_layout.blocks {
+                let rec = matched[w];
+                roles[w].source = source_idx;
+                roles[w].offset = offset;
+                let stride = rec.lanes.next_power_of_two();
+                let target = &mut stacked[source_idx];
+                for i in 0..rec.elements {
+                    let v: i64 = match rec.bits {
+                        16 => i64::from(i16::from_le_bytes([rec.raw[2 * i], rec.raw[2 * i + 1]])),
+                        8 => i64::from(rec.raw[i] as i8),
+                        _ => {
+                            let n = (rec.raw[i / 2] >> (4 * (i % 2))) & 15;
+                            i64::from(n) - if n >= 8 { 16 } else { 0 }
+                        }
+                    };
+                    let row = i / rec.lanes;
+                    let col = i % rec.lanes;
+                    target[offset + row * stride + col] = M31::from_i64(v);
+                }
+            }
+        }
         Ok(Self {
-            codes,
             vectors,
             layouts,
             stacked,
+            roles,
             sources,
         })
     }
@@ -460,6 +574,27 @@ fn sections(proof: Proof, cqis_id: [u8; 32], statement: [u8; 32]) -> Container {
     }
 }
 
+fn sections_v2(proof: ProofV2, cqis_id: [u8; 32], statement: [u8; 32]) -> ContainerV2 {
+    ContainerV2 {
+        cqis_id,
+        statement,
+        segments: proof
+            .segments
+            .into_iter()
+            .map(|s| SegmentSections {
+                groups: s.groups,
+                multiplicities: s.multiplicities,
+                identities: s.identities,
+                lookups: s.lookups,
+                matmuls: s.matmuls,
+                reductions: s.reductions,
+                openings: s.openings,
+            })
+            .collect(),
+        model_openings: proof.model_openings,
+    }
+}
+
 /// Stage timings (nanoseconds, behind `std`) and thread-count-independent counters for
 /// one development proof (RFC-0018 A2, task E17-01).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -524,21 +659,31 @@ fn prove_inner(
     statement: &Statement,
     hook: Option<Hook<'_>>,
 ) -> Result<(Vec<u8>, Report), Error> {
+    let witness_capture_timer = relation::Stopwatch::start();
+    let capture = executor
+        .capture(&statement.tokens)
+        .map_err(|_| Error::Witness)?;
+    let capture_ns = witness_capture_timer.elapsed_ns();
+    let (proof, mut report) =
+        prove_inner_captured(public, &capture, weights, committed, statement, hook)?;
+    report.witness_ns = report.witness_ns.saturating_add(capture_ns);
+    Ok((proof, report))
+}
+
+fn prove_inner_captured(
+    public: &Public,
+    capture: &Capture,
+    weights: &Weights,
+    committed: &Committed<'_>,
+    statement: &Statement,
+    hook: Option<Hook<'_>>,
+) -> Result<(Vec<u8>, Report), Error> {
     // E16-22: stage timing, off unless STELE_STAGE_TIMES.
     let mut laps = parallel::Laps::start();
     let witness_timer = relation::Stopwatch::start();
     let d = decode(public)?;
     let mut layout = layout(&d, public, statement)?;
-    let capture = executor
-        .capture(&statement.tokens)
-        .map_err(|_| Error::Witness)?;
-    let mut values = layout.assign(&capture, &weights.codes)?;
-    let witness_ns = witness_timer.elapsed_ns();
-    laps.lap("witness/layout_capture_assign");
     let checked = hook.is_none();
-    if let Some(hook) = hook {
-        hook(&mut layout.relation, &mut values);
-    }
     let input = public_input(public, &d.cqis_id, statement);
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
     let model = committed
@@ -546,6 +691,63 @@ fn prove_inner(
         .iter()
         .zip(&committed.certificates)
         .collect::<Vec<_>>();
+
+    if public.segment_layers > 0 {
+        if hook.is_some() {
+            return Err(Error::StatementMismatch);
+        }
+        let mut witness_ns = witness_timer.elapsed_ns();
+        let mut plain_check_ns = 0u64;
+        let mut carried: Option<Vec<i64>> = None;
+        let mut callback_err: Option<Error> = None;
+        let res = relation::prove_segmented_measured(
+            &mut t,
+            &layout.relation,
+            |seg| {
+                let assign_timer = relation::Stopwatch::start();
+                let (values, next_carried) =
+                    match layout.assign_segment(seg, capture, weights, carried.take()) {
+                        Ok(pair) => pair,
+                        Err(err) => {
+                            callback_err = Some(err);
+                            return Err(relation::Error::Unsupported);
+                        }
+                    };
+                witness_ns = witness_ns.saturating_add(assign_timer.elapsed_ns());
+                carried = next_carried;
+                if checked {
+                    let check_timer = relation::Stopwatch::start();
+                    if let Err(v) = check_segment(&layout.relation, seg, &values) {
+                        callback_err = Some(Error::Check(v));
+                        return Err(relation::Error::Unsupported);
+                    }
+                    plain_check_ns = plain_check_ns.saturating_add(check_timer.elapsed_ns());
+                }
+                Ok(values)
+            },
+            &model,
+            public.sources,
+        );
+        if let Some(err) = callback_err {
+            return Err(err);
+        }
+        let (proof, engine) = res.map_err(Error::Engine)?;
+        let digest = statement_digest(&input, &relation::digest(&layout.relation));
+        let report = Report {
+            model_commitment_ns: 0,
+            witness_ns,
+            plain_check_ns,
+            engine,
+        };
+        return Ok((sections_v2(proof, d.cqis_id, digest).encode(), report));
+    }
+
+    let mut values = layout.assign(capture, weights)?;
+    let witness_ns = witness_timer.elapsed_ns();
+    laps.lap("witness/layout_capture_assign");
+    if let Some(hook) = hook {
+        hook(&mut layout.relation, &mut values);
+    }
     // The plain checker runs beside the engine and decides: a false witness fails
     // with `Check` even if the engine errs or panics on it (E16-23).
     let mut plain_check_ns = 0u64;
@@ -615,11 +817,15 @@ pub fn model_identity(public: &Public) -> Result<([u8; 32], [u8; 32]), Error> {
 
 const MODEL_TAG: &[u8] = b"stele/v0.1/dev-e2e/model";
 
-/// Verify one window (RFC-0026 §8) and return its ledger.
+/// Verify one window (RFC-0026 §8, A26, A27) and return its ledger.
 pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Ledger, Error> {
-    let c = container::decode(proof).map_err(Error::Container)?;
+    let decoded = container::decode_any(proof).map_err(Error::Container)?;
+    let expected_v2 = public.segment_layers > 0;
+    if expected_v2 != matches!(decoded, container::Decoded::V2(_)) {
+        return Err(Error::StatementMismatch);
+    }
     let d = decode(public)?;
-    if c.cqis_id != d.cqis_id {
+    if decoded.cqis_id() != d.cqis_id {
         return Err(Error::StatementMismatch);
     }
     let layout = layout(&d, public, statement)?;
@@ -630,7 +836,7 @@ pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Le
     let input = public_input(public, &d.cqis_id, statement);
     // Fail fast only: the prover writes both header fields. The binding is the
     // transcript, which absorbs `input` and the relation digest (RFC-0026 §4 step 1).
-    if c.statement != statement_digest(&input, &relation::digest(&layout.relation)) {
+    if decoded.statement() != statement_digest(&input, &relation::digest(&layout.relation)) {
         return Err(Error::StatementMismatch);
     }
     let bits: Vec<u8> = layout
@@ -640,23 +846,53 @@ pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Le
         .collect();
     let certs = certificates(public, &bits)?;
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
-    // The engine derives every section count and length (RFC-0026 §4.1).
-    let sections = Proof {
-        groups: c.groups,
-        multiplicities: c.multiplicities,
-        identities: c.identities,
-        lookups: c.lookups,
-        matmuls: c.matmuls,
-        openings: c.openings,
-    };
-    relation::verify(
-        &mut t,
-        &layout.relation,
-        &certs.iter().collect::<Vec<_>>(),
-        &sections,
-        public.sources,
-    )
-    .map_err(Error::Engine)
+    // The engine derives every section count and length (RFC-0026 §4.1, A27).
+    match decoded {
+        container::Decoded::V1(c) => {
+            let sections = Proof {
+                groups: c.groups,
+                multiplicities: c.multiplicities,
+                identities: c.identities,
+                lookups: c.lookups,
+                matmuls: c.matmuls,
+                openings: c.openings,
+            };
+            relation::verify(
+                &mut t,
+                &layout.relation,
+                &certs.iter().collect::<Vec<_>>(),
+                &sections,
+                public.sources,
+            )
+            .map_err(Error::Engine)
+        }
+        container::Decoded::V2(c) => {
+            let sections = ProofV2 {
+                segments: c
+                    .segments
+                    .into_iter()
+                    .map(|s| SegmentProof {
+                        groups: s.groups,
+                        multiplicities: s.multiplicities,
+                        identities: s.identities,
+                        lookups: s.lookups,
+                        matmuls: s.matmuls,
+                        reductions: s.reductions,
+                        openings: s.openings,
+                    })
+                    .collect(),
+                model_openings: c.model_openings,
+            };
+            relation::verify_segmented(
+                &mut t,
+                &layout.relation,
+                &certs.iter().collect::<Vec<_>>(),
+                &sections,
+                public.sources,
+            )
+            .map_err(Error::Engine)
+        }
+    }
 }
 
 /// Prove one window from canonical Model, Preparation, Scales and Artifact bytes,
@@ -772,6 +1008,31 @@ pub fn prove_window_development_measured(
     length: usize,
     profile: u8,
 ) -> Result<(Public, Statement, Vec<u8>, Report), Error> {
+    prove_window_development_segmented_measured(
+        model,
+        preparation,
+        scales,
+        artifact,
+        statement,
+        length,
+        profile,
+        0,
+    )
+}
+
+/// [`prove_window_development_measured`] with an explicit segment size in layers (`0` = v1
+/// unsegmented; `> 0` = RFC-0026 A27 segmented `stele-dev-e2e-v2` proof).
+#[allow(clippy::too_many_arguments)]
+pub fn prove_window_development_segmented_measured(
+    model: &[u8],
+    preparation: &[u8],
+    scales: &[u8],
+    artifact: &[u8],
+    statement: Statement,
+    length: usize,
+    profile: u8,
+    segment_layers: u16,
+) -> Result<(Public, Statement, Vec<u8>, Report), Error> {
     let sources = match profile {
         CIRCLE_ALL_PROFILE => Sources::CircleAll,
         GRIND_PROFILE => Sources::CircleAllGrind,
@@ -787,6 +1048,7 @@ pub fn prove_window_development_measured(
         None,
         sources,
         None,
+        segment_layers,
     )
 }
 
@@ -812,6 +1074,7 @@ fn prove_window_sources(
         zk,
         sources,
         execution,
+        0,
     )
     .map(|(public, statement, proof, _)| (public, statement, proof))
 }
@@ -827,6 +1090,7 @@ fn prove_window_sources_measured(
     zk: Option<zk::Window<'_>>,
     sources: Sources,
     execution: Option<zk::BatchExecution<'_, K>>,
+    segment_layers: u16,
 ) -> Result<(Public, Statement, Vec<u8>, Report), Error> {
     let m = Model::decode(model).map_err(|_| Error::StatementMismatch)?;
     let p = stele_reductions::stele_cqis::model::Preparation::decode(&m, preparation)
@@ -865,12 +1129,12 @@ fn prove_window_sources_measured(
         let max = last.iter().max().ok_or(Error::Witness)?;
         statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
     }
-    let witness_pre_ns = witness_pre_timer.elapsed_ns();
-    // E17-01: model commitment (Artifact weight decode + PCS commit) timed in process.
-    let model_commit_timer = relation::Stopwatch::start();
-    let weights = Weights::from_artifact_sources(&m, artifact, sources)?;
-    laps.lap("witness/decode_extend_weights");
     if let Some(window) = zk {
+        if segment_layers > 0 {
+            return Err(Error::StatementMismatch);
+        }
+        let weights = Weights::from_artifact_sources(&m, artifact, sources)?;
+        laps.lap("witness/decode_extend_weights");
         // E12-27: the 1-D records are committed weights; the public input names
         // only their shapes.
         let mut public = Public {
@@ -880,6 +1144,7 @@ fn prove_window_sources_measured(
             vectors: zk::published(model, &weights.vectors)?,
             commitment: Vec::new(),
             sources: Sources::Expander,
+            segment_layers: 0,
         };
         let proof = match window {
             zk::Window::Commit {
@@ -926,6 +1191,17 @@ fn prove_window_sources_measured(
         };
         return Ok((public, statement, proof, Report::default()));
     }
+    // Capture before dropping the executor so its weight buffers never overlap
+    // with `Weights::stacked` and `Committed::prepared` (task E18-06).
+    let capture = executor
+        .capture(&statement.tokens)
+        .map_err(|_| Error::Witness)?;
+    drop(executor);
+    let witness_pre_ns = witness_pre_timer.elapsed_ns();
+    // E17-01: model commitment (Artifact weight decode + PCS commit) timed in process.
+    let model_commit_timer = relation::Stopwatch::start();
+    let weights = Weights::from_artifact_sources(&m, artifact, sources)?;
+    laps.lap("witness/decode_extend_weights");
     let committed = Committed::new(&weights)?;
     let model_commitment_ns = model_commit_timer.elapsed_ns();
     laps.lap("dev/model_sources");
@@ -936,9 +1212,10 @@ fn prove_window_sources_measured(
         vectors: weights.vectors.clone(),
         commitment: committed.commitment.clone(),
         sources: weights.sources,
+        segment_layers,
     };
     let (proof, mut report) =
-        prove_measured(&public, &mut executor, &weights, &committed, &statement)?;
+        prove_inner_captured(&public, &capture, &weights, &committed, &statement, None)?;
     report.model_commitment_ns = model_commitment_ns;
     report.witness_ns = report.witness_ns.saturating_add(witness_pre_ns);
     Ok((public, statement, proof, report))

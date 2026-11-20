@@ -39,6 +39,10 @@ pub struct PlanData<'a> {
     pub vectors: &'a [(u16, Vec<i16>)],
     /// dev-zk: gain-derived columns at their full widths (E12-27).
     pub zk: bool,
+    /// RFC-0026 A27: `0` for unsegmented v1 proofs; `> 0` splits layers into segments of at most
+    /// `segment_layers` layers each (with `Finish` in its own final segment) and carries the
+    /// residual stream across boundaries.
+    pub segment_layers: u16,
 }
 
 impl PlanData<'_> {
@@ -138,6 +142,16 @@ struct LayerModules {
     gains: [Vec<i16>; 2],
 }
 
+/// Modules and carried boundary columns belonging to one segment (RFC-0026 A27).
+struct SegmentRange {
+    has_embedding: bool,
+    layers: core::ops::Range<usize>,
+    has_finish: bool,
+    carried_in: Option<ColumnId>,
+    carried_out: Option<ColumnId>,
+    weights: Vec<usize>,
+}
+
 /// Every module of one window, declared into one [`Relation`].
 pub struct Layout {
     pub relation: Relation,
@@ -148,6 +162,7 @@ pub struct Layout {
     finish: Finish,
     /// Weight columns in plan order, with their `(role, layer)`.
     pub weights: Vec<(ColumnId, Role, Option<u16>)>,
+    segments: Vec<SegmentRange>,
 }
 
 fn declared<T>(id: Option<T>) -> Result<T, Error> {
@@ -189,6 +204,31 @@ impl Layout {
         let mut incoming = model.initial_fraction();
 
         let mut layers = Vec::new();
+        let mut segments = Vec::new();
+        let segmented = plan.segment_layers > 0;
+        let mut cur_seg = 0u32;
+        let mut first_group = 0usize;
+        let mut seg_start_layer = 0usize;
+        let mut seg_has_embedding = true;
+        let mut seg_carried_in: Option<ColumnId> = None;
+
+        if segmented && model.blocks().is_empty() {
+            relation.set_groups_segment(first_group, cur_seg);
+            relation.mark_carried(stream);
+            segments.push(SegmentRange {
+                has_embedding: true,
+                layers: 0..0,
+                has_finish: false,
+                carried_in: None,
+                carried_out: Some(stream),
+                weights: vec![0],
+            });
+            cur_seg += 1;
+            first_group = relation.groups.len();
+            seg_has_embedding = false;
+            seg_carried_in = Some(stream);
+        }
+
         // Rotary coefficients and activation tables depend only on the block's
         // rotation and descriptor, so equal ones are generated once (task E16-23).
         let mut rope_cache: Option<(Option<_>, Rope)> = None;
@@ -490,6 +530,36 @@ impl Layout {
                 norm2_descriptor,
                 gains,
             });
+            if segmented {
+                let layers_in_seg = l + 1 - seg_start_layer;
+                let end_of_chunk = layers_in_seg == usize::from(plan.segment_layers)
+                    || (l + 1) == model.blocks().len();
+                if end_of_chunk {
+                    relation.set_groups_segment(first_group, cur_seg);
+                    relation.mark_carried(stream);
+                    let mut seg_weights = Vec::new();
+                    if seg_has_embedding {
+                        seg_weights.push(0);
+                    }
+                    for k in seg_start_layer..=l {
+                        let base = 1 + 7 * k;
+                        seg_weights.extend(base..base + 7);
+                    }
+                    segments.push(SegmentRange {
+                        has_embedding: seg_has_embedding,
+                        layers: seg_start_layer..(l + 1),
+                        has_finish: false,
+                        carried_in: seg_carried_in,
+                        carried_out: Some(stream),
+                        weights: seg_weights,
+                    });
+                    cur_seg += 1;
+                    first_group = relation.groups.len();
+                    seg_start_layer = l + 1;
+                    seg_has_embedding = false;
+                    seg_carried_in = Some(stream);
+                }
+            }
         }
 
         let final_descriptor = *model.final_norm().function();
@@ -526,6 +596,26 @@ impl Layout {
             Role::Head,
             None,
         ));
+        if segmented {
+            relation.set_groups_segment(first_group, cur_seg);
+            segments.push(SegmentRange {
+                has_embedding: false,
+                layers: 0..0,
+                has_finish: true,
+                carried_in: seg_carried_in,
+                carried_out: None,
+                weights: vec![weights.len() - 1],
+            });
+        } else {
+            segments.push(SegmentRange {
+                has_embedding: true,
+                layers: 0..layers.len(),
+                has_finish: true,
+                carried_in: None,
+                carried_out: None,
+                weights: (0..weights.len()).collect(),
+            });
+        }
 
         Ok(Self {
             relation,
@@ -535,24 +625,18 @@ impl Layout {
             final_gains,
             finish,
             weights,
+            segments,
         })
     }
 
-    /// Fill every witness and weight column from the capture (RFC-0026 §3.8).
-    /// `weights[i]` are the `[channel][lane]` codes of `self.weights[i]`.
-    pub fn assign(&self, capture: &Capture, weights: &[Vec<Vec<i64>>]) -> Result<Values, Error> {
+    fn assign_embedding(
+        &self,
+        capture: &Capture,
+        weights: &super::Weights,
+        values: &mut Values,
+    ) -> Result<(), Error> {
         let r = &self.relation;
-        let mut values = Values::new(r);
-        for ((id, _, _), codes) in self.weights.iter().zip(weights) {
-            let column = &r.columns[id.0 as usize];
-            let lanes = codes.first().map_or(1, Vec::len);
-            let mut padded = pad(codes, lanes);
-            padded.resize(1 << column.log_len, 0);
-            values.set(r, *id, padded).map_err(|_| Error::Witness)?;
-        }
-        let w = |module: &'static str| move |_| Error::Assign(String::from(module));
         let cuts = capture.full().cuts();
-        let embedding = &weights[0];
         self.embedding
             .assign(
                 r,
@@ -561,9 +645,10 @@ impl Layout {
                         .embedding
                         .iter()
                         .map(|e| {
-                            embedding[e.token as usize]
-                                .iter()
-                                .map(|&v| v as i16)
+                            weights
+                                .role_row(0, e.token as usize)
+                                .into_iter()
+                                .map(|v| v as i16)
                                 .collect()
                         })
                         .collect(),
@@ -572,161 +657,156 @@ impl Layout {
                         .map(|row| row.iter().map(|&v| v as i16).collect())
                         .collect(),
                 },
-                &mut values,
+                values,
             )
-            .map_err(w("embedding"))?;
-        for (l, m) in self.layers.iter().enumerate() {
-            let blocks = &capture.blocks[l];
-            let rows1 = norm_rows(&m.norm1_descriptor, &cuts[l], &m.gains[0])?;
-            m.norm1.assign(r, &rows1, &mut values).map_err(w("norm1"))?;
-            m.row1
-                .assign(
-                    r,
-                    &conversion(blocks.iter().map(|b| &b.first_row)),
-                    &mut values,
-                )
-                .map_err(w("row1"))?;
-            let codes = |q: &Quantised| q.codes.clone();
-            let scales = |q: &Quantised| q.scales.clone();
-            let projection =
-                |row: fn(&_) -> &Quantised,
-                 out: fn(&_) -> &stele_reductions::stele_cqis::execution::capture::Projection,
-                 wi: usize| ProjectionCapture {
-                    codes: blocks.iter().map(|b| codes(row(b))).collect(),
-                    scales: blocks.iter().map(|b| scales(row(b))).collect(),
-                    weights: weights[wi].clone(),
-                    outputs: blocks
-                        .iter()
-                        .map(|b| out(b).output.quotient.clone())
-                        .collect(),
-                };
-            let wi = 1 + 7 * l;
-            m.q.assign(
-                r,
-                &projection(|b| &b.first_row, |b| &b.query, wi),
-                &mut values,
-            )
-            .map_err(w("q"))?;
-            m.k.assign(
-                r,
-                &projection(|b| &b.first_row, |b| &b.key, wi + 1),
-                &mut values,
-            )
-            .map_err(w("k"))?;
-            m.v.assign(
-                r,
-                &projection(|b| &b.first_row, |b| &b.value, wi + 2),
-                &mut values,
-            )
-            .map_err(w("v"))?;
-            let flat = |out: fn(&_) -> &[i64]| -> Vec<i16> {
-                blocks
+            .map_err(|_| Error::Assign(String::from("embedding")))
+    }
+
+    fn assign_layer(
+        &self,
+        l: usize,
+        capture: &Capture,
+        weights: &super::Weights,
+        values: &mut Values,
+    ) -> Result<(), Error> {
+        let r = &self.relation;
+        let m = &self.layers[l];
+        let w = |module: &'static str| move |_| Error::Assign(String::from(module));
+        let cuts = capture.full().cuts();
+        let blocks = &capture.blocks[l];
+        let rows1 = norm_rows(&m.norm1_descriptor, &cuts[l], &m.gains[0])?;
+        m.norm1.assign(r, &rows1, values).map_err(w("norm1"))?;
+        m.row1
+            .assign(r, &conversion(blocks.iter().map(|b| &b.first_row)), values)
+            .map_err(w("row1"))?;
+        let codes = |q: &Quantised| q.codes.clone();
+        let scales = |q: &Quantised| q.scales.clone();
+        let projection =
+            |row: fn(&_) -> &Quantised,
+             out: fn(&_) -> &stele_reductions::stele_cqis::execution::capture::Projection,
+             wi: usize| ProjectionCapture {
+                codes: blocks.iter().map(|b| codes(row(b))).collect(),
+                scales: blocks.iter().map(|b| scales(row(b))).collect(),
+                weights: weights.role_rows(wi),
+                outputs: blocks
                     .iter()
-                    .flat_map(|b| out(b).iter().map(|&v| v as i16))
-                    .collect()
-            };
-            m.rope_q
-                .assign(r, &flat(|b| &b.query.output.quotient), &mut values)
-                .map_err(w("rope_q"))?;
-            m.rope_k
-                .assign(r, &flat(|b| &b.key.output.quotient), &mut values)
-                .map_err(w("rope_k"))?;
-            let qkv: [fn(&_) -> &Quantised; 3] =
-                [|b: &Block| &b.query_row, |b| &b.key_row, |b| &b.value_row];
-            for (row, get) in m.attention_rows.iter().zip(qkv) {
-                row.assign(r, &conversion(blocks.iter().map(get)), &mut values)
-                    .map_err(w("attention rows"))?;
-            }
-            let attention = AttentionCapture {
-                codes: qkv.map(|get| blocks.iter().map(|b| get(b).codes.clone()).collect()),
-                scales: qkv.map(|get| blocks.iter().map(|b| get(b).scales[0]).collect()),
-                positions: blocks
-                    .iter()
-                    .map(|b| PositionCapture::from(&b.attention))
+                    .map(|b| out(b).output.quotient.clone())
                     .collect(),
             };
-            m.attention
-                .assign(r, &attention, &mut values)
-                .map_err(w("attention"))?;
-            m.row_o
-                .assign(
-                    r,
-                    &conversion(blocks.iter().map(|b| &b.attention_row)),
-                    &mut values,
-                )
-                .map_err(w("row_o"))?;
-            m.o.assign(
-                r,
-                &projection(|b| &b.attention_row, |b| &b.output, wi + 3),
-                &mut values,
-            )
-            .map_err(w("o"))?;
-            let flat64 = |out: fn(&_) -> &[i64]| -> Vec<i64> {
-                blocks.iter().flat_map(|b| out(b).iter().copied()).collect()
-            };
-            let cut = cuts[l].iter().flatten().map(|&v| i64::from(v)).collect();
-            let add = ResidualCapture {
-                left: cut,
-                right: flat64(|b| &b.output.output.quotient),
-                output: flat64(|b| &b.mid.quotient),
-            };
-            m.mid.assign(r, &add, &mut values).map_err(w("mid"))?;
-            let mid = rows(blocks.iter().map(|b| &b.mid.quotient));
-            let mid32: Vec<Vec<i32>> = mid
+        let wi = 1 + 7 * l;
+        m.q.assign(r, &projection(|b| &b.first_row, |b| &b.query, wi), values)
+            .map_err(w("q"))?;
+        m.k.assign(r, &projection(|b| &b.first_row, |b| &b.key, wi + 1), values)
+            .map_err(w("k"))?;
+        m.v.assign(
+            r,
+            &projection(|b| &b.first_row, |b| &b.value, wi + 2),
+            values,
+        )
+        .map_err(w("v"))?;
+        let flat = |out: fn(&_) -> &[i64]| -> Vec<i16> {
+            blocks
                 .iter()
-                .map(|x| x.iter().map(|&v| v as i32).collect())
-                .collect();
-            let rows2 = norm_rows(&m.norm2_descriptor, &mid32, &m.gains[1])?;
-            m.norm2.assign(r, &rows2, &mut values).map_err(w("norm2"))?;
-            m.row2
-                .assign(
-                    r,
-                    &conversion(blocks.iter().map(|b| &b.second_row)),
-                    &mut values,
-                )
-                .map_err(w("row2"))?;
-            m.gate
-                .assign(
-                    r,
-                    &projection(|b| &b.second_row, |b| &b.gate, wi + 4),
-                    &mut values,
-                )
-                .map_err(w("gate"))?;
-            m.up.assign(
-                r,
-                &projection(|b| &b.second_row, |b| &b.up, wi + 5),
-                &mut values,
-            )
-            .map_err(w("up"))?;
-            m.gated
-                .assign(
-                    r,
-                    &GatedCapture {
-                        gate: flat(|b| &b.gate.output.quotient),
-                        up: flat(|b| &b.up.output.quotient),
-                    },
-                    &mut values,
-                )
-                .map_err(w("gated"))?;
-            m.down_row
-                .assign(r, &flat64(|b| &b.gated), &mut values)
-                .map_err(w("down_row"))?;
-            m.down
-                .assign(
-                    r,
-                    &projection(|b| &b.down_row, |b| &b.down, wi + 6),
-                    &mut values,
-                )
-                .map_err(w("down"))?;
-            let add = ResidualCapture {
-                left: flat64(|b| &b.mid.quotient),
-                right: flat64(|b| &b.down.output.quotient),
-                output: flat64(|b| &b.residual.quotient),
-            };
-            m.residual
-                .assign(r, &add, &mut values)
-                .map_err(w("residual"))?;
+                .flat_map(|b| out(b).iter().map(|&v| v as i16))
+                .collect()
+        };
+        m.rope_q
+            .assign(r, &flat(|b| &b.query.output.quotient), values)
+            .map_err(w("rope_q"))?;
+        m.rope_k
+            .assign(r, &flat(|b| &b.key.output.quotient), values)
+            .map_err(w("rope_k"))?;
+        let qkv: [fn(&_) -> &Quantised; 3] =
+            [|b: &Block| &b.query_row, |b| &b.key_row, |b| &b.value_row];
+        for (row, get) in m.attention_rows.iter().zip(qkv) {
+            row.assign(r, &conversion(blocks.iter().map(get)), values)
+                .map_err(w("attention rows"))?;
         }
+        let attention = AttentionCapture {
+            codes: qkv.map(|get| blocks.iter().map(|b| get(b).codes.clone()).collect()),
+            scales: qkv.map(|get| blocks.iter().map(|b| get(b).scales[0]).collect()),
+            positions: blocks
+                .iter()
+                .map(|b| PositionCapture::from(&b.attention))
+                .collect(),
+        };
+        m.attention
+            .assign(r, &attention, values)
+            .map_err(w("attention"))?;
+        m.row_o
+            .assign(
+                r,
+                &conversion(blocks.iter().map(|b| &b.attention_row)),
+                values,
+            )
+            .map_err(w("row_o"))?;
+        m.o.assign(
+            r,
+            &projection(|b| &b.attention_row, |b| &b.output, wi + 3),
+            values,
+        )
+        .map_err(w("o"))?;
+        let flat64 = |out: fn(&_) -> &[i64]| -> Vec<i64> {
+            blocks.iter().flat_map(|b| out(b).iter().copied()).collect()
+        };
+        let cut = cuts[l].iter().flatten().map(|&v| i64::from(v)).collect();
+        let add = ResidualCapture {
+            left: cut,
+            right: flat64(|b| &b.output.output.quotient),
+            output: flat64(|b| &b.mid.quotient),
+        };
+        m.mid.assign(r, &add, values).map_err(w("mid"))?;
+        let mid = rows(blocks.iter().map(|b| &b.mid.quotient));
+        let mid32: Vec<Vec<i32>> = mid
+            .iter()
+            .map(|x| x.iter().map(|&v| v as i32).collect())
+            .collect();
+        let rows2 = norm_rows(&m.norm2_descriptor, &mid32, &m.gains[1])?;
+        m.norm2.assign(r, &rows2, values).map_err(w("norm2"))?;
+        m.row2
+            .assign(r, &conversion(blocks.iter().map(|b| &b.second_row)), values)
+            .map_err(w("row2"))?;
+        m.gate
+            .assign(
+                r,
+                &projection(|b| &b.second_row, |b| &b.gate, wi + 4),
+                values,
+            )
+            .map_err(w("gate"))?;
+        m.up.assign(r, &projection(|b| &b.second_row, |b| &b.up, wi + 5), values)
+            .map_err(w("up"))?;
+        m.gated
+            .assign(
+                r,
+                &GatedCapture {
+                    gate: flat(|b| &b.gate.output.quotient),
+                    up: flat(|b| &b.up.output.quotient),
+                },
+                values,
+            )
+            .map_err(w("gated"))?;
+        m.down_row
+            .assign(r, &flat64(|b| &b.gated), values)
+            .map_err(w("down_row"))?;
+        m.down
+            .assign(r, &projection(|b| &b.down_row, |b| &b.down, wi + 6), values)
+            .map_err(w("down"))?;
+        let add = ResidualCapture {
+            left: flat64(|b| &b.mid.quotient),
+            right: flat64(|b| &b.down.output.quotient),
+            output: flat64(|b| &b.residual.quotient),
+        };
+        m.residual.assign(r, &add, values).map_err(w("residual"))
+    }
+
+    fn assign_finish(
+        &self,
+        capture: &Capture,
+        weights: &super::Weights,
+        values: &mut Values,
+    ) -> Result<(), Error> {
+        let r = &self.relation;
+        let cuts = capture.full().cuts();
         let heads = &capture.head;
         let finish = FinishCapture {
             norm: norm_rows(
@@ -738,7 +818,7 @@ impl Layout {
             head: ProjectionCapture {
                 codes: heads.iter().map(|h| h.row.codes.clone()).collect(),
                 scales: heads.iter().map(|h| h.row.scales.clone()).collect(),
-                weights: weights[weights.len() - 1].clone(),
+                weights: weights.role_rows(self.weights.len() - 1),
                 outputs: heads
                     .iter()
                     .map(|h| h.logits.output.quotient.clone())
@@ -746,9 +826,72 @@ impl Layout {
             },
         };
         self.finish
-            .assign(r, &finish, &mut values)
-            .map_err(w("finish"))?;
+            .assign(r, &finish, values)
+            .map_err(|_| Error::Assign(String::from("finish")))
+    }
+
+    /// Fill every witness and weight column from the capture (RFC-0026 §3.8).
+    pub fn assign(&self, capture: &Capture, weights: &super::Weights) -> Result<Values, Error> {
+        let r = &self.relation;
+        let mut values = Values::new(r);
+        for (wi, (id, _, _)) in self.weights.iter().enumerate() {
+            let column = &r.columns[id.0 as usize];
+            let padded = weights.role_padded_i64(wi, column.log_len);
+            values.set(r, *id, padded).map_err(|_| Error::Witness)?;
+        }
+        self.assign_embedding(capture, weights, &mut values)?;
+        for l in 0..self.layers.len() {
+            self.assign_layer(l, capture, weights, &mut values)?;
+        }
+        self.assign_finish(capture, weights, &mut values)?;
         Ok(values)
+    }
+
+    /// Fill only segment `segment`'s witness columns, its required weight columns, and the
+    /// incoming carried column from segment `segment - 1` (RFC-0026 A27). Returns `(values,
+    /// carried_out)` so only one segment's `Values` is live at a time.
+    pub fn assign_segment(
+        &self,
+        segment: u32,
+        capture: &Capture,
+        weights: &super::Weights,
+        carried_in: Option<Vec<i64>>,
+    ) -> Result<(Values, Option<Vec<i64>>), Error> {
+        let r = &self.relation;
+        let seg = self
+            .segments
+            .get(segment as usize)
+            .ok_or(Error::StatementMismatch)?;
+        let mut values = Values::new(r);
+        if let Some(col_id) = seg.carried_in {
+            let carried = carried_in.ok_or(Error::Witness)?;
+            values.set(r, col_id, carried).map_err(|_| Error::Witness)?;
+        }
+        for &wi in &seg.weights {
+            let (id, _, _) = self.weights[wi];
+            let column = &r.columns[id.0 as usize];
+            let padded = weights.role_padded_i64(wi, column.log_len);
+            values.set(r, id, padded).map_err(|_| Error::Witness)?;
+        }
+        if seg.has_embedding {
+            self.assign_embedding(capture, weights, &mut values)?;
+        }
+        for l in seg.layers.clone() {
+            self.assign_layer(l, capture, weights, &mut values)?;
+        }
+        if seg.has_finish {
+            self.assign_finish(capture, weights, &mut values)?;
+        }
+        let carried_out = seg
+            .carried_out
+            .map(|col_id| {
+                values
+                    .get(r, col_id)
+                    .map(|slice| slice.to_vec())
+                    .ok_or(Error::Witness)
+            })
+            .transpose()?;
+        Ok((values, carried_out))
     }
 }
 
@@ -780,16 +923,6 @@ fn conversion<'a>(it: impl Iterator<Item = &'a Quantised>) -> ConversionCapture 
         c.scales.push(q.scales.clone());
     }
     c
-}
-
-/// Row-major `rows × lanes` with each row padded to a power of two (RFC-0026 §2.1).
-pub(crate) fn pad(rows: &[Vec<i64>], lanes: usize) -> Vec<i64> {
-    let stride = lanes.next_power_of_two();
-    let mut out = vec![0; rows.len().next_power_of_two() * stride];
-    for (i, row) in rows.iter().enumerate() {
-        out[i * stride..i * stride + row.len()].copy_from_slice(row);
-    }
-    out
 }
 
 /// Weight kinds of `relation` in declaration order, for the RFC-0026 §2.2 plan check.

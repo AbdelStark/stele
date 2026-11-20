@@ -2611,3 +2611,102 @@ than 18 bytes or any other magic/version with `Header`.
   task E18-06.
 - **Tier:** Development tier (RFC-0027 §2); promotion to `standard` or `treaty` is not
   granted (Workflow 10).
+
+### A27 — Segments and carried witness columns for bounded-memory proving
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task: E18-06. Decision: ADR-148.
+[Independent review](../../agents/reviews/e18-06-segments-bounded-memory.md)
+
+Unsegmented proofs of large models (such as Llama 3.1 8B at `T = 64`) exceed the A4
+`2^30` witness-source cap, the A3 `2^30` per-check lookup cap, and host RAM budgets.
+This amendment adds segments and carried witness columns to the development relation IR,
+engine, and prover so the prover commits, proves, and opens one segment at a time while
+holding at most two consecutive segments in memory.
+
+#### 1. Segment and carried-column rules (`stele_ir::relation`)
+
+- `Group` carries `segment: u32` (default `0`). `Column` carries `carried: bool`
+  (default `false`).
+- `Relation::validate` enforces (`Invalid::Segment`, mapped to `StatementMismatch`):
+  1. `carried` may only be `true` on `Kind::Witness(_)` columns.
+  2. `Group.segment` is non-decreasing and contiguous across `relation.groups`, starting
+     at `0` (each group has `segment == prev` or `segment == prev + 1`). A relation with
+     no groups has `segments() == 1`.
+  3. For every `Identity`, `Compose`, `Lookup`, and `Matmul`: let `s` be the maximum
+     segment among its `Kind::Witness` columns (or `0` if none). Every `Kind::Witness`
+     column referenced by the item must belong either to segment `s`, or to segment
+     `s - 1` with `carried == true`. Any witness read from segment `< s - 1` or any
+     non-carried read from segment `s - 1` fails validation with `Invalid::Segment`.
+  4. Every `Range` on a `Kind::Witness` column belongs to its column's segment. Every
+     `Range` on a `Kind::Weight` column `w` belongs to the earliest segment of any
+     witness-bearing item (`Identity`, `Compose`, `Lookup`, `Matmul`) that reads `w`
+     (or `0` if none), so each segment loads and checks only the weights it uses.
+
+#### 2. Relation encoding (`stele/v0.1/relation/encoding/v2`) and public bundle (`stele-dev-public-v5`)
+
+- When `relation.is_segmented()` is `false` (all groups in segment `0` and no column
+  `carried`), `relation_codec::encode` emits the exact `stele/v0.1/relation/encoding/v1`
+  bytes unchanged.
+- When `relation.is_segmented()` is `true`, `relation_codec::encode` emits magic
+  `stele/v0.1/relation/encoding/v2`, appending `group.segment` (`u32le`) after each
+  `group.log_len` and `u8::from(column.carried)` after each `column.log_len`.
+- `Public` adds `segment_layers: u16` (`0` = unsegmented v1 proof, keeping `v1..v4`
+  bundles, `public_input`, and `stele-dev-e2e-v1` byte-identical). When
+  `segment_layers > 0`:
+  - `bundle` uses magic `stele-dev-public-v5`, followed by `sources_byte: u8` (`0 | 2 |
+    3 | 5`), `segment_layers: u16le` (`>= 1`; `0` and unknown source bytes reject with
+    `StatementMismatch`), then the v1..v4 payload.
+  - `public_input` appends `stele/v0.1/dev-e2e/segmented` and `segment_layers: u16le`.
+  - `Layout::declare` partitions the window into `[Embedding + L0..k-1]`, `[Lk..2k-1]`,
+    ..., `[Finish]` (for `k = segment_layers`; if the model has 0 layers, `[Embedding]`
+    and `[Finish]`) and marks the boundary residual stream `carried` before each segment
+    boundary.
+  - `verify` requires `stele-dev-e2e-v1` when `segment_layers == 0` and
+    `stele-dev-e2e-v2` (A26) when `segment_layers > 0`; cross-version pairs reject with
+    `StatementMismatch`.
+
+#### 3. Segmented engine schedule, source IDs and memory bound
+
+For `S = relation.segments()` (`1 <= S <= 65535`):
+1. Absorb `plan.digest` (`RelationStatement`) and every model root (`RelationRoots`).
+2. For each segment `s = 0 .. S` in order:
+   1. Commit segment `s`'s witness stack (A4 largest-first packing, `source_id = (s << 16) + 2`)
+      via owned preparation (`PreparedSource::from_code_id_*_owned`), verify its
+      certificate, and absorb its root (`RelationRoots`).
+   2. Commit each lookup/range check of segment `s` (`check_id = (s << 16) | j`,
+      `source_id = (s << 16) + 3 + j`) and absorb each multiplicity root (`RelationRoots`).
+   3. Run zerochecks (`ZEROCHECK | (s << 16) | m`), A5 lookups, and matmuls
+      (`MATMUL | global_idx`) owned by segment `s`, filing all claims. `reductions` must
+      be empty (`ProofShape` otherwise).
+   4. Drop segment `s`'s witness/weight `Values`.
+   5. If `s > 0` and segment `s - 1` has a witness stack, all claims on segment `s - 1`
+      (including carried-column reads from segment `s`) are now complete: run the claim
+      batch (`BATCH | ((s - 1) << 32)`) and point opening directly from segment `s - 1`'s
+      committed message, write it to `segments[s - 1].openings`, and drop segment `s - 1`.
+3. Open segment `S - 1`'s witness stack (`BATCH | ((S - 1) << 32)`), write it to
+   `segments[S - 1].openings`, and drop it. Then batch and open each model weight source
+   once (`BATCH | (1 + k)`), writing to `model_openings`, and check all public-column
+   claims.
+
+For `S == 1` with no carried columns, every source ID, instance ID, and engine message
+equals RFC-0026 v1. On the prover, `Weights::from_artifact_sources` streams 2-D weights
+directly into `stacked` (`M31`) and decodes per role on demand; the engine retains at
+most two consecutive segments' witness commitment data plus the model.
+
+#### 4. Soundness accounting, cost, controls and tier
+
+- **Soundness accounting (§6):** No new error family. Every segment `s` charges the
+  existing §6 ledger lines (`RLC`, `SC`, `SZ`, `LU`, `PCS`, `H`, `FS`) for its own
+  stack certificate, multiplicity certificates, zerochecks, lookups, matmuls, and stack
+  opening, plus global model certificates and model openings. Because segment `s - 1`'s
+  stack root is absorbed before any challenge of segment `s - 1` or segment `s` is drawn,
+  every carried-column claim is bound by the same Fiat–Shamir order as intra-segment claims.
+- **Cells, lookups, proof bytes:** Total committed witness cells and unpadded lookup
+  positions are unchanged (padded stack cells and per-segment multiplicity/opening
+  sections scale with `S`). Peak prover RSS drops from the whole window to the two
+  largest segments plus the model (recorded on L2a in `bench/ledger/`).
+- **Controls:** `NC-1335` (reading a non-carried column of segment `s - 1` from segment
+  `s` -> `StatementMismatch`) and `NC-1336` (reordering two segment roots -> Policy 1:
+  `RootMismatch`; Policy 2: `GrindMismatch`), both executed through the actual verifier.
+- **Tier:** Development tier (RFC-0027 §2); no security level or profile promotion is
+  granted (Workflow 10).

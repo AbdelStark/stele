@@ -217,6 +217,8 @@
 | NC-1332 | registry argmax below | 0026 A16 | change one argmax below value | `RegistryRequestMismatch` | done |
 | NC-1333 | registry argmax rows | 0026 A16 | change one argmax rows value | `RegistryRequestMismatch` | done |
 | NC-1334 | registry template | 0026 A16 | change one static declaration coefficient; include a rebuilt proof accepted by A15 replay | `RegistryTemplateMismatch` | done |
+| NC-1335 | development segment boundary | 0026 A27 | read a non-carried witness column of segment `s - 1` from segment `s` (both by clearing `carried` on the boundary column and by redirecting a segment-1 read to a non-carried segment-0 column) | `StatementMismatch` | done |
+| NC-1336 | development segment root order | 0026 A27 | swap only the 32-byte witness stack roots of two segments in a `stele-dev-e2e-v2` proof, retaining every other byte under declared Policy 1 (`Expander`) and Policy 2 (`CircleAll`) runs | Policy 1: RootMismatch; Policy 2: GrindMismatch | done |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206
@@ -424,3 +426,12 @@ replay. The synthetic model has a zero Token row for NC-1328; NC-1334 changes on
 coefficient on a zero public factor. Both retain full plain checks, normal proof
 production and low-level A15 acceptance. Each invocation reruns honest and tampered
 verification; only genuine producer outputs are cached. No verifier bypass is used.
+
+RFC-0026 A27 (Accepted, task E18-06) adds NC-1335 and NC-1336 for segmented
+development proofs (`stele-dev-e2e-v2`). NC-1335 verifies an honest two-segment
+window and then passes tampered relations (clearing `carried` on the boundary column
+and redirecting a segment-1 read to a non-carried segment-0 column) through
+`relation::verify_segmented`, asserting `StatementMismatch` (`Invalid::Segment`).
+Control NC-1336 swaps only the 32-byte witness stack roots of two segments under declared
+Policy 1 (`Expander`) and Policy 2 (`CircleAll`) runs through `development::verify`,
+retaining the Policy 1 `RootMismatch` / Policy 2 `GrindMismatch` distinction of A17.
