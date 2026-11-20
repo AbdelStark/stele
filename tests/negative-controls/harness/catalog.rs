@@ -53,7 +53,7 @@ fn rejects_registry_binding_tampers() {
 #[test]
 fn accepts_repository_catalog_without_crediting_stub() {
     let catalog = parse(include_str!("../catalog.md")).expect("valid repository catalog");
-    assert_eq!(catalog.len(), 253);
+    assert_eq!(catalog.len(), 259);
     assert_eq!(catalog.first().map(|entry| entry.id), Some(1));
     assert_eq!(catalog.last().map(|entry| entry.id), Some(1341));
     assert!(
