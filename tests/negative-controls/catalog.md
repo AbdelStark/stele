@@ -432,6 +432,6 @@ development proofs (`stele-dev-e2e-v2`). NC-1335 verifies an honest two-segment
 window and then passes tampered relations (clearing `carried` on the boundary column
 and redirecting a segment-1 read to a non-carried segment-0 column) through
 `relation::verify_segmented`, asserting `StatementMismatch` (`Invalid::Segment`).
-NC-1336 swaps only the 32-byte witness stack roots of two segments under declared
+Control NC-1336 swaps only the 32-byte witness stack roots of two segments under declared
 Policy 1 (`Expander`) and Policy 2 (`CircleAll`) runs through `development::verify`,
 retaining the Policy 1 `RootMismatch` / Policy 2 `GrindMismatch` distinction of A17.
