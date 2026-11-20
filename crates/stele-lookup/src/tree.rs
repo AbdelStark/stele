@@ -185,21 +185,6 @@ pub(super) fn prove_dense<K: ChallengeField + Eq>(
     let proof = stele_sumcheck::prove(i, strategy, t)?;
     Ok((proof, point, observed))
 }
-// Mixed base/extension A1 strategy for base-field leaf selected products (task E20-02).
-pub(super) fn prove_mixed<K: ChallengeField + Eq>(
-    i: &Instance<K>,
-    tables: Vec<stele_sumcheck::DenseTable<K>>,
-    t: &mut Transcript<K>,
-) -> Result<(stele_sumcheck::Proof<K>, Vec<K>), Error> {
-    let mut point = Vec::new();
-    reserve(&mut point, i.num_vars as usize)?;
-    let strategy = Capture {
-        dense: Dense::new_mixed(i, tables)?,
-        point: &mut point,
-    };
-    let proof = stele_sumcheck::prove(i, strategy, t)?;
-    Ok((proof, point))
-}
 /// One fraction-tree layer's round state (RFC-0008 A3): the dense round polynomial of
 /// `eq · (left·p0·q1 + right·p1·q0 + γ·q0·q1)` with `eq(r, ·)` kept factored. Its bound
 /// prefix is a scalar, its current coordinate a line in the round variable and only its
@@ -218,8 +203,36 @@ struct Layer<'a, K> {
     weights: [K; 3],
 }
 /// `eq(r, x)` on the line through `x = 0` and `x = 1`.
-fn eq_line<K: ChallengeField>(r: K, x: K) -> K {
+pub(super) fn eq_line<K: ChallengeField>(r: K, x: K) -> K {
     K::from_i64(1) - r - x + (r + r) * x
+}
+/// The degree-3 round values at 0..=3 of `scale · eq(r0, X) · t(X)`, from the quadratic
+/// `t`'s values at 0 and 1 and its leading coefficient.
+pub(super) fn factored_message<K: ChallengeField>(
+    scale: K,
+    r0: K,
+    [at0, at1, lead]: [K; 3],
+) -> Result<Vec<K>, stele_sumcheck::Error> {
+    let slope = at1 - at0 - lead;
+    let mut out = Vec::new();
+    out.try_reserve_exact(4)
+        .map_err(|_| stele_sumcheck::Error::Capacity)?;
+    for node in 0..4 {
+        let x = K::from_i64(node);
+        out.push(scale * eq_line(r0, x) * (at0 + x * (slope + lead * x)));
+    }
+    Ok(out)
+}
+/// `eq(r[1..], ·)` after one more coordinate is bound: summed over its leading coordinate.
+pub(super) fn halve_suffix<K: ChallengeField>(suffix: &mut Vec<K>) {
+    let half = suffix.len() / 2;
+    if half > 0 {
+        let (low, high) = suffix.split_at_mut(half);
+        for (a, b) in low.iter_mut().zip(high.iter()) {
+            *a = *a + *b;
+        }
+        suffix.truncate(half);
+    }
 }
 impl<'a, K: ChallengeField + Eq> Layer<'a, K> {
     fn new(tables: [Vec<K>; 4], r: &'a [K], weights: [K; 3]) -> Result<Self, Error> {
@@ -236,17 +249,9 @@ impl<'a, K: ChallengeField + Eq> Layer<'a, K> {
     }
     /// The round values at 0..=3 from the suffix-weighted sums of the summand at 0, at 1
     /// and of its leading coefficient (it is quadratic in the round variable).
-    fn message(&self, [at0, at1, lead]: [K; 3]) -> Result<Vec<K>, stele_sumcheck::Error> {
+    fn message(&self, sums: [K; 3]) -> Result<Vec<K>, stele_sumcheck::Error> {
         let r0 = *self.r.first().ok_or(stele_sumcheck::Error::PublicShape)?;
-        let slope = at1 - at0 - lead;
-        let mut out = Vec::new();
-        out.try_reserve_exact(4)
-            .map_err(|_| stele_sumcheck::Error::Capacity)?;
-        for node in 0..4 {
-            let x = K::from_i64(node);
-            out.push(self.scale * eq_line(r0, x) * (at0 + x * (slope + lead * x)));
-        }
-        Ok(out)
+        factored_message(self.scale, r0, sums)
     }
     fn round(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
         let half = self.suffix.len();
@@ -295,14 +300,7 @@ impl<'a, K: ChallengeField + Eq> Layer<'a, K> {
     /// `eq(r[1..], ·)` summed over its leading coordinate.
     fn bind(&mut self, r0: K, challenge: K) {
         self.scale = self.scale * eq_line(r0, challenge);
-        let half = self.suffix.len() / 2;
-        if half > 0 {
-            let (low, high) = self.suffix.split_at_mut(half);
-            for (a, b) in low.iter_mut().zip(high.iter()) {
-                *a = *a + *b;
-            }
-            self.suffix.truncate(half);
-        }
+        halve_suffix(&mut self.suffix);
     }
     fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
         if !self.r.is_empty() {
