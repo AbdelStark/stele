@@ -1190,3 +1190,161 @@ fn accepts_certified_model_source_general_functional_and_streaming_memory() {
         Err(RecursiveError::UnsupportedSource)
     );
 }
+
+#[test]
+fn accepts_zero_zk_reservation_pinned_bytes_and_rejects_nonzero() {
+    // RFC-0029 §7 (E19-06): randomisers and mask_rows are fields of every level in the source
+    // context, zero by default; nonzero values are rejected until RFC-0013 A3; zero values
+    // produce byte-identical pinned source contexts and opening proofs.
+    let s0 = LevelSpec::new(2, 5, 2);
+    let s1 = LevelSpec::new(2, 3, 2);
+    assert_eq!(s0.randomisers, 0);
+    assert_eq!(s0.mask_rows, 0);
+    assert_eq!(s1.randomisers, 0);
+    assert_eq!(s1.mask_rows, 0);
+
+    // Reject nonzero randomisers or mask_rows at any level in both fresh and certified plans.
+    for bad in [
+        vec![
+            LevelSpec {
+                randomisers: 1,
+                ..s0
+            },
+            s1,
+        ],
+        vec![LevelSpec { mask_rows: 1, ..s0 }, s1],
+        vec![
+            s0,
+            LevelSpec {
+                randomisers: 2,
+                ..s1
+            },
+        ],
+        vec![s0, LevelSpec { mask_rows: 3, ..s1 }],
+    ] {
+        assert_eq!(
+            RecursivePlan::new(bad.clone(), 4, DEFAULT_TARGET_BITS),
+            Err(RecursiveError::UnsupportedSource)
+        );
+        assert_eq!(
+            CertifiedPlan::new(bad, 4, DEFAULT_TARGET_BITS, 24),
+            Err(RecursiveError::UnsupportedSource)
+        );
+    }
+
+    // Fresh source context & opening proof byte-layout pin.
+    let fresh_plan = RecursivePlan::new(vec![s0, s1], 4, DEFAULT_TARGET_BITS).expect("fresh plan");
+    let msg = seeded_m31(fresh_plan.level0_elements().expect("elems"), 1906);
+    let prep = PreparedRecursive::<QM31>::commit(1906, fresh_plan.clone(), msg.clone())
+        .expect("fresh commit");
+    let fresh_src_bytes = prep.source().bytes().expect("fresh src bytes");
+    // Level 0 bytes sit at offset 114..121: (ell, m, b, randomisers: u16le, mask_rows: u16le).
+    assert_eq!(&fresh_src_bytes[117..121], &[0, 0, 0, 0]);
+    assert_eq!(&fresh_src_bytes[124..128], &[0, 0, 0, 0]);
+    // Flipping either reserved u16le byte in wire form must reject on parse.
+    for off in [117usize, 119, 124, 126] {
+        let mut tampered = fresh_src_bytes.clone();
+        tampered[off] = 1;
+        assert_eq!(
+            RecursiveSource::<QM31>::from_bytes(&tampered),
+            Err(RecursiveError::UnsupportedSource)
+        );
+    }
+    let pt = seeded_point::<QM31>(7, b"e19-06-fresh-pt");
+    let val = prep.evaluate(&pt).expect("eval");
+    let mut tf = Transcript::<QM31>::new(b"e19-06-fresh").expect("tf");
+    let fresh_proof = prep
+        .open_fresh_at_point(&mut tf, 1906, &pt, val)
+        .expect("fresh open");
+    let mut tfv = Transcript::<QM31>::new(b"e19-06-fresh").expect("tfv");
+    verify_fresh_at_point(&mut tfv, prep.source(), 1906, &pt, val, &fresh_proof)
+        .expect("fresh verify");
+
+    // Certified source context, registration certificate & opening proof byte-layout pin.
+    let cert_plan =
+        CertifiedPlan::new(vec![s0, s1], 4, DEFAULT_TARGET_BITS, 24).expect("cert plan");
+    let model = CertifiedModelSource::<QM31>::register(1906, cert_plan, &msg).expect("reg");
+    let cert_src_bytes = model.source().bytes().expect("cert src bytes");
+    // CertifiedSource level 0 starts at offset 122: (ell, m, b, randomisers: u16le, mask_rows: u16le).
+    assert_eq!(&cert_src_bytes[125..129], &[0, 0, 0, 0]);
+    assert_eq!(&cert_src_bytes[132..136], &[0, 0, 0, 0]);
+    for off in [125usize, 127, 132, 134] {
+        let mut tampered = cert_src_bytes.clone();
+        tampered[off] = 1;
+        assert_eq!(
+            CertifiedSource::<QM31>::from_bytes(&tampered),
+            Err(RecursiveError::UnsupportedSource)
+        );
+    }
+    let verified_cert =
+        verify_certified_registration(model.source().clone(), model.certificate_proof())
+            .expect("verify cert");
+    let rw = seeded_point::<QM31>(4, b"e19-06-cert-rw");
+    let cp = seeded_point::<QM31>(5, b"e19-06-cert-cp");
+    let cval = model
+        .evaluate_functional(&msg, &rw, ColumnFunctional::Tensor(&cp))
+        .expect("cval");
+    let mut tc = Transcript::<QM31>::new(b"e19-06-cert").expect("tc");
+    let cert_proof = model
+        .open_certified(
+            &msg,
+            &mut tc,
+            1906,
+            &rw,
+            ColumnFunctional::Tensor(&cp),
+            cval,
+        )
+        .expect("cert open");
+    let mut tcv = Transcript::<QM31>::new(b"e19-06-cert").expect("tcv");
+    verify_certified_opening(
+        &mut tcv,
+        &verified_cert,
+        model.source(),
+        1906,
+        &rw,
+        ColumnFunctional::Tensor(&cp),
+        cval,
+        &cert_proof,
+    )
+    .expect("cert verify");
+
+    const EXPECTED_FRESH_SRC: [u8; 32] = [
+        0xd7, 0x0e, 0xf8, 0xdd, 0xc2, 0xcf, 0xbb, 0x50, 0xa0, 0xe8, 0xd3, 0xec, 0x57, 0x47, 0xa0,
+        0x9d, 0x62, 0xac, 0x67, 0x5b, 0x94, 0x1b, 0x8a, 0x92, 0x78, 0x43, 0x75, 0xaf, 0x63, 0xfa,
+        0xa1, 0x7e,
+    ];
+    const EXPECTED_FRESH_PRF: [u8; 32] = [
+        0x3e, 0x7e, 0xfc, 0xe2, 0x61, 0x3c, 0x95, 0xe1, 0x97, 0x08, 0xbe, 0x72, 0xfe, 0xfa, 0xd9,
+        0xc2, 0x28, 0xd1, 0xc2, 0xbc, 0x16, 0xc0, 0xb5, 0x48, 0x82, 0x49, 0x2e, 0xb4, 0xca, 0xb3,
+        0x87, 0x0f,
+    ];
+    const EXPECTED_CERT_SRC: [u8; 32] = [
+        0x59, 0xcd, 0xe0, 0x11, 0x4b, 0xf8, 0x2e, 0x10, 0xb8, 0xc9, 0x99, 0xb8, 0xaf, 0x24, 0xf1,
+        0x16, 0xb9, 0x46, 0x0c, 0x34, 0xa3, 0xef, 0x6d, 0x56, 0x9a, 0xc5, 0x41, 0x76, 0x3f, 0x89,
+        0x1a, 0x77,
+    ];
+    const EXPECTED_CERT_REG: [u8; 32] = [
+        0x4d, 0x5e, 0xc7, 0x6f, 0x7e, 0xca, 0x39, 0x35, 0xfb, 0xa7, 0xc8, 0x04, 0x6b, 0xe2, 0x30,
+        0x6b, 0xfe, 0xdd, 0x4a, 0xe1, 0x1a, 0x18, 0x3a, 0x2c, 0x85, 0x5a, 0xc3, 0x3c, 0x54, 0x6f,
+        0xda, 0xd4,
+    ];
+    const EXPECTED_CERT_PRF: [u8; 32] = [
+        0x8b, 0xd0, 0x62, 0xd4, 0x55, 0x9e, 0xde, 0x22, 0x5a, 0xb1, 0xd8, 0x77, 0x7e, 0xd5, 0x8a,
+        0x07, 0xbc, 0xa7, 0xfb, 0xac, 0x9b, 0x6e, 0x4c, 0xca, 0xae, 0xda, 0xe7, 0x34, 0xda, 0x31,
+        0x1d, 0x9a,
+    ];
+    assert_eq!(
+        stele_hash::blake3_digest(&fresh_src_bytes),
+        EXPECTED_FRESH_SRC
+    );
+    assert_eq!(stele_hash::blake3_digest(&fresh_proof), EXPECTED_FRESH_PRF);
+    assert_eq!(
+        stele_hash::blake3_digest(&cert_src_bytes),
+        EXPECTED_CERT_SRC
+    );
+    assert_eq!(
+        stele_hash::blake3_digest(model.certificate_proof()),
+        EXPECTED_CERT_REG
+    );
+    assert_eq!(stele_hash::blake3_digest(&cert_proof), EXPECTED_CERT_PRF);
+}
