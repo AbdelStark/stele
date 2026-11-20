@@ -199,18 +199,40 @@ fn mle<K: ChallengeField>(values: &[K], point: &[K]) -> Result<K, Error> {
     })?;
     Ok(sum[0])
 }
+/// Trailing coordinates of [`mle_base`]'s split: their `eq` table stays in cache.
+const MLE_LOW_BITS: usize = 12;
+/// `Σ_j eq(point, j)·values[j]`. `eq(point, (hi, lo))` is the product of the `eq` of the
+/// leading and of the trailing coordinates, so the sum runs over two short tables and no
+/// table of the whole domain is built. Field sums and products are exact: the value is
+/// the dense sum's. A selector's entries are mostly 0 or 1, which cost no product.
 fn mle_base<K: ChallengeField>(values: &[M31], point: &[K]) -> Result<K, Error> {
     if !values.len().is_power_of_two() || values.len().trailing_zeros() as usize != point.len() {
         return Err(Error::SourceShape);
     }
-    let weights = stele_sumcheck::parallel::eq_table(point)?;
+    let split = point.len() - point.len().min(MLE_LOW_BITS);
+    let table = |part: &[K]| stele_poly::eq_table(part).map_err(|_| Error::Capacity);
+    let (high, low) = (table(&point[..split])?, table(&point[split..])?);
     let mut sum = [K::from_i64(0)];
-    stele_sumcheck::parallel::sum_ranges(values.len(), &mut sum, |range, out| {
-        for j in range {
-            out[0] = out[0] + weights[j].mul_m31(values[j]);
-        }
-        Ok(())
-    })?;
+    stele_sumcheck::parallel::sum_ranges_weighted(
+        high.len(),
+        low.len(),
+        &mut sum,
+        |range, out| {
+            for hi in range {
+                let block = &values[hi * low.len()..(hi + 1) * low.len()];
+                let mut inner = K::from_i64(0);
+                for (weight, value) in low.iter().zip(block) {
+                    if *value == M31::ONE {
+                        inner = inner + *weight;
+                    } else if *value != M31::ZERO {
+                        inner = inner + weight.mul_m31(*value);
+                    }
+                }
+                out[0] = out[0] + high[hi] * inner;
+            }
+            Ok(())
+        },
+    )?;
     Ok(sum[0])
 }
 impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
@@ -509,5 +531,48 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
             }
         }
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use stele_field::{Field, QM31};
+
+    #[test]
+    fn matches_reference_dense_sum_for_the_split_base_extension() {
+        let mut state = 0x5354_454c_u64;
+        let mut next = || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (state >> 33) as i64
+        };
+        // No trailing split, exactly one block, and several blocks.
+        for vars in [0usize, 3, MLE_LOW_BITS, MLE_LOW_BITS + 3] {
+            let point: Vec<QM31> = (0..vars)
+                .map(|_| QM31::from_i64(next()) * QM31::from_i64(next()))
+                .collect();
+            // Selector-like entries (0 and 1) and arbitrary ones.
+            let values: Vec<M31> = (0..1usize << vars)
+                .map(|_| match next() % 4 {
+                    0 => M31::ZERO,
+                    1 | 2 => M31::ONE,
+                    _ => M31::from_i64(next()),
+                })
+                .collect();
+            let embedded: Vec<QM31> = values
+                .iter()
+                .map(|v| QM31::from_i64(1).mul_m31(*v))
+                .collect();
+            assert_eq!(
+                mle_base(&values, &point).expect("split"),
+                mle(&embedded, &point).expect("dense")
+            );
+        }
+        assert_eq!(
+            mle_base::<QM31>(&[M31::ONE; 2], &[]),
+            Err(Error::SourceShape)
+        );
     }
 }
