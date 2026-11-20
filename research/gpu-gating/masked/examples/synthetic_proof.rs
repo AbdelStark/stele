@@ -39,6 +39,7 @@ fn main() {
         vectors: zk::published(&model_bytes, &weights.vectors).expect("public records"),
         commitment: Vec::new(),
         sources: Sources::Expander,
+        segment_layers: 0,
     };
     // A different public starting token and a complete greedy two-token window per case.
     let mut runner = executor();
