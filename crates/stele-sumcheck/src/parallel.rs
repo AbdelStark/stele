@@ -130,6 +130,29 @@ pub fn for_each_chunk_weighted<T: Send>(
     fill(0, out);
 }
 
+/// The table `[at(0), .., at(len - 1)]`, every entry written once on the pool. A zero fill
+/// followed by [`for_each_chunk`] touches the whole table on the calling thread first;
+/// this does not. Entries are independent, so the table does not depend on the split.
+pub fn build<T: Send>(len: usize, at: impl Fn(usize) -> T + Sync) -> Result<Vec<T>, Error> {
+    let mut out = Vec::new();
+    out.try_reserve_exact(len).map_err(|_| Error::Capacity)?;
+    #[cfg(feature = "std")]
+    {
+        let n = chunks(len);
+        if n > 1 {
+            // Writes into the reserved capacity: no second allocation.
+            (0..len)
+                .into_par_iter()
+                .with_min_len(len.div_ceil(n))
+                .map(&at)
+                .collect_into_vec(&mut out);
+            return Ok(out);
+        }
+    }
+    out.extend((0..len).map(at));
+    Ok(out)
+}
+
 /// `(0..len).map(f)` in index order, each item one task on the pool. For a few large,
 /// independent items, which `for_each_chunk` (runs of at least `MIN_CHUNK`) never splits.
 pub fn map<T: Send>(len: usize, f: impl Fn(usize) -> T + Sync + Send) -> Vec<T> {
@@ -185,22 +208,18 @@ pub fn eq_table<K: ChallengeField>(point: &[K]) -> Result<Vec<K>, Error> {
             .trailing_zeros() as usize;
         if k > 0 && k <= point.len() {
             let high = stele_poly::eq_table(&point[..k]).map_err(|_| Error::Capacity)?;
-            let low = stele_poly::eq_table(&point[k..]).map_err(|_| Error::Capacity)?;
-            let mut out = Vec::new();
-            out.try_reserve_exact(high.len() * low.len())
-                .map_err(|_| Error::Capacity)?;
-            out.resize(high.len() * low.len(), K::from_i64(0));
-            out.par_chunks_mut(low.len())
-                .zip(high.par_iter())
-                .for_each(|(block, h)| {
-                    for (o, l) in block.iter_mut().zip(&low) {
-                        *o = *h * *l;
-                    }
-                });
-            return Ok(out);
+            return eq_blocks(&high, &point[k..]);
         }
     }
     stele_poly::eq_table(point).map_err(|_| Error::Capacity)
+}
+
+/// Entry `(hi << r) | lo` is `high[hi] · eq(low_point, lo)`, for `r = low_point.len()`.
+#[cfg(feature = "std")]
+fn eq_blocks<K: ChallengeField>(high: &[K], low_point: &[K]) -> Result<Vec<K>, Error> {
+    let low = stele_poly::eq_table(low_point).map_err(|_| Error::Capacity)?;
+    let (shift, mask) = (low_point.len(), low.len() - 1);
+    build(high.len() * low.len(), |i| high[i >> shift] * low[i & mask])
 }
 
 /// `scale · eq_table(point)`. The scale rides on the leading block of the split table, so
@@ -216,19 +235,7 @@ pub fn eq_table_scaled<K: ChallengeField>(point: &[K], scale: K) -> Result<Vec<K
             for h in &mut high {
                 *h = *h * scale;
             }
-            let low = stele_poly::eq_table(&point[k..]).map_err(|_| Error::Capacity)?;
-            let mut out = Vec::new();
-            out.try_reserve_exact(high.len() * low.len())
-                .map_err(|_| Error::Capacity)?;
-            out.resize(high.len() * low.len(), K::from_i64(0));
-            out.par_chunks_mut(low.len())
-                .zip(high.par_iter())
-                .for_each(|(block, h)| {
-                    for (o, l) in block.iter_mut().zip(&low) {
-                        *o = *h * *l;
-                    }
-                });
-            return Ok(out);
+            return eq_blocks(&high, &point[k..]);
         }
     }
     let mut out = stele_poly::eq_table(point).map_err(|_| Error::Capacity)?;
@@ -280,19 +287,10 @@ pub fn fold_base<K: ChallengeField>(
     }
     let half = table.len() / 2;
     let one = K::from_i64(1);
-    let mut out = Vec::new();
-    out.try_reserve_exact(half).map_err(|_| Error::Capacity)?;
-    out.resize(half, K::from_i64(0));
     let (low, high) = table.split_at(half);
-    for_each_chunk(&mut out, |start, chunk| {
-        for (o, (&a, &b)) in chunk
-            .iter_mut()
-            .zip(low[start..].iter().zip(&high[start..]))
-        {
-            *o = one.mul_m31(a) + challenge.mul_m31(b - a);
-        }
-    });
-    Ok(out)
+    build(half, |j| {
+        one.mul_m31(low[j]) + challenge.mul_m31(high[j] - low[j])
+    })
 }
 
 #[cfg(test)]
@@ -340,6 +338,10 @@ mod tests {
             .map(|j| table[j] + r * (table[j + len] - table[j]))
             .collect();
         assert_eq!(folded, naive);
+        for n in [0usize, 5, len] {
+            let built = build(n, |i| i * 3 + 1).expect("build");
+            assert_eq!(built, (0..n).map(|i| i * 3 + 1).collect::<Vec<_>>());
+        }
         let mut filled = alloc::vec![0usize; len];
         for_each_chunk(&mut filled, |start, chunk| {
             for (j, v) in chunk.iter_mut().enumerate() {

@@ -60,9 +60,7 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         self.validate()?;
         let n = 1usize.checked_shl(self.num_vars).ok_or(Error::Capacity)?;
         let (zero, one) = (K::from_i64(0), K::from_i64(1));
-        let mut out = Vec::new();
-        reserve(&mut out, n)?;
-        out.resize(n, zero);
+        let mut out = crate::parallel::build(n, |_| zero)?;
         let mut weight = one;
         for (z, _) in self.claims {
             let (mut prefix, mut start) = (0, 0);

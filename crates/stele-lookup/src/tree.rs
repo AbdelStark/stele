@@ -346,19 +346,15 @@ impl<K: ChallengeField + Eq> Summand<K> for LayerSummand<'_, K> {
         self.layer.final_values()
     }
 }
+/// [`stele_sumcheck::parallel::build`] with this crate's error.
+fn built<T: Send>(len: usize, at: impl Fn(usize) -> T + Sync) -> Result<Vec<T>, Error> {
+    stele_sumcheck::parallel::build(len, at).map_err(|_| Error::Capacity)
+}
 /// `p0, q0, p1, q1` of a level's child pairs: even children are the left side.
 fn split_children<K: ChallengeField>(children: &[[K; 2]]) -> Result<[Vec<K>; 4], Error> {
-    let mut tables = [Vec::new(), Vec::new(), Vec::new(), Vec::new()];
-    for (table, (side, column)) in tables.iter_mut().zip([(0, 0), (0, 1), (1, 0), (1, 1)]) {
-        reserve(table, children.len() / 2)?;
-        table.resize(children.len() / 2, K::from_i64(0));
-        stele_sumcheck::parallel::for_each_chunk(table, |start, chunk| {
-            for (j, out) in chunk.iter_mut().enumerate() {
-                *out = children[2 * (start + j) + side][column];
-            }
-        });
-    }
-    Ok(tables)
+    let table =
+        |side: usize, column: usize| built(children.len() / 2, |j| children[2 * j + side][column]);
+    Ok([table(0, 0)?, table(0, 1)?, table(1, 0)?, table(1, 1)?])
 }
 /// Reduce one layer over `p0, q0, p1, q1` at the layer point `r`; the proof bytes are
 /// [`prove_dense`]'s over the same four tables and `eq(r, ·)`.
@@ -585,51 +581,28 @@ impl<K: ChallengeField + Eq> Summand<K> for BaseLeafSummand<'_, K> {
                 .ok_or(stele_sumcheck::Error::PublicShape)?;
             let half = suffix.len();
             let one = K::from_i64(1);
-            let zero = K::from_i64(0);
             let sigma = self.leaves.sigma();
-            let alloc_half = || -> Result<Vec<K>, stele_sumcheck::Error> {
-                let mut v = Vec::new();
-                v.try_reserve_exact(half)
-                    .map_err(|_| stele_sumcheck::Error::Capacity)?;
-                v.resize(half, zero);
-                Ok(v)
-            };
-            let mut f_p0 = alloc_half()?;
-            let mut f_q0 = alloc_half()?;
-            let mut f_p1 = alloc_half()?;
-            let mut f_q1 = alloc_half()?;
-            stele_sumcheck::parallel::for_each_chunk(&mut f_p0, |start, chunk| {
-                for (j, dst) in chunk.iter_mut().enumerate() {
-                    let col = start + j;
-                    let a = sigma[2 * col];
-                    let b = sigma[2 * (col + half)];
-                    *dst = one.mul_m31(a) + r.mul_m31(b - a);
-                }
-            });
-            stele_sumcheck::parallel::for_each_chunk(&mut f_q0, |start, chunk| {
-                for (j, dst) in chunk.iter_mut().enumerate() {
-                    let col = start + j;
-                    let a = self.leaves.denom_at(self.denom, 2 * col);
-                    let b = self.leaves.denom_at(self.denom, 2 * (col + half));
-                    *dst = a + r * (b - a);
-                }
-            });
-            stele_sumcheck::parallel::for_each_chunk(&mut f_p1, |start, chunk| {
-                for (j, dst) in chunk.iter_mut().enumerate() {
-                    let col = start + j;
-                    let a = sigma[2 * col + 1];
-                    let b = sigma[2 * (col + half) + 1];
-                    *dst = one.mul_m31(a) + r.mul_m31(b - a);
-                }
-            });
-            stele_sumcheck::parallel::for_each_chunk(&mut f_q1, |start, chunk| {
-                for (j, dst) in chunk.iter_mut().enumerate() {
-                    let col = start + j;
-                    let a = self.leaves.denom_at(self.denom, 2 * col + 1);
-                    let b = self.leaves.denom_at(self.denom, 2 * (col + half) + 1);
-                    *dst = a + r * (b - a);
-                }
-            });
+            use stele_sumcheck::parallel::build;
+            let f_p0 = build(half, |col| {
+                let a = sigma[2 * col];
+                let b = sigma[2 * (col + half)];
+                one.mul_m31(a) + r.mul_m31(b - a)
+            })?;
+            let f_q0 = build(half, |col| {
+                let a = self.leaves.denom_at(self.denom, 2 * col);
+                let b = self.leaves.denom_at(self.denom, 2 * (col + half));
+                a + r * (b - a)
+            })?;
+            let f_p1 = build(half, |col| {
+                let a = sigma[2 * col + 1];
+                let b = sigma[2 * (col + half) + 1];
+                one.mul_m31(a) + r.mul_m31(b - a)
+            })?;
+            let f_q1 = build(half, |col| {
+                let a = self.leaves.denom_at(self.denom, 2 * col + 1);
+                let b = self.leaves.denom_at(self.denom, 2 * (col + half) + 1);
+                a + r * (b - a)
+            })?;
             let mut layer = Layer {
                 tables: [f_p0, f_q0, f_p1, f_q1],
                 r: &self.r[1..],
@@ -665,17 +638,12 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         for k in (0..self.m as usize).rev() {
             let [a, b] = weights(self, k);
             let children = &levels[levels.len() - 1];
-            let mut parents = Vec::new();
-            reserve(&mut parents, children.len() / 2)?;
-            parents.resize(children.len() / 2, [K::from_i64(0); 2]);
             // Each parent depends only on its two children: any split is identical.
-            stele_sumcheck::parallel::for_each_chunk(&mut parents, |start, chunk| {
-                for (j, parent) in chunk.iter_mut().enumerate() {
-                    let [p0, q0] = children[2 * (start + j)];
-                    let [p1, q1] = children[2 * (start + j) + 1];
-                    *parent = [a * p0 * q1 + b * p1 * q0, q0 * q1];
-                }
-            });
+            let parents = built(children.len() / 2, |j| {
+                let [p0, q0] = children[2 * j];
+                let [p1, q1] = children[2 * j + 1];
+                [a * p0 * q1 + b * p1 * q0, q0 * q1]
+            })?;
             levels.push(parents);
         }
         levels.reverse();
@@ -735,10 +703,7 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         let k_bot = self.m as usize - 1;
         let [a, b] = weights(self, k_bot);
         let pair_count = leaves.len() / 2;
-        let mut parents = Vec::new();
-        reserve(&mut parents, pair_count)?;
-        parents.resize(pair_count, [zero; 2]);
-        match leaves {
+        let parents = match leaves {
             BaseLeaves::SmallDomain {
                 sigma,
                 values,
@@ -759,79 +724,67 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
                 } else {
                     None
                 };
-                stele_sumcheck::parallel::for_each_chunk(&mut parents, |start, chunk| {
-                    for (j, parent) in chunk.iter_mut().enumerate() {
-                        let i0 = 2 * (start + j);
-                        let i1 = i0 + 1;
-                        let (s0, s1) = (sigma[i0], sigma[i1]);
-                        if s0 == M31::ZERO && s1 == M31::ZERO {
-                            *parent = [zero, one];
-                        } else if s0 == M31::ONE && s1 == M31::ONE {
-                            let (v0, v1) =
-                                (values[i0].as_u32() as usize, values[i1].as_u32() as usize);
-                            if v0 < t_cap && v1 < t_cap {
-                                if let Some(pairs) = &pair_table {
-                                    *parent = pairs[v0 * t_cap + v1];
-                                } else {
-                                    let (q0, q1) = (denom[v0], denom[v1]);
-                                    *parent = [a * q1 + b * q0, q0 * q1];
-                                }
+                built(pair_count, |j| {
+                    let i0 = 2 * j;
+                    let i1 = i0 + 1;
+                    let (s0, s1) = (sigma[i0], sigma[i1]);
+                    if s0 == M31::ZERO && s1 == M31::ZERO {
+                        [zero, one]
+                    } else if s0 == M31::ONE && s1 == M31::ONE {
+                        let (v0, v1) = (values[i0].as_u32() as usize, values[i1].as_u32() as usize);
+                        if v0 < t_cap && v1 < t_cap {
+                            if let Some(pairs) = &pair_table {
+                                pairs[v0 * t_cap + v1]
                             } else {
-                                let (q0, q1) =
-                                    (leaves.denom_at(&denom, i0), leaves.denom_at(&denom, i1));
-                                *parent = [a * q1 + b * q0, q0 * q1];
+                                let (q0, q1) = (denom[v0], denom[v1]);
+                                [a * q1 + b * q0, q0 * q1]
                             }
-                        } else if s0 == M31::ONE && s1 == M31::ZERO {
-                            *parent = [a, leaves.denom_at(&denom, i0)];
-                        } else if s0 == M31::ZERO && s1 == M31::ONE {
-                            *parent = [b, leaves.denom_at(&denom, i1)];
                         } else {
-                            let [p0, q0] = leaves.leaf_at(&denom, i0);
-                            let [p1, q1] = leaves.leaf_at(&denom, i1);
-                            *parent = [a * p0 * q1 + b * p1 * q0, q0 * q1];
+                            let (q0, q1) =
+                                (leaves.denom_at(&denom, i0), leaves.denom_at(&denom, i1));
+                            [a * q1 + b * q0, q0 * q1]
                         }
+                    } else if s0 == M31::ONE && s1 == M31::ZERO {
+                        [a, leaves.denom_at(&denom, i0)]
+                    } else if s0 == M31::ZERO && s1 == M31::ONE {
+                        [b, leaves.denom_at(&denom, i1)]
+                    } else {
+                        let [p0, q0] = leaves.leaf_at(&denom, i0);
+                        let [p1, q1] = leaves.leaf_at(&denom, i1);
+                        [a * p0 * q1 + b * p1 * q0, q0 * q1]
                     }
-                });
+                })?
             }
-            BaseLeaves::General { sigma, .. } => {
-                stele_sumcheck::parallel::for_each_chunk(&mut parents, |start, chunk| {
-                    for (j, parent) in chunk.iter_mut().enumerate() {
-                        let i0 = 2 * (start + j);
-                        let i1 = i0 + 1;
-                        let (s0, s1) = (sigma[i0], sigma[i1]);
-                        if s0 == M31::ZERO && s1 == M31::ZERO {
-                            *parent = [zero, one];
-                        } else if s0 == M31::ONE && s1 == M31::ONE {
-                            let q0 = leaves.denom_at(&denom, i0);
-                            let q1 = leaves.denom_at(&denom, i1);
-                            *parent = [a * q1 + b * q0, q0 * q1];
-                        } else if s0 == M31::ONE && s1 == M31::ZERO {
-                            *parent = [a, leaves.denom_at(&denom, i0)];
-                        } else if s0 == M31::ZERO && s1 == M31::ONE {
-                            *parent = [b, leaves.denom_at(&denom, i1)];
-                        } else {
-                            let [p0, q0] = leaves.leaf_at(&denom, i0);
-                            let [p1, q1] = leaves.leaf_at(&denom, i1);
-                            *parent = [a * p0 * q1 + b * p1 * q0, q0 * q1];
-                        }
-                    }
-                });
-            }
-        }
+            BaseLeaves::General { sigma, .. } => built(pair_count, |j| {
+                let i0 = 2 * j;
+                let i1 = i0 + 1;
+                let (s0, s1) = (sigma[i0], sigma[i1]);
+                if s0 == M31::ZERO && s1 == M31::ZERO {
+                    [zero, one]
+                } else if s0 == M31::ONE && s1 == M31::ONE {
+                    let q0 = leaves.denom_at(&denom, i0);
+                    let q1 = leaves.denom_at(&denom, i1);
+                    [a * q1 + b * q0, q0 * q1]
+                } else if s0 == M31::ONE && s1 == M31::ZERO {
+                    [a, leaves.denom_at(&denom, i0)]
+                } else if s0 == M31::ZERO && s1 == M31::ONE {
+                    [b, leaves.denom_at(&denom, i1)]
+                } else {
+                    let [p0, q0] = leaves.leaf_at(&denom, i0);
+                    let [p1, q1] = leaves.leaf_at(&denom, i1);
+                    [a * p0 * q1 + b * p1 * q0, q0 * q1]
+                }
+            })?,
+        };
         levels.push(parents);
         for k in (0..k_bot).rev() {
             let [a, b] = weights(self, k);
             let children = &levels[levels.len() - 1];
-            let mut next = Vec::new();
-            reserve(&mut next, children.len() / 2)?;
-            next.resize(children.len() / 2, [zero; 2]);
-            stele_sumcheck::parallel::for_each_chunk(&mut next, |start, chunk| {
-                for (j, parent) in chunk.iter_mut().enumerate() {
-                    let [p0, q0] = children[2 * (start + j)];
-                    let [p1, q1] = children[2 * (start + j) + 1];
-                    *parent = [a * p0 * q1 + b * p1 * q0, q0 * q1];
-                }
-            });
+            let next = built(children.len() / 2, |j| {
+                let [p0, q0] = children[2 * j];
+                let [p1, q1] = children[2 * j + 1];
+                [a * p0 * q1 + b * p1 * q0, q0 * q1]
+            })?;
             levels.push(next);
         }
         levels.reverse();
