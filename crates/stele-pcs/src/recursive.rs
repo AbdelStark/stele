@@ -1908,6 +1908,79 @@ fn fill_basis_table(factors_msb: &[M31], out: &mut [M31]) {
     }
 }
 
+/// Columns per pool task of the level-0 combinations below.
+const COMBINE_BLOCK_BITS: usize = 12;
+
+/// `out[j] += Σ_r weights[r] · message[r·cols + j]`: the row combination of a level-0
+/// message, one block of columns per pool task under `std`. Each output adds its rows in
+/// the order of the row-major loop, so the values are that loop's.
+fn add_row_combination<K: Field>(message: &[M31], cols: usize, weights: &[K], out: &mut [K]) {
+    let fill = |start: usize, block: &mut [K]| {
+        for (row, &a) in message.chunks_exact(cols).zip(weights) {
+            for (dst, &val) in block.iter_mut().zip(&row[start..]) {
+                *dst = *dst + a.mul_m31(val);
+            }
+        }
+    };
+    #[cfg(feature = "std")]
+    if out.len() > 1 << COMBINE_BLOCK_BITS {
+        out.par_chunks_mut(1 << COMBINE_BLOCK_BITS)
+            .enumerate()
+            .for_each(|(i, block)| fill(i << COMBINE_BLOCK_BITS, block));
+        return;
+    }
+    fill(0, out);
+}
+
+/// `out[j] += Σ_q scales[q] · basis_q[j]`, with `basis_q` the [`fill_basis_table`] of
+/// `factors_msb[q]`. A basis table is the tensor of the tables of its leading and of its
+/// trailing factors, so a block of columns needs one short table per query and the blocks
+/// run on the pool under `std`. Field products are exact: the values are those of filling
+/// each whole table in turn.
+fn add_basis_combination<K: Field>(
+    factors_msb: &[Vec<M31>],
+    scales: &[K],
+    out: &mut [K],
+) -> Result<(), RecursiveError> {
+    let m = out.len().trailing_zeros() as usize;
+    if !out.len().is_power_of_two()
+        || factors_msb.len() != scales.len()
+        || factors_msb.iter().any(|f| f.len() != m)
+    {
+        return Err(RecursiveError::MessageShape);
+    }
+    let low_bits = m.min(COMBINE_BLOCK_BITS);
+    let table = |factors: &[M31]| -> Result<Vec<M31>, RecursiveError> {
+        let mut t = reserve_vec(1 << factors.len())?;
+        t.resize(1 << factors.len(), M31::ZERO);
+        fill_basis_table(factors, &mut t);
+        Ok(t)
+    };
+    let mut tables = reserve_vec(factors_msb.len())?;
+    for f in factors_msb {
+        tables.push((table(&f[..m - low_bits])?, table(&f[m - low_bits..])?));
+    }
+    let fill = |high: usize, block: &mut [K]| {
+        for ((leading, trailing), &scale) in tables.iter().zip(scales) {
+            let s = scale.mul_m31(leading[high]);
+            for (dst, &b) in block.iter_mut().zip(trailing) {
+                *dst = *dst + s.mul_m31(b);
+            }
+        }
+    };
+    #[cfg(feature = "std")]
+    if out.len() > 1 << low_bits {
+        out.par_chunks_mut(1 << low_bits)
+            .enumerate()
+            .for_each(|(high, block)| fill(high, block));
+        return Ok(());
+    }
+    for (high, block) in out.chunks_mut(1 << low_bits).enumerate() {
+        fill(high, block);
+    }
+    Ok(())
+}
+
 /// Exact degree-2 Lagrange interpolation at `r` from `[y(0), y(1), y(2)]`.
 /// Over M31 (`p = 2^31 - 1`), `2^{-1} = (p + 1) / 2 = 2^30 = 1073741824`.
 fn interpolate_deg2<K: Field>(y: [K; 3], r: K) -> K {
@@ -3815,11 +3888,7 @@ impl<K: ChallengeField> PreparedRecursive<K> {
 
         let mut u1 = reserve_vec(l1_elems)?;
         u1.resize(l1_elems, K::from_i64(0));
-        for (row, &a) in self.message.chunks_exact(cols0).zip(&eq_row) {
-            for (dst, &val) in u1[..cols0].iter_mut().zip(row) {
-                *dst = *dst + a.mul_m31(val);
-            }
-        }
+        add_row_combination(&self.message, cols0, &eq_row, &mut u1[..cols0]);
         let actual = dot_ext(&eq_col, &u1[..cols0]);
         if actual.to_le_bytes().as_ref() != value.to_le_bytes().as_ref() {
             return Err(RecursiveError::ValueMismatch);
@@ -3860,20 +3929,19 @@ impl<K: ChallengeField> PreparedRecursive<K> {
         let mut w1 = reserve_vec(l1_elems)?;
         w1.extend_from_slice(&eq_col);
         w1.resize(l1_elems, K::from_i64(0));
-        let mut basis_buf = reserve_vec(cols0)?;
-        basis_buf.resize(cols0, M31::ZERO);
         let mut claim = value;
         let mut beta_pow = beta;
+        let mut factors = reserve_vec(queried.len())?;
+        let mut scales = reserve_vec(queried.len())?;
         for (&idx, &y) in queried.iter().zip(&ys) {
             claim = claim + beta_pow * y;
             let mut factors_msb = code0.basis_factors(idx as usize)?;
             factors_msb.reverse();
-            fill_basis_table(&factors_msb, &mut basis_buf);
-            for (dst, &b) in w1[..cols0].iter_mut().zip(&basis_buf) {
-                *dst = *dst + beta_pow.mul_m31(b);
-            }
+            factors.push(factors_msb);
+            scales.push(beta_pow);
             beta_pow = beta_pow * beta;
         }
+        add_basis_combination(&factors, &scales, &mut w1[..cols0])?;
         let _ = pad_bits;
         let source_id = self.source.id;
         let target_bits = plan.target_bits;
@@ -4330,11 +4398,7 @@ impl<K: ChallengeField> CertifiedModelSource<K> {
         let l1_elems = mul_usize(l1.rows()?, l1.columns()?)?;
         let mut u1 = reserve_vec(l1_elems)?;
         u1.resize(l1_elems, K::from_i64(0));
-        for (row, &a) in message.chunks_exact(cols0).zip(row_weights) {
-            for (dst, &val) in u1[..cols0].iter_mut().zip(row) {
-                *dst = *dst + a.mul_m31(val);
-            }
-        }
+        add_row_combination(message, cols0, row_weights, &mut u1[..cols0]);
         let actual = dot_ext(&col_vec, &u1[..cols0]);
         if actual.to_le_bytes().as_ref() != value.to_le_bytes().as_ref() {
             return Err(RecursiveError::ValueMismatch);
@@ -4394,20 +4458,19 @@ impl<K: ChallengeField> CertifiedModelSource<K> {
         let mut w1 = reserve_vec(l1_elems)?;
         w1.extend_from_slice(&col_vec);
         w1.resize(l1_elems, K::from_i64(0));
-        let mut basis_buf = reserve_vec(cols0)?;
-        basis_buf.resize(cols0, M31::ZERO);
         let mut claim = value;
         let mut beta_pow = beta;
+        let mut factors = reserve_vec(queried.len())?;
+        let mut scales = reserve_vec(queried.len())?;
         for (&idx, &y) in queried.iter().zip(&ys) {
             claim = claim + beta_pow * y;
             let mut factors_msb = code0.basis_factors(idx as usize)?;
             factors_msb.reverse();
-            fill_basis_table(&factors_msb, &mut basis_buf);
-            for (dst, &b) in w1[..cols0].iter_mut().zip(&basis_buf) {
-                *dst = *dst + beta_pow.mul_m31(b);
-            }
+            factors.push(factors_msb);
+            scales.push(beta_pow);
             beta_pow = beta_pow * beta;
         }
+        add_basis_combination(&factors, &scales, &mut w1[..cols0])?;
 
         let work = CertifiedOpeningWork {
             stored_codeword_bytes: 0,
@@ -5346,4 +5409,57 @@ where
             merkle_usage,
         },
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use stele_field::QM31;
+
+    #[test]
+    fn matches_reference_row_and_basis_combinations_across_block_sizes() {
+        let mut state = 0x5354_454c_u64;
+        let mut next = || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (state >> 33) as i64
+        };
+        // Below, at and above one block of columns.
+        for m in [0usize, 3, COMBINE_BLOCK_BITS, COMBINE_BLOCK_BITS + 2] {
+            let cols = 1usize << m;
+            let rows = 3;
+            let message: Vec<M31> = (0..rows * cols).map(|_| M31::from_i64(next())).collect();
+            let weights: Vec<QM31> = (0..rows)
+                .map(|_| QM31::from_i64(next()) * QM31::from_i64(next()))
+                .collect();
+            let start: Vec<QM31> = (0..cols).map(|_| QM31::from_i64(next())).collect();
+            let mut expected = start.clone();
+            for (row, &a) in message.chunks_exact(cols).zip(&weights) {
+                for (dst, &val) in expected.iter_mut().zip(row) {
+                    *dst = *dst + a.mul_m31(val);
+                }
+            }
+            let mut out = start.clone();
+            add_row_combination(&message, cols, &weights, &mut out);
+            assert_eq!(out, expected);
+
+            let factors: Vec<Vec<M31>> = (0..rows)
+                .map(|_| (0..m).map(|_| M31::from_i64(next())).collect())
+                .collect();
+            let mut expected = start.clone();
+            let mut basis = vec![M31::ZERO; cols];
+            for (f, &scale) in factors.iter().zip(&weights) {
+                fill_basis_table(f, &mut basis);
+                for (dst, &b) in expected.iter_mut().zip(&basis) {
+                    *dst = *dst + scale.mul_m31(b);
+                }
+            }
+            let mut out = start;
+            add_basis_combination(&factors, &weights, &mut out).expect("combination");
+            assert_eq!(out, expected);
+        }
+        let mut out = [QM31::from_i64(0); 4];
+        assert!(add_basis_combination(&[vec![M31::ONE]], &[QM31::from_i64(1)], &mut out).is_err());
+    }
 }
