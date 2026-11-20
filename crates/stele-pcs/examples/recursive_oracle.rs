@@ -63,6 +63,7 @@ fn decision_name(
         Err(RecursiveError::ColumnMismatch) => "ColumnMismatch",
         Err(RecursiveError::ValueMismatch) => "ValueMismatch",
         Err(RecursiveError::RoundSumMismatch) => "RoundSumMismatch",
+        Err(RecursiveError::CertificateContext) => "CertificateContext",
         Err(RecursiveError::Capacity) => "Capacity",
     }
 }

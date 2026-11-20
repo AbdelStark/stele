@@ -4,7 +4,9 @@
 use stele_field::{Field, Inverse, Serialize, M31, OM31, QM31};
 use stele_hash::{merkle, AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_pcs::recursive::{
-    level_descriptor, policy3_fresh_queries, verify_fresh_at_point, verify_fresh_claims, LevelSpec,
+    level_descriptor, policy3_certified_queries, policy3_fresh_queries, verify_certified_opening,
+    verify_certified_registration, verify_fresh_at_point, verify_fresh_claims,
+    CertifiedModelSource, CertifiedPlan, CertifiedSource, ColumnFunctional, LevelSpec,
     PreparedRecursive, RecursiveError, RecursivePlan, RecursiveSource, DEFAULT_TARGET_BITS,
 };
 use stele_pcs::{CircleCoeff, Source};
@@ -878,4 +880,272 @@ fn rejects_nc_0630_through_nc_0634_through_actual_verifier() {
             Err(RecursiveError::RoundSumMismatch)
         );
     }
+}
+
+#[test]
+fn accepts_certified_model_source_general_functional_and_streaming_memory() {
+    // 1. Exact Policy 3 certified query counts match E19-01 check_policy3.py receipts.
+    //    2^33 model source: (ell=9, m=24, b=2), e_c = 262_143 -> q_cert = 17_710, q_open = 51.
+    let (qc_33, qo_33, n_33, d_33) =
+        policy3_certified_queries(24, 2, 262_143, 100).expect("2^33 cert queries");
+    assert_eq!((qc_33, qo_33, n_33, d_33), (17_710, 51, 1 << 26, 3 << 24));
+    // Unconditional single-round registration proximity cap enforced: e_c = 1_000_000 at ell = 9
+    // gives 2 * 9 * 1_000_001 = 18_000_018 > QM31_CAP_100 = 16_777_215 -> UnsupportedSource.
+    assert_eq!(
+        CertifiedPlan::new(vec![LevelSpec::new(9, 24, 2)], 4, 100, 1_000_000),
+        Err(RecursiveError::UnsupportedSource)
+    );
+    assert!(CertifiedPlan::new(vec![LevelSpec::new(9, 24, 2)], 4, 100, 262_143).is_ok());
+
+    // 2. Round-trip certified registration & opening for BOTH Tensor and arbitrary Dense column
+    //    functionals across L = 1, 2, 3 and BOTH QM31 and OM31.
+    fn run_certified<K: ChallengeField + PartialEq + std::fmt::Debug>(
+        levels: Vec<LevelSpec>,
+        e_c: u64,
+        id: u64,
+        seed: u64,
+    ) where
+        for<'a> K::Bytes: TryFrom<&'a [u8]>,
+    {
+        let plan = CertifiedPlan::new(levels.clone(), K::DEGREE as u8, 100, e_c).expect("plan");
+        let l0 = levels[0];
+        let rows = l0.rows().expect("rows");
+        let cols = l0.columns().expect("cols");
+        let msg = seeded_m31(rows * cols, seed);
+        let model = CertifiedModelSource::<K>::register(id, plan.clone(), &msg).expect("register");
+        assert_eq!(model.stored_codeword_bytes(), 0);
+        let src = model.source().clone();
+        assert_eq!(
+            CertifiedSource::<K>::from_bytes(&src.bytes().expect("bytes")).expect("parse"),
+            src
+        );
+
+        let verified_cert =
+            verify_certified_registration(src.clone(), model.certificate_proof()).expect("cert");
+        assert_eq!(verified_cert.id(), model.certificate_id());
+        assert_eq!(verified_cert.ledger().certified_radius, e_c);
+        assert_eq!(verified_cert.ledger().cert_queries, plan.cert_queries());
+
+        // Arbitrary non-tensor row functional `a` (not an eq vector!).
+        let row_weights = seeded_point::<K>(rows, format!("cert-row-{id}").as_bytes());
+        // (a) Tensor column functional `b = eq(·, r_col)`.
+        let col_pt = seeded_point::<K>(usize::from(l0.m), format!("cert-col-t-{id}").as_bytes());
+        let val_t = model
+            .evaluate_functional(&msg, &row_weights, ColumnFunctional::Tensor(&col_pt))
+            .expect("eval_t");
+        let mut tp = Transcript::<K>::new(b"e19-05-tensor").expect("tp");
+        let (proof_t, work_t) = model
+            .open_certified_measured(
+                &msg,
+                &mut tp,
+                id + 10,
+                &row_weights,
+                ColumnFunctional::Tensor(&col_pt),
+                val_t,
+            )
+            .expect("open_t");
+        let cont_p = tp.challenge(ChallengeLabel::Sumcheck).expect("cont");
+        assert_eq!(work_t.stored_codeword_bytes, 0);
+        assert_eq!(
+            work_t.recomputed_columns,
+            usize::from(plan.level_queries()[0])
+        );
+        assert_eq!(proof_t.len(), plan.opening_proof_size().expect("sz"));
+
+        let mut tv = Transcript::<K>::new(b"e19-05-tensor").expect("tv");
+        let opened_t = verify_certified_opening(
+            &mut tv,
+            &verified_cert,
+            &src,
+            id + 10,
+            &row_weights,
+            ColumnFunctional::Tensor(&col_pt),
+            val_t,
+            &proof_t,
+        )
+        .expect("verify_t");
+        assert_eq!(opened_t.certificate_id(), verified_cert.id());
+        assert_eq!(opened_t.value(), val_t);
+        assert_eq!(opened_t.ledger().levels[0].proximity_numerator, 0);
+        assert_eq!(opened_t.ledger().levels[0].radius, e_c);
+        assert_eq!(
+            tv.challenge(ChallengeLabel::Sumcheck).expect("cont"),
+            cont_p
+        );
+
+        // (b) Arbitrary non-tensor Dense column functional `b ∈ K^{C_0}`.
+        let col_dense = seeded_point::<K>(cols, format!("cert-col-d-{id}").as_bytes());
+        let val_d = model
+            .evaluate_functional(&msg, &row_weights, ColumnFunctional::Dense(&col_dense))
+            .expect("eval_d");
+        let mut tpd = Transcript::<K>::new(b"e19-05-dense").expect("tpd");
+        let proof_d = model
+            .open_certified(
+                &msg,
+                &mut tpd,
+                id + 20,
+                &row_weights,
+                ColumnFunctional::Dense(&col_dense),
+                val_d,
+            )
+            .expect("open_d");
+        let cont_pd = tpd.challenge(ChallengeLabel::Sumcheck).expect("cont_pd");
+        let mut tvd = Transcript::<K>::new(b"e19-05-dense").expect("tvd");
+        let opened_d = verify_certified_opening(
+            &mut tvd,
+            &verified_cert,
+            &src,
+            id + 20,
+            &row_weights,
+            ColumnFunctional::Dense(&col_dense),
+            val_d,
+            &proof_d,
+        )
+        .expect("verify_d");
+        assert_eq!(opened_d.value(), val_d);
+        assert_eq!(
+            tvd.challenge(ChallengeLabel::Sumcheck).expect("cont_vd"),
+            cont_pd
+        );
+    }
+
+    // L = 1, L = 2, L = 3 certified sources (QM31 & OM31).
+    run_certified::<QM31>(vec![LevelSpec::new(2, 4, 2)], 12, 501, 5001);
+    run_certified::<OM31>(vec![LevelSpec::new(2, 4, 2)], 12, 502, 5002);
+    run_certified::<QM31>(
+        vec![LevelSpec::new(2, 5, 2), LevelSpec::new(2, 3, 2)],
+        24,
+        503,
+        5003,
+    );
+    run_certified::<OM31>(
+        vec![LevelSpec::new(2, 5, 2), LevelSpec::new(2, 3, 2)],
+        24,
+        504,
+        5004,
+    );
+    run_certified::<QM31>(
+        vec![
+            LevelSpec::new(2, 6, 2),
+            LevelSpec::new(2, 4, 3),
+            LevelSpec::new(2, 2, 4),
+        ],
+        48,
+        505,
+        5005,
+    );
+
+    // 3. Memory invariant test (E19-05): full codeword is NEVER resident during certified opening.
+    //    R_0 = 256 (ell = 8), C_0 = 1024 (m = 10), b = 2 -> N_0 = 4096, full codeword = 4,194,304 B.
+    //    At e_c = 128 (q_open = 55): peak scratch = 1 row (16 KiB) + 55 cols (56 KiB) = 72 KiB (< 1/50 full!).
+    let mem_plan = CertifiedPlan::new(
+        vec![LevelSpec::new(8, 10, 2), LevelSpec::new(5, 5, 3)],
+        4,
+        100,
+        128,
+    )
+    .expect("mem plan");
+    let mem_msg = seeded_m31(256 * 1024, 5999);
+    let mem_model =
+        CertifiedModelSource::<QM31>::register(599, mem_plan.clone(), &mem_msg).expect("reg");
+    assert_eq!(mem_model.stored_codeword_bytes(), 0);
+    let mem_cert =
+        verify_certified_registration(mem_model.source().clone(), mem_model.certificate_proof())
+            .expect("mem cert");
+    let rw = seeded_point::<QM31>(256, b"mem-rw");
+    let cp = seeded_point::<QM31>(10, b"mem-cp");
+    let mv = mem_model
+        .evaluate_functional(&mem_msg, &rw, ColumnFunctional::Tensor(&cp))
+        .expect("mv");
+    let mut tm = Transcript::<QM31>::new(b"e19-05-mem").expect("tm");
+    let (mem_proof, work) = mem_model
+        .open_certified_measured(
+            &mem_msg,
+            &mut tm,
+            599,
+            &rw,
+            ColumnFunctional::Tensor(&cp),
+            mv,
+        )
+        .expect("open mem");
+    assert_eq!(work.stored_codeword_bytes, 0);
+    assert_eq!(work.full_codeword_bytes, 256 * 4096 * 4);
+    assert!(
+        work.peak_codeword_bytes * 32 < work.full_codeword_bytes,
+        "peak={} vs full={}",
+        work.peak_codeword_bytes,
+        work.full_codeword_bytes
+    );
+    let mut tmv = Transcript::<QM31>::new(b"e19-05-mem").expect("tmv");
+    verify_certified_opening(
+        &mut tmv,
+        &mem_cert,
+        mem_model.source(),
+        599,
+        &rw,
+        ColumnFunctional::Tensor(&cp),
+        mv,
+        &mem_proof,
+    )
+    .expect("verify mem");
+
+    // 4. NC-0635: certificate for another radius offered for the expected source -> CertificateContext.
+    let plan_r1 = CertifiedPlan::new(
+        vec![LevelSpec::new(2, 5, 2), LevelSpec::new(2, 3, 2)],
+        4,
+        100,
+        24,
+    )
+    .expect("plan r1");
+    let plan_r2 = CertifiedPlan::new(
+        vec![LevelSpec::new(2, 5, 2), LevelSpec::new(2, 3, 2)],
+        4,
+        100,
+        16,
+    )
+    .expect("plan r2");
+    let msg_c = seeded_m31(4 * 32, 635);
+    let m_r1 = CertifiedModelSource::<QM31>::register(635, plan_r1, &msg_c).expect("r1");
+    let m_r2 = CertifiedModelSource::<QM31>::register(635, plan_r2, &msg_c).expect("r2");
+    assert_eq!(m_r1.source().root(), m_r2.source().root());
+    // (a) Offering raw cert_proof registered for radius 16 to expected source with radius 24 -> CertificateContext.
+    assert_eq!(
+        verify_certified_registration(m_r1.source().clone(), m_r2.certificate_proof()),
+        Err(RecursiveError::CertificateContext)
+    );
+    // (b) Offering VerifiedCertifiedSource for radius 16 to verify_certified_opening expecting radius 24 -> CertificateContext.
+    let cert_r2 =
+        verify_certified_registration(m_r2.source().clone(), m_r2.certificate_proof()).expect("c2");
+    let rw_c = seeded_point::<QM31>(4, b"nc-0635-rw");
+    let cp_c = seeded_point::<QM31>(5, b"nc-0635-cp");
+    let val_c = m_r1
+        .evaluate_functional(&msg_c, &rw_c, ColumnFunctional::Tensor(&cp_c))
+        .expect("vc");
+    let mut tp_c = Transcript::<QM31>::new(b"nc-0635").expect("tpc");
+    let pr_r1 = m_r1
+        .open_certified(
+            &msg_c,
+            &mut tp_c,
+            635,
+            &rw_c,
+            ColumnFunctional::Tensor(&cp_c),
+            val_c,
+        )
+        .expect("pr1");
+    let mut tv_c = Transcript::<QM31>::new(b"nc-0635").expect("tvc");
+    let before = tv_c.usage();
+    assert_eq!(
+        verify_certified_opening(
+            &mut tv_c,
+            &cert_r2,
+            m_r1.source(),
+            635,
+            &rw_c,
+            ColumnFunctional::Tensor(&cp_c),
+            val_c,
+            &pr_r1,
+        ),
+        Err(RecursiveError::CertificateContext)
+    );
+    assert_eq!(tv_c.usage(), before);
 }

@@ -22,7 +22,9 @@ use core::marker::PhantomData;
 use rayon::prelude::*;
 use stele_code::CircleCoeff;
 use stele_field::{Field, Serialize, M31};
-use stele_hash::{merkle, AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
+use stele_hash::{
+    certificate_id, merkle, AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript,
+};
 
 /// RFC-0010 A17 source version for coefficient-form recursive Circle RS sources.
 pub const RECURSIVE_VERSION: u8 = 4;
@@ -60,6 +62,8 @@ pub enum RecursiveError {
     ValueMismatch,
     /// A row-round or fresh-mode batching sumcheck round/final equation failed (`NC-0634`).
     RoundSumMismatch,
+    /// Registration certificate belongs to a different source or certified radius (`NC-0635`).
+    CertificateContext,
     /// Allocation or platform size limit exceeded.
     Capacity,
 }
@@ -187,6 +191,105 @@ impl BigUint {
         let cap_u64 = cap.limbs.first().copied().unwrap_or(0);
         val <= cap_u64
     }
+
+    fn mul_big(&self, other: &Self) -> Result<Self, RecursiveError> {
+        if self.limbs.is_empty() || other.limbs.is_empty() {
+            return Ok(Self { limbs: Vec::new() });
+        }
+        let len = add_usize(self.limbs.len(), other.limbs.len())?;
+        let mut out = reserve_vec(len)?;
+        out.resize(len, 0u64);
+        for (i, &a) in self.limbs.iter().enumerate() {
+            let mut carry = 0u128;
+            let a128 = u128::from(a);
+            for (j, &b) in other.limbs.iter().enumerate() {
+                let prod = a128 * u128::from(b) + u128::from(out[i + j]) + carry;
+                out[i + j] = prod as u64;
+                carry = prod >> 64;
+            }
+            out[i + other.limbs.len()] = carry as u64;
+        }
+        while out.last() == Some(&0) {
+            out.pop();
+        }
+        Ok(Self { limbs: out })
+    }
+
+    fn pow_u32(base: u64, mut exp: u32) -> Result<Self, RecursiveError> {
+        let mut result = Self::from_u64(1)?;
+        let mut cur = Self::from_u64(base)?;
+        while exp != 0 {
+            if exp & 1 != 0 {
+                result = result.mul_big(&cur)?;
+            }
+            exp >>= 1;
+            if exp != 0 {
+                cur = cur.mul_big(&cur)?;
+            }
+        }
+        Ok(result)
+    }
+
+    /// True iff `self <= 2^shift` (exact, zero allocation).
+    fn le_pow2(&self, shift: u64) -> bool {
+        if self.limbs.is_empty() {
+            return true;
+        }
+        let top_idx = self.limbs.len() - 1;
+        let top = self.limbs[top_idx];
+        let bit_len = (top_idx as u64) * 64 + u64::from(64 - top.leading_zeros());
+        if bit_len <= shift {
+            return true;
+        }
+        if bit_len == shift + 1 {
+            // Exact equality `self == 2^shift` iff top limb is a power of 2 and all lower limbs are 0.
+            return top.is_power_of_two() && self.limbs[..top_idx].iter().all(|&w| w == 0);
+        }
+        false
+    }
+}
+
+/// Exact least positive `q <= cap` satisfying `2^target_bits * miss^q <= (2^log_n)^q`
+/// via exponential + binary search using exact `#![no_std]` `BigUint` exponentiation.
+fn least_q_pow2_denom(
+    log_n: u8,
+    miss: u64,
+    target_bits: u16,
+    cap: u32,
+) -> Result<u32, RecursiveError> {
+    let n = 1u64 << log_n;
+    if miss == 0 || miss >= n || target_bits == 0 || target_bits > MAX_TARGET_BITS || cap == 0 {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    let passes = |q: u32| -> Result<bool, RecursiveError> {
+        let total_bits = u64::from(q) * u64::from(log_n);
+        if total_bits < u64::from(target_bits) {
+            return Ok(false);
+        }
+        let shift = total_bits - u64::from(target_bits);
+        let lhs = BigUint::pow_u32(miss, q)?;
+        Ok(lhs.le_pow2(shift))
+    };
+    let mut hi = 1u32;
+    while !passes(hi)? {
+        if hi == cap {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        hi = hi.saturating_mul(2).min(cap);
+    }
+    let mut lo = hi / 2 + 1;
+    if hi == 1 {
+        return Ok(1);
+    }
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if passes(mid)? {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
+    }
+    Ok(lo)
 }
 
 /// Exact field cap `floor((2^31 - 1)^ext_degree / 2^target_bits)` (RFC-0029 §3, §5).
@@ -1263,14 +1366,15 @@ impl<K: ChallengeField> PreparedRecursive<K> {
     }
 }
 
-/// Rank-one multilinear term in `w_i` (verifier never materialises `w_i` until final level `C_L`).
+/// Rank-one or dense multilinear term in `w_i` (verifier never materialises rank-one terms until `C_L`).
 enum WeightTerm<K: Field> {
     Eq { coeff: K, point: Vec<K> },
     Basis { coeff: K, factors_msb: Vec<M31> },
+    Dense { values: Vec<K> },
 }
 
 impl<K: Field> WeightTerm<K> {
-    fn fold_prefix(&mut self, r: &[K]) {
+    fn fold_prefix(&mut self, r: &[K]) -> Result<(), RecursiveError> {
         let one = K::from_i64(1);
         match self {
             Self::Eq { coeff, point } => {
@@ -1289,7 +1393,20 @@ impl<K: Field> WeightTerm<K> {
                 *coeff = *coeff * acc;
                 factors_msb.drain(..r.len());
             }
+            Self::Dense { values } => {
+                let eq = stele_poly::eq_table(r).map_err(|_| RecursiveError::Capacity)?;
+                let cols = values.len() / eq.len();
+                let mut next = reserve_vec(cols)?;
+                next.resize(cols, K::from_i64(0));
+                for (row, &w) in values.chunks_exact(cols).zip(&eq) {
+                    for (dst, &v) in next.iter_mut().zip(row) {
+                        *dst = *dst + w * v;
+                    }
+                }
+                *values = next;
+            }
         }
+        Ok(())
     }
 
     fn dot_final(&self, u_final: &[K], basis_buf: &mut [M31]) -> Result<K, RecursiveError> {
@@ -1306,6 +1423,7 @@ impl<K: Field> WeightTerm<K> {
                 }
                 Ok(*coeff * acc)
             }
+            Self::Dense { values } => Ok(dot_ext(values, u_final)),
         }
     }
 }
@@ -1390,7 +1508,7 @@ where
                 &mut cursor,
             )?;
             for term in &mut terms {
-                term.fold_prefix(&r_i);
+                term.fold_prefix(&r_i)?;
             }
             cur_claim = v_prime;
             stele_poly::eq_table(&r_i).map_err(|_| RecursiveError::Capacity)?
@@ -1986,4 +2104,1214 @@ fn run_batch_sumcheck_prover<K: ChallengeField>(
     }
 
     Ok((challenges, cur_m[0]))
+}
+
+// ============================================================================
+// Certified mode for model sources (RFC-0029 §1.3, §2, §5, §6; RFC-0010 A9/A10/A17; E19-05)
+// ============================================================================
+
+const CERT_PUBLIC_PREFIX: &[u8] = b"stele/v0.1/pcs-certificate/public";
+const CERTIFIED_LAYOUT: u8 = 1;
+const MAX_CERT_QUERIES: u32 = 1 << 18;
+
+/// Exact Policy 3 certified-mode query counts `(q_cert, q_open, N, D)` for a plan-stated
+/// certified radius `1 <= certified_radius <= floor((D - 1) / 3)` (RFC-0029 §5, RFC-0010 A17).
+pub fn policy3_certified_queries(
+    m: u8,
+    b: u8,
+    certified_radius: u64,
+    target_bits: u16,
+) -> Result<(u32, u16, u64, u64), RecursiveError> {
+    if target_bits == 0 || target_bits > MAX_TARGET_BITS {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    let (_, n, d, e_max) = circle_coeff_params(m, b)?;
+    if certified_radius == 0 || certified_radius > e_max {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    let log_n = m + b;
+    let q_cert = least_q_pow2_denom(
+        log_n,
+        n - certified_radius - 1,
+        target_bits,
+        MAX_CERT_QUERIES,
+    )?;
+    let q_open_u32 = least_q_pow2_denom(
+        log_n,
+        n - d + certified_radius,
+        target_bits,
+        u32::from(u16::MAX),
+    )?;
+    let q_open = u16::try_from(q_open_u32).map_err(|_| RecursiveError::UnsupportedSource)?;
+    Ok((q_cert, q_open, n, d))
+}
+
+/// Verifier-owned certified-mode recursion plan for a model source (RFC-0029 §1.3, RFC-0010 A17).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CertifiedPlan {
+    target_bits: u16,
+    ext_degree: u8,
+    certified_radius: u64,
+    cert_queries: u32,
+    levels: Vec<LevelSpec>,
+    level_queries: Vec<u16>,
+}
+
+impl CertifiedPlan {
+    /// Validate level geometry, enforce the unconditional single-round registration certificate
+    /// proximity cap `2 * ell_0 * (e_c + 1) <= floor(|K| / 2^T)` (RFC-0010 A17), and derive exact
+    /// `(q_cert, q_open, q_1..q_{L-1})`.
+    pub fn new(
+        levels: Vec<LevelSpec>,
+        ext_degree: u8,
+        target_bits: u16,
+        certified_radius: u64,
+    ) -> Result<Self, RecursiveError> {
+        if levels.is_empty()
+            || levels.len() > MAX_LEVELS
+            || (ext_degree != 4 && ext_degree != 8)
+            || target_bits == 0
+            || target_bits > MAX_TARGET_BITS
+        {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        let cap = field_cap(ext_degree, target_bits)?;
+        let mut level_queries = reserve_vec(levels.len())?;
+        let mut cert_queries = 0u32;
+
+        for (i, &spec) in levels.iter().enumerate() {
+            if spec.ell == 0
+                || spec.ell > MAX_DOMAIN_BITS
+                || spec.randomisers != 0
+                || spec.mask_rows != 0
+            {
+                return Err(RecursiveError::UnsupportedSource);
+            }
+            if i + 1 < levels.len() && spec.m == 0 {
+                return Err(RecursiveError::UnsupportedSource);
+            }
+            let _ =
+                CircleCoeff::new(u32::from(spec.m), u32::from(spec.b)).map_err(|e| match e {
+                    stele_code::Error::Capacity => RecursiveError::Capacity,
+                    _ => RecursiveError::UnsupportedSource,
+                })?;
+            let _ = spec.rows()?;
+            if i + 1 < levels.len() {
+                let next = levels[i + 1];
+                if next.ell.checked_add(next.m) != Some(spec.m) {
+                    return Err(RecursiveError::UnsupportedSource);
+                }
+            }
+            if i == 0 {
+                let (qc, qo, _, _) =
+                    policy3_certified_queries(spec.m, spec.b, certified_radius, target_bits)?;
+                let prox_num = 2u64
+                    .checked_mul(u64::from(spec.ell))
+                    .and_then(|v| v.checked_mul(certified_radius.checked_add(1)?))
+                    .ok_or(RecursiveError::UnsupportedSource)?;
+                if !BigUint::fits_cap(prox_num, &cap) {
+                    return Err(RecursiveError::UnsupportedSource);
+                }
+                cert_queries = qc;
+                level_queries.push(qo);
+            } else {
+                let (q, _, _, _) = policy3_fresh_queries(spec.m, spec.b, target_bits)?;
+                level_queries.push(q);
+            }
+        }
+
+        Ok(Self {
+            target_bits,
+            ext_degree,
+            certified_radius,
+            cert_queries,
+            levels,
+            level_queries,
+        })
+    }
+
+    /// Target security bits `T`.
+    pub fn target_bits(&self) -> u16 {
+        self.target_bits
+    }
+
+    /// Extension field degree (`4` or `8`).
+    pub fn ext_degree(&self) -> u8 {
+        self.ext_degree
+    }
+
+    /// Plan-stated certified proximity radius `e_c`.
+    pub fn certified_radius(&self) -> u64 {
+        self.certified_radius
+    }
+
+    /// Registration certificate query count `q_cert`.
+    pub fn cert_queries(&self) -> u32 {
+        self.cert_queries
+    }
+
+    /// Ordered level specifications `0..L`.
+    pub fn levels(&self) -> &[LevelSpec] {
+        &self.levels
+    }
+
+    /// Per-level opening query counts (`level_queries[0] = q_open`, tail `q_1..q_{L-1}`).
+    pub fn level_queries(&self) -> &[u16] {
+        &self.level_queries
+    }
+
+    /// Exact registration certificate proof size in bytes.
+    pub fn certificate_size(&self) -> Result<usize, RecursiveError> {
+        let l0 = self.levels[0];
+        let elem_ext = 4usize * usize::from(self.ext_degree);
+        let row_bytes = mul_usize(l0.columns()?, elem_ext)?;
+        let per_query = add_usize(mul_usize(l0.rows()?, 4)?, mul_usize(l0.path_height(), 32)?)?;
+        let qc = usize::try_from(self.cert_queries).map_err(|_| RecursiveError::Capacity)?;
+        let queries_bytes = mul_usize(qc, per_query)?;
+        add_usize(add_usize(9, row_bytes)?, queries_bytes)
+    }
+
+    /// Fixed certified-opening header length: `version (1) + L (1) + radius (8) + 3 * L`.
+    pub fn opening_header_bytes(&self) -> usize {
+        10 + 3 * self.levels.len()
+    }
+
+    /// Exact certified-opening body bytes (`q_0 = q_open`, tail `q_{i >= 1}`).
+    pub fn opening_body_bytes(&self) -> Result<usize, RecursiveError> {
+        let elem_ext = 4usize * usize::from(self.ext_degree);
+        let l = self.levels.len();
+        let mut total = 0usize;
+        for (i, (&spec, &q)) in self.levels.iter().zip(&self.level_queries).enumerate() {
+            let elem = if i == 0 { 4usize } else { elem_ext };
+            let rows = spec.rows()?;
+            if i >= 1 {
+                let sc = mul_usize(usize::from(spec.ell), mul_usize(3, elem_ext)?)?;
+                total = add_usize(total, sc)?;
+            }
+            if i + 1 < l {
+                total = add_usize(total, 32)?;
+            } else {
+                let final_vec = mul_usize(spec.columns()?, elem_ext)?;
+                total = add_usize(total, final_vec)?;
+            }
+            let per_query = add_usize(mul_usize(elem, rows)?, mul_usize(32, spec.path_height())?)?;
+            total = add_usize(total, mul_usize(usize::from(q), per_query)?)?;
+        }
+        Ok(total)
+    }
+
+    /// Exact complete certified-opening proof size (`opening_header_bytes() + opening_body_bytes()`).
+    pub fn opening_proof_size(&self) -> Result<usize, RecursiveError> {
+        add_usize(self.opening_header_bytes(), self.opening_body_bytes()?)
+    }
+
+    fn write_opening_header(&self, out: &mut Vec<u8>) {
+        out.push(RECURSIVE_VERSION);
+        out.push(self.levels.len() as u8);
+        out.extend_from_slice(&self.certified_radius.to_le_bytes());
+        for spec in &self.levels {
+            out.push(spec.ell);
+            out.push(spec.m);
+            out.push(spec.b);
+        }
+    }
+
+    fn check_opening_header(&self, proof: &[u8]) -> Result<usize, RecursiveError> {
+        let header_len = self.opening_header_bytes();
+        if proof.len() < 10 || proof[0] != RECURSIVE_VERSION {
+            return Err(RecursiveError::ProofShape);
+        }
+        let radius = u64::from_le_bytes(
+            proof[2..10]
+                .try_into()
+                .map_err(|_| RecursiveError::ProofShape)?,
+        );
+        if radius != self.certified_radius {
+            return Err(RecursiveError::CertificateContext);
+        }
+        let expected_len = self.opening_proof_size()?;
+        if proof.len() != expected_len || usize::from(proof[1]) != self.levels.len() {
+            return Err(RecursiveError::ProofShape);
+        }
+        for (i, spec) in self.levels.iter().enumerate() {
+            let off = 10 + 3 * i;
+            if proof[off] != spec.ell || proof[off + 1] != spec.m || proof[off + 2] != spec.b {
+                return Err(RecursiveError::ProofShape);
+            }
+        }
+        Ok(header_len)
+    }
+}
+
+/// Verifier-owned version-4 certified model source context (RFC-0029 §1.3, RFC-0010 A17).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CertifiedSource<K: ChallengeField> {
+    id: u64,
+    plan: CertifiedPlan,
+    root: merkle::Digest,
+    field: PhantomData<K>,
+}
+
+impl<K: ChallengeField> CertifiedSource<K> {
+    /// Construct a validated certified version-4 source context for field `K`.
+    pub fn new(id: u64, plan: CertifiedPlan, root: merkle::Digest) -> Result<Self, RecursiveError> {
+        if plan.ext_degree() != K::DEGREE as u8 {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        Ok(Self {
+            id,
+            plan,
+            root,
+            field: PhantomData,
+        })
+    }
+
+    /// Source identifier.
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+
+    /// Verifier-owned certified plan (including certified radius `e_c`).
+    pub fn plan(&self) -> &CertifiedPlan {
+        &self.plan
+    }
+
+    /// Expected level-0 Merkle root.
+    pub fn root(&self) -> merkle::Digest {
+        self.root
+    }
+
+    /// Canonical version-4 certified source bytes (`layout = 1`, `policy = 3`, binding `e_c`).
+    pub fn bytes(&self) -> Result<Vec<u8>, RecursiveError> {
+        let l0 = self.plan.levels[0];
+        let code0 = CircleCoeff::new(u32::from(l0.m), u32::from(l0.b))?;
+        let len = 122 + 7 * self.plan.levels.len();
+        let mut out = reserve_vec(len)?;
+        out.extend_from_slice(PURPOSE);
+        out.push(RECURSIVE_VERSION);
+        out.push(K::DEGREE as u8);
+        out.extend_from_slice(&self.id.to_le_bytes());
+        out.push(l0.ell);
+        out.extend_from_slice(&code0.code_id());
+        out.extend_from_slice(&(1u64 << l0.ell).to_le_bytes());
+        out.extend_from_slice(&(1u64 << l0.m).to_le_bytes());
+        out.push(CERTIFIED_LAYOUT);
+        out.push(POLICY_THREE);
+        out.extend_from_slice(&self.root);
+        out.extend_from_slice(&self.plan.target_bits.to_le_bytes());
+        out.push(self.plan.levels.len() as u8);
+        out.extend_from_slice(&self.plan.certified_radius.to_le_bytes());
+        for spec in &self.plan.levels {
+            out.push(spec.ell);
+            out.push(spec.m);
+            out.push(spec.b);
+            out.extend_from_slice(&spec.randomisers.to_le_bytes());
+            out.extend_from_slice(&spec.mask_rows.to_le_bytes());
+        }
+        Ok(out)
+    }
+
+    /// Parse exact canonical certified version-4 source bytes.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, RecursiveError> {
+        if bytes.len() < 122 || bytes[..23] != PURPOSE[..] {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        if bytes[23] != RECURSIVE_VERSION
+            || bytes[24] != K::DEGREE as u8
+            || bytes[77] != CERTIFIED_LAYOUT
+            || bytes[78] != POLICY_THREE
+        {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        let id = u64::from_le_bytes(
+            bytes[25..33]
+                .try_into()
+                .map_err(|_| RecursiveError::UnsupportedSource)?,
+        );
+        let root: merkle::Digest = bytes[79..111]
+            .try_into()
+            .map_err(|_| RecursiveError::UnsupportedSource)?;
+        let target_bits = u16::from_le_bytes([bytes[111], bytes[112]]);
+        let level_count = usize::from(bytes[113]);
+        if level_count == 0 || level_count > MAX_LEVELS || bytes.len() != 122 + 7 * level_count {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        let certified_radius = u64::from_le_bytes(
+            bytes[114..122]
+                .try_into()
+                .map_err(|_| RecursiveError::UnsupportedSource)?,
+        );
+        let mut levels = reserve_vec(level_count)?;
+        for i in 0..level_count {
+            let off = 122 + 7 * i;
+            levels.push(LevelSpec {
+                ell: bytes[off],
+                m: bytes[off + 1],
+                b: bytes[off + 2],
+                randomisers: u16::from_le_bytes([bytes[off + 3], bytes[off + 4]]),
+                mask_rows: u16::from_le_bytes([bytes[off + 5], bytes[off + 6]]),
+            });
+        }
+        let plan = CertifiedPlan::new(levels, K::DEGREE as u8, target_bits, certified_radius)?;
+        let source = Self::new(id, plan, root)?;
+        if source.bytes()? != bytes {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        Ok(source)
+    }
+}
+
+/// Soundness ledger for a verified certified-mode registration certificate (RFC-0029 §5, A17).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CertificateLedger {
+    /// Codeword length `N_0`.
+    pub length: u64,
+    /// Code distance `D_0`.
+    pub distance: u64,
+    /// Certified proximity radius `e_c`.
+    pub certified_radius: u64,
+    /// Single-round proximity test numerator `2 * ell_0 * (e_c + 1)`.
+    pub proximity_numerator: u64,
+    /// Registration query count `q_cert`.
+    pub cert_queries: u32,
+    /// Extension field degree (`4` or `8`).
+    pub field_degree: u8,
+    /// Target security bits `T`.
+    pub target_bits: u16,
+    /// Local Merkle + ID hash work observed during registration verification.
+    pub non_transcript_usage: HashUsage,
+}
+
+/// Opaque verified registration handle; constructed only by [`verify_certified_registration`].
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedCertifiedSource<K: ChallengeField> {
+    source: CertifiedSource<K>,
+    id: merkle::Digest,
+    ledger: CertificateLedger,
+}
+
+impl<K: ChallengeField> VerifiedCertifiedSource<K> {
+    /// Verified certified source context (including `certified_radius`).
+    pub fn source(&self) -> &CertifiedSource<K> {
+        &self.source
+    }
+
+    /// Completed registration certificate identity (RFC-0012 A10).
+    pub fn id(&self) -> merkle::Digest {
+        self.id
+    }
+
+    /// Registration certificate soundness ledger.
+    pub fn ledger(&self) -> CertificateLedger {
+        self.ledger
+    }
+
+    /// Verify that this handle matches the consumer's expected source (including `e_c`);
+    /// rejects any mismatch with [`RecursiveError::CertificateContext`] (NC-0635).
+    pub fn check_source(&self, expected: &CertifiedSource<K>) -> Result<(), RecursiveError> {
+        if self.source.bytes()? == expected.bytes()? {
+            Ok(())
+        } else {
+            Err(RecursiveError::CertificateContext)
+        }
+    }
+}
+
+/// Column functional `b ∈ K^{C_0}` for a certified-mode opening `⟨a ⊗ b, M_0⟩ = v` (RFC-0029 §1.3).
+#[derive(Clone, Copy)]
+pub enum ColumnFunctional<'a, K: Field> {
+    /// Multilinear point tensor `b = eq(·, point)` (`point.len() == m_0`).
+    Tensor(&'a [K]),
+    /// Arbitrary verifier-computable column weight vector `b` (`b.len() == 2^{m_0}`).
+    Dense(&'a [K]),
+}
+
+/// Observed memory & recomputation work for a certified opening (E19-05 memory invariant).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CertifiedOpeningWork {
+    /// Codeword bytes resident in [`CertifiedModelSource`] (always `0`).
+    pub stored_codeword_bytes: usize,
+    /// Peak codeword scratch bytes allocated during opening (`1` row + `q_open` columns).
+    pub peak_codeword_bytes: usize,
+    /// Full level-0 codeword size `R_0 * N_0 * 4` (never allocated during opening).
+    pub full_codeword_bytes: usize,
+    /// Number of queried columns recomputed on the fly (`q_open`).
+    pub recomputed_columns: usize,
+    /// Physical passes over the borrowed M31 weight matrix (`1` for `a^T M_0`, `1` for column recompute).
+    pub weight_passes: usize,
+}
+
+/// Verified certified-mode recursive opening receipt.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedCertifiedOpening<K: ChallengeField> {
+    source_id: u64,
+    certificate_id: merkle::Digest,
+    opening_id: u64,
+    value: K,
+    ledger: RecursiveLedger,
+}
+
+impl<K: ChallengeField> VerifiedCertifiedOpening<K> {
+    /// Verified source id.
+    pub fn source_id(&self) -> u64 {
+        self.source_id
+    }
+    /// Bound registration certificate id.
+    pub fn certificate_id(&self) -> merkle::Digest {
+        self.certificate_id
+    }
+    /// Verified opening id.
+    pub fn opening_id(&self) -> u64 {
+        self.opening_id
+    }
+    /// Verified scalar functional value `⟨a ⊗ b, M_0⟩`.
+    pub fn value(&self) -> K {
+        self.value
+    }
+    /// Per-level opening soundness ledger (level-0 proximity paid in registration certificate).
+    pub fn ledger(&self) -> &RecursiveLedger {
+        &self.ledger
+    }
+}
+
+fn cert_transcript<K: ChallengeField>(
+    source: &CertifiedSource<K>,
+) -> Result<Transcript<K>, RecursiveError> {
+    let sb = source.bytes()?;
+    let mut public = reserve_vec(add_usize(CERT_PUBLIC_PREFIX.len(), sb.len())?)?;
+    public.extend_from_slice(CERT_PUBLIC_PREFIX);
+    public.extend_from_slice(&sb);
+    Ok(Transcript::new(&public)?)
+}
+
+fn absorb_certified_opening_statement<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    opening_id: u64,
+    cert_id: &merkle::Digest,
+    source: &CertifiedSource<K>,
+    row_weights: &[K],
+    col_functional: ColumnFunctional<'_, K>,
+    value: K,
+) -> Result<(), RecursiveError> {
+    let sb = source.bytes()?;
+    let elem = 4 * K::DEGREE;
+    let (col_tag, col_slice) = match col_functional {
+        ColumnFunctional::Tensor(pt) => (0u8, pt),
+        ColumnFunctional::Dense(vec) => (1u8, vec),
+    };
+    let rw_len = mul_usize(row_weights.len(), elem)?;
+    let cw_len = mul_usize(col_slice.len(), elem)?;
+    let total = add_usize(
+        add_usize(add_usize(8 + 32 + 1, sb.len())?, rw_len)?,
+        add_usize(cw_len, elem)?,
+    )?;
+    let mut frame = reserve_vec(total)?;
+    frame.extend_from_slice(&opening_id.to_le_bytes());
+    frame.extend_from_slice(cert_id);
+    frame.extend_from_slice(&sb);
+    for w in row_weights {
+        frame.extend_from_slice(w.to_le_bytes().as_ref());
+    }
+    frame.push(col_tag);
+    for w in col_slice {
+        frame.extend_from_slice(w.to_le_bytes().as_ref());
+    }
+    frame.extend_from_slice(value.to_le_bytes().as_ref());
+    t.absorb(AbsorbLabel::Opening, &frame)?;
+    Ok(())
+}
+
+/// Recompute ONLY `queried` level-0 columns from `message` by streaming one row at a time
+/// into a single reusable `N_0`-element buffer (full `R_0 × N_0` codeword is NEVER resident).
+fn recompute_queried_columns(
+    spec: LevelSpec,
+    message: &[M31],
+    queried: &[u64],
+) -> Result<(Vec<u8>, usize), RecursiveError> {
+    let rows = spec.rows()?;
+    let cols = spec.columns()?;
+    let n = spec.codeword_len()?;
+    if message.len() != mul_usize(rows, cols)? {
+        return Err(RecursiveError::MessageShape);
+    }
+    let code = CircleCoeff::new(u32::from(spec.m), u32::from(spec.b))?;
+    let col_width = mul_usize(rows, 4)?;
+    let payloads_len = mul_usize(queried.len(), col_width)?;
+    let mut payloads = reserve_vec(payloads_len)?;
+    payloads.resize(payloads_len, 0u8);
+    let mut row_buf = reserve_vec::<M31>(n)?;
+    for (r, row) in message.chunks_exact(cols).enumerate() {
+        code.encode_into(row, &mut row_buf)?;
+        let row_off = r * 4;
+        for (q_idx, &col_idx) in queried.iter().enumerate() {
+            let j = usize::try_from(col_idx).map_err(|_| RecursiveError::Capacity)?;
+            let dst = q_idx * col_width + row_off;
+            payloads[dst..dst + 4].copy_from_slice(&row_buf[j].to_le_bytes());
+        }
+    }
+    let peak_bytes = add_usize(mul_usize(row_buf.capacity(), 4)?, payloads.capacity())?;
+    Ok((payloads, peak_bytes))
+}
+
+/// Registered model source for certified-mode recursive openings (RFC-0029 §1.3, E19-05).
+/// Stores ONLY the Merkle digest tree and registration certificate — zero codeword bytes resident.
+pub struct CertifiedModelSource<K: ChallengeField> {
+    source: CertifiedSource<K>,
+    tree: merkle::Tree,
+    certificate_proof: Vec<u8>,
+    cert_id: merkle::Digest,
+}
+
+impl<K: ChallengeField> CertifiedModelSource<K> {
+    /// Commit a model weight matrix `message` (`R_0 × C_0` M31 elements), produce its
+    /// registration certificate at `plan.certified_radius()`, and release all codeword storage.
+    pub fn register(id: u64, plan: CertifiedPlan, message: &[M31]) -> Result<Self, RecursiveError> {
+        if plan.ext_degree() != K::DEGREE as u8 {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        let l0 = plan.levels[0];
+        let mut usage = HashUsage::default();
+        let committed = CommittedLevel::commit_m31(id, l0, message, &mut usage)?;
+        let root = committed.root();
+        let source = CertifiedSource::<K>::new(id, plan.clone(), root)?;
+
+        // Build registration certificate at `plan.certified_radius()`.
+        let mut t = cert_transcript(&source)?;
+        let ell0 = usize::from(l0.ell);
+        let mut r_cert = reserve_vec(ell0)?;
+        for _ in 0..ell0 {
+            r_cert.push(t.challenge(ChallengeLabel::CertificateWeight)?);
+        }
+        let eq_cert = stele_poly::eq_table(&r_cert).map_err(|_| RecursiveError::Capacity)?;
+        let cols0 = l0.columns()?;
+        let mut t_row = reserve_vec(cols0)?;
+        t_row.resize(cols0, K::from_i64(0));
+        for (row, &a) in message.chunks_exact(cols0).zip(&eq_cert) {
+            for (dst, &val) in t_row.iter_mut().zip(row) {
+                *dst = *dst + a.mul_m31(val);
+            }
+        }
+
+        let mut cert_proof = reserve_vec(plan.certificate_size()?)?;
+        cert_proof.push(RECURSIVE_VERSION);
+        cert_proof.extend_from_slice(&plan.certified_radius().to_le_bytes());
+        let row_start = cert_proof.len();
+        for v in &t_row {
+            cert_proof.extend_from_slice(v.to_le_bytes().as_ref());
+        }
+        t.absorb(AbsorbLabel::CertificateRow, &cert_proof[row_start..])?;
+        let resp_start = cert_proof.len();
+        let n0 = committed.descriptor.count;
+        for _ in 0..plan.cert_queries() {
+            let idx = t.certificate_column(n0)?;
+            committed.append_response(idx, &mut cert_proof)?;
+        }
+        t.absorb(AbsorbLabel::CertificateColumns, &cert_proof[resp_start..])?;
+        debug_assert_eq!(cert_proof.len(), plan.certificate_size()?);
+
+        let cert_id = certificate_id(&source.bytes()?, &cert_proof, &mut usage)?;
+        // Drop `committed.column_bytes`: keep ONLY the Merkle tree digests!
+        let tree = committed.tree;
+        Ok(Self {
+            source,
+            tree,
+            certificate_proof: cert_proof,
+            cert_id,
+        })
+    }
+
+    /// Expected certified source context.
+    pub fn source(&self) -> &CertifiedSource<K> {
+        &self.source
+    }
+
+    /// Registration certificate proof bytes.
+    pub fn certificate_proof(&self) -> &[u8] {
+        &self.certificate_proof
+    }
+
+    /// Completed registration certificate digest.
+    pub fn certificate_id(&self) -> merkle::Digest {
+        self.cert_id
+    }
+
+    /// Codeword bytes stored inside this prepared model source (always `0`; E19-05 invariant).
+    pub fn stored_codeword_bytes(&self) -> usize {
+        0
+    }
+
+    /// Evaluate `⟨row_weights ⊗ col_functional, message⟩` over `K`.
+    pub fn evaluate_functional(
+        &self,
+        message: &[M31],
+        row_weights: &[K],
+        col_functional: ColumnFunctional<'_, K>,
+    ) -> Result<K, RecursiveError> {
+        let l0 = self.source.plan.levels[0];
+        let rows = l0.rows()?;
+        let cols = l0.columns()?;
+        if message.len() != mul_usize(rows, cols)? || row_weights.len() != rows {
+            return Err(RecursiveError::MessageShape);
+        }
+        let col_vec = match col_functional {
+            ColumnFunctional::Tensor(pt) => {
+                if pt.len() != usize::from(l0.m) {
+                    return Err(RecursiveError::MessageShape);
+                }
+                stele_poly::eq_table(pt).map_err(|_| RecursiveError::Capacity)?
+            }
+            ColumnFunctional::Dense(b) => {
+                if b.len() != cols {
+                    return Err(RecursiveError::MessageShape);
+                }
+                b.to_vec()
+            }
+        };
+        let mut acc = K::from_i64(0);
+        for (row, &a) in message.chunks_exact(cols).zip(row_weights) {
+            let mut rdot = K::from_i64(0);
+            for (&val, &b) in row.iter().zip(&col_vec) {
+                rdot = rdot + b.mul_m31(val);
+            }
+            acc = acc + a * rdot;
+        }
+        Ok(acc)
+    }
+
+    /// Produce a certified-mode recursive opening for ANY verifier-computable `(row_weights, col_functional)`,
+    /// recomputing ONLY the `q_open` queried level-0 columns from `message` without materializing the full codeword.
+    pub fn open_certified_measured(
+        &self,
+        message: &[M31],
+        t: &mut Transcript<K>,
+        opening_id: u64,
+        row_weights: &[K],
+        col_functional: ColumnFunctional<'_, K>,
+        value: K,
+    ) -> Result<(Vec<u8>, CertifiedOpeningWork), RecursiveError>
+    where
+        for<'a> K::Bytes: TryFrom<&'a [u8]>,
+    {
+        let plan = &self.source.plan;
+        let l = plan.levels.len();
+        let l0 = plan.levels[0];
+        let rows0 = l0.rows()?;
+        let cols0 = l0.columns()?;
+        let n0 = l0.codeword_len()?;
+        if message.len() != mul_usize(rows0, cols0)? || row_weights.len() != rows0 {
+            return Err(RecursiveError::MessageShape);
+        }
+
+        let mut cur_w = match col_functional {
+            ColumnFunctional::Tensor(pt) => {
+                if pt.len() != usize::from(l0.m) {
+                    return Err(RecursiveError::MessageShape);
+                }
+                stele_poly::eq_table(pt).map_err(|_| RecursiveError::Capacity)?
+            }
+            ColumnFunctional::Dense(b) => {
+                if b.len() != cols0 {
+                    return Err(RecursiveError::MessageShape);
+                }
+                b.to_vec()
+            }
+        };
+
+        // Pass 1 over borrowed `message`: compute `u_1 = row_weights^T M_0`.
+        let mut cur_u = reserve_vec(cols0)?;
+        cur_u.resize(cols0, K::from_i64(0));
+        for (row, &a) in message.chunks_exact(cols0).zip(row_weights) {
+            for (dst, &val) in cur_u.iter_mut().zip(row) {
+                *dst = *dst + a.mul_m31(val);
+            }
+        }
+        let actual = dot_ext(&cur_w, &cur_u);
+        if actual.to_le_bytes().as_ref() != value.to_le_bytes().as_ref() {
+            return Err(RecursiveError::ValueMismatch);
+        }
+
+        absorb_certified_opening_statement(
+            t,
+            opening_id,
+            &self.cert_id,
+            &self.source,
+            row_weights,
+            col_functional,
+            value,
+        )?;
+
+        let mut proof = reserve_vec(plan.opening_proof_size()?)?;
+        plan.write_opening_header(&mut proof);
+
+        let mut cur_committed: Option<CommittedLevel> = None;
+        let mut cur_eq_row = row_weights.to_vec();
+        let mut cur_claim = value;
+        let mut commit_usage = HashUsage::default();
+        let mut peak_codeword_bytes = 0usize;
+
+        for i in 0..l {
+            let spec = plan.levels[i];
+            let q_i = usize::from(plan.level_queries[i]);
+            let code_i = CircleCoeff::new(u32::from(spec.m), u32::from(spec.b))?;
+
+            if i >= 1 {
+                let res = run_row_sumcheck_prover(
+                    t,
+                    opening_id,
+                    i as u8,
+                    spec.ell,
+                    spec.columns()?,
+                    cur_w,
+                    cur_u,
+                    cur_claim,
+                    &mut proof,
+                )?;
+                cur_w = res.next_w;
+                cur_u = res.next_u;
+                cur_eq_row =
+                    stele_poly::eq_table(&res.challenges).map_err(|_| RecursiveError::Capacity)?;
+                cur_claim = res.running;
+            }
+
+            let next_committed = if i + 1 < l {
+                let next_spec = plan.levels[i + 1];
+                let committed = CommittedLevel::commit_ext(
+                    self.source.id,
+                    (i + 1) as u8,
+                    next_spec,
+                    &cur_u,
+                    &mut commit_usage,
+                )?;
+                let root = committed.root();
+                proof.extend_from_slice(&root);
+                t.absorb(AbsorbLabel::PcsLevelRoot, &root)?;
+                Some(committed)
+            } else {
+                let start = proof.len();
+                for elem in &cur_u {
+                    proof.extend_from_slice(elem.to_le_bytes().as_ref());
+                }
+                t.absorb(AbsorbLabel::PcsLevelRoot, &proof[start..])?;
+                None
+            };
+
+            let mut queried = reserve_vec(q_i)?;
+            let mut ys = reserve_vec(q_i)?;
+            let resp_start = proof.len();
+            if i == 0 {
+                for _ in 0..q_i {
+                    queried.push(t.opening_column(n0 as u64)?);
+                }
+                // Pass 2 over `message`: recompute ONLY the `q_open` queried columns row-by-row.
+                let (payloads, peak) = recompute_queried_columns(l0, message, &queried)?;
+                peak_codeword_bytes = peak;
+                let col_width = mul_usize(rows0, 4)?;
+                for (q_idx, &col_idx) in queried.iter().enumerate() {
+                    let pay = &payloads[q_idx * col_width..(q_idx + 1) * col_width];
+                    proof.extend_from_slice(pay);
+                    for sib in self.tree.path(col_idx)? {
+                        proof.extend_from_slice(&sib);
+                    }
+                    if i + 1 < l {
+                        ys.push(column_dot_m31(&cur_eq_row, pay)?);
+                    }
+                }
+            } else {
+                let active = cur_committed.as_ref().ok_or(RecursiveError::ProofShape)?;
+                let n_i = active.descriptor.count;
+                for _ in 0..q_i {
+                    let idx = t.opening_column(n_i)?;
+                    active.append_response(idx, &mut proof)?;
+                    queried.push(idx);
+                    if i + 1 < l {
+                        ys.push(column_dot_ext(&cur_eq_row, active.payload(idx)?)?);
+                    }
+                }
+            }
+            t.absorb(AbsorbLabel::OpeningColumns, &proof[resp_start..])?;
+
+            if i + 1 < l {
+                let beta = t.challenge(ChallengeLabel::PcsLevelBeta)?;
+                let mut beta_pow = beta;
+                let mut basis_buf = reserve_vec(cur_w.len())?;
+                basis_buf.resize(cur_w.len(), M31::ZERO);
+                for (&idx, &y) in queried.iter().zip(&ys) {
+                    cur_claim = cur_claim + beta_pow * y;
+                    let mut factors = code_i.basis_factors(idx as usize)?;
+                    factors.reverse();
+                    fill_basis_table(&factors, &mut basis_buf);
+                    for (dst, &b_val) in cur_w.iter_mut().zip(&basis_buf) {
+                        *dst = *dst + beta_pow.mul_m31(b_val);
+                    }
+                    beta_pow = beta_pow * beta;
+                }
+                cur_committed = next_committed;
+            }
+        }
+
+        debug_assert_eq!(proof.len(), plan.opening_proof_size()?);
+        let full_codeword_bytes = mul_usize(mul_usize(rows0, n0)?, 4)?;
+        let work = CertifiedOpeningWork {
+            stored_codeword_bytes: 0,
+            peak_codeword_bytes,
+            full_codeword_bytes,
+            recomputed_columns: usize::from(plan.level_queries[0]),
+            weight_passes: 2,
+        };
+        Ok((proof, work))
+    }
+
+    /// Convenience wrapper around [`Self::open_certified_measured`].
+    pub fn open_certified(
+        &self,
+        message: &[M31],
+        t: &mut Transcript<K>,
+        opening_id: u64,
+        row_weights: &[K],
+        col_functional: ColumnFunctional<'_, K>,
+        value: K,
+    ) -> Result<Vec<u8>, RecursiveError>
+    where
+        for<'a> K::Bytes: TryFrom<&'a [u8]>,
+    {
+        self.open_certified_measured(message, t, opening_id, row_weights, col_functional, value)
+            .map(|(proof, _)| proof)
+    }
+}
+
+/// Verify a certified-mode registration certificate at `source.plan().certified_radius()`
+/// (RFC-0029 §1.3, RFC-0010 A9/A17). Rejects a certificate built for another radius with
+/// [`RecursiveError::CertificateContext`] (NC-0635).
+pub fn verify_certified_registration<K: ChallengeField>(
+    source: CertifiedSource<K>,
+    cert_proof: &[u8],
+) -> Result<VerifiedCertifiedSource<K>, RecursiveError>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    if cert_proof.len() < 9 || cert_proof[0] != RECURSIVE_VERSION {
+        return Err(RecursiveError::ProofShape);
+    }
+    let proof_radius = u64::from_le_bytes(
+        cert_proof[1..9]
+            .try_into()
+            .map_err(|_| RecursiveError::ProofShape)?,
+    );
+    if proof_radius != source.plan.certified_radius() {
+        return Err(RecursiveError::CertificateContext);
+    }
+    if cert_proof.len() != source.plan.certificate_size()? {
+        return Err(RecursiveError::ProofShape);
+    }
+
+    let l0 = source.plan.levels[0];
+    let elem_ext = 4 * K::DEGREE;
+    let mut t = cert_transcript(&source)?;
+    let ell0 = usize::from(l0.ell);
+    let mut r_cert = reserve_vec(ell0)?;
+    for _ in 0..ell0 {
+        r_cert.push(t.challenge(ChallengeLabel::CertificateWeight)?);
+    }
+    let eq_cert = stele_poly::eq_table(&r_cert).map_err(|_| RecursiveError::Capacity)?;
+
+    let mut cursor = 9usize;
+    let row_bytes = take_slice(cert_proof, &mut cursor, mul_usize(l0.columns()?, elem_ext)?)?;
+    let t_row = decode_ext_slice::<K>(row_bytes)?;
+    t.absorb(AbsorbLabel::CertificateRow, row_bytes)?;
+
+    let code0 = CircleCoeff::new(u32::from(l0.m), u32::from(l0.b))?;
+    let (_, n0, d0, _) = circle_coeff_params(l0.m, l0.b)?;
+    let desc0 = level_descriptor(source.id, 0, l0, 4)?;
+    let col_width = usize::try_from(desc0.width).map_err(|_| RecursiveError::Capacity)?;
+    let path_h = l0.path_height();
+    let path_bytes = mul_usize(path_h, 32)?;
+    let qc = usize::try_from(source.plan.cert_queries()).map_err(|_| RecursiveError::Capacity)?;
+    let resp_start = cursor;
+    let mut usage = HashUsage::default();
+    let mut queried = reserve_vec(qc)?;
+    let mut ys = reserve_vec(qc)?;
+    let mut siblings = reserve_vec(path_h)?;
+    for _ in 0..qc {
+        let idx = t.certificate_column(n0)?;
+        let payload = take_slice(cert_proof, &mut cursor, col_width)?;
+        let sib_bytes = take_slice(cert_proof, &mut cursor, path_bytes)?;
+        siblings.clear();
+        for chunk in sib_bytes.chunks_exact(32) {
+            let mut d = [0u8; 32];
+            d.copy_from_slice(chunk);
+            siblings.push(d);
+        }
+        merkle::verify_with_usage(
+            desc0,
+            &source.root,
+            idx,
+            merkle::Opening {
+                payload,
+                siblings: &siblings,
+            },
+            &mut usage,
+        )?;
+        ys.push(column_dot_m31(&eq_cert, payload)?);
+        queried.push(idx);
+    }
+    if cursor != cert_proof.len() {
+        return Err(RecursiveError::ProofShape);
+    }
+    t.absorb(AbsorbLabel::CertificateColumns, &cert_proof[resp_start..])?;
+
+    let encoded = code0.encode(&t_row)?;
+    for (&idx, &y) in queried.iter().zip(&ys) {
+        if encoded[idx as usize].to_le_bytes().as_ref() != y.to_le_bytes().as_ref() {
+            return Err(RecursiveError::ColumnMismatch);
+        }
+    }
+
+    let id = certificate_id(&source.bytes()?, cert_proof, &mut usage)?;
+    let e_c = source.plan.certified_radius();
+    let ledger = CertificateLedger {
+        length: n0,
+        distance: d0,
+        certified_radius: e_c,
+        proximity_numerator: 2u64
+            .saturating_mul(u64::from(l0.ell))
+            .saturating_mul(e_c.saturating_add(1)),
+        cert_queries: source.plan.cert_queries(),
+        field_degree: K::DEGREE as u8,
+        target_bits: source.plan.target_bits(),
+        non_transcript_usage: usage,
+    };
+    Ok(VerifiedCertifiedSource { source, id, ledger })
+}
+
+/// Verify a certified-mode recursive opening for any verifier-computable `(row_weights, col_functional)`
+/// against a [`VerifiedCertifiedSource`] (RFC-0029 §§1.3, 2, 4, 5).
+#[allow(clippy::too_many_arguments)]
+pub fn verify_certified_opening<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    certificate: &VerifiedCertifiedSource<K>,
+    expected: &CertifiedSource<K>,
+    opening_id: u64,
+    row_weights: &[K],
+    col_functional: ColumnFunctional<'_, K>,
+    value: K,
+    proof: &[u8],
+) -> Result<VerifiedCertifiedOpening<K>, RecursiveError>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    // NC-0635: reject certificate for another source or another certified radius BEFORE transcript work.
+    certificate.check_source(expected)?;
+    let plan = &expected.plan;
+    let l = plan.levels.len();
+    let l0 = plan.levels[0];
+    if row_weights.len() != l0.rows()? {
+        return Err(RecursiveError::MessageShape);
+    }
+    let init_term = match col_functional {
+        ColumnFunctional::Tensor(pt) => {
+            if pt.len() != usize::from(l0.m) {
+                return Err(RecursiveError::MessageShape);
+            }
+            WeightTerm::Eq {
+                coeff: K::from_i64(1),
+                point: pt.to_vec(),
+            }
+        }
+        ColumnFunctional::Dense(b) => {
+            if b.len() != l0.columns()? {
+                return Err(RecursiveError::MessageShape);
+            }
+            WeightTerm::Dense { values: b.to_vec() }
+        }
+    };
+    let mut cursor = plan.check_opening_header(proof)?;
+
+    absorb_certified_opening_statement(
+        t,
+        opening_id,
+        &certificate.id,
+        expected,
+        row_weights,
+        col_functional,
+        value,
+    )?;
+
+    let elem_ext = 4 * K::DEGREE;
+    let mut terms = reserve_vec(1)?;
+    terms.push(init_term);
+    let mut cur_root = expected.root;
+    let mut cur_claim = value;
+    let mut merkle_usage = HashUsage::default();
+    let mut level_ledgers = reserve_vec(l)?;
+
+    for i in 0..l {
+        let spec = plan.levels[i];
+        let q_i = usize::from(plan.level_queries[i]);
+        let code_i = CircleCoeff::new(u32::from(spec.m), u32::from(spec.b))?;
+        let (_, n_i, d_i, e_fresh) = circle_coeff_params(spec.m, spec.b)?;
+        let e_i = if i == 0 {
+            plan.certified_radius()
+        } else {
+            e_fresh
+        };
+
+        let eq_row = if i == 0 {
+            row_weights.to_vec()
+        } else {
+            let (r_i, v_prime) = verify_row_sumcheck(
+                t,
+                opening_id,
+                i as u8,
+                spec.ell,
+                cur_claim,
+                proof,
+                &mut cursor,
+            )?;
+            for term in &mut terms {
+                term.fold_prefix(&r_i)?;
+            }
+            cur_claim = v_prime;
+            stele_poly::eq_table(&r_i).map_err(|_| RecursiveError::Capacity)?
+        };
+
+        let mut next_root = [0u8; 32];
+        let mut final_u: Option<Vec<K>> = None;
+        if i + 1 < l {
+            let slice = take_slice(proof, &mut cursor, 32)?;
+            next_root.copy_from_slice(slice);
+            t.absorb(AbsorbLabel::PcsLevelRoot, &next_root)?;
+        } else {
+            let c_final = spec.columns()?;
+            let bytes = take_slice(proof, &mut cursor, mul_usize(c_final, elem_ext)?)?;
+            let decoded = decode_ext_slice::<K>(bytes)?;
+            t.absorb(AbsorbLabel::PcsLevelRoot, bytes)?;
+            final_u = Some(decoded);
+        }
+
+        let elem_i = if i == 0 { 4usize } else { elem_ext };
+        let desc_i = level_descriptor(expected.id, i as u8, spec, elem_i)?;
+        let col_width = usize::try_from(desc_i.width).map_err(|_| RecursiveError::Capacity)?;
+        let path_height = spec.path_height();
+        let path_bytes = mul_usize(path_height, 32)?;
+        let per_query = add_usize(col_width, path_bytes)?;
+        let resp_start = cursor;
+        let resp_len = mul_usize(q_i, per_query)?;
+        let resp_end = add_usize(resp_start, resp_len)?;
+        if resp_end > proof.len() {
+            return Err(RecursiveError::ProofShape);
+        }
+
+        let mut queried = reserve_vec(q_i)?;
+        let mut ys = reserve_vec(q_i)?;
+        let mut siblings = reserve_vec(path_height)?;
+        for _ in 0..q_i {
+            let idx = t.opening_column(n_i)?;
+            let payload = take_slice(proof, &mut cursor, col_width)?;
+            let sib_bytes = take_slice(proof, &mut cursor, path_bytes)?;
+            siblings.clear();
+            for chunk in sib_bytes.chunks_exact(32) {
+                let mut d = [0u8; 32];
+                d.copy_from_slice(chunk);
+                siblings.push(d);
+            }
+            merkle::verify_with_usage(
+                desc_i,
+                &cur_root,
+                idx,
+                merkle::Opening {
+                    payload,
+                    siblings: &siblings,
+                },
+                &mut merkle_usage,
+            )?;
+            let y = if i == 0 {
+                column_dot_m31(&eq_row, payload)?
+            } else {
+                column_dot_ext(&eq_row, payload)?
+            };
+            queried.push(idx);
+            ys.push(y);
+        }
+        t.absorb(AbsorbLabel::OpeningColumns, &proof[resp_start..resp_end])?;
+
+        level_ledgers.push(LevelLedger {
+            level: i as u8,
+            ell: spec.ell,
+            m: spec.m,
+            b: spec.b,
+            length: n_i,
+            distance: d_i,
+            radius: e_i,
+            queries: plan.level_queries[i],
+            blocks: 1,
+            // Level-0 proximity is paid once in the registration certificate ledger.
+            proximity_numerator: if i == 0 {
+                0
+            } else {
+                2u64.saturating_mul(u64::from(spec.ell))
+                    .saturating_mul(e_i.saturating_add(1))
+            },
+            sumcheck_numerator: if i >= 1 { 2 * u64::from(spec.ell) } else { 0 },
+            beta_numerator: if i + 1 < l {
+                u64::from(plan.level_queries[i])
+            } else {
+                0
+            },
+            gamma_numerator: 0,
+            field_degree: K::DEGREE as u8,
+            target_bits: plan.target_bits,
+        });
+
+        if i + 1 < l {
+            let beta = t.challenge(ChallengeLabel::PcsLevelBeta)?;
+            let mut beta_pow = beta;
+            for (&idx, &y) in queried.iter().zip(&ys) {
+                cur_claim = cur_claim + beta_pow * y;
+                let mut factors_msb = code_i.basis_factors(idx as usize)?;
+                factors_msb.reverse();
+                terms.try_reserve(1).map_err(|_| RecursiveError::Capacity)?;
+                terms.push(WeightTerm::Basis {
+                    coeff: beta_pow,
+                    factors_msb,
+                });
+                beta_pow = beta_pow * beta;
+            }
+            cur_root = next_root;
+        } else {
+            let u_l = final_u.ok_or(RecursiveError::ProofShape)?;
+            let encoded = code_i.encode(&u_l)?;
+            for (&idx, &y) in queried.iter().zip(&ys) {
+                if encoded[idx as usize].to_le_bytes().as_ref() != y.to_le_bytes().as_ref() {
+                    return Err(RecursiveError::ColumnMismatch);
+                }
+            }
+            let mut basis_buf = reserve_vec(u_l.len())?;
+            basis_buf.resize(u_l.len(), M31::ZERO);
+            let mut dot = K::from_i64(0);
+            for term in &terms {
+                dot = dot + term.dot_final(&u_l, &mut basis_buf)?;
+            }
+            if dot.to_le_bytes().as_ref() != cur_claim.to_le_bytes().as_ref() {
+                return Err(RecursiveError::ValueMismatch);
+            }
+        }
+    }
+
+    if cursor != proof.len() {
+        return Err(RecursiveError::ProofShape);
+    }
+
+    Ok(VerifiedCertifiedOpening {
+        source_id: expected.id,
+        certificate_id: certificate.id,
+        opening_id,
+        value,
+        ledger: RecursiveLedger {
+            opening_id,
+            batch_rlc_numerator: 0,
+            batch_sc_numerator: 0,
+            levels: level_ledgers,
+            merkle_usage,
+        },
+    })
 }

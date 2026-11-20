@@ -5,8 +5,9 @@
 use stele_field::{Field, Inverse, Serialize, M31, QM31};
 use stele_hash::{merkle, AbsorbLabel, ChallengeLabel, HashUsage, Transcript};
 use stele_pcs::recursive::{
-    level_descriptor, verify_fresh_at_point, verify_fresh_claims, LevelSpec, PreparedRecursive,
-    RecursiveError, RecursivePlan, RecursiveSource,
+    level_descriptor, verify_certified_opening, verify_certified_registration,
+    verify_fresh_at_point, verify_fresh_claims, CertifiedModelSource, CertifiedPlan,
+    ColumnFunctional, LevelSpec, PreparedRecursive, RecursiveError, RecursivePlan, RecursiveSource,
 };
 use stele_pcs::CircleCoeff;
 
@@ -686,7 +687,119 @@ fn nc_0634() -> Result<(), String> {
     }
 }
 
-/// Dispatch NC-0630..0634 through the actual recursive opening verifiers.
+fn nc_0635() -> Result<(), String> {
+    // Certified mode: a certificate for another radius offered for the expected source -> CertificateContext.
+    let plan_expected = CertifiedPlan::new(
+        vec![LevelSpec::new(2, 5, 2), LevelSpec::new(2, 3, 2)],
+        4,
+        100,
+        24,
+    )
+    .map_err(dbg_err)?;
+    let plan_other = CertifiedPlan::new(
+        vec![LevelSpec::new(2, 5, 2), LevelSpec::new(2, 3, 2)],
+        4,
+        100,
+        16,
+    )
+    .map_err(dbg_err)?;
+    let msg = seeded_m31(4 * 32, 635);
+    let m_expected =
+        CertifiedModelSource::<QM31>::register(635, plan_expected, &msg).map_err(dbg_err)?;
+    let m_other = CertifiedModelSource::<QM31>::register(635, plan_other, &msg).map_err(dbg_err)?;
+
+    // Honest certificate and opening pass cleanly.
+    let cert_expected =
+        verify_certified_registration(m_expected.source().clone(), m_expected.certificate_proof())
+            .map_err(|e| format!("honest cert failed: {e:?}"))?;
+    let rw = seeded_point(4, b"nc-0635-rw")?;
+    let cp = seeded_point(5, b"nc-0635-cp")?;
+    let val = m_expected
+        .evaluate_functional(&msg, &rw, ColumnFunctional::Tensor(&cp))
+        .map_err(dbg_err)?;
+    let mut tp = Transcript::<QM31>::new(b"nc-0635").map_err(dbg_err)?;
+    let honest_open = m_expected
+        .open_certified(&msg, &mut tp, 635, &rw, ColumnFunctional::Tensor(&cp), val)
+        .map_err(dbg_err)?;
+    let mut tvh = Transcript::<QM31>::new(b"nc-0635").map_err(dbg_err)?;
+    verify_certified_opening(
+        &mut tvh,
+        &cert_expected,
+        m_expected.source(),
+        635,
+        &rw,
+        ColumnFunctional::Tensor(&cp),
+        val,
+        &honest_open,
+    )
+    .map_err(|e| format!("honest opening failed: {e:?}"))?;
+
+    // (a) Raw certificate proof for radius 16 offered to expected source with radius 24 -> CertificateContext.
+    match verify_certified_registration(m_expected.source().clone(), m_other.certificate_proof()) {
+        Err(RecursiveError::CertificateContext) => {}
+        other => {
+            return Err(format!(
+                "raw cert for wrong radius expected CertificateContext, got {other:?}"
+            ));
+        }
+    }
+
+    // (b) VerifiedCertifiedSource for radius 16 offered to verify_certified_opening expecting radius 24 -> CertificateContext (zero transcript work).
+    let cert_other =
+        verify_certified_registration(m_other.source().clone(), m_other.certificate_proof())
+            .map_err(dbg_err)?;
+    let mut tv_bad = Transcript::<QM31>::new(b"nc-0635").map_err(dbg_err)?;
+    let before = tv_bad.usage();
+    match verify_certified_opening(
+        &mut tv_bad,
+        &cert_other,
+        m_expected.source(),
+        635,
+        &rw,
+        ColumnFunctional::Tensor(&cp),
+        val,
+        &honest_open,
+    ) {
+        Err(RecursiveError::CertificateContext) if tv_bad.usage() == before => {}
+        other => {
+            return Err(format!(
+                "wrong-radius handle expected CertificateContext with zero transcript work, got {other:?}"
+            ));
+        }
+    }
+
+    // (c) Opening proof built under radius 16 offered to expected source with radius 24 -> CertificateContext.
+    let mut tp_other = Transcript::<QM31>::new(b"nc-0635").map_err(dbg_err)?;
+    let open_other = m_other
+        .open_certified(
+            &msg,
+            &mut tp_other,
+            635,
+            &rw,
+            ColumnFunctional::Tensor(&cp),
+            val,
+        )
+        .map_err(dbg_err)?;
+    let mut tv_bad2 = Transcript::<QM31>::new(b"nc-0635").map_err(dbg_err)?;
+    let before2 = tv_bad2.usage();
+    match verify_certified_opening(
+        &mut tv_bad2,
+        &cert_expected,
+        m_expected.source(),
+        635,
+        &rw,
+        ColumnFunctional::Tensor(&cp),
+        val,
+        &open_other,
+    ) {
+        Err(RecursiveError::CertificateContext) if tv_bad2.usage() == before2 => Ok(()),
+        other => Err(format!(
+            "wrong-radius opening expected CertificateContext with zero transcript work, got {other:?}"
+        )),
+    }
+}
+
+/// Dispatch NC-0630..0635 through the actual recursive opening verifiers.
 pub fn run(id: u16) -> Result<(), String> {
     match id {
         630 => nc_0630(),
@@ -694,6 +807,7 @@ pub fn run(id: u16) -> Result<(), String> {
         632 => nc_0632(),
         633 => nc_0633(),
         634 => nc_0634(),
+        635 => nc_0635(),
         _ => Err(format!("unknown recursive PCS control NC-{id:04}")),
     }
 }

@@ -208,12 +208,23 @@ impl CircleCoeff {
 
     /// Zero-pad `2^m` coefficients to `N = 2^(m+b)` and run one forward circle transform.
     pub fn encode<K: Field>(&self, row: &[K]) -> Result<Vec<K>, Error> {
-        self.validate(row)?;
         let mut output = reserved(self.codeword_len)?;
-        output.extend_from_slice(row);
-        output.resize(self.codeword_len, K::from_i64(0));
-        transform_recorded(&mut output, false, &mut Measurement::default())?;
+        self.encode_into(row, &mut output)?;
         Ok(output)
+    }
+
+    /// Encode `row` into a caller-reused buffer `out` (`len == N`), avoiding per-row allocation.
+    pub fn encode_into<K: Field>(&self, row: &[K], out: &mut Vec<K>) -> Result<(), Error> {
+        self.validate(row)?;
+        out.clear();
+        if out.capacity() < self.codeword_len {
+            out.try_reserve_exact(self.codeword_len - out.len())
+                .map_err(|_| Error::Capacity)?;
+        }
+        out.extend_from_slice(row);
+        out.resize(self.codeword_len, K::from_i64(0));
+        transform_recorded(out, false, &mut Measurement::default())?;
+        Ok(())
     }
 
     /// The `m` base-field tensor factors `[f_0, ..., f_{m-1}]` at codeword column `column`
