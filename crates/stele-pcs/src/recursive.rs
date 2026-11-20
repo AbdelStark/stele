@@ -1432,6 +1432,60 @@ impl<K: Field> WeightTerm<K> {
             Self::Dense { values } => Ok(dot_ext(values, u_final)),
         }
     }
+
+    fn scale(&mut self, factor: K) {
+        match self {
+            Self::Eq { coeff, .. } | Self::Basis { coeff, .. } => {
+                *coeff = *coeff * factor;
+            }
+            Self::Dense { values } => {
+                for v in values.iter_mut() {
+                    *v = *v * factor;
+                }
+            }
+        }
+    }
+
+    fn pad_msb_zeros(&mut self, pad_bits: usize) -> Result<(), RecursiveError> {
+        if pad_bits == 0 {
+            return Ok(());
+        }
+        match self {
+            Self::Eq { point, .. } => {
+                let len = add_usize(pad_bits, point.len())?;
+                let mut next = reserve_vec(len)?;
+                for _ in 0..pad_bits {
+                    next.push(K::from_i64(0));
+                }
+                next.extend_from_slice(point);
+                *point = next;
+            }
+            Self::Basis { factors_msb, .. } => {
+                let len = add_usize(pad_bits, factors_msb.len())?;
+                let mut next = reserve_vec(len)?;
+                for _ in 0..pad_bits {
+                    next.push(M31::ZERO);
+                }
+                next.extend_from_slice(factors_msb);
+                *factors_msb = next;
+            }
+            Self::Dense { values } => {
+                let shift = u32::try_from(pad_bits).map_err(|_| RecursiveError::Capacity)?;
+                let target = values
+                    .len()
+                    .checked_shl(shift)
+                    .ok_or(RecursiveError::Capacity)?;
+                let extra = target
+                    .checked_sub(values.len())
+                    .ok_or(RecursiveError::Capacity)?;
+                values
+                    .try_reserve_exact(extra)
+                    .map_err(|_| RecursiveError::Capacity)?;
+                values.resize(target, K::from_i64(0));
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Verify a fresh-mode recursive opening at a caller-derived fresh point `point` (`len == ell_0 + m_0`)
@@ -3334,6 +3388,1837 @@ where
             opening_id,
             batch_rlc_numerator: 0,
             batch_sc_numerator: 0,
+            levels: level_ledgers,
+            merkle_usage,
+        },
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Joined multi-source level-1 recursion (RFC-0029 §2 "Several sources at one
+// level" & "Segments"; task E19-04)
+// ---------------------------------------------------------------------------
+
+/// Maximum number of pending level-1 sources joined into one recursion per proof.
+pub const MAX_JOINED_BLOCKS: u16 = 1024;
+
+const JOINED_FRESH_L0_TAG: u8 = 1;
+const JOINED_CERT_L0_TAG: u8 = 2;
+const JOINED_TAIL_TAG: u8 = 3;
+
+const JOINED_FRESH_L0_DOMAIN: &[u8] = b"stele/pcs-joined-l0/v1";
+const JOINED_CERT_L0_DOMAIN: &[u8] = b"stele/pcs-joined-cert-l0/v1";
+const JOINED_TAIL_DOMAIN: &[u8] = b"stele/pcs-joined-tail/v1";
+
+fn log2_ceil_u16(n: u16) -> u8 {
+    if n <= 1 {
+        0
+    } else {
+        (16 - (n - 1).leading_zeros()) as u8
+    }
+}
+
+fn validate_l1_target(l0: LevelSpec, l1: LevelSpec) -> Result<usize, RecursiveError> {
+    if l1.ell == 0
+        || l1.ell > MAX_DOMAIN_BITS
+        || l1.randomisers != 0
+        || l1.mask_rows != 0
+        || !(1..=4).contains(&l1.b)
+    {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    let _ = CircleCoeff::new(u32::from(l1.m), u32::from(l1.b)).map_err(|e| match e {
+        stele_code::Error::Capacity => RecursiveError::Capacity,
+        _ => RecursiveError::UnsupportedSource,
+    })?;
+    let _ = l1.rows()?;
+    let l1_bits = l1
+        .ell
+        .checked_add(l1.m)
+        .ok_or(RecursiveError::UnsupportedSource)?;
+    if l0.m > l1_bits {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    Ok(usize::from(l1_bits - l0.m))
+}
+
+fn write_level_spec(spec: LevelSpec, out: &mut Vec<u8>) {
+    out.push(spec.ell);
+    out.push(spec.m);
+    out.push(spec.b);
+    out.extend_from_slice(&spec.randomisers.to_le_bytes());
+    out.extend_from_slice(&spec.mask_rows.to_le_bytes());
+}
+
+fn check_level_spec(bytes: &[u8], expected: LevelSpec) -> Result<(), RecursiveError> {
+    if bytes.len() != 7 {
+        return Err(RecursiveError::ProofShape);
+    }
+    let ell = bytes[0];
+    let m = bytes[1];
+    let b = bytes[2];
+    let randomisers = u16::from_le_bytes([bytes[3], bytes[4]]);
+    let mask_rows = u16::from_le_bytes([bytes[5], bytes[6]]);
+    if ell != expected.ell
+        || m != expected.m
+        || b != expected.b
+        || randomisers != expected.randomisers
+        || mask_rows != expected.mask_rows
+    {
+        return Err(RecursiveError::ProofShape);
+    }
+    Ok(())
+}
+
+/// Exact byte length of a fresh level-0 closing proof targeting `l1` (RFC-0029 §2).
+pub fn fresh_level0_proof_size(
+    plan: &RecursivePlan,
+    l1: LevelSpec,
+) -> Result<usize, RecursiveError> {
+    if plan.levels.len() != 1 {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    let l0 = plan.levels[0];
+    let _ = validate_l1_target(l0, l1)?;
+    let q0 = usize::from(plan.queries[0]);
+    let col_width = mul_usize(l0.rows()?, 4)?;
+    let path_bytes = mul_usize(l0.path_height(), 32)?;
+    let per_query = add_usize(col_width, path_bytes)?;
+    // Header (16 B) + root_1 (32 B) + q_0 * (col_width + path_bytes).
+    add_usize(16 + 32, mul_usize(q0, per_query)?)
+}
+
+/// Exact byte length of a certified level-0 closing proof targeting `l1` (RFC-0029 §2).
+pub fn certified_level0_proof_size(
+    plan: &CertifiedPlan,
+    l1: LevelSpec,
+) -> Result<usize, RecursiveError> {
+    if plan.levels.len() != 1 {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    let l0 = plan.levels[0];
+    let _ = validate_l1_target(l0, l1)?;
+    let qo = usize::from(plan.level_queries[0]);
+    let col_width = mul_usize(l0.rows()?, 4)?;
+    let path_bytes = mul_usize(l0.path_height(), 32)?;
+    let per_query = add_usize(col_width, path_bytes)?;
+    // Header (24 B) + root_1 (32 B) + q_open * (col_width + path_bytes).
+    add_usize(24 + 32, mul_usize(qo, per_query)?)
+}
+
+fn absorb_joined_level0_fresh_statement<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    opening_id: u64,
+    source: &RecursiveSource<K>,
+    l1: LevelSpec,
+    point: &[K],
+    value: K,
+) -> Result<(), RecursiveError> {
+    let src_bytes = source.bytes()?;
+    let elem = 4 * K::DEGREE;
+    let total = add_usize(
+        add_usize(JOINED_FRESH_L0_DOMAIN.len() + 8 + 7, src_bytes.len())?,
+        add_usize(mul_usize(point.len(), elem)?, elem)?,
+    )?;
+    let mut buf = reserve_vec(total)?;
+    buf.extend_from_slice(JOINED_FRESH_L0_DOMAIN);
+    buf.extend_from_slice(&opening_id.to_le_bytes());
+    buf.extend_from_slice(&src_bytes);
+    write_level_spec(l1, &mut buf);
+    for p in point {
+        buf.extend_from_slice(p.to_le_bytes().as_ref());
+    }
+    buf.extend_from_slice(value.to_le_bytes().as_ref());
+    t.absorb(AbsorbLabel::Opening, &buf)?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn absorb_joined_level0_certified_statement<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    opening_id: u64,
+    cert_id: &merkle::Digest,
+    source: &CertifiedSource<K>,
+    l1: LevelSpec,
+    row_weights: &[K],
+    col_functional: ColumnFunctional<'_, K>,
+    value: K,
+) -> Result<(), RecursiveError> {
+    let src_bytes = source.bytes()?;
+    let elem = 4 * K::DEGREE;
+    let (col_tag, col_slice): (u8, &[K]) = match col_functional {
+        ColumnFunctional::Tensor(pt) => (0u8, pt),
+        ColumnFunctional::Dense(b) => (1u8, b),
+    };
+    let row_bytes = mul_usize(row_weights.len(), elem)?;
+    let col_bytes = mul_usize(col_slice.len(), elem)?;
+    let header = add_usize(
+        JOINED_CERT_L0_DOMAIN.len() + 8 + 32 + 7 + 1,
+        src_bytes.len(),
+    )?;
+    let total = add_usize(header, add_usize(add_usize(row_bytes, col_bytes)?, elem)?)?;
+    let mut buf = reserve_vec(total)?;
+    buf.extend_from_slice(JOINED_CERT_L0_DOMAIN);
+    buf.extend_from_slice(&opening_id.to_le_bytes());
+    buf.extend_from_slice(cert_id);
+    buf.extend_from_slice(&src_bytes);
+    write_level_spec(l1, &mut buf);
+    for a in row_weights {
+        buf.extend_from_slice(a.to_le_bytes().as_ref());
+    }
+    buf.push(col_tag);
+    for b in col_slice {
+        buf.extend_from_slice(b.to_le_bytes().as_ref());
+    }
+    buf.extend_from_slice(value.to_le_bytes().as_ref());
+    t.absorb(AbsorbLabel::Opening, &buf)?;
+    Ok(())
+}
+
+/// Prover-side pending level-1 source produced when a segment or model source closes its level-0 step.
+/// Holds only the committed `u_1` matrix (never the level-0 matrix or codeword; RFC-0029 §2).
+pub struct PendingLevel1Prover<K: ChallengeField> {
+    source_id: u64,
+    target_bits: u16,
+    l1_spec: LevelSpec,
+    u1: Vec<K>,
+    w1: Vec<K>,
+    claim: K,
+    committed: CommittedLevel,
+    commit_usage: HashUsage,
+}
+
+impl<K: ChallengeField> PendingLevel1Prover<K> {
+    /// Original level-0 source id (used to domain-separate level-1 Merkle leaves).
+    pub fn source_id(&self) -> u64 {
+        self.source_id
+    }
+
+    /// Target security bits `T`.
+    pub fn target_bits(&self) -> u16 {
+        self.target_bits
+    }
+
+    /// Level-1 matrix geometry `(ell_1, m_1, b_1)`.
+    pub fn l1_spec(&self) -> LevelSpec {
+        self.l1_spec
+    }
+
+    /// Merkle root of this pending level-1 source `u_1`.
+    pub fn root_1(&self) -> merkle::Digest {
+        self.committed.root()
+    }
+
+    /// Combined level-1 scalar claim `v_1 = v_0 + Σ β^j y_j`.
+    pub fn claim(&self) -> K {
+        self.claim
+    }
+
+    /// Hash usage expended to commit `u_1`.
+    pub fn commit_usage(&self) -> HashUsage {
+        self.commit_usage
+    }
+
+    /// Resident heap bytes held by this pending level-1 source (`u_1` + `w_1` + encoded `u_1` columns).
+    pub fn resident_bytes(&self) -> usize {
+        let elem = 4 * K::DEGREE;
+        self.u1.len() * elem + self.w1.len() * elem + self.committed.column_bytes.len()
+    }
+}
+
+/// Opaque verifier-side pending level-1 source; constructed only by [`verify_fresh_level0_at_point`],
+/// [`verify_fresh_level0_claims`], or [`verify_certified_level0`].
+pub struct PendingLevel1Verifier<K: ChallengeField> {
+    source_id: u64,
+    target_bits: u16,
+    l1_spec: LevelSpec,
+    root_1: merkle::Digest,
+    claim: K,
+    terms: Vec<WeightTerm<K>>,
+    level0_ledger: LevelLedger,
+    batch_rlc_numerator: u64,
+    batch_sc_numerator: u64,
+    merkle_usage: HashUsage,
+}
+
+impl<K: ChallengeField> PendingLevel1Verifier<K> {
+    /// Original level-0 source id.
+    pub fn source_id(&self) -> u64 {
+        self.source_id
+    }
+
+    /// Target security bits `T`.
+    pub fn target_bits(&self) -> u16 {
+        self.target_bits
+    }
+
+    /// Level-1 matrix geometry `(ell_1, m_1, b_1)`.
+    pub fn l1_spec(&self) -> LevelSpec {
+        self.l1_spec
+    }
+
+    /// Verified Merkle root of `u_1` (already absorbed under `PcsLevelRoot`).
+    pub fn root_1(&self) -> merkle::Digest {
+        self.root_1
+    }
+
+    /// Combined level-1 scalar claim `v_1`.
+    pub fn claim(&self) -> K {
+        self.claim
+    }
+
+    /// Level-0 soundness ledger line.
+    pub fn level0_ledger(&self) -> LevelLedger {
+        self.level0_ledger
+    }
+
+    /// Batching RLC numerator (`claims - 1`, or 0 for direct point / certified openings).
+    pub fn batch_rlc_numerator(&self) -> u64 {
+        self.batch_rlc_numerator
+    }
+
+    /// Batching sumcheck numerator (`2 * (ell_0 + m_0)`, or 0).
+    pub fn batch_sc_numerator(&self) -> u64 {
+        self.batch_sc_numerator
+    }
+
+    /// Level-0 Merkle verification hash usage.
+    pub fn merkle_usage(&self) -> HashUsage {
+        self.merkle_usage
+    }
+}
+
+impl<K: ChallengeField> PreparedRecursive<K> {
+    /// Close a single-level fresh segment source at an already-derived fresh point `point`
+    /// (`len == ell_0 + m_0`), committing `u_1` under `l1`, answering level-0 queries, and
+    /// **dropping** the level-0 matrix and codeword by value (RFC-0029 §2 "Segments").
+    pub fn close_fresh_level0_at_point(
+        self,
+        t: &mut Transcript<K>,
+        opening_id: u64,
+        l1: LevelSpec,
+        point: &[K],
+        value: K,
+    ) -> Result<(Vec<u8>, PendingLevel1Prover<K>), RecursiveError>
+    where
+        for<'a> K::Bytes: TryFrom<&'a [u8]>,
+    {
+        let plan = &self.source.plan;
+        if plan.levels.len() != 1 {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        let l0 = plan.levels[0];
+        let pad_bits = validate_l1_target(l0, l1)?;
+        let q0 = plan.queries[0];
+        let (_, n0, _, e0) = circle_coeff_params(l0.m, l0.b)?;
+        let cap = field_cap(plan.ext_degree, plan.target_bits)?;
+        let prox0 = 2u64
+            .checked_mul(u64::from(l0.ell))
+            .and_then(|v| v.checked_mul(e0.checked_add(1)?))
+            .ok_or(RecursiveError::UnsupportedSource)?;
+        if !BigUint::fits_cap(prox0, &cap) || !BigUint::fits_cap(u64::from(q0), &cap) {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+
+        let ell0 = usize::from(l0.ell);
+        let m0 = usize::from(l0.m);
+        if point.len() != ell0 + m0 {
+            return Err(RecursiveError::MessageShape);
+        }
+        let eq_row = stele_poly::eq_table(&point[..ell0]).map_err(|_| RecursiveError::Capacity)?;
+        let eq_col = stele_poly::eq_table(&point[ell0..]).map_err(|_| RecursiveError::Capacity)?;
+        let cols0 = l0.columns()?;
+        let l1_elems = mul_usize(l1.rows()?, l1.columns()?)?;
+
+        let mut u1 = reserve_vec(l1_elems)?;
+        u1.resize(l1_elems, K::from_i64(0));
+        for (row, &a) in self.message.chunks_exact(cols0).zip(&eq_row) {
+            for (dst, &val) in u1[..cols0].iter_mut().zip(row) {
+                *dst = *dst + a.mul_m31(val);
+            }
+        }
+        let actual = dot_ext(&eq_col, &u1[..cols0]);
+        if actual.to_le_bytes().as_ref() != value.to_le_bytes().as_ref() {
+            return Err(RecursiveError::ValueMismatch);
+        }
+
+        let mut commit_usage = HashUsage::default();
+        let committed_u1 =
+            CommittedLevel::commit_ext(self.source.id, 1, l1, &u1, &mut commit_usage)?;
+        let root_1 = committed_u1.root();
+
+        absorb_joined_level0_fresh_statement(t, opening_id, &self.source, l1, point, value)?;
+
+        let proof_len = fresh_level0_proof_size(plan, l1)?;
+        let mut proof = reserve_vec(proof_len)?;
+        proof.push(RECURSIVE_VERSION);
+        proof.push(JOINED_FRESH_L0_TAG);
+        write_level_spec(l0, &mut proof);
+        write_level_spec(l1, &mut proof);
+        proof.extend_from_slice(&root_1);
+        t.absorb(AbsorbLabel::PcsLevelRoot, &root_1)?;
+
+        let q0_usize = usize::from(q0);
+        let mut queried = reserve_vec(q0_usize)?;
+        let mut ys = reserve_vec(q0_usize)?;
+        let resp_start = proof.len();
+        for _ in 0..q0_usize {
+            let idx = t.opening_column(n0)?;
+            self.level0.append_response(idx, &mut proof)?;
+            let payload = self.level0.payload(idx)?;
+            ys.push(column_dot_m31(&eq_row, payload)?);
+            queried.push(idx);
+        }
+        t.absorb(AbsorbLabel::OpeningColumns, &proof[resp_start..])?;
+        debug_assert_eq!(proof.len(), proof_len);
+
+        let beta = t.challenge(ChallengeLabel::PcsLevelBeta)?;
+        let code0 = CircleCoeff::new(u32::from(l0.m), u32::from(l0.b))?;
+        let mut w1 = reserve_vec(l1_elems)?;
+        w1.extend_from_slice(&eq_col);
+        w1.resize(l1_elems, K::from_i64(0));
+        let mut basis_buf = reserve_vec(cols0)?;
+        basis_buf.resize(cols0, M31::ZERO);
+        let mut claim = value;
+        let mut beta_pow = beta;
+        for (&idx, &y) in queried.iter().zip(&ys) {
+            claim = claim + beta_pow * y;
+            let mut factors_msb = code0.basis_factors(idx as usize)?;
+            factors_msb.reverse();
+            fill_basis_table(&factors_msb, &mut basis_buf);
+            for (dst, &b) in w1[..cols0].iter_mut().zip(&basis_buf) {
+                *dst = *dst + beta_pow.mul_m31(b);
+            }
+            beta_pow = beta_pow * beta;
+        }
+        let _ = pad_bits;
+        let source_id = self.source.id;
+        let target_bits = plan.target_bits;
+        // `self` (level-0 M31 matrix, encoded codeword, and level-0 Merkle tree) drops here.
+        drop(self);
+
+        Ok((
+            proof,
+            PendingLevel1Prover {
+                source_id,
+                target_bits,
+                l1_spec: l1,
+                u1,
+                w1,
+                claim,
+                committed: committed_u1,
+                commit_usage,
+            },
+        ))
+    }
+
+    /// Batch one or more point claims via RFC-0006 A2 mode 1 and close the fresh level-0 segment
+    /// into a pending level-1 source, dropping the level-0 matrix and codeword by value.
+    pub fn close_fresh_level0_claims(
+        self,
+        t: &mut Transcript<K>,
+        opening_id: u64,
+        l1: LevelSpec,
+        claims: &[(&[K], K)],
+    ) -> Result<(Vec<u8>, PendingLevel1Prover<K>), RecursiveError>
+    where
+        for<'a> K::Bytes: TryFrom<&'a [u8]>,
+    {
+        if self.source.plan.levels.len() != 1 {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        let l0 = self.source.plan.levels[0];
+        let _ = validate_l1_target(l0, l1)?;
+        let vars = self.source.plan.level0_vars();
+        if claims.is_empty() || claims.iter().any(|(p, _)| p.len() != vars) {
+            return Err(RecursiveError::MessageShape);
+        }
+        let cap = field_cap(self.source.plan.ext_degree, self.source.plan.target_bits)?;
+        if claims.len() > 1 && !BigUint::fits_cap((claims.len() - 1) as u64, &cap) {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        if !BigUint::fits_cap(2 * (vars as u64), &cap) {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+
+        let elem_bytes = 4 * K::DEGREE;
+        let batch_prefix = add_usize(mul_usize(vars, mul_usize(3, elem_bytes)?)?, elem_bytes)?;
+        let l0_len = fresh_level0_proof_size(&self.source.plan, l1)?;
+        let total_len = add_usize(batch_prefix, l0_len)?;
+
+        let source_bytes = self.source.bytes()?;
+        t.absorb(AbsorbLabel::FieldSources, &source_bytes)?;
+        absorb_claims_header(t, opening_id, claims)?;
+
+        let lambda = if claims.len() > 1 {
+            t.challenge(ChallengeLabel::BatchCoefficient)?
+        } else {
+            K::from_i64(1)
+        };
+        let n_elems = self.message.len();
+        let mut w_batch = reserve_vec(n_elems)?;
+        w_batch.resize(n_elems, K::from_i64(0));
+        let mut batch_claim = K::from_i64(0);
+        let mut lam_pow = K::from_i64(1);
+        for &(point, val) in claims {
+            let eq = stele_poly::eq_table(point).map_err(|_| RecursiveError::Capacity)?;
+            for (dst, &e) in w_batch.iter_mut().zip(&eq) {
+                *dst = *dst + lam_pow * e;
+            }
+            batch_claim = batch_claim + lam_pow * val;
+            lam_pow = lam_pow * lambda;
+        }
+
+        absorb_sumcheck_instance(t, opening_id, 0xff, vars as u8, batch_claim)?;
+
+        let mut out = reserve_vec(total_len)?;
+        let (r_star, v_star) = run_batch_sumcheck_prover(
+            t,
+            opening_id,
+            vars,
+            w_batch,
+            &self.message,
+            batch_claim,
+            &mut out,
+        )?;
+        out.extend_from_slice(v_star.to_le_bytes().as_ref());
+        t.absorb(AbsorbLabel::Final, v_star.to_le_bytes().as_ref())?;
+
+        let (l0_bytes, pending) =
+            self.close_fresh_level0_at_point(t, opening_id, l1, &r_star, v_star)?;
+        out.extend_from_slice(&l0_bytes);
+        debug_assert_eq!(out.len(), total_len);
+        Ok((out, pending))
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn verify_fresh_level0_at_point_inner<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    source: &RecursiveSource<K>,
+    opening_id: u64,
+    l1: LevelSpec,
+    point: &[K],
+    value: K,
+    proof: &[u8],
+    batch_rlc_numerator: u64,
+    batch_sc_numerator: u64,
+) -> Result<PendingLevel1Verifier<K>, RecursiveError>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let plan = &source.plan;
+    if plan.levels.len() != 1 {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    let l0 = plan.levels[0];
+    let pad_bits = validate_l1_target(l0, l1)?;
+    let q0 = plan.queries[0];
+    let (_, n0, d0, e0) = circle_coeff_params(l0.m, l0.b)?;
+    let cap = field_cap(plan.ext_degree, plan.target_bits)?;
+    let prox0 = 2u64
+        .checked_mul(u64::from(l0.ell))
+        .and_then(|v| v.checked_mul(e0.checked_add(1)?))
+        .ok_or(RecursiveError::UnsupportedSource)?;
+    if !BigUint::fits_cap(prox0, &cap) || !BigUint::fits_cap(u64::from(q0), &cap) {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+
+    let ell0 = usize::from(l0.ell);
+    let m0 = usize::from(l0.m);
+    if point.len() != ell0 + m0 {
+        return Err(RecursiveError::MessageShape);
+    }
+    let expected_len = fresh_level0_proof_size(plan, l1)?;
+    if proof.len() != expected_len {
+        return Err(RecursiveError::ProofShape);
+    }
+    if proof[0] != RECURSIVE_VERSION || proof[1] != JOINED_FRESH_L0_TAG {
+        return Err(RecursiveError::ProofShape);
+    }
+    check_level_spec(&proof[2..9], l0)?;
+    check_level_spec(&proof[9..16], l1)?;
+
+    absorb_joined_level0_fresh_statement(t, opening_id, source, l1, point, value)?;
+
+    let mut cursor = 16usize;
+    let mut root_1 = [0u8; 32];
+    root_1.copy_from_slice(take_slice(proof, &mut cursor, 32)?);
+    t.absorb(AbsorbLabel::PcsLevelRoot, &root_1)?;
+
+    let eq_row = stele_poly::eq_table(&point[..ell0]).map_err(|_| RecursiveError::Capacity)?;
+    let desc0 = level_descriptor(source.id, 0, l0, 4)?;
+    let col_width = usize::try_from(desc0.width).map_err(|_| RecursiveError::Capacity)?;
+    let path_h = l0.path_height();
+    let path_bytes = mul_usize(path_h, 32)?;
+    let q0_usize = usize::from(q0);
+    let resp_start = cursor;
+    let mut merkle_usage = HashUsage::default();
+    let mut queried = reserve_vec(q0_usize)?;
+    let mut ys = reserve_vec(q0_usize)?;
+    let mut siblings = reserve_vec(path_h)?;
+    for _ in 0..q0_usize {
+        let idx = t.opening_column(n0)?;
+        let payload = take_slice(proof, &mut cursor, col_width)?;
+        let sib_bytes = take_slice(proof, &mut cursor, path_bytes)?;
+        siblings.clear();
+        for chunk in sib_bytes.chunks_exact(32) {
+            let mut d = [0u8; 32];
+            d.copy_from_slice(chunk);
+            siblings.push(d);
+        }
+        merkle::verify_with_usage(
+            desc0,
+            &source.root,
+            idx,
+            merkle::Opening {
+                payload,
+                siblings: &siblings,
+            },
+            &mut merkle_usage,
+        )?;
+        ys.push(column_dot_m31(&eq_row, payload)?);
+        queried.push(idx);
+    }
+    if cursor != proof.len() {
+        return Err(RecursiveError::ProofShape);
+    }
+    t.absorb(AbsorbLabel::OpeningColumns, &proof[resp_start..])?;
+
+    let beta = t.challenge(ChallengeLabel::PcsLevelBeta)?;
+    let code0 = CircleCoeff::new(u32::from(l0.m), u32::from(l0.b))?;
+    let mut terms = reserve_vec(add_usize(1, q0_usize)?)?;
+    let mut init = WeightTerm::Eq {
+        coeff: K::from_i64(1),
+        point: clone_vec(&point[ell0..])?,
+    };
+    init.pad_msb_zeros(pad_bits)?;
+    terms.push(init);
+
+    let mut claim = value;
+    let mut beta_pow = beta;
+    for (&idx, &y) in queried.iter().zip(&ys) {
+        claim = claim + beta_pow * y;
+        let mut factors_msb = code0.basis_factors(idx as usize)?;
+        factors_msb.reverse();
+        let mut term = WeightTerm::Basis {
+            coeff: beta_pow,
+            factors_msb,
+        };
+        term.pad_msb_zeros(pad_bits)?;
+        terms.push(term);
+        beta_pow = beta_pow * beta;
+    }
+
+    let level0_ledger = LevelLedger {
+        level: 0,
+        ell: l0.ell,
+        m: l0.m,
+        b: l0.b,
+        length: n0,
+        distance: d0,
+        radius: e0,
+        queries: q0,
+        blocks: 1,
+        proximity_numerator: prox0,
+        sumcheck_numerator: 0,
+        beta_numerator: u64::from(q0),
+        gamma_numerator: 0,
+        field_degree: K::DEGREE as u8,
+        target_bits: plan.target_bits,
+    };
+
+    Ok(PendingLevel1Verifier {
+        source_id: source.id,
+        target_bits: plan.target_bits,
+        l1_spec: l1,
+        root_1,
+        claim,
+        terms,
+        level0_ledger,
+        batch_rlc_numerator,
+        batch_sc_numerator,
+        merkle_usage,
+    })
+}
+
+/// Verify a fresh level-0 closing proof at an already-derived fresh point `point` and produce an
+/// opaque [`PendingLevel1Verifier`] for [`verify_joined_tail`] (RFC-0029 §2).
+///
+/// # Security Invariant
+/// Same fresh-point precondition as [`verify_fresh_at_point`]: `source.root()` MUST have been
+/// absorbed into `t` before `point` was drawn. Use [`verify_fresh_level0_claims`] otherwise.
+pub fn verify_fresh_level0_at_point<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    source: &RecursiveSource<K>,
+    opening_id: u64,
+    l1: LevelSpec,
+    point: &[K],
+    value: K,
+    proof: &[u8],
+) -> Result<PendingLevel1Verifier<K>, RecursiveError>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    verify_fresh_level0_at_point_inner(t, source, opening_id, l1, point, value, proof, 0, 0)
+}
+
+/// Verify a batched fresh level-0 closing proof for one or more point claims on `source`
+/// (RFC-0029 §1.3 & §2).
+pub fn verify_fresh_level0_claims<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    source: &RecursiveSource<K>,
+    opening_id: u64,
+    l1: LevelSpec,
+    claims: &[(&[K], K)],
+    proof: &[u8],
+) -> Result<PendingLevel1Verifier<K>, RecursiveError>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    if source.plan.levels.len() != 1 {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    let l0 = source.plan.levels[0];
+    let _ = validate_l1_target(l0, l1)?;
+    let vars = source.plan.level0_vars();
+    if claims.is_empty() || claims.iter().any(|(p, _)| p.len() != vars) {
+        return Err(RecursiveError::MessageShape);
+    }
+    let cap = field_cap(source.plan.ext_degree, source.plan.target_bits)?;
+    if claims.len() > 1 && !BigUint::fits_cap((claims.len() - 1) as u64, &cap) {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    if !BigUint::fits_cap(2 * (vars as u64), &cap) {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+
+    let elem_bytes = 4 * K::DEGREE;
+    let batch_prefix_len = add_usize(mul_usize(vars, mul_usize(3, elem_bytes)?)?, elem_bytes)?;
+    let l0_len = fresh_level0_proof_size(&source.plan, l1)?;
+    let expected_len = add_usize(batch_prefix_len, l0_len)?;
+    if proof.len() != expected_len {
+        return Err(RecursiveError::ProofShape);
+    }
+    // Validate level-0 header BEFORE touching the transcript.
+    let l0_slice = &proof[batch_prefix_len..];
+    if l0_slice[0] != RECURSIVE_VERSION || l0_slice[1] != JOINED_FRESH_L0_TAG {
+        return Err(RecursiveError::ProofShape);
+    }
+    check_level_spec(&l0_slice[2..9], l0)?;
+    check_level_spec(&l0_slice[9..16], l1)?;
+
+    let source_bytes = source.bytes()?;
+    t.absorb(AbsorbLabel::FieldSources, &source_bytes)?;
+    absorb_claims_header(t, opening_id, claims)?;
+
+    let lambda = if claims.len() > 1 {
+        t.challenge(ChallengeLabel::BatchCoefficient)?
+    } else {
+        K::from_i64(1)
+    };
+    let mut batch_claim = K::from_i64(0);
+    let mut lam_pow = K::from_i64(1);
+    for &(_, val) in claims {
+        batch_claim = batch_claim + lam_pow * val;
+        lam_pow = lam_pow * lambda;
+    }
+
+    absorb_sumcheck_instance(t, opening_id, 0xff, vars as u8, batch_claim)?;
+
+    let mut cursor = 0usize;
+    let mut r_star = reserve_vec(vars)?;
+    let mut running = batch_claim;
+    for round in 0..vars {
+        let round_vals = decode_ext_slice::<K>(take_slice(proof, &mut cursor, 3 * elem_bytes)?)?;
+        let (y0, y1, y2) = (round_vals[0], round_vals[1], round_vals[2]);
+        if (y0 + y1).to_le_bytes().as_ref() != running.to_le_bytes().as_ref() {
+            return Err(RecursiveError::RoundSumMismatch);
+        }
+        absorb_sumcheck_round(t, opening_id, round as u32, [y0, y1, y2])?;
+        let r = t.challenge(ChallengeLabel::Sumcheck)?;
+        running = interpolate_deg2([y0, y1, y2], r);
+        r_star.push(r);
+    }
+
+    let v_star_bytes = take_slice(proof, &mut cursor, elem_bytes)?;
+    let v_star = decode_ext::<K>(v_star_bytes)?;
+    t.absorb(AbsorbLabel::Final, v_star_bytes)?;
+
+    let mut w_at_r = K::from_i64(0);
+    let mut lam_pow = K::from_i64(1);
+    for &(point, _) in claims {
+        let eq_val =
+            stele_poly::eq_evaluate(point, &r_star).map_err(|_| RecursiveError::Capacity)?;
+        w_at_r = w_at_r + lam_pow * eq_val;
+        lam_pow = lam_pow * lambda;
+    }
+    if (w_at_r * v_star).to_le_bytes().as_ref() != running.to_le_bytes().as_ref() {
+        return Err(RecursiveError::RoundSumMismatch);
+    }
+
+    verify_fresh_level0_at_point_inner(
+        t,
+        source,
+        opening_id,
+        l1,
+        &r_star,
+        v_star,
+        &proof[cursor..],
+        (claims.len() - 1) as u64,
+        2 * (vars as u64),
+    )
+}
+
+impl<K: ChallengeField> CertifiedModelSource<K> {
+    /// Close a registered single-level certified model source into a pending level-1 source for
+    /// [`prove_joined_tail`], recomputing ONLY the `q_open` queried level-0 columns from `message`
+    /// without storing or materialising the full codeword (RFC-0029 §§1.3, 2).
+    #[allow(clippy::too_many_arguments)]
+    pub fn close_certified_level0(
+        &self,
+        message: &[M31],
+        t: &mut Transcript<K>,
+        opening_id: u64,
+        l1: LevelSpec,
+        row_weights: &[K],
+        col_functional: ColumnFunctional<'_, K>,
+        value: K,
+    ) -> Result<(Vec<u8>, PendingLevel1Prover<K>, CertifiedOpeningWork), RecursiveError>
+    where
+        for<'a> K::Bytes: TryFrom<&'a [u8]>,
+    {
+        let plan = &self.source.plan;
+        if plan.levels.len() != 1 {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        let l0 = plan.levels[0];
+        let _ = validate_l1_target(l0, l1)?;
+        let qo = plan.level_queries[0];
+        let cap = field_cap(plan.ext_degree, plan.target_bits)?;
+        if !BigUint::fits_cap(u64::from(qo), &cap) {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+
+        let rows0 = l0.rows()?;
+        let cols0 = l0.columns()?;
+        let n0 = l0.codeword_len()?;
+        if message.len() != mul_usize(rows0, cols0)? || row_weights.len() != rows0 {
+            return Err(RecursiveError::MessageShape);
+        }
+
+        let col_vec = match col_functional {
+            ColumnFunctional::Tensor(pt) => {
+                if pt.len() != usize::from(l0.m) {
+                    return Err(RecursiveError::MessageShape);
+                }
+                stele_poly::eq_table(pt).map_err(|_| RecursiveError::Capacity)?
+            }
+            ColumnFunctional::Dense(b) => {
+                if b.len() != cols0 {
+                    return Err(RecursiveError::MessageShape);
+                }
+                clone_vec(b)?
+            }
+        };
+
+        let l1_elems = mul_usize(l1.rows()?, l1.columns()?)?;
+        let mut u1 = reserve_vec(l1_elems)?;
+        u1.resize(l1_elems, K::from_i64(0));
+        for (row, &a) in message.chunks_exact(cols0).zip(row_weights) {
+            for (dst, &val) in u1[..cols0].iter_mut().zip(row) {
+                *dst = *dst + a.mul_m31(val);
+            }
+        }
+        let actual = dot_ext(&col_vec, &u1[..cols0]);
+        if actual.to_le_bytes().as_ref() != value.to_le_bytes().as_ref() {
+            return Err(RecursiveError::ValueMismatch);
+        }
+
+        let mut commit_usage = HashUsage::default();
+        let committed_u1 =
+            CommittedLevel::commit_ext(self.source.id, 1, l1, &u1, &mut commit_usage)?;
+        let root_1 = committed_u1.root();
+
+        absorb_joined_level0_certified_statement(
+            t,
+            opening_id,
+            &self.cert_id,
+            &self.source,
+            l1,
+            row_weights,
+            col_functional,
+            value,
+        )?;
+
+        let proof_len = certified_level0_proof_size(plan, l1)?;
+        let mut proof = reserve_vec(proof_len)?;
+        proof.push(RECURSIVE_VERSION);
+        proof.push(JOINED_CERT_L0_TAG);
+        proof.extend_from_slice(&plan.certified_radius().to_le_bytes());
+        write_level_spec(l0, &mut proof);
+        write_level_spec(l1, &mut proof);
+        proof.extend_from_slice(&root_1);
+        t.absorb(AbsorbLabel::PcsLevelRoot, &root_1)?;
+
+        let qo_usize = usize::from(qo);
+        let mut queried = reserve_vec(qo_usize)?;
+        for _ in 0..qo_usize {
+            queried.push(t.opening_column(n0 as u64)?);
+        }
+        let (recomputed_cols, peak_codeword_bytes) =
+            recompute_queried_columns(l0, message, &queried)?;
+        let col_width = mul_usize(rows0, 4)?;
+        let mut ys = reserve_vec(qo_usize)?;
+        let resp_start = proof.len();
+        for (k_idx, &idx) in queried.iter().enumerate() {
+            let start = mul_usize(k_idx, col_width)?;
+            let payload = &recomputed_cols[start..start + col_width];
+            proof.extend_from_slice(payload);
+            let siblings = self.tree.path(idx)?;
+            for sibling in siblings {
+                proof.extend_from_slice(&sibling);
+            }
+            ys.push(column_dot_m31(row_weights, payload)?);
+        }
+        t.absorb(AbsorbLabel::OpeningColumns, &proof[resp_start..])?;
+        debug_assert_eq!(proof.len(), proof_len);
+
+        let beta = t.challenge(ChallengeLabel::PcsLevelBeta)?;
+        let code0 = CircleCoeff::new(u32::from(l0.m), u32::from(l0.b))?;
+        let mut w1 = reserve_vec(l1_elems)?;
+        w1.extend_from_slice(&col_vec);
+        w1.resize(l1_elems, K::from_i64(0));
+        let mut basis_buf = reserve_vec(cols0)?;
+        basis_buf.resize(cols0, M31::ZERO);
+        let mut claim = value;
+        let mut beta_pow = beta;
+        for (&idx, &y) in queried.iter().zip(&ys) {
+            claim = claim + beta_pow * y;
+            let mut factors_msb = code0.basis_factors(idx as usize)?;
+            factors_msb.reverse();
+            fill_basis_table(&factors_msb, &mut basis_buf);
+            for (dst, &b) in w1[..cols0].iter_mut().zip(&basis_buf) {
+                *dst = *dst + beta_pow.mul_m31(b);
+            }
+            beta_pow = beta_pow * beta;
+        }
+
+        let work = CertifiedOpeningWork {
+            stored_codeword_bytes: 0,
+            peak_codeword_bytes,
+            full_codeword_bytes: mul_usize(rows0, mul_usize(n0, 4)?)?,
+            recomputed_columns: qo_usize,
+            weight_passes: 2,
+        };
+        Ok((
+            proof,
+            PendingLevel1Prover {
+                source_id: self.source.id,
+                target_bits: plan.target_bits,
+                l1_spec: l1,
+                u1,
+                w1,
+                claim,
+                committed: committed_u1,
+                commit_usage,
+            },
+            work,
+        ))
+    }
+}
+
+/// Verify a certified level-0 closing proof against a [`VerifiedCertifiedSource`] and produce an
+/// opaque [`PendingLevel1Verifier`] for [`verify_joined_tail`] (RFC-0029 §§1.3, 2, 6).
+#[allow(clippy::too_many_arguments)]
+pub fn verify_certified_level0<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    certificate: &VerifiedCertifiedSource<K>,
+    expected: &CertifiedSource<K>,
+    opening_id: u64,
+    l1: LevelSpec,
+    row_weights: &[K],
+    col_functional: ColumnFunctional<'_, K>,
+    value: K,
+    proof: &[u8],
+) -> Result<PendingLevel1Verifier<K>, RecursiveError>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    // NC-0635: reject certificate for another source or another certified radius BEFORE transcript work.
+    certificate.check_source(expected)?;
+    let plan = &expected.plan;
+    if plan.levels.len() != 1 {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    let l0 = plan.levels[0];
+    let pad_bits = validate_l1_target(l0, l1)?;
+    let qo = plan.level_queries[0];
+    let cap = field_cap(plan.ext_degree, plan.target_bits)?;
+    if !BigUint::fits_cap(u64::from(qo), &cap) {
+        return Err(RecursiveError::UnsupportedSource);
+    }
+    if row_weights.len() != l0.rows()? {
+        return Err(RecursiveError::MessageShape);
+    }
+    let mut init_term = match col_functional {
+        ColumnFunctional::Tensor(pt) => {
+            if pt.len() != usize::from(l0.m) {
+                return Err(RecursiveError::MessageShape);
+            }
+            WeightTerm::Eq {
+                coeff: K::from_i64(1),
+                point: clone_vec(pt)?,
+            }
+        }
+        ColumnFunctional::Dense(b) => {
+            if b.len() != l0.columns()? {
+                return Err(RecursiveError::MessageShape);
+            }
+            WeightTerm::Dense {
+                values: clone_vec(b)?,
+            }
+        }
+    };
+    init_term.pad_msb_zeros(pad_bits)?;
+
+    let expected_len = certified_level0_proof_size(plan, l1)?;
+    if proof.len() != expected_len {
+        return Err(RecursiveError::ProofShape);
+    }
+    if proof[0] != RECURSIVE_VERSION || proof[1] != JOINED_CERT_L0_TAG {
+        return Err(RecursiveError::ProofShape);
+    }
+    let proof_radius = u64::from_le_bytes([
+        proof[2], proof[3], proof[4], proof[5], proof[6], proof[7], proof[8], proof[9],
+    ]);
+    if proof_radius != plan.certified_radius() {
+        return Err(RecursiveError::CertificateContext);
+    }
+    check_level_spec(&proof[10..17], l0)?;
+    check_level_spec(&proof[17..24], l1)?;
+
+    absorb_joined_level0_certified_statement(
+        t,
+        opening_id,
+        &certificate.id,
+        expected,
+        l1,
+        row_weights,
+        col_functional,
+        value,
+    )?;
+
+    let mut cursor = 24usize;
+    let mut root_1 = [0u8; 32];
+    root_1.copy_from_slice(take_slice(proof, &mut cursor, 32)?);
+    t.absorb(AbsorbLabel::PcsLevelRoot, &root_1)?;
+
+    let (_, n0, d0, _) = circle_coeff_params(l0.m, l0.b)?;
+    let desc0 = level_descriptor(expected.id, 0, l0, 4)?;
+    let col_width = usize::try_from(desc0.width).map_err(|_| RecursiveError::Capacity)?;
+    let path_h = l0.path_height();
+    let path_bytes = mul_usize(path_h, 32)?;
+    let qo_usize = usize::from(qo);
+    let resp_start = cursor;
+    let mut merkle_usage = HashUsage::default();
+    let mut queried = reserve_vec(qo_usize)?;
+    let mut ys = reserve_vec(qo_usize)?;
+    let mut siblings = reserve_vec(path_h)?;
+    for _ in 0..qo_usize {
+        let idx = t.opening_column(n0)?;
+        let payload = take_slice(proof, &mut cursor, col_width)?;
+        let sib_bytes = take_slice(proof, &mut cursor, path_bytes)?;
+        siblings.clear();
+        for chunk in sib_bytes.chunks_exact(32) {
+            let mut d = [0u8; 32];
+            d.copy_from_slice(chunk);
+            siblings.push(d);
+        }
+        merkle::verify_with_usage(
+            desc0,
+            &expected.root,
+            idx,
+            merkle::Opening {
+                payload,
+                siblings: &siblings,
+            },
+            &mut merkle_usage,
+        )?;
+        ys.push(column_dot_m31(row_weights, payload)?);
+        queried.push(idx);
+    }
+    if cursor != proof.len() {
+        return Err(RecursiveError::ProofShape);
+    }
+    t.absorb(AbsorbLabel::OpeningColumns, &proof[resp_start..])?;
+
+    let beta = t.challenge(ChallengeLabel::PcsLevelBeta)?;
+    let code0 = CircleCoeff::new(u32::from(l0.m), u32::from(l0.b))?;
+    let mut terms = reserve_vec(add_usize(1, qo_usize)?)?;
+    terms.push(init_term);
+    let mut claim = value;
+    let mut beta_pow = beta;
+    for (&idx, &y) in queried.iter().zip(&ys) {
+        claim = claim + beta_pow * y;
+        let mut factors_msb = code0.basis_factors(idx as usize)?;
+        factors_msb.reverse();
+        let mut term = WeightTerm::Basis {
+            coeff: beta_pow,
+            factors_msb,
+        };
+        term.pad_msb_zeros(pad_bits)?;
+        terms.push(term);
+        beta_pow = beta_pow * beta;
+    }
+
+    let level0_ledger = LevelLedger {
+        level: 0,
+        ell: l0.ell,
+        m: l0.m,
+        b: l0.b,
+        length: n0,
+        distance: d0,
+        radius: plan.certified_radius(),
+        queries: qo,
+        blocks: 1,
+        proximity_numerator: 0,
+        sumcheck_numerator: 0,
+        beta_numerator: u64::from(qo),
+        gamma_numerator: 0,
+        field_degree: K::DEGREE as u8,
+        target_bits: plan.target_bits,
+    };
+
+    Ok(PendingLevel1Verifier {
+        source_id: expected.id,
+        target_bits: plan.target_bits,
+        l1_spec: l1,
+        root_1,
+        claim,
+        terms,
+        level0_ledger,
+        batch_rlc_numerator: 0,
+        batch_sc_numerator: 0,
+        merkle_usage,
+    })
+}
+
+/// Verifier-owned plan for the single joined recursion tail from level 1 to `L - 1`
+/// over `num_blocks` pending level-1 sources (RFC-0029 §2 "Several sources at one level").
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct JoinedTailPlan {
+    target_bits: u16,
+    ext_degree: u8,
+    num_blocks: u16,
+    tail_levels: Vec<LevelSpec>,
+    level_queries: Vec<u16>,
+}
+
+impl JoinedTailPlan {
+    /// Validate the shared recursion tail (`tail_levels[0]` is protocol level 1) and enforce all
+    /// Policy 3 field caps including `PcsLevelGamma` (`num_blocks - 1`), logical level-1
+    /// proximity (`2 * (block_bits + ell_1) * (e_1 + 1)`), higher-level proximities, and
+    /// non-final `PcsLevelBeta` query counts.
+    pub fn new(
+        tail_levels: Vec<LevelSpec>,
+        num_blocks: u16,
+        ext_degree: u8,
+        target_bits: u16,
+    ) -> Result<Self, RecursiveError> {
+        if tail_levels.is_empty()
+            || tail_levels.len() >= MAX_LEVELS
+            || num_blocks == 0
+            || num_blocks > MAX_JOINED_BLOCKS
+            || (ext_degree != 4 && ext_degree != 8)
+            || target_bits == 0
+            || target_bits > MAX_TARGET_BITS
+        {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        let cap = field_cap(ext_degree, target_bits)?;
+        if num_blocks > 1 && !BigUint::fits_cap(u64::from(num_blocks - 1), &cap) {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+        let block_bits = log2_ceil_u16(num_blocks);
+        let mut level_queries = reserve_vec(tail_levels.len())?;
+
+        for (idx, &spec) in tail_levels.iter().enumerate() {
+            if spec.ell == 0
+                || spec.ell > MAX_DOMAIN_BITS
+                || spec.randomisers != 0
+                || spec.mask_rows != 0
+            {
+                return Err(RecursiveError::UnsupportedSource);
+            }
+            if idx + 1 < tail_levels.len() && spec.m == 0 {
+                return Err(RecursiveError::UnsupportedSource);
+            }
+            let _ =
+                CircleCoeff::new(u32::from(spec.m), u32::from(spec.b)).map_err(|e| match e {
+                    stele_code::Error::Capacity => RecursiveError::Capacity,
+                    _ => RecursiveError::UnsupportedSource,
+                })?;
+            let _ = spec.rows()?;
+            if idx + 1 < tail_levels.len() {
+                let next = tail_levels[idx + 1];
+                if next.ell.checked_add(next.m) != Some(spec.m) {
+                    return Err(RecursiveError::UnsupportedSource);
+                }
+            }
+            let eff_ell = if idx == 0 {
+                let e = spec
+                    .ell
+                    .checked_add(block_bits)
+                    .ok_or(RecursiveError::UnsupportedSource)?;
+                if e > MAX_DOMAIN_BITS {
+                    return Err(RecursiveError::UnsupportedSource);
+                }
+                e
+            } else {
+                spec.ell
+            };
+            let (q, _, _, e_rad) = policy3_fresh_queries(spec.m, spec.b, target_bits)?;
+            let prox_num = 2u64
+                .checked_mul(u64::from(eff_ell))
+                .and_then(|v| v.checked_mul(e_rad.checked_add(1)?))
+                .ok_or(RecursiveError::UnsupportedSource)?;
+            if !BigUint::fits_cap(prox_num, &cap) {
+                return Err(RecursiveError::UnsupportedSource);
+            }
+            if idx + 1 < tail_levels.len() && !BigUint::fits_cap(u64::from(q), &cap) {
+                return Err(RecursiveError::UnsupportedSource);
+            }
+            level_queries.push(q);
+        }
+
+        Ok(Self {
+            target_bits,
+            ext_degree,
+            num_blocks,
+            tail_levels,
+            level_queries,
+        })
+    }
+
+    /// Number of joined level-1 blocks `k`.
+    pub fn num_blocks(&self) -> u16 {
+        self.num_blocks
+    }
+
+    /// Number of block index variables `ceil(log2(k))`.
+    pub fn block_bits(&self) -> u8 {
+        log2_ceil_u16(self.num_blocks)
+    }
+
+    /// Effective logical row exponent at level 1 (`block_bits + tail_levels[0].ell`).
+    pub fn effective_level1_ell(&self) -> u8 {
+        self.block_bits() + self.tail_levels[0].ell
+    }
+
+    /// Extension field degree (`4` or `8`).
+    pub fn ext_degree(&self) -> u8 {
+        self.ext_degree
+    }
+
+    /// Target security bits `T`.
+    pub fn target_bits(&self) -> u16 {
+        self.target_bits
+    }
+
+    /// Tail levels (`tail_levels[0]` is protocol level 1).
+    pub fn levels(&self) -> &[LevelSpec] {
+        &self.tail_levels
+    }
+
+    /// Derived Policy 3 query counts per tail level.
+    pub fn queries(&self) -> &[u16] {
+        &self.level_queries
+    }
+
+    /// Header bytes (`1 + 1 + 2 + 1 + 7 * tail_levels.len()`).
+    pub fn header_bytes(&self) -> usize {
+        5 + 7 * self.tail_levels.len()
+    }
+
+    fn write_header(&self, out: &mut Vec<u8>) {
+        out.push(RECURSIVE_VERSION);
+        out.push(JOINED_TAIL_TAG);
+        out.extend_from_slice(&self.num_blocks.to_le_bytes());
+        out.push(self.tail_levels.len() as u8);
+        for &spec in &self.tail_levels {
+            write_level_spec(spec, out);
+        }
+    }
+
+    /// Exact byte size of the joined tail proof.
+    pub fn tail_proof_size(&self) -> Result<usize, RecursiveError> {
+        let elem_ext = 4usize * usize::from(self.ext_degree);
+        let mut total = self.header_bytes();
+        let k = usize::from(self.num_blocks);
+        let t_len = self.tail_levels.len();
+        for (idx, (&spec, &q)) in self.tail_levels.iter().zip(&self.level_queries).enumerate() {
+            let eff_ell = if idx == 0 {
+                usize::from(self.effective_level1_ell())
+            } else {
+                usize::from(spec.ell)
+            };
+            // Row sumcheck: 3 extension elements per round.
+            total = add_usize(total, mul_usize(eff_ell, mul_usize(3, elem_ext)?)?)?;
+            // Next root (32 B) or final u_L in the clear.
+            if idx + 1 < t_len {
+                total = add_usize(total, 32)?;
+            } else {
+                total = add_usize(total, mul_usize(spec.columns()?, elem_ext)?)?;
+            }
+            // Queried columns + Merkle paths (`k` blocks per query at level 1, `1` block at level >= 2).
+            let blocks = if idx == 0 { k } else { 1 };
+            let col_bytes = mul_usize(spec.rows()?, elem_ext)?;
+            let path_bytes = mul_usize(spec.path_height(), 32)?;
+            let per_block = add_usize(col_bytes, path_bytes)?;
+            let per_query = mul_usize(blocks, per_block)?;
+            total = add_usize(total, mul_usize(usize::from(q), per_query)?)?;
+        }
+        Ok(total)
+    }
+
+    fn check_header(&self, proof: &[u8]) -> Result<usize, RecursiveError> {
+        let expected_len = self.tail_proof_size()?;
+        if proof.len() != expected_len {
+            return Err(RecursiveError::ProofShape);
+        }
+        let hlen = self.header_bytes();
+        if proof.len() < hlen || proof[0] != RECURSIVE_VERSION || proof[1] != JOINED_TAIL_TAG {
+            return Err(RecursiveError::ProofShape);
+        }
+        let blocks = u16::from_le_bytes([proof[2], proof[3]]);
+        if blocks != self.num_blocks || usize::from(proof[4]) != self.tail_levels.len() {
+            return Err(RecursiveError::ProofShape);
+        }
+        for (idx, &spec) in self.tail_levels.iter().enumerate() {
+            let off = 5 + 7 * idx;
+            check_level_spec(&proof[off..off + 7], spec)?;
+        }
+        Ok(hlen)
+    }
+}
+
+fn absorb_joined_tail_statement<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    tail_opening_id: u64,
+    plan: &JoinedTailPlan,
+    blocks: &[(u64, merkle::Digest, K)],
+) -> Result<(), RecursiveError> {
+    let elem = 4 * K::DEGREE;
+    let per_block = add_usize(8 + 32, elem)?;
+    let total = add_usize(
+        add_usize(JOINED_TAIL_DOMAIN.len() + 8 + 3, plan.header_bytes())?,
+        mul_usize(blocks.len(), per_block)?,
+    )?;
+    let mut buf = reserve_vec(total)?;
+    buf.extend_from_slice(JOINED_TAIL_DOMAIN);
+    buf.extend_from_slice(&tail_opening_id.to_le_bytes());
+    buf.push(plan.ext_degree);
+    buf.extend_from_slice(&plan.target_bits.to_le_bytes());
+    plan.write_header(&mut buf);
+    for &(source_id, root_1, claim) in blocks {
+        buf.extend_from_slice(&source_id.to_le_bytes());
+        buf.extend_from_slice(&root_1);
+        buf.extend_from_slice(claim.to_le_bytes().as_ref());
+    }
+    t.absorb(AbsorbLabel::Opening, &buf)?;
+    Ok(())
+}
+
+/// Soundness ledger for a verified joined recursion tail (RFC-0029 §§2, 5; RFC-0012 A20).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct JoinedTailLedger {
+    /// Opening id of the joined tail.
+    pub tail_opening_id: u64,
+    /// Number of joined level-1 blocks `k`.
+    pub num_blocks: u16,
+    /// `PcsLevelGamma` RLC numerator (`k - 1`).
+    pub gamma_rlc_numerator: u64,
+    /// Per-level ledgers from protocol level 1 to `L - 1`.
+    pub levels: Vec<LevelLedger>,
+    /// Local Merkle hash usage verified across the joined tail.
+    pub merkle_usage: HashUsage,
+}
+
+/// Verified joined recursion tail result (RFC-0029 §2).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedJoinedTail<K: ChallengeField> {
+    tail_opening_id: u64,
+    combined_claim: K,
+    ledger: JoinedTailLedger,
+}
+
+impl<K: ChallengeField> VerifiedJoinedTail<K> {
+    /// Opening id of the joined tail.
+    pub fn tail_opening_id(&self) -> u64 {
+        self.tail_opening_id
+    }
+
+    /// Gamma-combined level-1 claim `Σ_s γ^s v_1^(s)`.
+    pub fn combined_claim(&self) -> K {
+        self.combined_claim
+    }
+
+    /// Complete per-level soundness accounting ledger for levels `1..L-1`.
+    pub fn ledger(&self) -> &JoinedTailLedger {
+        &self.ledger
+    }
+}
+
+/// Prove the single joined recursion tail from level 1 to `L - 1` across `pending` level-1
+/// sources (segments and/or certified model sources; RFC-0029 §2).
+pub fn prove_joined_tail<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    tail_opening_id: u64,
+    plan: &JoinedTailPlan,
+    pending: &[PendingLevel1Prover<K>],
+) -> Result<Vec<u8>, RecursiveError>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let k = usize::from(plan.num_blocks);
+    if pending.len() != k || usize::from(plan.ext_degree) != K::DEGREE {
+        return Err(RecursiveError::MessageShape);
+    }
+    let l1 = plan.tail_levels[0];
+    for p in pending {
+        if p.l1_spec != l1 || p.target_bits != plan.target_bits {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+    }
+
+    let mut meta = reserve_vec(k)?;
+    for p in pending {
+        meta.push((p.source_id, p.root_1(), p.claim));
+    }
+    absorb_joined_tail_statement(t, tail_opening_id, plan, &meta)?;
+
+    let gamma = if k > 1 {
+        t.challenge(ChallengeLabel::PcsLevelGamma)?
+    } else {
+        K::from_i64(1)
+    };
+
+    let block_bits = plan.block_bits();
+    let eff_ell1 = plan.effective_level1_ell();
+    let padded_blocks = 1usize
+        .checked_shl(u32::from(block_bits))
+        .ok_or(RecursiveError::Capacity)?;
+    let r1 = l1.rows()?;
+    let c1 = l1.columns()?;
+    let block_elems = mul_usize(r1, c1)?;
+    let total_elems = mul_usize(padded_blocks, block_elems)?;
+
+    let mut joined_w = reserve_vec(total_elems)?;
+    let mut joined_m = reserve_vec(total_elems)?;
+    let mut combined_claim = K::from_i64(0);
+    let mut gamma_pow = K::from_i64(1);
+    for p in pending {
+        combined_claim = combined_claim + gamma_pow * p.claim;
+        for &w in &p.w1 {
+            joined_w.push(gamma_pow * w);
+        }
+        joined_m.extend_from_slice(&p.u1);
+        gamma_pow = gamma_pow * gamma;
+    }
+    joined_w.resize(total_elems, K::from_i64(0));
+    joined_m.resize(total_elems, K::from_i64(0));
+
+    let proof_len = plan.tail_proof_size()?;
+    let mut proof = reserve_vec(proof_len)?;
+    plan.write_header(&mut proof);
+
+    let t_len = plan.tail_levels.len();
+    let mut commit_usage = HashUsage::default();
+    let mut cur_w = joined_w;
+    let mut cur_u = joined_m;
+    let mut cur_claim = combined_claim;
+    let mut cur_committed: Option<CommittedLevel> = None;
+
+    for idx in 0..t_len {
+        let spec = plan.tail_levels[idx];
+        let protocol_level = (idx + 1) as u8;
+        let eff_ell = if idx == 0 { eff_ell1 } else { spec.ell };
+        let q_i = usize::from(plan.level_queries[idx]);
+        let code_i = CircleCoeff::new(u32::from(spec.m), u32::from(spec.b))?;
+
+        let res = run_row_sumcheck_prover(
+            t,
+            tail_opening_id,
+            protocol_level,
+            eff_ell,
+            spec.columns()?,
+            cur_w,
+            cur_u,
+            cur_claim,
+            &mut proof,
+        )?;
+        cur_w = res.next_w;
+        cur_u = res.next_u;
+        cur_claim = res.running;
+
+        let next_committed = if idx + 1 < t_len {
+            let next_spec = plan.tail_levels[idx + 1];
+            let committed = CommittedLevel::commit_ext(
+                tail_opening_id,
+                protocol_level + 1,
+                next_spec,
+                &cur_u,
+                &mut commit_usage,
+            )?;
+            let root = committed.root();
+            proof.extend_from_slice(&root);
+            t.absorb(AbsorbLabel::PcsLevelRoot, &root)?;
+            Some(committed)
+        } else {
+            let u_start = proof.len();
+            for v in &cur_u {
+                proof.extend_from_slice(v.to_le_bytes().as_ref());
+            }
+            t.absorb(AbsorbLabel::PcsLevelRoot, &proof[u_start..])?;
+            None
+        };
+
+        let (_, n_i, _, _) = circle_coeff_params(spec.m, spec.b)?;
+        let mut queried = reserve_vec(q_i)?;
+        let mut ys = reserve_vec(q_i)?;
+        let resp_start = proof.len();
+        if idx == 0 {
+            let eq_block = stele_poly::eq_table(&res.challenges[..usize::from(block_bits)])
+                .map_err(|_| RecursiveError::Capacity)?;
+            let eq_row = stele_poly::eq_table(&res.challenges[usize::from(block_bits)..])
+                .map_err(|_| RecursiveError::Capacity)?;
+            for _ in 0..q_i {
+                let q_idx = t.opening_column(n_i)?;
+                let mut y = K::from_i64(0);
+                for (s, p) in pending.iter().enumerate() {
+                    p.committed.append_response(q_idx, &mut proof)?;
+                    let payload = p.committed.payload(q_idx)?;
+                    y = y + eq_block[s] * column_dot_ext(&eq_row, payload)?;
+                }
+                queried.push(q_idx);
+                ys.push(y);
+            }
+        } else {
+            let eq_row =
+                stele_poly::eq_table(&res.challenges).map_err(|_| RecursiveError::Capacity)?;
+            let committed = cur_committed.as_ref().ok_or(RecursiveError::ProofShape)?;
+            for _ in 0..q_i {
+                let q_idx = t.opening_column(n_i)?;
+                committed.append_response(q_idx, &mut proof)?;
+                let payload = committed.payload(q_idx)?;
+                ys.push(column_dot_ext(&eq_row, payload)?);
+                queried.push(q_idx);
+            }
+        }
+        t.absorb(AbsorbLabel::OpeningColumns, &proof[resp_start..])?;
+
+        if idx + 1 < t_len {
+            let beta = t.challenge(ChallengeLabel::PcsLevelBeta)?;
+            let c_i = spec.columns()?;
+            let mut basis_buf = reserve_vec(c_i)?;
+            basis_buf.resize(c_i, M31::ZERO);
+            let mut beta_pow = beta;
+            for (&q_idx, &y) in queried.iter().zip(&ys) {
+                cur_claim = cur_claim + beta_pow * y;
+                let mut factors_msb = code_i.basis_factors(q_idx as usize)?;
+                factors_msb.reverse();
+                fill_basis_table(&factors_msb, &mut basis_buf);
+                for (dst, &b) in cur_w.iter_mut().zip(&basis_buf) {
+                    *dst = *dst + beta_pow.mul_m31(b);
+                }
+                beta_pow = beta_pow * beta;
+            }
+            cur_committed = next_committed;
+        }
+    }
+
+    debug_assert_eq!(proof.len(), proof_len);
+    Ok(proof)
+}
+
+/// Verify the single joined recursion tail from level 1 to `L - 1` across `pending` opaque
+/// [`PendingLevel1Verifier`] sources (RFC-0029 §§2, 4, 5).
+pub fn verify_joined_tail<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    tail_opening_id: u64,
+    plan: &JoinedTailPlan,
+    pending: &[PendingLevel1Verifier<K>],
+    proof: &[u8],
+) -> Result<VerifiedJoinedTail<K>, RecursiveError>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let k = usize::from(plan.num_blocks);
+    if pending.len() != k || usize::from(plan.ext_degree) != K::DEGREE {
+        return Err(RecursiveError::MessageShape);
+    }
+    let l1 = plan.tail_levels[0];
+    for p in pending {
+        if p.l1_spec != l1 || p.target_bits != plan.target_bits {
+            return Err(RecursiveError::UnsupportedSource);
+        }
+    }
+
+    // Validate header and complete tail proof length BEFORE touching the transcript (NC-0633).
+    let mut cursor = plan.check_header(proof)?;
+
+    let mut meta = reserve_vec(k)?;
+    for p in pending {
+        meta.push((p.source_id, p.root_1, p.claim));
+    }
+    absorb_joined_tail_statement(t, tail_opening_id, plan, &meta)?;
+
+    let gamma = if k > 1 {
+        t.challenge(ChallengeLabel::PcsLevelGamma)?
+    } else {
+        K::from_i64(1)
+    };
+    let mut combined_claim = K::from_i64(0);
+    let mut gamma_pows = reserve_vec(k)?;
+    let mut gamma_pow = K::from_i64(1);
+    for p in pending {
+        combined_claim = combined_claim + gamma_pow * p.claim;
+        gamma_pows.push(gamma_pow);
+        gamma_pow = gamma_pow * gamma;
+    }
+
+    let elem_ext = 4 * K::DEGREE;
+    let block_bits = plan.block_bits();
+    let eff_ell1 = plan.effective_level1_ell();
+    let t_len = plan.tail_levels.len();
+    let mut terms: Vec<WeightTerm<K>> = Vec::new();
+    let mut cur_root = [0u8; 32];
+    let mut cur_claim = combined_claim;
+    let mut merkle_usage = HashUsage::default();
+    let mut level_ledgers = reserve_vec(t_len)?;
+
+    for idx in 0..t_len {
+        let spec = plan.tail_levels[idx];
+        let protocol_level = (idx + 1) as u8;
+        let eff_ell = if idx == 0 { eff_ell1 } else { spec.ell };
+        let q_i = usize::from(plan.level_queries[idx]);
+        let code_i = CircleCoeff::new(u32::from(spec.m), u32::from(spec.b))?;
+        let (_, n_i, d_i, e_i) = circle_coeff_params(spec.m, spec.b)?;
+
+        let (r_all, v_prime) = verify_row_sumcheck(
+            t,
+            tail_opening_id,
+            protocol_level,
+            eff_ell,
+            cur_claim,
+            proof,
+            &mut cursor,
+        )?;
+        cur_claim = v_prime;
+
+        let (eq_block, eq_row) = if idx == 0 {
+            let eq_b = stele_poly::eq_table(&r_all[..usize::from(block_bits)])
+                .map_err(|_| RecursiveError::Capacity)?;
+            let r_row = &r_all[usize::from(block_bits)..];
+            let eq_r = stele_poly::eq_table(r_row).map_err(|_| RecursiveError::Capacity)?;
+            let total_terms = pending
+                .iter()
+                .try_fold(0usize, |acc, p| add_usize(acc, p.terms.len()))?;
+            terms = reserve_vec(total_terms)?;
+            for (s, p) in pending.iter().enumerate() {
+                let scale = gamma_pows[s] * eq_b[s];
+                for orig in &p.terms {
+                    let mut cloned = match orig {
+                        WeightTerm::Eq { coeff, point } => WeightTerm::Eq {
+                            coeff: *coeff,
+                            point: clone_vec(point)?,
+                        },
+                        WeightTerm::Basis { coeff, factors_msb } => WeightTerm::Basis {
+                            coeff: *coeff,
+                            factors_msb: clone_vec(factors_msb)?,
+                        },
+                        WeightTerm::Dense { values } => WeightTerm::Dense {
+                            values: clone_vec(values)?,
+                        },
+                    };
+                    cloned.scale(scale);
+                    cloned.fold_prefix(r_row)?;
+                    terms.push(cloned);
+                }
+            }
+            (eq_b, eq_r)
+        } else {
+            for term in &mut terms {
+                term.fold_prefix(&r_all)?;
+            }
+            (
+                Vec::new(),
+                stele_poly::eq_table(&r_all).map_err(|_| RecursiveError::Capacity)?,
+            )
+        };
+
+        let mut next_root = [0u8; 32];
+        let mut final_u: Option<Vec<K>> = None;
+        if idx + 1 < t_len {
+            let slice = take_slice(proof, &mut cursor, 32)?;
+            next_root.copy_from_slice(slice);
+            t.absorb(AbsorbLabel::PcsLevelRoot, &next_root)?;
+        } else {
+            let c_final = spec.columns()?;
+            let bytes = take_slice(proof, &mut cursor, mul_usize(c_final, elem_ext)?)?;
+            let decoded = decode_ext_slice::<K>(bytes)?;
+            t.absorb(AbsorbLabel::PcsLevelRoot, bytes)?;
+            final_u = Some(decoded);
+        }
+
+        let path_height = spec.path_height();
+        let path_bytes = mul_usize(path_height, 32)?;
+        let resp_start = cursor;
+        let mut queried = reserve_vec(q_i)?;
+        let mut ys = reserve_vec(q_i)?;
+        let mut siblings = reserve_vec(path_height)?;
+
+        if idx == 0 {
+            let col_width = mul_usize(spec.rows()?, elem_ext)?;
+            let mut descs = reserve_vec(k)?;
+            for p in pending {
+                descs.push(level_descriptor(p.source_id, 1, spec, elem_ext)?);
+            }
+            for _ in 0..q_i {
+                let q_idx = t.opening_column(n_i)?;
+                let mut y = K::from_i64(0);
+                for (s, p) in pending.iter().enumerate() {
+                    let payload = take_slice(proof, &mut cursor, col_width)?;
+                    let sib_bytes = take_slice(proof, &mut cursor, path_bytes)?;
+                    siblings.clear();
+                    for chunk in sib_bytes.chunks_exact(32) {
+                        let mut d = [0u8; 32];
+                        d.copy_from_slice(chunk);
+                        siblings.push(d);
+                    }
+                    merkle::verify_with_usage(
+                        descs[s],
+                        &p.root_1,
+                        q_idx,
+                        merkle::Opening {
+                            payload,
+                            siblings: &siblings,
+                        },
+                        &mut merkle_usage,
+                    )?;
+                    y = y + eq_block[s] * column_dot_ext(&eq_row, payload)?;
+                }
+                queried.push(q_idx);
+                ys.push(y);
+            }
+        } else {
+            let desc_i = level_descriptor(tail_opening_id, protocol_level, spec, elem_ext)?;
+            let col_width = usize::try_from(desc_i.width).map_err(|_| RecursiveError::Capacity)?;
+            for _ in 0..q_i {
+                let q_idx = t.opening_column(n_i)?;
+                let payload = take_slice(proof, &mut cursor, col_width)?;
+                let sib_bytes = take_slice(proof, &mut cursor, path_bytes)?;
+                siblings.clear();
+                for chunk in sib_bytes.chunks_exact(32) {
+                    let mut d = [0u8; 32];
+                    d.copy_from_slice(chunk);
+                    siblings.push(d);
+                }
+                merkle::verify_with_usage(
+                    desc_i,
+                    &cur_root,
+                    q_idx,
+                    merkle::Opening {
+                        payload,
+                        siblings: &siblings,
+                    },
+                    &mut merkle_usage,
+                )?;
+                ys.push(column_dot_ext(&eq_row, payload)?);
+                queried.push(q_idx);
+            }
+        }
+        t.absorb(AbsorbLabel::OpeningColumns, &proof[resp_start..cursor])?;
+
+        level_ledgers.push(LevelLedger {
+            level: protocol_level,
+            ell: eff_ell,
+            m: spec.m,
+            b: spec.b,
+            length: n_i,
+            distance: d_i,
+            radius: e_i,
+            queries: plan.level_queries[idx],
+            blocks: if idx == 0 {
+                u32::from(plan.num_blocks)
+            } else {
+                1
+            },
+            proximity_numerator: 2u64
+                .saturating_mul(u64::from(eff_ell))
+                .saturating_mul(e_i.saturating_add(1)),
+            sumcheck_numerator: 2 * u64::from(eff_ell),
+            beta_numerator: if idx + 1 < t_len {
+                u64::from(plan.level_queries[idx])
+            } else {
+                0
+            },
+            gamma_numerator: if idx == 0 {
+                u64::from(plan.num_blocks.saturating_sub(1))
+            } else {
+                0
+            },
+            field_degree: K::DEGREE as u8,
+            target_bits: plan.target_bits,
+        });
+
+        if idx + 1 < t_len {
+            let beta = t.challenge(ChallengeLabel::PcsLevelBeta)?;
+            let mut beta_pow = beta;
+            for (&q_idx, &y) in queried.iter().zip(&ys) {
+                cur_claim = cur_claim + beta_pow * y;
+                let mut factors_msb = code_i.basis_factors(q_idx as usize)?;
+                factors_msb.reverse();
+                terms.try_reserve(1).map_err(|_| RecursiveError::Capacity)?;
+                terms.push(WeightTerm::Basis {
+                    coeff: beta_pow,
+                    factors_msb,
+                });
+                beta_pow = beta_pow * beta;
+            }
+            cur_root = next_root;
+        } else {
+            let u_l = final_u.ok_or(RecursiveError::ProofShape)?;
+            let encoded = code_i.encode(&u_l)?;
+            for (&q_idx, &y) in queried.iter().zip(&ys) {
+                if encoded[q_idx as usize].to_le_bytes().as_ref() != y.to_le_bytes().as_ref() {
+                    return Err(RecursiveError::ColumnMismatch);
+                }
+            }
+            let mut basis_buf = reserve_vec(u_l.len())?;
+            basis_buf.resize(u_l.len(), M31::ZERO);
+            let mut dot = K::from_i64(0);
+            for term in &terms {
+                dot = dot + term.dot_final(&u_l, &mut basis_buf)?;
+            }
+            if dot.to_le_bytes().as_ref() != cur_claim.to_le_bytes().as_ref() {
+                return Err(RecursiveError::ValueMismatch);
+            }
+        }
+    }
+
+    if cursor != proof.len() {
+        return Err(RecursiveError::ProofShape);
+    }
+
+    Ok(VerifiedJoinedTail {
+        tail_opening_id,
+        combined_claim,
+        ledger: JoinedTailLedger {
+            tail_opening_id,
+            num_blocks: plan.num_blocks,
+            gamma_rlc_numerator: u64::from(plan.num_blocks.saturating_sub(1)),
             levels: level_ledgers,
             merkle_usage,
         },

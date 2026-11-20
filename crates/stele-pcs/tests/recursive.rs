@@ -4,10 +4,12 @@
 use stele_field::{Field, Inverse, Serialize, M31, OM31, QM31};
 use stele_hash::{merkle, AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_pcs::recursive::{
-    level_descriptor, policy3_certified_queries, policy3_fresh_queries, verify_certified_opening,
-    verify_certified_registration, verify_fresh_at_point, verify_fresh_claims,
-    CertifiedModelSource, CertifiedPlan, CertifiedSource, ColumnFunctional, LevelSpec,
-    PreparedRecursive, RecursiveError, RecursivePlan, RecursiveSource, DEFAULT_TARGET_BITS,
+    level_descriptor, policy3_certified_queries, policy3_fresh_queries, prove_joined_tail,
+    verify_certified_level0, verify_certified_opening, verify_certified_registration,
+    verify_fresh_at_point, verify_fresh_claims, verify_fresh_level0_claims, verify_joined_tail,
+    CertifiedModelSource, CertifiedPlan, CertifiedSource, ColumnFunctional, JoinedTailPlan,
+    LevelSpec, PreparedRecursive, RecursiveError, RecursivePlan, RecursiveSource,
+    DEFAULT_TARGET_BITS,
 };
 use stele_pcs::{CircleCoeff, Source};
 
@@ -1347,4 +1349,401 @@ fn accepts_zero_zk_reservation_pinned_bytes_and_rejects_nonzero() {
         EXPECTED_CERT_REG
     );
     assert_eq!(stele_hash::blake3_digest(&cert_proof), EXPECTED_CERT_PRF);
+}
+
+#[test]
+fn accepts_joined_multi_source_recursion_and_rejects_composed_tampers() {
+    fn run_mixed<K: ChallengeField + PartialEq + std::fmt::Debug>(
+        tail_levels: Vec<LevelSpec>,
+        seed: u64,
+    ) where
+        for<'a> K::Bytes: TryFrom<&'a [u8]>,
+    {
+        let l1 = tail_levels[0];
+        let l1_bits = l1.ell + l1.m;
+        // 5 heterogeneous sources joined into ONE recursion (non-power-of-two k=5 -> block_bits=3):
+        //   0: fresh segment, 2 claims, m_0 = l1_bits
+        //   1: fresh segment, 1 claim,  m_0 = l1_bits - 2 (tests pad_msb_zeros on Eq + Basis)
+        //   2: certified model, Tensor, m_0 = l1_bits
+        //   3: certified model, Dense,  m_0 = l1_bits - 1 (tests pad_msb_zeros on Dense + Basis)
+        //   4: fresh segment, 2 claims, m_0 = l1_bits - 1
+        let tail_plan =
+            JoinedTailPlan::new(tail_levels.clone(), 5, K::DEGREE as u8, DEFAULT_TARGET_BITS)
+                .expect("tail plan");
+
+        let p0 = RecursivePlan::new(
+            vec![LevelSpec::new(2, l1_bits, 2)],
+            K::DEGREE as u8,
+            DEFAULT_TARGET_BITS,
+        )
+        .expect("p0");
+        let p1 = RecursivePlan::new(
+            vec![LevelSpec::new(3, l1_bits - 2, 2)],
+            K::DEGREE as u8,
+            DEFAULT_TARGET_BITS,
+        )
+        .expect("p1");
+        let p2 = CertifiedPlan::new(
+            vec![LevelSpec::new(2, l1_bits, 2)],
+            K::DEGREE as u8,
+            DEFAULT_TARGET_BITS,
+            24,
+        )
+        .expect("p2");
+        let p3 = CertifiedPlan::new(
+            vec![LevelSpec::new(2, l1_bits - 1, 2)],
+            K::DEGREE as u8,
+            DEFAULT_TARGET_BITS,
+            12,
+        )
+        .expect("p3");
+        let p4 = RecursivePlan::new(
+            vec![LevelSpec::new(2, l1_bits - 1, 3)],
+            K::DEGREE as u8,
+            DEFAULT_TARGET_BITS,
+        )
+        .expect("p4");
+
+        let m0 = seeded_m31(p0.level0_elements().expect("e0"), seed + 1);
+        let m1 = seeded_m31(p1.level0_elements().expect("e1"), seed + 2);
+        let m2 = seeded_m31(
+            p2.levels()[0].rows().expect("r2") * p2.levels()[0].columns().expect("c2"),
+            seed + 3,
+        );
+        let m3 = seeded_m31(
+            p3.levels()[0].rows().expect("r3") * p3.levels()[0].columns().expect("c3"),
+            seed + 4,
+        );
+        let m4 = seeded_m31(p4.level0_elements().expect("e4"), seed + 5);
+
+        let prep0 = PreparedRecursive::<K>::commit(100, p0, m0).expect("c0");
+        let prep1 = PreparedRecursive::<K>::commit(101, p1, m1).expect("c1");
+        let mod2 = CertifiedModelSource::<K>::register(102, p2, &m2).expect("reg2");
+        let mod3 = CertifiedModelSource::<K>::register(103, p3, &m3).expect("reg3");
+        let prep4 = PreparedRecursive::<K>::commit(104, p4, m4).expect("c4");
+
+        let src0 = prep0.source().clone();
+        let src1 = prep1.source().clone();
+        let cert2 = verify_certified_registration(mod2.source().clone(), mod2.certificate_proof())
+            .expect("vc2");
+        let cert3 = verify_certified_registration(mod3.source().clone(), mod3.certificate_proof())
+            .expect("vc3");
+        let src4 = prep4.source().clone();
+
+        let pt0a = seeded_point::<K>(usize::from(2 + l1_bits), b"j-p0a");
+        let pt0b = seeded_point::<K>(usize::from(2 + l1_bits), b"j-p0b");
+        let v0a = prep0.evaluate(&pt0a).expect("v0a");
+        let v0b = prep0.evaluate(&pt0b).expect("v0b");
+
+        let pt1a = seeded_point::<K>(usize::from(3 + l1_bits - 2), b"j-p1a");
+        let v1a = prep1.evaluate(&pt1a).expect("v1a");
+
+        let rw2 = seeded_point::<K>(4, b"j-rw2");
+        let cp2 = seeded_point::<K>(usize::from(l1_bits), b"j-cp2");
+        let v2 = mod2
+            .evaluate_functional(&m2, &rw2, ColumnFunctional::Tensor(&cp2))
+            .expect("v2");
+
+        let rw3 = seeded_point::<K>(4, b"j-rw3");
+        let cd3 = seeded_point::<K>(1 << (l1_bits - 1), b"j-cd3");
+        let v3 = mod3
+            .evaluate_functional(&m3, &rw3, ColumnFunctional::Dense(&cd3))
+            .expect("v3");
+
+        let pt4a = seeded_point::<K>(usize::from(2 + l1_bits - 1), b"j-p4a");
+        let pt4b = seeded_point::<K>(usize::from(2 + l1_bits - 1), b"j-p4b");
+        let v4a = prep4.evaluate(&pt4a).expect("v4a");
+        let v4b = prep4.evaluate(&pt4b).expect("v4b");
+
+        let mut tp = Transcript::<K>::new(b"e19-04-joined").expect("tp");
+        let (pr0, pend0) = prep0
+            .close_fresh_level0_claims(&mut tp, 1000, l1, &[(&pt0a, v0a), (&pt0b, v0b)])
+            .expect("cl0");
+        let (pr1, pend1) = prep1
+            .close_fresh_level0_claims(&mut tp, 1001, l1, &[(&pt1a, v1a)])
+            .expect("cl1");
+        let (pr2, pend2, work2) = mod2
+            .close_certified_level0(
+                &m2,
+                &mut tp,
+                1002,
+                l1,
+                &rw2,
+                ColumnFunctional::Tensor(&cp2),
+                v2,
+            )
+            .expect("cl2");
+        assert_eq!(work2.stored_codeword_bytes, 0);
+        let (pr3, pend3, work3) = mod3
+            .close_certified_level0(
+                &m3,
+                &mut tp,
+                1003,
+                l1,
+                &rw3,
+                ColumnFunctional::Dense(&cd3),
+                v3,
+            )
+            .expect("cl3");
+        assert_eq!(work3.stored_codeword_bytes, 0);
+        let (pr4, pend4) = prep4
+            .close_fresh_level0_claims(&mut tp, 1004, l1, &[(&pt4a, v4a), (&pt4b, v4b)])
+            .expect("cl4");
+
+        let pending_p = [pend0, pend1, pend2, pend3, pend4];
+        let tail_proof = prove_joined_tail(&mut tp, 2000, &tail_plan, &pending_p).expect("tail");
+        let cont_p = tp.challenge(ChallengeLabel::Sumcheck).expect("cont_p");
+
+        // Verify full joined proof!
+        let mut tv = Transcript::<K>::new(b"e19-04-joined").expect("tv");
+        let vp0 = verify_fresh_level0_claims(
+            &mut tv,
+            &src0,
+            1000,
+            l1,
+            &[(&pt0a, v0a), (&pt0b, v0b)],
+            &pr0,
+        )
+        .expect("vp0");
+        let vp1 = verify_fresh_level0_claims(&mut tv, &src1, 1001, l1, &[(&pt1a, v1a)], &pr1)
+            .expect("vp1");
+        let vp2 = verify_certified_level0(
+            &mut tv,
+            &cert2,
+            mod2.source(),
+            1002,
+            l1,
+            &rw2,
+            ColumnFunctional::Tensor(&cp2),
+            v2,
+            &pr2,
+        )
+        .expect("vp2");
+        let vp3 = verify_certified_level0(
+            &mut tv,
+            &cert3,
+            mod3.source(),
+            1003,
+            l1,
+            &rw3,
+            ColumnFunctional::Dense(&cd3),
+            v3,
+            &pr3,
+        )
+        .expect("vp3");
+        let vp4 = verify_fresh_level0_claims(
+            &mut tv,
+            &src4,
+            1004,
+            l1,
+            &[(&pt4a, v4a), (&pt4b, v4b)],
+            &pr4,
+        )
+        .expect("vp4");
+
+        let pending_v = [vp0, vp1, vp2, vp3, vp4];
+        let verified_tail =
+            verify_joined_tail(&mut tv, 2000, &tail_plan, &pending_v, &tail_proof).expect("vtail");
+        assert_eq!(verified_tail.ledger().num_blocks, 5);
+        assert_eq!(verified_tail.ledger().gamma_rlc_numerator, 4);
+        assert_eq!(verified_tail.ledger().levels[0].blocks, 5);
+        assert_eq!(
+            verified_tail.ledger().levels[0].ell,
+            tail_plan.effective_level1_ell()
+        );
+        assert_eq!(verified_tail.ledger().levels[0].gamma_numerator, 4);
+        assert!(verified_tail.ledger().merkle_usage.hash_evaluations > 0);
+        assert_eq!(
+            tv.challenge(ChallengeLabel::Sumcheck).expect("cont_v"),
+            cont_p
+        );
+
+        // Determinism check: repeating tail proof on identical state yields byte-identical bytes.
+        let mut tp_det = Transcript::<K>::new(b"e19-04-det").expect("td1");
+        let tail_a = prove_joined_tail(&mut tp_det, 2000, &tail_plan, &pending_p).expect("ta");
+        let mut tp_det2 = Transcript::<K>::new(b"e19-04-det").expect("td2");
+        let tail_b = prove_joined_tail(&mut tp_det2, 2000, &tail_plan, &pending_p).expect("tb");
+        assert_eq!(tail_a, tail_b);
+
+        // Composed NC-0631 on joined tail: tamper 1 byte in a level-1 queried column payload -> Merkle(RootMismatch).
+        let mut bad_col = tail_a.clone();
+        let hlen = tail_plan.header_bytes();
+        let sc_bytes = usize::from(tail_plan.effective_level1_ell()) * 3 * (4 * K::DEGREE);
+        let root_or_u = if tail_levels.len() > 1 {
+            32
+        } else {
+            l1.columns().expect("c") * (4 * K::DEGREE)
+        };
+        let col_off = hlen + sc_bytes + root_or_u + 1;
+        bad_col[col_off] ^= 1;
+        let mut tv_bad_col = Transcript::<K>::new(b"e19-04-det").expect("tbc");
+        assert_eq!(
+            verify_joined_tail(&mut tv_bad_col, 2000, &tail_plan, &pending_v, &bad_col),
+            Err(RecursiveError::Merkle(merkle::Error::RootMismatch))
+        );
+
+        // Composed NC-0632 on final u_L (1-level tail): flip 1 element of u_L -> rejected.
+        if tail_levels.len() == 1 {
+            let mut bad_u = tail_a.clone();
+            let u_off = hlen + sc_bytes;
+            let elem = 4 * K::DEGREE;
+            let orig = K::from_le_bytes(bad_u[u_off..u_off + elem].try_into().ok().expect("slice"))
+                .expect("k");
+            let flipped = orig + K::from_i64(1);
+            bad_u[u_off..u_off + elem].copy_from_slice(flipped.to_le_bytes().as_ref());
+            let mut tv_u = Transcript::<K>::new(b"e19-04-det").expect("tvu");
+            assert!(verify_joined_tail(&mut tv_u, 2000, &tail_plan, &pending_v, &bad_u).is_err());
+        }
+
+        // Composed NC-0633 on joined tail header: wrong block count in header -> ProofShape with 0 transcript work.
+        let mut bad_hdr = tail_a.clone();
+        bad_hdr[2] ^= 1;
+        let mut tv_hdr = Transcript::<K>::new(b"e19-04-det").expect("tvh");
+        let before = tv_hdr.usage();
+        assert_eq!(
+            verify_joined_tail(&mut tv_hdr, 2000, &tail_plan, &pending_v, &bad_hdr),
+            Err(RecursiveError::ProofShape)
+        );
+        assert_eq!(tv_hdr.usage(), before);
+
+        // Composed sumcheck tamper on level-1 joined row sumcheck -> RoundSumMismatch.
+        let mut bad_sc = tail_a.clone();
+        let sc_elem_off = hlen;
+        let sc_orig = K::from_le_bytes(
+            bad_sc[sc_elem_off..sc_elem_off + 4 * K::DEGREE]
+                .try_into()
+                .ok()
+                .expect("sc"),
+        )
+        .expect("k");
+        let sc_tampered = sc_orig + K::from_i64(1);
+        bad_sc[sc_elem_off..sc_elem_off + 4 * K::DEGREE]
+            .copy_from_slice(sc_tampered.to_le_bytes().as_ref());
+        let mut tv_sc = Transcript::<K>::new(b"e19-04-det").expect("tvsc");
+        assert_eq!(
+            verify_joined_tail(&mut tv_sc, 2000, &tail_plan, &pending_v, &bad_sc),
+            Err(RecursiveError::RoundSumMismatch)
+        );
+
+        // Composed NC-0634 on fresh level-0 closing batch sumcheck -> RoundSumMismatch.
+        let mut bad_l0_sc = pr0.clone();
+        let orig_l0 =
+            K::from_le_bytes(bad_l0_sc[..4 * K::DEGREE].try_into().ok().expect("l0sc")).expect("k");
+        let bad_l0 = orig_l0 + K::from_i64(1);
+        bad_l0_sc[..4 * K::DEGREE].copy_from_slice(bad_l0.to_le_bytes().as_ref());
+        let mut tv_l0_sc = Transcript::<K>::new(b"e19-04-joined").expect("tvl0");
+        assert_eq!(
+            verify_fresh_level0_claims(
+                &mut tv_l0_sc,
+                &src0,
+                1000,
+                l1,
+                &[(&pt0a, v0a), (&pt0b, v0b)],
+                &bad_l0_sc,
+            )
+            .err(),
+            Some(RecursiveError::RoundSumMismatch)
+        );
+
+        // Composed NC-0635 on certified level-0 closing: wrong-radius certificate -> CertificateContext with 0 transcript work.
+        let p2_wrong = CertifiedPlan::new(
+            vec![LevelSpec::new(2, l1_bits, 2)],
+            K::DEGREE as u8,
+            DEFAULT_TARGET_BITS,
+            16,
+        )
+        .expect("p2_wrong");
+        let mod2_wrong = CertifiedModelSource::<K>::register(102, p2_wrong, &m2).expect("reg2w");
+        let cert2_wrong = verify_certified_registration(
+            mod2_wrong.source().clone(),
+            mod2_wrong.certificate_proof(),
+        )
+        .expect("vc2w");
+        let mut tv_c35 = Transcript::<K>::new(b"e19-04-c35").expect("tvc35");
+        let before_c35 = tv_c35.usage();
+        assert_eq!(
+            verify_certified_level0(
+                &mut tv_c35,
+                &cert2_wrong,
+                mod2.source(),
+                1002,
+                l1,
+                &rw2,
+                ColumnFunctional::Tensor(&cp2),
+                v2,
+                &pr2,
+            )
+            .err(),
+            Some(RecursiveError::CertificateContext)
+        );
+        assert_eq!(tv_c35.usage(), before_c35);
+    }
+
+    // 1-level tail (L=2 total) in QM31 & OM31, and 2-level tail (L=3 total) in QM31.
+    run_mixed::<QM31>(vec![LevelSpec::new(2, 4, 2)], 7001);
+    run_mixed::<OM31>(vec![LevelSpec::new(2, 4, 2)], 7002);
+    run_mixed::<QM31>(vec![LevelSpec::new(2, 4, 2), LevelSpec::new(2, 2, 3)], 7003);
+
+    // k = 1 joined tail (no PcsLevelGamma draw, gamma_rlc_numerator == 0).
+    {
+        let l1 = LevelSpec::new(2, 3, 2);
+        let tail_plan = JoinedTailPlan::new(vec![l1], 1, 4, DEFAULT_TARGET_BITS).expect("k1");
+        assert_eq!(tail_plan.block_bits(), 0);
+        let p0 =
+            RecursivePlan::new(vec![LevelSpec::new(2, 5, 2)], 4, DEFAULT_TARGET_BITS).expect("p0");
+        let msg = seeded_m31(p0.level0_elements().expect("e"), 7100);
+        let prep = PreparedRecursive::<QM31>::commit(710, p0, msg).expect("c");
+        let src = prep.source().clone();
+        let pt = seeded_point::<QM31>(7, b"k1-pt");
+        let val = prep.evaluate(&pt).expect("ev");
+        let mut tp = Transcript::<QM31>::new(b"e19-04-k1").expect("tp");
+        let (pr0, pend0) = prep
+            .close_fresh_level0_claims(&mut tp, 710, l1, &[(&pt, val)])
+            .expect("cl");
+        let tail = prove_joined_tail(&mut tp, 711, &tail_plan, &[pend0]).expect("tail");
+        let mut tv = Transcript::<QM31>::new(b"e19-04-k1").expect("tv");
+        let vp0 =
+            verify_fresh_level0_claims(&mut tv, &src, 710, l1, &[(&pt, val)], &pr0).expect("vp");
+        let vt = verify_joined_tail(&mut tv, 711, &tail_plan, &[vp0], &tail).expect("vt");
+        assert_eq!(vt.ledger().gamma_rlc_numerator, 0);
+        assert_eq!(vt.ledger().levels[0].blocks, 1);
+    }
+
+    // Memory drop check: large level-0 segment (R_0=256, C_0=256, full codeword = 1 MiB) drops on close;
+    // PendingLevel1Prover holds only u_1 (256 QM31 = 4 KiB) + encoded u_1 (16 KiB) << level-0 codeword.
+    {
+        let l0 = LevelSpec::new(8, 8, 2);
+        let l1 = LevelSpec::new(4, 4, 2);
+        let p0 = RecursivePlan::new(vec![l0], 4, DEFAULT_TARGET_BITS).expect("p0");
+        let msg = seeded_m31(256 * 256, 7200);
+        let full_l0_codeword = 256 * 1024 * 4;
+        let prep = PreparedRecursive::<QM31>::commit(720, p0, msg).expect("c");
+        let pt = seeded_point::<QM31>(16, b"drop-pt");
+        let val = prep.evaluate(&pt).expect("ev");
+        let mut tp = Transcript::<QM31>::new(b"e19-04-drop").expect("tp");
+        let (_pr0, pend0) = prep
+            .close_fresh_level0_claims(&mut tp, 720, l1, &[(&pt, val)])
+            .expect("cl");
+        assert!(
+            pend0.resident_bytes() * 20 < full_l0_codeword,
+            "resident={} vs full_l0={}",
+            pend0.resident_bytes(),
+            full_l0_codeword
+        );
+    }
+
+    // JoinedTailPlan cap enforcement regressions:
+    // (a) PcsLevelGamma cap: T=120 on QM31 has cap=15, so num_blocks=17 (gamma_num=16 > 15) must reject.
+    assert_eq!(
+        JoinedTailPlan::new(vec![LevelSpec::new(1, 2, 1)], 17, 4, 120),
+        Err(RecursiveError::UnsupportedSource)
+    );
+    // (b) Logical level-1 proximity cap: single block (ell_1=2, m_1=20, b_1=4 -> e_1=5,242,879) has
+    //     2*2*(e_1+1) = 20,971,520 > 16,777,215; even ell_1=1 (10,485,760 <= cap) fails once num_blocks=2
+    //     raises eff_ell_1 = 1 + 1 = 2 (20,971,520 > cap)!
+    assert!(JoinedTailPlan::new(vec![LevelSpec::new(1, 20, 4)], 1, 4, 100).is_ok());
+    assert_eq!(
+        JoinedTailPlan::new(vec![LevelSpec::new(1, 20, 4)], 2, 4, 100),
+        Err(RecursiveError::UnsupportedSource)
+    );
 }
