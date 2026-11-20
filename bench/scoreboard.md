@@ -62,6 +62,7 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | L2a | development | x86_64 GenuineIntel family 6 model 207 (28-core KVM host) | 24 | 203.42 | 0.315 | 15.30 | 15.6 | 43.9 | 3,375,921 | 4,202,085 | 5 | none | 4/4 | [e18-06-l2a-stories42m-unsegmented-24t](ledger/e18-06-l2a-stories42m-unsegmented-24t.json) @ `012a578` |
 | L2a | development | arm64 Apple M4 Max (16 hardware threads) | 16 | 137.78 | 0.465 | 6.32 | 15.6 | 27.6 | — | — | — | none | 4/4 | [e8-05d-dev-stories42m-t64-byte5-mac](ledger/e8-05d-dev-stories42m-t64-byte5-mac.json) @ `a53e0b1` |
 | L2c | development | x86_64 AMD EPYC 7532 32-Core Processor | 128 | 1978.97 | 0.032 | 69.36 | 126.8 | 109.7 | — | — | — | none | 4/4 | [e16-20-dev-stories110m](ledger/e16-20-dev-stories110m.json) @ `445c9b0` |
+| L3a | development | x86_64 Intel(R) Xeon(R) Platinum 8480CL | 112 | 8904.22 | 0.007 | 1336.66 | 415.8 | 421.9 | 83,311,823 | 215,872,264 | 35 | none | 4/4 | [e22-04-dev-llama31-8b-64t](ledger/e22-04-dev-llama31-8b-64t.json) @ `02c23da` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | 06/cf (CPU on Lucid h100-nvl-1-1-cc) | 16 | 489.78 | 0.065 | 56.74 | 21.4 | 89.7 | — | — | — | none | 1/1 | [e16-40a-dev-zk-stories42m-t32-h100-0](ledger/e16-40a-dev-zk-stories42m-t32-h100-0.json) @ `a9fd51f` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | 06/cf (CPU on Lucid h100-nvl-1-1-cc) | 16 | 487.36 | 0.066 | 56.72 | 21.4 | 89.7 | — | — | — | none | 1/1 | [e16-40a-dev-zk-stories42m-t32-h100-1](ledger/e16-40a-dev-zk-stories42m-t32-h100-1.json) @ `a9fd51f` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | 06/cf (CPU on Lucid h100-nvl-1-1-cc) | 16 | 489.91 | 0.065 | 57.03 | 21.4 | 89.7 | — | — | — | none | 1/1 | [e16-40a-dev-zk-stories42m-t32-h100-2](ledger/e16-40a-dev-zk-stories42m-t32-h100-2.json) @ `a9fd51f` |
@@ -118,7 +119,7 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | Intel(R) Xeon(R) Platinum 8480CL on h100-sxm-8-0 | 16 | 467.62 | 0.068 | 27.17 | 21.4 | 88.6 | — | — | — | none | 2/2 | [e20-22-e45-dev-zk-stories42m-t32-h100-sxm-repeat-3-cpu](ledger/e20-22-e45-dev-zk-stories42m-t32-h100-sxm-repeat-3-cpu.json) @ `27a2759` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | NVIDIA H100 80GB HBM3 on h100-sxm-8-0 | 16 | 103.63 | 0.309 | 27.08 | 21.4 | 23.7 | — | — | — | none | 2/2 | [e20-22-e45-dev-zk-stories42m-t32-h100-sxm-repeat-3-cuda](ledger/e20-22-e45-dev-zk-stories42m-t32-h100-sxm-repeat-3-cuda.json) @ `27a2759` |
 
-Rungs with no record: L2b, L3a, L3b, L3c, L4, L5, L6.
+Rungs with no record: L2b, L3b, L3c, L4, L5, L6.
 
 - Cells/token and Lookups/token before task E17-01 are upper bounds read from the proof: the padded
   stacked-source size and the sum of the verifier's LU numerators (tables included). A dash

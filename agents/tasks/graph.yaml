@@ -4995,7 +4995,9 @@ tasks:
   crate: all
   lane: N
   gate: M1
-  status: ready
+  status: done
+  agent: antigravity
+  branch: task/E22-04-m1-llama31-8b
   acceptance:
   - L3a - a real prompt with its greedy continuation, T = 64 - proves and verifies through the CLI under the development profile on one CPU host with at most 512 GB RAM
   - the statement tampers and NC-1300..1310 are rejected on that proof
