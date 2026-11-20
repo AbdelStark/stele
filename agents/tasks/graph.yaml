@@ -4253,7 +4253,8 @@ tasks:
   skill: pcs-engineer
   crate: research+docs
   lane: C
-  status: ready
+  status: done
+  branch: task/E19-01-rfc0029-parameters
   acceptance:
   - an exact-integer checker derives the least query count per level for Policy 3 (RFC-0029 §5) and its failure at one fewer, and prints proof bytes for sources of 2^20 to 2^34 entries
   - it prints each size twice - without caps and under the caps of RFC-0030 §3 - and prices the wider-field alternative of Q50 at 2^32 to 2^34 entries

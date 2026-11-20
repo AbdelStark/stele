@@ -1,12 +1,12 @@
 # RFC-0029 — Commitment scheme v3: interleaved circle Reed–Solomon with a recursive opening
 
-Status: Draft · Version: 0.1.0 · Depends: RFC-0003 §3, RFC-0006, RFC-0010 (A2, A3, A8, A9), RFC-0012, RFC-0027
+Status: Accepted (development tier) · Version: 0.1.0 · Depends: RFC-0003 §3, RFC-0006, RFC-0010 (A2, A3, A8, A9, A17), RFC-0012 (A20), RFC-0027
 
-Scope: the development tier first. Admission to `standard` needs RFC-0030 and
-Workflow 10. Questions: Q27, Q39, Q44, Q45, Q48, Q50, Q51. Tasks: E19-01..E19-06.
-RFC-0010 A3 item 1 reserves the fresh-tensor mode and the succinct ("Ligerito") mode
-for a new amendment. This RFC is the proposal for that amendment; §1.4 lists the
-companion texts it needs at acceptance.
+Scope: Accepted for the development tier (RFC-0027 §2, ADR-152). Admission to `standard` or `treaty`
+needs RFC-0030 and Workflow 10. Questions: Q27, Q39, Q44, Q45, Q48, Q50, Q51. Tasks: E19-01..E19-06.
+RFC-0010 A3 item 1 reserved the fresh-tensor mode and the succinct ("Ligerito") mode for a new
+amendment; companion amendments RFC-0010 A17 and RFC-0012 A20 are Accepted for the development tier
+alongside this RFC (§1.4, §9).
 
 ## 1. Statement
 
@@ -244,4 +244,15 @@ now keeps the byte layout stable.
 
 ## 9. Amendment log
 
-None.
+- **Acceptance (development tier, ADR-152, task E19-01):** Accepted for the development
+  tier (RFC-0027 §2) together with companion amendments RFC-0010 A17 and RFC-0012 A20.
+  Because RFC-0010 A15 already allocated source version `u8(3)` for hiding Circle sources,
+  RFC-0010 A17 allocates **source version `u8(4)`** and code family **`CircleCoeff` (`u8(2)`)**
+  for coefficient-form recursive Circle RS sources (resolving the Q48 version byte), and
+  registers Policy 3 (`policy = u8(3)`). Exact-integer parameter receipts and Bet B3
+  verification (`2^20..2^34` uncapped, RFC-0030 §3 capped, and Q50 wider-field pricing) are
+  pinned in `research/rfc0029-pcs/check_policy3.py` and `research/rfc0029-pcs/REPORT.md`
+  (`2^32` QM31 capped = `8,388,288 B < 8 MiB`; per-round QM31 = `1.571 MiB`; Ext6 Q50 =
+  `0.951 MiB`; OM31 Q50 = `1.035 MiB`). Controls `NC-0630..0635` are entered as `todo` in
+  `tests/negative-controls/catalog.md` for E19-03/E19-05. Promotion to `standard` or `treaty`
+  remains a separate Workflow 10 task.

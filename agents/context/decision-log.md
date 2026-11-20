@@ -4690,6 +4690,32 @@ Consequences:
   and lookup positions by `42.05B` (`1.54x`).
 - No security level or profile promotion is granted (development tier only, RFC-0027 §2).
 
+## ADR-152 — Accept RFC-0029 (Commitment scheme v3, Policy 3) for the development tier (task E19-01)
+
+- **Status:** Accepted (development tier, RFC-0027 §2)
+- **Task / Lane:** `E19-01` · Lane C
+- **Governing RFCs:** `RFC-0029`, `RFC-0010 A17`, `RFC-0012 A20`, `RFC-0030 §3`
+- **Decision:** Accept `RFC-0029` (interleaved coefficient-form circle Reed–Solomon with
+  recursive opening) and companion amendments `RFC-0010 A17` and `RFC-0012 A20` for the
+  development tier, verified by the exact-integer checker `research/rfc0029-pcs/check_policy3.py`
+  (`research/rfc0029-pcs/REPORT.md`).
+- **Key choices:**
+  - Allocate **source version `u8(4)`** and code family **`CircleCoeff` (`u8(2)`)** in
+    `RFC-0010 A17` (resolving Q48 without colliding with `RFC-0010 A15`'s version `u8(3)`
+    hiding Circle sources), and reserve Policy 3 (`policy = u8(3)`, `e = floor((D - 1) / 3)`,
+    `q = 241` at rate 1/4, `202` at rate 1/8, `185` at rate 1/16 for `T = 100`).
+  - Reserve transcript labels `stele/v0.1/pcs/level-root`, `stele/v0.1/pcs/level-beta`, and
+    `stele/v0.1/pcs/level-gamma` in `RFC-0012 A20` (registered in `stele-hash` and
+    `docs/security/transcript-labels.json` in `E19-03`).
+  - Reserve `NC-0630..0635` as `todo` in `tests/negative-controls/catalog.md` for `E19-03`/`E19-05`.
+  - **Bet B3 (`docs/plan.md §2`) check:** Exact-integer DP proves `2^32` M31 entries at
+    `T = 100` under RFC-0030 §3 caps takes `8,388,288 B < 8 MiB` under strict `2·ell·(e+1)`
+    QM31, `1,646,816 B` (`1.571 MiB`) under per-round QM31, `996,696 B` (`0.951 MiB`) under
+    Ext6 Q50, and `1,085,280 B` (`1.035 MiB`) under OM31 Q50 (with certified `2^33` model
+    sources opening in `714,768 B` / `0.682 MiB` at `q_open = 55`). Bet B3 stays active.
+- **Promotion:** Admission to `standard` or `treaty` is not granted here (requires RFC-0030
+  and Workflow 10).
+
 ## ADR-155 — Accept RFC-0026 A8, the plan-fixed split of lookup checks, at the development tier (task E20-02)
 
 Context: RFC-0026 A3 rejects a lookup check whose concatenated domain exceeds `2^30`
