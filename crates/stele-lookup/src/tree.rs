@@ -200,6 +200,190 @@ pub(super) fn prove_mixed<K: ChallengeField + Eq>(
     let proof = stele_sumcheck::prove(i, strategy, t)?;
     Ok((proof, point))
 }
+/// One fraction-tree layer's round state (RFC-0008 A3): the dense round polynomial of
+/// `eq · (left·p0·q1 + right·p1·q0 + γ·q0·q1)` with `eq(r, ·)` kept factored. Its bound
+/// prefix is a scalar, its current coordinate a line in the round variable and only its
+/// suffix a table, so a round reads four tables at three points, not five at four. The
+/// arithmetic is exact: every message equals the dense strategy's.
+struct Layer<'a, K> {
+    /// `p0, q0, p1, q1` over the unbound coordinates, leading coordinate first.
+    tables: [Vec<K>; 4],
+    /// The unbound coordinates of the layer point, leading first.
+    r: &'a [K],
+    /// `eq` of the bound coordinates.
+    scale: K,
+    /// `eq(r[1..], ·)`: half the tables' length.
+    suffix: Vec<K>,
+    /// `left, right, γ`.
+    weights: [K; 3],
+}
+/// `eq(r, x)` on the line through `x = 0` and `x = 1`.
+fn eq_line<K: ChallengeField>(r: K, x: K) -> K {
+    K::from_i64(1) - r - x + (r + r) * x
+}
+impl<'a, K: ChallengeField + Eq> Layer<'a, K> {
+    fn new(tables: [Vec<K>; 4], r: &'a [K], weights: [K; 3]) -> Result<Self, Error> {
+        if tables.iter().any(|t| t.len() != 1usize << r.len()) {
+            return Err(Error::SourceShape);
+        }
+        Ok(Self {
+            tables,
+            r,
+            scale: K::from_i64(1),
+            suffix: stele_sumcheck::parallel::eq_table(r.get(1..).unwrap_or(&[]))?,
+            weights,
+        })
+    }
+    /// The round values at 0..=3 from the suffix-weighted sums of the summand at 0, at 1
+    /// and of its leading coefficient (it is quadratic in the round variable).
+    fn message(&self, [at0, at1, lead]: [K; 3]) -> Result<Vec<K>, stele_sumcheck::Error> {
+        let r0 = *self.r.first().ok_or(stele_sumcheck::Error::PublicShape)?;
+        let slope = at1 - at0 - lead;
+        let mut out = Vec::new();
+        out.try_reserve_exact(4)
+            .map_err(|_| stele_sumcheck::Error::Capacity)?;
+        for node in 0..4 {
+            let x = K::from_i64(node);
+            out.push(self.scale * eq_line(r0, x) * (at0 + x * (slope + lead * x)));
+        }
+        Ok(out)
+    }
+    fn round(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
+        let half = self.suffix.len();
+        let [p0, q0, p1, q1] = &self.tables;
+        if self.r.is_empty() || p0.len() != 2 * half {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        let [left, right, gamma] = self.weights;
+        let one = K::from_i64(1);
+        let unit = left == one && right == one;
+        // Bilinear in (p0, q0) and (p1, q1).
+        let term = |p0: K, q0: K, p1: K, q1: K| {
+            if unit {
+                q1 * (p0 + gamma * q0) + p1 * q0
+            } else {
+                q1 * (left * p0 + gamma * q0) + right * p1 * q0
+            }
+        };
+        let mut sums = [K::from_i64(0); 3];
+        stele_sumcheck::parallel::sum_ranges(half, &mut sums, |range, out| {
+            for x in range {
+                let y = x + half;
+                let e = self.suffix[x];
+                out[0] = out[0] + e * term(p0[x], q0[x], p1[x], q1[x]);
+                out[1] = out[1] + e * term(p0[y], q0[y], p1[y], q1[y]);
+                out[2] =
+                    out[2] + e * term(p0[y] - p0[x], q0[y] - q0[x], p1[y] - p1[x], q1[y] - q1[x]);
+            }
+            Ok(())
+        })?;
+        self.message(sums)
+    }
+    fn fold(&mut self, challenge: K) -> Result<(), stele_sumcheck::Error> {
+        let (&r0, rest) = self
+            .r
+            .split_first()
+            .ok_or(stele_sumcheck::Error::PublicShape)?;
+        for table in &mut self.tables {
+            stele_sumcheck::parallel::fold(table, challenge);
+        }
+        self.bind(r0, challenge);
+        self.r = rest;
+        Ok(())
+    }
+    /// Move `r0` from the round variable to the bound prefix: `eq(r[2..], ·)` is
+    /// `eq(r[1..], ·)` summed over its leading coordinate.
+    fn bind(&mut self, r0: K, challenge: K) {
+        self.scale = self.scale * eq_line(r0, challenge);
+        let half = self.suffix.len() / 2;
+        if half > 0 {
+            let (low, high) = self.suffix.split_at_mut(half);
+            for (a, b) in low.iter_mut().zip(high.iter()) {
+                *a = *a + *b;
+            }
+            self.suffix.truncate(half);
+        }
+    }
+    fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
+        if !self.r.is_empty() {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        let mut out = Vec::new();
+        out.try_reserve_exact(5)
+            .map_err(|_| stele_sumcheck::Error::Capacity)?;
+        out.extend(self.tables.iter().map(|t| t[0]));
+        out.push(self.scale);
+        Ok(out)
+    }
+}
+/// [`Layer`] as an A1 strategy that records the engine's challenges.
+struct LayerSummand<'a, K> {
+    layer: Layer<'a, K>,
+    point: &'a mut Vec<K>,
+}
+impl<K: ChallengeField + Eq> Summand<K> for LayerSummand<'_, K> {
+    fn shape(&self) -> (u32, usize) {
+        (self.layer.r.len() as u32, 5)
+    }
+    fn validate_instance(&self, instance: &Instance<K>) -> Result<(), stele_sumcheck::Error> {
+        if self.shape() != (instance.num_vars, instance.inputs.len())
+            || !is_layer_instance(instance)
+        {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        Ok(())
+    }
+    fn round(&self, _: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
+        self.layer.round()
+    }
+    fn fold(&mut self, challenge: K) -> Result<(), stele_sumcheck::Error> {
+        self.layer.fold(challenge)?;
+        self.point
+            .try_reserve(1)
+            .map_err(|_| stele_sumcheck::Error::Capacity)?;
+        self.point.push(challenge);
+        Ok(())
+    }
+    fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
+        self.layer.final_values()
+    }
+}
+/// `p0, q0, p1, q1` of a level's child pairs: even children are the left side.
+fn split_children<K: ChallengeField>(children: &[[K; 2]]) -> Result<[Vec<K>; 4], Error> {
+    let mut tables = [Vec::new(), Vec::new(), Vec::new(), Vec::new()];
+    for (table, (side, column)) in tables.iter_mut().zip([(0, 0), (0, 1), (1, 0), (1, 1)]) {
+        reserve(table, children.len() / 2)?;
+        table.resize(children.len() / 2, K::from_i64(0));
+        stele_sumcheck::parallel::for_each_chunk(table, |start, chunk| {
+            for (j, out) in chunk.iter_mut().enumerate() {
+                *out = children[2 * (start + j) + side][column];
+            }
+        });
+    }
+    Ok(tables)
+}
+/// Reduce one layer over `p0, q0, p1, q1` at the layer point `r`; the proof bytes are
+/// [`prove_dense`]'s over the same four tables and `eq(r, ·)`.
+fn prove_layer<K: ChallengeField + Eq>(
+    i: &Instance<K>,
+    tables: [Vec<K>; 4],
+    r: &[K],
+    t: &mut Transcript<K>,
+) -> Result<(stele_sumcheck::Proof<K>, Vec<K>), Error> {
+    let mut point = Vec::new();
+    reserve(&mut point, r.len())?;
+    let weights = [
+        i.terms[0].coefficient,
+        i.terms[1].coefficient,
+        i.terms[2].coefficient,
+    ];
+    let strategy = LayerSummand {
+        layer: Layer::new(tables, r, weights)?,
+        point: &mut point,
+    };
+    let proof = stele_sumcheck::prove(i, strategy, t)?;
+    Ok((proof, point))
+}
 /// Prebuilt dense fraction tree levels ready for [`Descriptor::prove_built`] (task E20-02).
 pub struct BuiltTree<K> {
     levels: Vec<Vec<[K; 2]>>,
@@ -314,16 +498,18 @@ pub struct BuiltBaseTree<K> {
 }
 
 /// Sumcheck strategy for the bottom fraction-tree layer (`k = m - 1 >= 1`) that keeps the leaf
-/// layer in the base field during round 0, then folds directly into half-sized extension tables.
+/// layer in the base field during round 0, then folds directly into half-sized extension
+/// tables and continues as a [`Layer`]. `eq` is factored from the first round on.
 struct BaseLeafSummand<'a, K: ChallengeField + Eq> {
     leaves: BaseLeaves<'a, K>,
     denom: &'a [K],
-    eq: Option<Vec<K>>,
-    left: K,
-    right: K,
-    gamma: K,
-    remaining: u32,
-    folded: Option<Dense<K>>,
+    /// The layer point; `r[0]` is the first round's coordinate.
+    r: &'a [K],
+    /// `eq(r[1..], ·)`, until the first fold.
+    suffix: Option<Vec<K>>,
+    /// `left, right, γ`.
+    weights: [K; 3],
+    folded: Option<Layer<'a, K>>,
     point: &'a mut Vec<K>,
 }
 
@@ -335,7 +521,8 @@ fn is_layer_instance<K: ChallengeField>(i: &Instance<K>) -> bool {
 }
 impl<K: ChallengeField + Eq> Summand<K> for BaseLeafSummand<'_, K> {
     fn shape(&self) -> (u32, usize) {
-        (self.remaining, 5)
+        let remaining = self.folded.as_ref().map_or(self.r.len(), |l| l.r.len());
+        (remaining as u32, 5)
     }
     fn validate_instance(&self, instance: &Instance<K>) -> Result<(), stele_sumcheck::Error> {
         if self.shape() != (instance.num_vars, instance.inputs.len())
@@ -345,58 +532,60 @@ impl<K: ChallengeField + Eq> Summand<K> for BaseLeafSummand<'_, K> {
         }
         Ok(())
     }
-    fn round(&self, instance: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
-        if let Some(dense) = &self.folded {
-            return dense.round(instance);
+    fn round(&self, _: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
+        if let Some(layer) = &self.folded {
+            return layer.round();
         }
-        let eq = self
-            .eq
+        let suffix = self
+            .suffix
             .as_deref()
             .ok_or(stele_sumcheck::Error::PublicShape)?;
-        if self.remaining == 0 || eq.len() != (1usize << self.remaining) {
+        let half = suffix.len();
+        let sigma = self.leaves.sigma();
+        if self.r.is_empty() || sigma.len() != 4 * half {
             return Err(stele_sumcheck::Error::PublicShape);
         }
-        let half = eq.len() / 2;
-        let sigma = self.leaves.sigma();
-        let (left, right, gamma) = (self.left, self.right, self.gamma);
-        let mut evals = vec![K::from_i64(0); 4];
-        stele_sumcheck::parallel::sum_ranges(half, &mut evals, |range, out| {
+        let [left, right, gamma] = self.weights;
+        // Bilinear in (p0, q0) and (p1, q1), with the selectors in the base field.
+        let term = |p0: M31, q0: K, p1: M31, q1: K| {
+            left * q1.mul_m31(p0) + right * q0.mul_m31(p1) + gamma * (q0 * q1)
+        };
+        let q = |idx: usize| self.leaves.denom_at(self.denom, idx);
+        let mut sums = [K::from_i64(0); 3];
+        stele_sumcheck::parallel::sum_ranges(half, &mut sums, |range, out| {
             for col in range {
-                let lo0 = 2 * col;
-                let hi0 = 2 * (col + half);
-                let mut p0 = sigma[lo0];
-                let dp0 = sigma[hi0] - p0;
-                let mut p1 = sigma[lo0 + 1];
-                let dp1 = sigma[hi0 + 1] - p1;
-                let mut q0 = self.leaves.denom_at(self.denom, lo0);
-                let dq0 = self.leaves.denom_at(self.denom, hi0) - q0;
-                let mut q1 = self.leaves.denom_at(self.denom, lo0 + 1);
-                let dq1 = self.leaves.denom_at(self.denom, hi0 + 1) - q1;
-                let mut e = eq[col];
-                let de = eq[col + half] - e;
-                for slot in out.iter_mut().take(4) {
-                    let num = left * q1.mul_m31(p0) + right * q0.mul_m31(p1) + gamma * (q0 * q1);
-                    *slot = *slot + e * num;
-                    p0 = p0 + dp0;
-                    p1 = p1 + dp1;
-                    q0 = q0 + dq0;
-                    q1 = q1 + dq1;
-                    e = e + de;
-                }
+                let (lo, hi) = (2 * col, 2 * (col + half));
+                let (p0a, p0b, p1a, p1b) = (sigma[lo], sigma[hi], sigma[lo + 1], sigma[hi + 1]);
+                let (q0a, q0b, q1a, q1b) = (q(lo), q(hi), q(lo + 1), q(hi + 1));
+                let e = suffix[col];
+                out[0] = out[0] + e * term(p0a, q0a, p1a, q1a);
+                out[1] = out[1] + e * term(p0b, q0b, p1b, q1b);
+                out[2] = out[2] + e * term(p0b - p0a, q0b - q0a, p1b - p1a, q1b - q1a);
             }
             Ok(())
         })?;
-        Ok(evals)
+        Layer {
+            tables: [Vec::new(), Vec::new(), Vec::new(), Vec::new()],
+            r: self.r,
+            scale: K::from_i64(1),
+            suffix: Vec::new(),
+            weights: self.weights,
+        }
+        .message(sums)
     }
     fn fold(&mut self, r: K) -> Result<(), stele_sumcheck::Error> {
-        if self.remaining == 0 {
-            return Err(stele_sumcheck::Error::PublicShape);
-        }
-        if let Some(dense) = &mut self.folded {
-            dense.fold(r)?;
+        if let Some(layer) = &mut self.folded {
+            layer.fold(r)?;
         } else {
-            let mut eq = self.eq.take().ok_or(stele_sumcheck::Error::PublicShape)?;
-            let half = eq.len() / 2;
+            let suffix = self
+                .suffix
+                .take()
+                .ok_or(stele_sumcheck::Error::PublicShape)?;
+            let (&r0, _) = self
+                .r
+                .split_first()
+                .ok_or(stele_sumcheck::Error::PublicShape)?;
+            let half = suffix.len();
             let one = K::from_i64(1);
             let zero = K::from_i64(0);
             let sigma = self.leaves.sigma();
@@ -443,13 +632,16 @@ impl<K: ChallengeField + Eq> Summand<K> for BaseLeafSummand<'_, K> {
                     *dst = a + r * (b - a);
                 }
             });
-            stele_sumcheck::parallel::fold(&mut eq, r);
-            self.folded = Some(Dense::from_folded(
-                vec![f_p0, f_q0, f_p1, f_q1, eq],
-                self.remaining - 1,
-            )?);
+            let mut layer = Layer {
+                tables: [f_p0, f_q0, f_p1, f_q1],
+                r: &self.r[1..],
+                scale: one,
+                suffix,
+                weights: self.weights,
+            };
+            layer.bind(r0, r);
+            self.folded = Some(layer);
         }
-        self.remaining -= 1;
         self.point
             .try_reserve(1)
             .map_err(|_| stele_sumcheck::Error::Capacity)?;
@@ -457,9 +649,6 @@ impl<K: ChallengeField + Eq> Summand<K> for BaseLeafSummand<'_, K> {
         Ok(())
     }
     fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
-        if self.remaining != 0 {
-            return Err(stele_sumcheck::Error::PublicShape);
-        }
         self.folded
             .as_ref()
             .ok_or(stele_sumcheck::Error::PublicShape)?
@@ -510,7 +699,7 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         {
             return Err(Error::SourceShape);
         }
-        self.prove_levels(tree.levels, t)
+        self.prove_levels(tree.levels, t, false)
             .map(|(proof, reduction, _)| (proof, reduction))
     }
 
@@ -683,21 +872,7 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         // Upper levels `1..m` from prebuilt extension pairs.
         for children in tree.levels.iter().skip(1) {
             let i = layer(self, &point, values, t, &mut a)?;
-            let mut tables = Vec::new();
-            reserve(&mut tables, 5)?;
-            for (side, column) in [(0, 0), (0, 1), (1, 0), (1, 1)] {
-                let mut table = Vec::new();
-                reserve(&mut table, children.len() / 2)?;
-                table.resize(children.len() / 2, K::from_i64(0));
-                stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
-                    for (j, out) in chunk.iter_mut().enumerate() {
-                        *out = children[2 * (start + j) + side][column];
-                    }
-                });
-                tables.push(table);
-            }
-            tables.push(stele_sumcheck::parallel::eq_table(&point)?);
-            let (step, next, _) = prove_dense(&i, tables, t)?;
+            let (step, next) = prove_layer(&i, split_children(children)?, &point, t)?;
             a.layers.push(ScRecord {
                 id: i.id,
                 m: i.num_vars,
@@ -719,17 +894,18 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
                 let (s, n, _) = prove_dense(&i, tables, t)?;
                 (s, n)
             } else {
-                let eq = stele_sumcheck::parallel::eq_table(&point)?;
                 let mut next = Vec::new();
                 reserve(&mut next, i.num_vars as usize)?;
                 let summand = BaseLeafSummand {
                     leaves,
                     denom: &tree.denom,
-                    eq: Some(eq),
-                    left: i.terms[0].coefficient,
-                    right: i.terms[1].coefficient,
-                    gamma: i.terms[2].coefficient,
-                    remaining: i.num_vars,
+                    r: &point,
+                    suffix: Some(stele_sumcheck::parallel::eq_table(&point[1..])?),
+                    weights: [
+                        i.terms[0].coefficient,
+                        i.terms[1].coefficient,
+                        i.terms[2].coefficient,
+                    ],
                     folded: None,
                     point: &mut next,
                 };
@@ -777,12 +953,15 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         t: &mut Transcript<K>,
     ) -> Result<(Proof<K>, Reduction<K>, Work), Error> {
         let built = self.build_levels(leaves)?;
-        self.prove_levels(built.levels, t)
+        self.prove_levels(built.levels, t, true)
     }
+    /// `measured` keeps the dense strategy, whose buffers [`Work`] describes; otherwise
+    /// each layer runs the factored one. The proof bytes are the same.
     fn prove_levels(
         &self,
         levels: Vec<Vec<[K; 2]>>,
         t: &mut Transcript<K>,
+        measured: bool,
     ) -> Result<(Proof<K>, Reduction<K>, Work), Error> {
         let levels_bytes = work::tables(&levels)?;
         let mut work = Work::default();
@@ -797,19 +976,23 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         bind(self, root, t)?;
         for children in levels.iter().skip(1) {
             let i = layer(self, &point, values, t, &mut a)?;
-            let mut tables = Vec::new();
-            reserve(&mut tables, 5)?;
-            for (side, column) in [(0, 0), (0, 1), (1, 0), (1, 1)] {
-                let mut table = Vec::new();
-                reserve(&mut table, children.len() / 2)?;
-                table.resize(children.len() / 2, K::from_i64(0));
-                stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
-                    for (j, out) in chunk.iter_mut().enumerate() {
-                        *out = children[2 * (start + j) + side][column];
-                    }
+            let tables = split_children(children)?;
+            if !measured {
+                let (step, next) = prove_layer(&i, tables, &point, t)?;
+                a.layers.push(ScRecord {
+                    id: i.id,
+                    m: i.num_vars,
+                    degree: 3,
+                    field_degree: K::DEGREE as u8,
+                    numerator: 3 * u64::from(i.num_vars),
                 });
-                tables.push(table);
+                let (advanced, next_values) = advance(&point, next, &step.final_values, t, &mut a)?;
+                (point, values) = (advanced, next_values);
+                steps.push(step);
+                continue;
             }
+            let mut tables = Vec::from(tables);
+            reserve(&mut tables, 1)?;
             tables.push(stele_sumcheck::parallel::eq_table(&point)?);
             let (step, next, dense) = prove_dense(&i, tables, t)?;
             // These exact outer buffers remain unchanged across the actual A1.
