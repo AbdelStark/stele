@@ -715,10 +715,16 @@ fn rejects_tampers_on_a_supplied_proof() {
     // certificate (RFC-0026 §2.2). The other three tampers change the absorbed public input.
     let mut weight = public.clone();
     weight.commitment[0].0[0] ^= 1;
-    assert!(matches!(
-        rejects("weight", &weight, &statement),
-        Error::Commitment(_)
-    ));
+    let weight_error = rejects("weight", &weight, &statement);
+    // RFC-0026 A29: profile 6 checks the root inside the certified registration (RFC-0029 §1.3).
+    assert!(if public.sources == Sources::CircleRecursive {
+        matches!(
+            weight_error,
+            Error::Engine(stele_reductions::relation::Error::Recursive(_))
+        )
+    } else {
+        matches!(weight_error, Error::Commitment(_))
+    });
     // A tampered public norm gain (RFC-0026 A2).
     let mut gain = public.clone();
     gain.vectors[0].1[0] ^= 1;
@@ -740,7 +746,8 @@ fn matches_reference_model_commitment_of_a_supplied_proof() {
     let artifact = read("artifact.bin");
     let (public, _) = bundle::decode(&read("public.bin")).expect("bundle");
     let clock = Instant::now();
-    let weights = Weights::from_artifact(&model, &artifact).expect("weights");
+    let weights =
+        Weights::from_artifact_sources(&model, &artifact, public.sources).expect("weights");
     let committed = Committed::new(&weights).expect("commitment");
     let ns = clock.elapsed().as_nanos();
     assert!(
