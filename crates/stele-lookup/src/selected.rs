@@ -395,8 +395,9 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
             sc,
         })
     }
-    /// Prove the selected Boolean product directly from base-field `xs` (task E20-02):
-    /// keeps `sigma` and `xs` in `M31` during round 0 via `Dense::new_mixed`. Proof bytes
+    /// Prove the selected Boolean product directly from base-field `xs` (task E20-02): a
+    /// base-field selector and `xs` stay in `M31` through round 0, with `eq` factored
+    /// ([`SelectedSummand`]). An extension selector takes the reference rounds. Proof bytes
     /// are bit-identical to [`Self::prove`].
     pub fn prove_base(
         &self,

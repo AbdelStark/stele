@@ -2692,7 +2692,9 @@ pub enum ColumnFunctional<'a, K: Field> {
 pub struct CertifiedOpeningWork {
     /// Codeword bytes resident in [`CertifiedModelSource`] (always `0`).
     pub stored_codeword_bytes: usize,
-    /// Peak codeword scratch bytes allocated during opening (`1` row + `q_open` columns).
+    /// An upper bound on the codeword scratch bytes of an opening: one row buffer per block
+    /// of 128 rows, the shared twiddles and the `q_open` recomputed columns.
+    /// It is a function of the shape alone, not of the thread count.
     pub peak_codeword_bytes: usize,
     /// Full level-0 codeword size `R_0 * N_0 * 4` (never allocated during opening).
     pub full_codeword_bytes: usize,
@@ -2837,24 +2839,20 @@ fn recompute_queried_columns(
     };
     let block_len = mul_usize(RECOMPUTE_BLOCK, cols)?.max(1);
     #[cfg(feature = "std")]
-    let resident = {
-        blocks
-            .into_par_iter()
-            .zip(message.par_chunks(block_len))
-            .try_for_each(fill)?;
-        rayon::current_num_threads().min(block_count)
-    };
+    blocks
+        .into_par_iter()
+        .zip(message.par_chunks(block_len))
+        .try_for_each(fill)?;
     #[cfg(not(feature = "std"))]
-    let resident = {
-        blocks
-            .into_iter()
-            .zip(message.chunks(block_len))
-            .try_for_each(fill)?;
-        1
-    };
-    // One row buffer per running block, and the shared twiddles (`N - 1` elements).
+    blocks
+        .into_iter()
+        .zip(message.chunks(block_len))
+        .try_for_each(fill)?;
+    // At most one row buffer per block (a worker waiting on a long row's transform may
+    // start another block, so the thread count is no bound), and the shared twiddles
+    // (`N - 1` elements).
     let peak_bytes = add_usize(
-        mul_usize(mul_usize(resident + 1, n)?, 4)?,
+        mul_usize(mul_usize(block_count + 1, n)?, 4)?,
         payloads.capacity(),
     )?;
     Ok((payloads, peak_bytes))

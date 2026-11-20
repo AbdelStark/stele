@@ -219,14 +219,21 @@ impl Rotation {
     /// blocks of a round run on scoped threads; rows are independent and hashed in
     /// position order, so the digest is the same.
     pub fn data_digest(self) -> Result<[u8; 32], super::Error> {
+        #[cfg(feature = "std")]
+        let workers = crate::workers();
+        #[cfg(not(feature = "std"))]
+        let workers = 1usize;
+        self.data_digest_with(workers)
+    }
+    /// [`Self::data_digest`] with at most `workers` blocks per round.
+    fn data_digest_with(self, workers: usize) -> Result<[u8; 32], super::Error> {
         let mut digest = blake3::Hasher::new();
         digest.update(b"stele/v0.1/cqis/rotation-data");
         digest.update(blake3::hash(&self.encode()?).as_bytes());
         let row_length = 2 * usize::from(self.width());
-        #[cfg(feature = "std")]
-        let workers = std::thread::available_parallelism().map_or(1, |n| n.get());
-        #[cfg(not(feature = "std"))]
-        let workers = 1usize;
+        // No more buffers than blocks: a short rotation allocates one.
+        let blocks = (self.length() as usize).div_ceil(BLOCK_ROWS);
+        let workers = workers.min(blocks).max(1);
         let mut buffers: Vec<Vec<u8>> = reserved(workers)?;
         for _ in 0..workers {
             let mut buffer = reserved(BLOCK_ROWS * row_length)?;
@@ -245,16 +252,12 @@ impl Rotation {
             }
             #[cfg(feature = "std")]
             std::thread::scope(|scope| {
-                let handles: Vec<_> = blocks
-                    .iter_mut()
-                    .map(|(positions, buffer)| {
-                        let positions = positions.clone();
-                        scope.spawn(move || self.rows(positions, buffer))
-                    })
-                    .collect();
-                handles
-                    .into_iter()
-                    .try_for_each(|handle| handle.join().map_err(|_| super::Error::Capacity)?)
+                let mut handles = reserved(blocks.len())?;
+                for (positions, buffer) in &mut blocks {
+                    let positions = positions.clone();
+                    handles.push(scope.spawn(move || self.rows(positions, buffer)));
+                }
+                crate::join_all(handles)
             })?;
             #[cfg(not(feature = "std"))]
             for (positions, buffer) in &mut blocks {

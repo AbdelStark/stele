@@ -59,9 +59,7 @@ fn fill_rows<S>(
     };
     #[cfg(feature = "std")]
     {
-        let workers = std::thread::available_parallelism()
-            .map_or(1, |n| n.get())
-            .min(rows / ROWS_PER_WORKER);
+        let workers = crate::workers().min(rows / ROWS_PER_WORKER);
         if workers > 1 {
             let per = rows.div_ceil(workers);
             let run = &run;
@@ -70,9 +68,7 @@ fn fill_rows<S>(
                 for (b, block) in cells.chunks_mut(2 * per).enumerate() {
                     handles.push(scope.spawn(move || run(b * per, block)));
                 }
-                handles
-                    .into_iter()
-                    .try_for_each(|handle| handle.join().map_err(|_| Error::Capacity)?)
+                crate::join_all(handles)
             });
         }
     }

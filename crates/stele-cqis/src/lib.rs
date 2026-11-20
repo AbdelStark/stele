@@ -9,6 +9,39 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+/// Threads for block-parallel generation (rotation rows, table rows): the machine's
+/// parallelism, capped by `RAYON_NUM_THREADS` when it is set, so a run pinned to a thread
+/// count stays within it. Only the schedule depends on it, never a value.
+#[cfg(feature = "std")]
+pub(crate) fn workers() -> usize {
+    let available = std::thread::available_parallelism().map_or(1, |n| n.get());
+    std::env::var("RAYON_NUM_THREADS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|n| *n > 0)
+        .map_or(available, |n| n.min(available))
+}
+
+/// Join scoped workers in order. A worker's panic is re-raised after every worker has
+/// been joined; otherwise the first error in worker order is returned.
+#[cfg(feature = "std")]
+pub(crate) fn join_all<'scope, E>(
+    handles: impl IntoIterator<Item = std::thread::ScopedJoinHandle<'scope, Result<(), E>>>,
+) -> Result<(), E> {
+    let (mut first, mut panic) = (Ok(()), None);
+    for handle in handles {
+        match handle.join() {
+            Ok(result) if first.is_ok() => first = result,
+            Ok(_) => {}
+            Err(payload) => panic = panic.or(Some(payload)),
+        }
+    }
+    if let Some(payload) = panic {
+        std::panic::resume_unwind(payload);
+    }
+    first
+}
+
 mod numerics;
 
 /// Complete Artifact-backed integer model evaluation (RFC-0025 §2).

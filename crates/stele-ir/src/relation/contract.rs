@@ -77,18 +77,26 @@ fn run<A: Elem, B: Elem>(
 ) -> Option<Vec<i64>> {
     let n_out = 1usize.checked_shl(u32::from(free))?;
     let n_sum = 1usize.checked_shl(u32::from(summed))?;
-    let magnitude = u128::from(bound(a)) * u128::from(bound(b)) * n_sum as u128;
+    // Bounds reach 2^63 each: the product is checked, never wrapped.
+    let magnitude = u128::from(bound(a))
+        .checked_mul(u128::from(bound(b)))
+        .and_then(|m| m.checked_mul(n_sum as u128))?;
     if magnitude > i64::MAX as u128 {
         return None;
     }
     let narrow = magnitude <= i32::MAX as u128;
-    // Summed bit j is index bit j of the operand: its row is contiguous.
+    // Summed bit j is index bit j of the operand and no higher index bit reads a summed
+    // bit: its row is contiguous.
+    let summed_bits = usize::from(free)..usize::from(free) + usize::from(summed);
     let low = |r: &Ref| {
         r.vars.len() >= usize::from(summed)
             && r.vars[..usize::from(summed)]
                 .iter()
                 .enumerate()
                 .all(|(j, &v)| usize::from(v) == usize::from(free) + j)
+            && r.vars[usize::from(summed)..]
+                .iter()
+                .all(|&v| !summed_bits.contains(&usize::from(v)))
     };
     let contiguous = low(lr) && low(rr);
     let offsets: Vec<(usize, usize)> = if contiguous {
@@ -248,6 +256,41 @@ mod tests {
                 (&r(1), ColumnSlice::I8(&short))
             ),
             None
+        );
+        // The guard itself must not wrap: 4 · (2^63)^2 = 2^128.
+        let wide = |id: u32| Ref::identity(ColumnId(id), 2);
+        let least = [i64::MIN; 4];
+        assert_eq!(
+            contract(
+                0,
+                2,
+                (&wide(0), ColumnSlice::I64(&least)),
+                (&wide(1), ColumnSlice::I64(&least))
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn matches_reference_definition_when_a_higher_index_bit_reads_a_summed_bit() {
+        // Index bits 0 and 1 of the left operand both read the summed bit: its row is not
+        // contiguous, and the sum is a[0]·b[0] + a[3]·b[1].
+        let twice = Ref {
+            column: ColumnId(0),
+            vars: alloc::vec![0, 0],
+        };
+        let once = Ref {
+            column: ColumnId(1),
+            vars: alloc::vec![0],
+        };
+        assert_eq!(
+            contract(
+                0,
+                1,
+                (&twice, ColumnSlice::I64(&[1, 10, 100, 50])),
+                (&once, ColumnSlice::I64(&[1, 1]))
+            ),
+            Some(alloc::vec![51])
         );
     }
 }

@@ -157,3 +157,51 @@ fn matches_reference_signed_q14_half_away_boundaries() {
         }
     }
 }
+
+/// The digest of the per-row definition: the domain, the descriptor's hash, then every
+/// position's pairs from [`Rotation::coefficient`], in order.
+fn reference_data_digest(rotation: Rotation) -> [u8; 32] {
+    let mut digest = blake3::Hasher::new();
+    digest.update(b"stele/v0.1/cqis/rotation-data");
+    digest.update(blake3::hash(&rotation.encode().expect("bytes")).as_bytes());
+    for position in 0..rotation.length() {
+        for pair in 0..rotation.width() / 2 {
+            let (c, s) = rotation.coefficient(position, pair).expect("coefficient");
+            digest.update(&c.to_le_bytes());
+            digest.update(&s.to_le_bytes());
+        }
+    }
+    *digest.finalize().as_bytes()
+}
+
+#[test]
+fn matches_reference_rows_across_block_and_round_boundaries() {
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("../../../tests/fixtures/rotary-data.json"))
+            .expect("fixture");
+    let hex = fixture["cases"][0]["descriptor"]
+        .as_str()
+        .expect("descriptor");
+    let raw: Vec<u8> = (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex"))
+        .collect();
+    let header = b"stele/v0.1/cqis/rotation".len();
+    // One row, one block less a row, a whole block, a block and a row, and lengths past
+    // one round of two and of three blocks.
+    for length in [1u32, 63, 64, 65, 129, 200] {
+        let mut bytes = raw.clone();
+        bytes[header + 2..header + 6].copy_from_slice(&length.to_le_bytes());
+        let rotation = Rotation::decode(&bytes).expect("rotation");
+        assert_eq!(rotation.length(), length);
+        let expected = reference_data_digest(rotation);
+        for workers in [1usize, 2, 3] {
+            assert_eq!(
+                rotation.data_digest_with(workers).expect("digest"),
+                expected,
+                "length {length}, {workers} blocks per round"
+            );
+        }
+        assert_eq!(rotation.data_digest().expect("digest"), expected);
+    }
+}

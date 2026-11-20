@@ -4339,3 +4339,41 @@ fn rejects_a8_selected_out_of_table_values_in_split_blocks() {
         }
     }
 }
+
+/// RFC-0008 A5 multiplicities of a range block longer than one histogram piece equal a
+/// direct count (task E20-23): pieces are added in order and every position counts once.
+#[test]
+fn matches_reference_range_multiplicities_past_one_histogram_piece() {
+    // Two pieces of 2^16 positions.
+    let bits = 17;
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/hist/17", bits);
+    let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(4), bits);
+    rel.ranges.push(Range {
+        name: "rx".into(),
+        column: x,
+        width: Width::unsigned(4),
+    });
+    let mut state = 7u64;
+    let xs: Vec<i64> = (0..1usize << bits)
+        .map(|_| {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (state >> 60) as i64
+        })
+        .collect();
+    let mut values = Values::new(&rel);
+    values.set(&rel, x, xs.clone()).expect("x");
+    let plan = plan(&rel, Sources::CircleAll).expect("plan");
+    assert_eq!(plan.checks.len(), 1);
+    let resolved = ResolvedColumns::borrowed(&rel, &values);
+    let counted = lookup::counts(&plan.checks[0], &rel, &resolved).expect("counts");
+    let mut expected = vec![0i64; counted.len()];
+    for v in &xs {
+        expected[*v as usize] += 1;
+    }
+    assert_eq!(counted, expected);
+    // Both pieces hold values: the second piece's counts are in the total.
+    assert_eq!(counted.iter().sum::<i64>(), 1 << bits);
+}
