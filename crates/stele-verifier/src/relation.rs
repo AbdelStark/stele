@@ -1,10 +1,11 @@
-//! The relation of a development proof: its canonical decoding (RFC-0026 A15 §5) and
-//! `Relation::validate` (RFC-0026 §3.6 with A6 and A15 E1), tasks E8-02f1/E8-02f0b.
+//! The relation of a development proof: its canonical decoding (RFC-0026 A15 §5, A27 §2,
+//! RFC-0028 §2.5) and `Relation::validate` (RFC-0026 §3.6 with A6, A15 E1, A27, RFC-0028
+//! §§2.1–2.3 and A1), tasks E8-02f1/E8-02f0b/E18-05a.
 //!
-//! Written from the RFC-0026 text only (ADR-128): no production crate was opened.
-//! Every failure here is `StatementMismatch`, raised before any proof byte is read
-//! (A15 §6.0). Names are parsed and dropped: they do not enter the replay, only the
-//! digest of the whole encoding does.
+//! Written from the RFC-0026 and RFC-0028 texts only (ADR-128): no production crate was
+//! opened. Every failure here is `StatementMismatch`, raised before any proof byte is read
+//! (A15 §6.0). Names are parsed and dropped: they do not enter the replay, only the digest
+//! of the whole encoding does.
 
 use crate::development::{reserve, Error, Reader};
 use alloc::vec::Vec;
@@ -12,10 +13,13 @@ use stele_field::{Field, M31};
 
 /// `MAX_VARS` (RFC-0026 §3.1).
 pub const MAX_VARS: u8 = 30;
+/// `(p - 1) / 2` (RFC-0028 §2.2: strict `< p / 2` bound for virtual derived magnitudes).
+pub const HALF_MODULUS: u128 = ((M31::MODULUS as u128) - 1) / 2;
 /// A matmul ref's fixed bits (RFC-0026 A6).
 pub const FIXED_0: u8 = 0xFE;
 pub const FIXED_1: u8 = 0xFF;
 const MAGIC: &[u8; 31] = b"stele/v0.1/relation/encoding/v1";
+const MAGIC_V2: &[u8; 31] = b"stele/v0.1/relation/encoding/v2";
 
 /// A declared width (RFC-0026 §2.1).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -59,11 +63,54 @@ pub struct Ref {
     pub vars: Vec<u8>,
 }
 
+/// Virtual column definition (RFC-0028 §2.1).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Def {
+    Linear {
+        constant: i64,
+        terms: Vec<(i64, Ref)>,
+    },
+    Pointwise {
+        terms: Vec<Term>,
+    },
+    Contraction {
+        free: u8,
+        summed: u8,
+        lhs: Ref,
+        rhs: Ref,
+    },
+}
+
+impl Def {
+    /// Invoke `f` on every operand column id referenced by this definition.
+    pub fn for_each_operand(&self, mut f: impl FnMut(u32)) {
+        match self {
+            Def::Linear { terms, .. } => {
+                for (_, r) in terms {
+                    f(r.column);
+                }
+            }
+            Def::Pointwise { terms } => {
+                for t in terms {
+                    for fac in &t.factors {
+                        f(fac.column);
+                    }
+                }
+            }
+            Def::Contraction { lhs, rhs, .. } => {
+                f(lhs.column);
+                f(rhs.column);
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Kind {
     Witness(u32),
     Weight,
     Public(Vec<i64>),
+    Virtual(Def),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -71,6 +118,10 @@ pub struct Column {
     pub kind: Kind,
     pub width: Width,
     pub log_len: u8,
+    /// Optional explicit segment for a weight/public-only virtual column (RFC-0028 §2.3).
+    pub segment: Option<u32>,
+    /// Carried witness column readable by segment `s + 1` (RFC-0026 A27, RFC-0028 §2.3).
+    pub carried: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -120,13 +171,15 @@ pub struct Compose {
     pub limbs: Vec<(u32, u8)>,
 }
 
-/// A decoded relation; ids are positions (A15 §5).
+/// A decoded relation; ids are positions (A15 §5, A27 §2, RFC-0028 §2.5).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Relation {
     /// Each group's `log_len`.
     pub groups: Vec<u8>,
     /// Each group's name (§2.3: names are distinct).
     pub group_names: Vec<Vec<u8>>,
+    /// Each group's segment number (0 in v1; RFC-0026 A27 in v2).
+    pub group_segments: Vec<u32>,
     pub columns: Vec<Column>,
     pub tables: Vec<Table>,
     pub identities: Vec<Identity>,
@@ -178,35 +231,94 @@ fn list<T>(
     Ok(out)
 }
 
+fn term_decode(r: &mut Reader) -> Result<Term, Error> {
+    let coeff = r.i64()?;
+    let n = usize::from(r.u8()?);
+    r.check_count(n, 5)?;
+    let mut factors = reserve(n)?;
+    for _ in 0..n {
+        factors.push(reference(r)?);
+    }
+    Ok(Term { coeff, factors })
+}
+
 impl Relation {
-    /// A15 §5: the canonical encoding, exactly, with nothing after it.
+    /// A15 §5 / A27 §2 / RFC-0028 §2.5: the canonical v1 or v2 encoding, exactly, with
+    /// nothing after it.
     pub fn decode(bytes: &[u8]) -> Result<Self, Error> {
         let r = &mut Reader::new(bytes, Error::StatementMismatch);
-        if r.take(MAGIC.len())? != MAGIC {
+        let magic = r.take(MAGIC.len())?;
+        let v2 = if magic == MAGIC {
+            false
+        } else if magic == MAGIC_V2 {
+            true
+        } else {
             return Err(Error::StatementMismatch);
-        }
-        let named = list(r, 5, |r| {
+        };
+        let named = list(r, if v2 { 9 } else { 5 }, |r| {
             let name = name(r)?;
             let mut owned = reserve(name.len())?;
             owned.extend_from_slice(name);
-            Ok((owned, r.u8()?))
+            let log_len = r.u8()?;
+            let seg = if v2 { r.u32()? } else { 0 };
+            Ok((owned, log_len, seg))
         })?;
         let mut groups = reserve(named.len())?;
-        groups.extend(named.iter().map(|(_, n)| *n));
+        groups.extend(named.iter().map(|(_, n, _)| *n));
+        let mut group_segments = reserve(named.len())?;
+        group_segments.extend(named.iter().map(|(_, _, s)| *s));
         let mut group_names = reserve(named.len())?;
-        group_names.extend(named.into_iter().map(|(name, _)| name));
-        let columns = list(r, 8, |r| {
+        group_names.extend(named.into_iter().map(|(name, _, _)| name));
+        let columns = list(r, if v2 { 9 } else { 8 }, |r| {
             name(r)?;
+            let mut segment = None;
             let kind = match r.u8()? {
                 0 => Kind::Witness(r.u32()?),
                 1 => Kind::Weight,
                 2 => Kind::Public(list(r, 8, |r| r.i64())?),
+                3 if v2 => {
+                    let def = match r.u8()? {
+                        0 => Def::Linear {
+                            constant: r.i64()?,
+                            terms: list(r, 13, |r| Ok((r.i64()?, reference(r)?)))?,
+                        },
+                        1 => Def::Pointwise {
+                            terms: list(r, 9, term_decode)?,
+                        },
+                        2 => Def::Contraction {
+                            free: r.u8()?,
+                            summed: r.u8()?,
+                            lhs: reference(r)?,
+                            rhs: reference(r)?,
+                        },
+                        _ => return Err(Error::StatementMismatch),
+                    };
+                    segment = match r.u8()? {
+                        0 => None,
+                        1 => Some(r.u32()?),
+                        _ => return Err(Error::StatementMismatch),
+                    };
+                    Kind::Virtual(def)
+                }
                 _ => return Err(Error::StatementMismatch),
+            };
+            let w = width(r)?;
+            let log_len = r.u8()?;
+            let carried = if v2 {
+                match r.u8()? {
+                    0 => false,
+                    1 => true,
+                    _ => return Err(Error::StatementMismatch),
+                }
+            } else {
+                false
             };
             Ok(Column {
                 kind,
-                width: width(r)?,
-                log_len: r.u8()?,
+                width: w,
+                log_len,
+                segment,
+                carried,
             })
         })?;
         let tables = list(r, 12, |r| {
@@ -220,16 +332,7 @@ impl Relation {
             name(r)?;
             Ok(Identity {
                 vars: r.u8()?,
-                terms: list(r, 9, |r| {
-                    let coeff = r.i64()?;
-                    let n = usize::from(r.u8()?);
-                    r.check_count(n, 5)?;
-                    let mut factors = reserve(n)?;
-                    for _ in 0..n {
-                        factors.push(reference(r)?);
-                    }
-                    Ok(Term { coeff, factors })
-                })?,
+                terms: list(r, 9, term_decode)?,
             })
         })?;
         let lookups = list(r, 14, |r| {
@@ -275,6 +378,7 @@ impl Relation {
         Ok(Relation {
             groups,
             group_names,
+            group_segments,
             columns,
             tables,
             identities,
@@ -291,34 +395,390 @@ impl Relation {
             .ok_or(Error::StatementMismatch)
     }
 
-    /// RFC-0026 §3.6 (with A6 and A15 E1): shapes, bound rule and range discipline. Any
-    /// failure is `StatementMismatch` (A15 §6.0).
+    pub fn group_segment(&self, g: usize) -> u32 {
+        self.group_segments.get(g).copied().unwrap_or(0)
+    }
+
+    /// True if any column is `Kind::Virtual` (RFC-0028 §2.1).
+    pub fn has_virtual(&self) -> bool {
+        self.columns
+            .iter()
+            .any(|c| matches!(c.kind, Kind::Virtual(_)))
+    }
+
+    /// True if any group sits in a non-zero segment, any column is carried, or any
+    /// virtual column specifies an explicit segment (RFC-0026 A27, RFC-0028 §2.3).
+    pub fn is_segmented(&self) -> bool {
+        self.group_segments.iter().any(|&s| s != 0)
+            || self
+                .columns
+                .iter()
+                .any(|c| c.carried || c.segment.is_some())
+    }
+
+    /// Number of segments (`>= 1`).
+    pub fn segments(&self) -> u32 {
+        self.group_segments
+            .iter()
+            .copied()
+            .max()
+            .map_or(1, |m| m.saturating_add(1))
+    }
+
+    /// Owning segment of every column in one forward pass (RFC-0026 A27, RFC-0028 §2.3).
+    pub fn column_segments(&self) -> Result<Vec<Option<u32>>, Error> {
+        let mut segs = reserve(self.columns.len())?;
+        for (i, col) in self.columns.iter().enumerate() {
+            let seg = match &col.kind {
+                Kind::Witness(g) => {
+                    if (*g as usize) < self.groups.len() {
+                        Some(self.group_segment(*g as usize))
+                    } else {
+                        None
+                    }
+                }
+                Kind::Weight | Kind::Public(_) => None,
+                Kind::Virtual(def) => {
+                    let mut max_seg: Option<u32> = None;
+                    def.for_each_operand(|op| {
+                        if (op as usize) < i {
+                            if let Some(s) = segs[op as usize] {
+                                max_seg = Some(max_seg.map_or(s, |cur| cur.max(s)));
+                            }
+                        }
+                    });
+                    Some(max_seg.unwrap_or_else(|| col.segment.unwrap_or(0)))
+                }
+            };
+            segs.push(seg);
+        }
+        Ok(segs)
+    }
+
+    /// Earliest witness/virtual-bearing segment reading each weight column (RFC-0026 A27 §1).
+    pub fn weight_segments(&self, col_segs: &[Option<u32>]) -> Result<Vec<u32>, Error> {
+        let mut out = reserve(self.columns.len())?;
+        out.resize(self.columns.len(), u32::MAX);
+        let mut note = |id: u32, seg: u32| {
+            if let Some(c) = self.columns.get(id as usize) {
+                if matches!(c.kind, Kind::Weight) && seg < out[id as usize] {
+                    out[id as usize] = seg;
+                }
+            }
+        };
+        for (i, col) in self.columns.iter().enumerate() {
+            if let Kind::Virtual(def) = &col.kind {
+                if let Some(seg) = col_segs[i] {
+                    def.for_each_operand(|op| note(op, seg));
+                }
+            }
+        }
+        for id in &self.identities {
+            let mut max_seg: Option<u32> = None;
+            for t in &id.terms {
+                for f in &t.factors {
+                    if let Some(s) = col_segs.get(f.column as usize).copied().flatten() {
+                        max_seg = Some(max_seg.map_or(s, |cur| cur.max(s)));
+                    }
+                }
+            }
+            if let Some(seg) = max_seg {
+                for t in &id.terms {
+                    for f in &t.factors {
+                        note(f.column, seg);
+                    }
+                }
+            }
+        }
+        for c in &self.composes {
+            let mut max_seg = col_segs.get(c.column as usize).copied().flatten();
+            for &(l, _) in &c.limbs {
+                if let Some(s) = col_segs.get(l as usize).copied().flatten() {
+                    max_seg = Some(max_seg.map_or(s, |cur| cur.max(s)));
+                }
+            }
+            if let Some(seg) = max_seg {
+                note(c.column, seg);
+                for &(l, _) in &c.limbs {
+                    note(l, seg);
+                }
+            }
+        }
+        for l in &self.lookups {
+            let mut max_seg: Option<u32> = None;
+            for r in l.tuple.iter().chain(l.selector.iter()) {
+                if let Some(s) = col_segs.get(r.column as usize).copied().flatten() {
+                    max_seg = Some(max_seg.map_or(s, |cur| cur.max(s)));
+                }
+            }
+            if let Some(seg) = max_seg {
+                for r in l.tuple.iter().chain(l.selector.iter()) {
+                    note(r.column, seg);
+                }
+            }
+        }
+        for m in &self.matmuls {
+            let mut max_seg: Option<u32> = None;
+            for id in [m.out.column, m.lhs.column, m.rhs.column] {
+                if let Some(s) = col_segs.get(id as usize).copied().flatten() {
+                    max_seg = Some(max_seg.map_or(s, |cur| cur.max(s)));
+                }
+            }
+            if let Some(seg) = max_seg {
+                for id in [m.out.column, m.lhs.column, m.rhs.column] {
+                    note(id, seg);
+                }
+            }
+        }
+        for slot in &mut out {
+            if *slot == u32::MAX {
+                *slot = 0;
+            }
+        }
+        Ok(out)
+    }
+
+    pub fn identity_segment_with(&self, id: &Identity, col_segs: &[Option<u32>]) -> u32 {
+        id.terms
+            .iter()
+            .flat_map(|t| t.factors.iter())
+            .filter_map(|f| col_segs.get(f.column as usize).copied().flatten())
+            .max()
+            .unwrap_or(0)
+    }
+
+    pub fn compose_segment_with(&self, c: &Compose, col_segs: &[Option<u32>]) -> u32 {
+        core::iter::once(c.column)
+            .chain(c.limbs.iter().map(|(l, _)| *l))
+            .filter_map(|id| col_segs.get(id as usize).copied().flatten())
+            .max()
+            .unwrap_or(0)
+    }
+
+    pub fn lookup_segment_with(&self, l: &Lookup, col_segs: &[Option<u32>]) -> u32 {
+        l.tuple
+            .iter()
+            .chain(l.selector.iter())
+            .filter_map(|r| col_segs.get(r.column as usize).copied().flatten())
+            .max()
+            .unwrap_or(0)
+    }
+
+    pub fn range_segment_with(
+        &self,
+        r: &Range,
+        col_segs: &[Option<u32>],
+        weight_segs: &[u32],
+    ) -> u32 {
+        col_segs
+            .get(r.column as usize)
+            .copied()
+            .flatten()
+            .unwrap_or_else(|| weight_segs.get(r.column as usize).copied().unwrap_or(0))
+    }
+
+    pub fn matmul_segment_with(&self, m: &Matmul, col_segs: &[Option<u32>]) -> u32 {
+        [m.out.column, m.lhs.column, m.rhs.column]
+            .into_iter()
+            .filter_map(|id| col_segs.get(id as usize).copied().flatten())
+            .max()
+            .unwrap_or(0)
+    }
+
+    fn check_item_segment(
+        &self,
+        cols: impl Iterator<Item = u32> + Clone,
+        col_segs: &[Option<u32>],
+    ) -> Result<(), Error> {
+        let Some(max_seg) = cols
+            .clone()
+            .filter_map(|id| col_segs.get(id as usize).copied().flatten())
+            .max()
+        else {
+            return Ok(());
+        };
+        for id in cols {
+            if let Some(seg) = col_segs.get(id as usize).copied().flatten() {
+                let col = self.column(id)?;
+                if !(seg == max_seg || (seg.checked_add(1) == Some(max_seg) && col.carried)) {
+                    return Err(Error::StatementMismatch);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// RFC-0026 §3.6 (with A6, A15 E1, A27) and RFC-0028 §§2.1–2.3 + A1: shapes,
+    /// derived virtual magnitudes, bound rule, segment boundaries and range discipline.
+    /// Any failure is `StatementMismatch` (A15 §6.0).
     pub fn validate(&self) -> Result<(), Error> {
         let bad = Error::StatementMismatch;
         let p = u128::from(M31::MODULUS);
         let ok_width = |w: &Width| (1..=30).contains(&w.bits);
-        for c in &self.columns {
-            // §3.6 item 1 / A15 E1 item 3: every column's width and domain are capped.
-            if !ok_width(&c.width) || c.log_len > MAX_VARS {
+        // RFC-0028 A1: precompute valid whole-column range tightenings per column.
+        let mut range_tight = reserve(self.columns.len())?;
+        range_tight.resize(self.columns.len(), u128::MAX);
+        for r in &self.ranges {
+            if let Some(slot) = range_tight.get_mut(r.column as usize) {
+                if (1..=16).contains(&r.width.bits) {
+                    *slot = (*slot).min(r.width.mag());
+                }
+            }
+        }
+        let mut mags = reserve(self.columns.len())?;
+        for (i, c) in self.columns.iter().enumerate() {
+            if c.log_len > MAX_VARS {
                 return Err(bad);
             }
-            match &c.kind {
+            if c.carried && !matches!(c.kind, Kind::Witness(_)) {
+                return Err(bad);
+            }
+            if c.segment.is_some() && !matches!(c.kind, Kind::Virtual(_)) {
+                return Err(bad);
+            }
+            let mag = match &c.kind {
                 // §3.6 item 1: a public column's length and values fit its declaration.
                 Kind::Public(values) => {
+                    if !ok_width(&c.width) {
+                        return Err(bad);
+                    }
                     let fits = values
                         .iter()
                         .all(|v| *v >= c.width.min() && *v <= c.width.max());
                     if pow2(c.log_len) != Some(values.len()) || !fits {
                         return Err(bad);
                     }
+                    c.width.mag()
                 }
                 // §3.6 item 1: a witness column's group exists with its log_len.
                 Kind::Witness(g) => {
-                    if self.groups.get(*g as usize) != Some(&c.log_len) {
+                    if !ok_width(&c.width) || self.groups.get(*g as usize) != Some(&c.log_len) {
                         return Err(bad);
                     }
+                    c.width.mag()
                 }
-                Kind::Weight => {}
+                Kind::Weight => {
+                    if !ok_width(&c.width) {
+                        return Err(bad);
+                    }
+                    c.width.mag()
+                }
+                // RFC-0028 §§2.1–2.2 + A1: virtual column definition & derived magnitude.
+                Kind::Virtual(def) => {
+                    if c.width
+                        != (Width {
+                            signed: false,
+                            bits: 0,
+                        })
+                    {
+                        return Err(bad);
+                    }
+                    let id = i as u32;
+                    let raw = match def {
+                        Def::Linear { constant, terms } => {
+                            let mut acc = u128::from(constant.unsigned_abs());
+                            for (coeff, r) in terms {
+                                if *coeff == 0 || r.column >= id {
+                                    return Err(bad);
+                                }
+                                self.check_ref(r, c.log_len, false)?;
+                                acc = acc.saturating_add(
+                                    u128::from(coeff.unsigned_abs())
+                                        .saturating_mul(mags[r.column as usize]),
+                                );
+                            }
+                            acc
+                        }
+                        Def::Pointwise { terms } => {
+                            if terms.is_empty() {
+                                return Err(bad);
+                            }
+                            let mut acc = 0u128;
+                            for t in terms {
+                                if t.factors.len() > 3 || t.coeff == 0 {
+                                    return Err(bad);
+                                }
+                                let mut prod = u128::from(t.coeff.unsigned_abs());
+                                for f in &t.factors {
+                                    if f.column >= id {
+                                        return Err(bad);
+                                    }
+                                    self.check_ref(f, c.log_len, false)?;
+                                    prod = prod.saturating_mul(mags[f.column as usize]);
+                                }
+                                acc = acc.saturating_add(prod);
+                            }
+                            acc
+                        }
+                        Def::Contraction {
+                            free,
+                            summed,
+                            lhs,
+                            rhs,
+                        } => {
+                            if *free != c.log_len || *summed > MAX_VARS {
+                                return Err(bad);
+                            }
+                            let domain = *free + *summed;
+                            if lhs.column >= id || rhs.column >= id {
+                                return Err(bad);
+                            }
+                            self.check_ref(lhs, domain, true)?;
+                            self.check_ref(rhs, domain, true)?;
+                            (1u128 << *summed)
+                                .saturating_mul(mags[lhs.column as usize])
+                                .saturating_mul(mags[rhs.column as usize])
+                        }
+                    };
+                    if raw > HALF_MODULUS {
+                        return Err(bad);
+                    }
+                    raw.min(range_tight[i])
+                }
+            };
+            mags.push(mag);
+        }
+        // §2.3 group naming & A27 contiguous non-decreasing segments.
+        let mut prev_seg: Option<u32> = None;
+        for (n, name) in self.group_names.iter().enumerate() {
+            if self.group_names[n + 1..].contains(name) {
+                return Err(bad);
+            }
+            let seg = self.group_segment(n);
+            let seg_ok = match prev_seg {
+                None => seg == 0,
+                Some(prev) => seg == prev || prev.checked_add(1) == Some(seg),
+            };
+            if !seg_ok {
+                return Err(bad);
+            }
+            prev_seg = Some(seg);
+        }
+        let total_segments = self.segments();
+        let col_segs = self.column_segments()?;
+        for c in &self.columns {
+            if let Kind::Virtual(def) = &c.kind {
+                let mut ops = Vec::new();
+                def.for_each_operand(|op| ops.push(op));
+                let op_max = ops
+                    .iter()
+                    .filter_map(|&id| col_segs.get(id as usize).copied().flatten())
+                    .max();
+                match op_max {
+                    Some(_) => {
+                        if c.segment.is_some() {
+                            return Err(bad);
+                        }
+                        self.check_item_segment(ops.into_iter(), &col_segs)?;
+                    }
+                    None => {
+                        if let Some(explicit) = c.segment {
+                            if explicit >= total_segments {
+                                return Err(bad);
+                            }
+                        }
+                    }
+                }
             }
         }
         for t in &self.tables {
@@ -342,12 +802,6 @@ impl Relation {
                 }
             }
         }
-        // §2.3 group naming: names are deterministic and distinct (review of #381).
-        for (n, name) in self.group_names.iter().enumerate() {
-            if self.group_names[n + 1..].contains(name) {
-                return Err(bad);
-            }
-        }
         for i in &self.identities {
             // An identity with no term (review of #381).
             if i.vars > MAX_VARS || i.terms.is_empty() {
@@ -362,9 +816,7 @@ impl Relation {
                 let mut b = u128::from(t.coeff.unsigned_abs());
                 for f in &t.factors {
                     self.check_ref(f, i.vars, false)?;
-                    b = b
-                        .checked_mul(self.column(f.column)?.width.mag())
-                        .ok_or(bad)?;
+                    b = b.checked_mul(mags[f.column as usize]).ok_or(bad)?;
                 }
                 bound = bound.checked_add(b).ok_or(bad)?;
             }
@@ -372,6 +824,12 @@ impl Relation {
             if bound >= p {
                 return Err(bad);
             }
+            self.check_item_segment(
+                i.terms
+                    .iter()
+                    .flat_map(|t| t.factors.iter().map(|f| f.column)),
+                &col_segs,
+            )?;
         }
         for l in &self.lookups {
             let table = self.tables.get(l.table as usize).ok_or(bad)?;
@@ -393,6 +851,10 @@ impl Relation {
                     _ => return Err(bad),
                 }
             }
+            self.check_item_segment(
+                l.tuple.iter().chain(l.selector.iter()).map(|r| r.column),
+                &col_segs,
+            )?;
         }
         for r in &self.ranges {
             // §3.6 item 1: a range at most 16 bits wide, never on a public column.
@@ -413,10 +875,17 @@ impl Relation {
             self.check_ref(&m.lhs, domain, true)?;
             self.check_ref(&m.rhs, domain, true)?;
             // §3.6 item 2: B = mag(out) + 2^s·mag(lhs)·mag(rhs) < p.
-            let b = self.product_bound(m)? + self.column(m.out.column)?.width.mag();
+            let b = self
+                .product_bound(m, &mags)?
+                .checked_add(mags[m.out.column as usize])
+                .ok_or(bad)?;
             if b >= p {
                 return Err(bad);
             }
+            self.check_item_segment(
+                [m.out.column, m.lhs.column, m.rhs.column].into_iter(),
+                &col_segs,
+            )?;
         }
         for c in &self.composes {
             let column = self.column(c.column)?;
@@ -424,33 +893,39 @@ impl Relation {
             if c.limbs.is_empty() {
                 return Err(bad);
             }
-            let mut bound = column.width.mag();
+            let mut bound = mags[c.column as usize];
             for (limb, shift) in &c.limbs {
                 let l = self.column(*limb)?;
                 if l.log_len != column.log_len || *shift > 30 {
                     return Err(bad);
                 }
-                bound += l.width.mag() << shift;
+                bound = bound
+                    .checked_add(mags[*limb as usize] << shift)
+                    .ok_or(bad)?;
             }
             // §3.5a: mag(column) + Σ 2^shift·mag(limb) < p.
             if bound >= p {
                 return Err(bad);
             }
+            self.check_item_segment(
+                core::iter::once(c.column).chain(c.limbs.iter().map(|(l, _)| *l)),
+                &col_segs,
+            )?;
         }
-        self.discipline()
+        self.discipline(&mags)
     }
 
     /// `2^s·mag(lhs)·mag(rhs)` (below 2^90 for validated widths).
-    fn product_bound(&self, m: &Matmul) -> Result<u128, Error> {
-        let l = self.column(m.lhs.column)?.width.mag();
-        let r = self.column(m.rhs.column)?.width.mag();
-        (l * r)
-            .checked_shl(u32::from(m.summed))
+    fn product_bound(&self, m: &Matmul, mags: &[u128]) -> Result<u128, Error> {
+        let l = mags[m.lhs.column as usize];
+        let r = mags[m.rhs.column as usize];
+        l.checked_mul(r)
+            .and_then(|p| p.checked_shl(u32::from(m.summed)))
             .ok_or(Error::StatementMismatch)
     }
 
     /// §3.1 / §3.6 item 1 (A6): arity equal to `log_len`, non-fixed entries injective
-    /// and inside the domain, fixed entries only in a matmul ref.
+    /// and inside the domain, fixed entries only in a matmul/contraction ref.
     fn check_ref(&self, r: &Ref, domain: u8, fixed: bool) -> Result<(), Error> {
         let c = self.column(r.column)?;
         let mut seen = 0u64;
@@ -461,10 +936,10 @@ impl Relation {
                 }
                 continue;
             }
-            if *v >= domain || seen & (1 << v) != 0 {
+            if *v >= domain || seen & (1u64 << v) != 0 {
                 return Err(Error::StatementMismatch);
             }
-            seen |= 1 << v;
+            seen |= 1u64 << v;
         }
         if r.vars.len() != usize::from(c.log_len) {
             return Err(Error::StatementMismatch);
@@ -472,9 +947,9 @@ impl Relation {
         Ok(())
     }
 
-    /// §3.6 item 3 (A6, A15 E1): seed, compose, snapshot and matmul passes until
-    /// unchanged; then every witness and weight column is enforced.
-    fn discipline(&self) -> Result<(), Error> {
+    /// §3.6 item 3 (A6, A15 E1) & RFC-0028 §2.2: seed, virtual, compose, snapshot and
+    /// matmul passes until unchanged; then every witness and weight column is enforced.
+    fn discipline(&self, mags: &[u128]) -> Result<(), Error> {
         let n = self.columns.len();
         let mut enforced = reserve::<bool>(n)?;
         enforced.extend(
@@ -483,14 +958,16 @@ impl Relation {
                 .map(|c| matches!(c.kind, Kind::Public(_))),
         );
         for r in &self.ranges {
-            if r.width.within(&self.columns[r.column as usize].width) {
+            let col = &self.columns[r.column as usize];
+            if !matches!(col.kind, Kind::Virtual(_)) && r.width.within(&col.width) {
                 enforced[r.column as usize] = true;
             }
         }
         for l in self.lookups.iter().filter(|l| l.selector.is_none()) {
             let table = &self.tables[l.table as usize];
             for (r, w) in l.tuple.iter().zip(&table.widths) {
-                if w.within(&self.columns[r.column as usize].width) {
+                let col = &self.columns[r.column as usize];
+                if !matches!(col.kind, Kind::Virtual(_)) && w.within(&col.width) {
                     enforced[r.column as usize] = true;
                 }
             }
@@ -505,29 +982,52 @@ impl Relation {
                     changed = true;
                 }
             };
+            for (id, col) in self.columns.iter().enumerate() {
+                if enforced[id] {
+                    continue;
+                }
+                if let Kind::Virtual(def) = &col.kind {
+                    let mut all = true;
+                    def.for_each_operand(|op| all &= enforced[op as usize]);
+                    if all {
+                        mark(id as u32, &mut enforced);
+                    }
+                }
+            }
             for c in &self.composes {
-                let (mut lo, mut hi) = (0i64, 0i64);
+                let target = &self.columns[c.column as usize];
+                if matches!(target.kind, Kind::Virtual(_)) || enforced[c.column as usize] {
+                    continue;
+                }
+                let (mut lo, mut hi) = (0i128, 0i128);
                 let mut all = true;
                 for (limb, shift) in &c.limbs {
-                    let w = &self.columns[*limb as usize].width;
+                    let lc = &self.columns[*limb as usize];
                     all &= enforced[*limb as usize];
-                    lo += w.min() << shift;
-                    hi += w.max() << shift;
+                    let (min_v, max_v) = match lc.kind {
+                        Kind::Virtual(_) => {
+                            let m = mags[*limb as usize] as i128;
+                            (-m, m)
+                        }
+                        _ => (i128::from(lc.width.min()), i128::from(lc.width.max())),
+                    };
+                    lo += min_v << shift;
+                    hi += max_v << shift;
                 }
-                let w = &self.columns[c.column as usize].width;
-                if all && lo >= w.min() && hi <= w.max() {
+                let w = &target.width;
+                if all && lo >= i128::from(w.min()) && hi <= i128::from(w.max()) {
                     mark(c.column, &mut enforced);
                 }
             }
             // A15 E1 item 3: new matmul outputs cannot change this pass's eligible sets.
             snapshot.copy_from_slice(&enforced);
             for (id, column) in self.columns.iter().enumerate() {
-                if snapshot[id] {
+                if snapshot[id] || matches!(column.kind, Kind::Virtual(_)) {
                     continue;
                 }
                 let mut patterns = Vec::new();
                 for m in self.matmuls.iter().filter(|m| m.out.column as usize == id) {
-                    let bp = self.product_bound(m)?;
+                    let bp = self.product_bound(m, mags)?;
                     let w = column.width;
                     if snapshot[m.lhs.column as usize]
                         && snapshot[m.rhs.column as usize]
@@ -546,8 +1046,13 @@ impl Relation {
                 break;
             }
         }
-        // §3.6 item 3: every witness and weight column is enforced.
-        if enforced.iter().all(|e| *e) {
+        // §3.6 item 3 & RFC-0028 §2.2: every witness and weight column is enforced.
+        if self
+            .columns
+            .iter()
+            .enumerate()
+            .all(|(i, c)| !matches!(c.kind, Kind::Witness(_) | Kind::Weight) || enforced[i])
+        {
             Ok(())
         } else {
             Err(Error::StatementMismatch)
@@ -638,22 +1143,24 @@ mod tests {
         }
     }
 
+    fn col(kind: Kind, width: Width, log_len: u8) -> Column {
+        Column {
+            kind,
+            width,
+            log_len,
+            segment: None,
+            carried: false,
+        }
+    }
+
     /// A witness `w` (unsigned 8, ranged) equal to a public `c`: `w − c = 0`.
     fn small() -> Relation {
         Relation {
             groups: alloc::vec![1],
             group_names: alloc::vec![b"g".to_vec()],
             columns: alloc::vec![
-                Column {
-                    kind: Kind::Witness(0),
-                    width: unsigned(8),
-                    log_len: 1,
-                },
-                Column {
-                    kind: Kind::Public(alloc::vec![3, 200]),
-                    width: unsigned(8),
-                    log_len: 1,
-                },
+                col(Kind::Witness(0), unsigned(8), 1),
+                col(Kind::Public(alloc::vec![3, 200]), unsigned(8), 1),
             ],
             identities: alloc::vec![Identity {
                 vars: 1,
@@ -758,11 +1265,7 @@ mod tests {
                 } else {
                     Vec::new()
                 },
-                columns: alloc::vec![Column {
-                    kind,
-                    width: unsigned(8),
-                    log_len: 30,
-                }],
+                columns: alloc::vec![col(kind, unsigned(8), 30)],
                 ranges: alloc::vec![Range {
                     column: 0,
                     width: unsigned(8),
@@ -783,11 +1286,7 @@ mod tests {
             );
         }
         let mut public = Relation {
-            columns: alloc::vec![Column {
-                kind: Kind::Public(alloc::vec![0]),
-                width: unsigned(1),
-                log_len: 0,
-            }],
+            columns: alloc::vec![col(Kind::Public(alloc::vec![0]), unsigned(1), 0)],
             ..Relation::default()
         };
         assert_eq!(public.validate(), Ok(()));
@@ -806,30 +1305,30 @@ mod tests {
             groups: alloc::vec![0, 17],
             group_names: alloc::vec![b"d".to_vec(), b"o".to_vec()],
             columns: alloc::vec![
-                Column {
-                    kind: Kind::Witness(0),
-                    width: Width {
+                col(
+                    Kind::Witness(0),
+                    Width {
                         signed: true,
                         bits: 8
                     },
-                    log_len: 0,
-                },
-                Column {
-                    kind: Kind::Witness(1),
-                    width: Width {
+                    0,
+                ),
+                col(
+                    Kind::Witness(1),
+                    Width {
                         signed: true,
                         bits: 10
                     },
-                    log_len: 17,
-                },
-                Column {
-                    kind: Kind::Public(alloc::vec![1]),
-                    width: Width {
+                    17,
+                ),
+                col(
+                    Kind::Public(alloc::vec![1]),
+                    Width {
                         signed: true,
                         bits: 2
                     },
-                    log_len: 0,
-                },
+                    0,
+                ),
             ],
             ..Relation::default()
         };
@@ -873,22 +1372,22 @@ mod tests {
             groups: alloc::vec![17],
             group_names: alloc::vec![b"G/o/17".to_vec()],
             columns: alloc::vec![
-                Column {
-                    kind: Kind::Witness(0),
-                    width: Width {
+                col(
+                    Kind::Witness(0),
+                    Width {
                         signed: true,
                         bits: 8
                     },
-                    log_len: 17,
-                },
-                Column {
-                    kind: Kind::Public(alloc::vec![1]),
-                    width: Width {
+                    17,
+                ),
+                col(
+                    Kind::Public(alloc::vec![1]),
+                    Width {
                         signed: true,
                         bits: 2
                     },
-                    log_len: 0,
-                },
+                    0,
+                ),
             ],
             ..Relation::default()
         };
@@ -932,5 +1431,133 @@ mod tests {
         wide.extend((1..17).map(|j| pat(&[(j, false), (0, false)])));
         assert_eq!(covers(&wide[..2]), Ok(true));
         assert_eq!(covers(&wide), Ok(false));
+    }
+
+    #[test]
+    fn validates_rfc0028_virtual_columns_a1_tightening_and_segments() {
+        let mut r = Relation {
+            groups: alloc::vec![1, 1],
+            group_names: alloc::vec![b"s0".to_vec(), b"s1".to_vec()],
+            group_segments: alloc::vec![0, 1],
+            columns: alloc::vec![
+                Column {
+                    kind: Kind::Witness(0),
+                    width: unsigned(16),
+                    log_len: 1,
+                    segment: None,
+                    carried: true,
+                },
+                Column {
+                    kind: Kind::Witness(0),
+                    width: unsigned(16),
+                    log_len: 1,
+                    segment: None,
+                    carried: false,
+                },
+                // Virtual Linear in segment 0 whose raw mag = 2^16 * 65535 + 65535 > 2^30 (too wide),
+                // first test a wrap-free Linear with raw mag = 1000 * 65535 <= HALF_MODULUS,
+                // tightened by a u8 Range so downstream 2^16 * v stays < p/2 (RFC-0028 A1).
+                Column {
+                    kind: Kind::Virtual(Def::Linear {
+                        constant: 0,
+                        terms: alloc::vec![(1000, whole(0))],
+                    }),
+                    width: Width {
+                        signed: false,
+                        bits: 0,
+                    },
+                    log_len: 1,
+                    segment: None,
+                    carried: false,
+                },
+                Column {
+                    kind: Kind::Virtual(Def::Linear {
+                        constant: 0,
+                        terms: alloc::vec![(1 << 16, whole(2))],
+                    }),
+                    width: Width {
+                        signed: false,
+                        bits: 0,
+                    },
+                    log_len: 1,
+                    segment: None,
+                    carried: false,
+                },
+                // Segment 1 witness reading carried column 0 via virtual Linear.
+                Column {
+                    kind: Kind::Witness(1),
+                    width: unsigned(8),
+                    log_len: 1,
+                    segment: None,
+                    carried: false,
+                },
+                Column {
+                    kind: Kind::Virtual(Def::Linear {
+                        constant: 0,
+                        terms: alloc::vec![(1, whole(0)), (-1, whole(4))],
+                    }),
+                    width: Width {
+                        signed: false,
+                        bits: 0,
+                    },
+                    log_len: 1,
+                    segment: None,
+                    carried: false,
+                },
+            ],
+            ranges: alloc::vec![
+                Range {
+                    column: 0,
+                    width: unsigned(16),
+                },
+                Range {
+                    column: 1,
+                    width: unsigned(16),
+                },
+                Range {
+                    column: 2,
+                    width: unsigned(8),
+                },
+                Range {
+                    column: 4,
+                    width: unsigned(8),
+                },
+            ],
+            ..Relation::default()
+        };
+        assert_eq!(r.validate(), Ok(()));
+
+        // Removing the A1 range on column 2 leaves raw mag = 65_535_000, so 2^16 * mag > HALF_MODULUS.
+        let mut without_a1 = r.clone();
+        without_a1.ranges.remove(2);
+        assert_eq!(without_a1.validate(), Err(Error::StatementMismatch));
+
+        // NC-1340: over-wide virtual definition (raw > HALF_MODULUS) is rejected even WITH a Range.
+        let mut overwide = r.clone();
+        overwide.columns[2].kind = Kind::Virtual(Def::Linear {
+            constant: 0,
+            terms: alloc::vec![(1 << 16, whole(0))],
+        });
+        assert_eq!(overwide.validate(), Err(Error::StatementMismatch));
+
+        // Forward reference in virtual definition is rejected (RFC-0028 §2.1).
+        let mut cyclic = r.clone();
+        cyclic.columns[2].kind = Kind::Virtual(Def::Linear {
+            constant: 0,
+            terms: alloc::vec![(1, whole(3))],
+        });
+        assert_eq!(cyclic.validate(), Err(Error::StatementMismatch));
+
+        // NC-1335: reading a non-carried segment-0 column from segment 1 is rejected.
+        let mut bad_seg = r.clone();
+        bad_seg.columns[5].kind = Kind::Virtual(Def::Linear {
+            constant: 0,
+            terms: alloc::vec![(1, whole(1)), (-1, whole(4))],
+        });
+        assert_eq!(bad_seg.validate(), Err(Error::StatementMismatch));
+
+        // Carried flag on a virtual column is rejected.
+        r.columns[2].carried = true;
+        assert_eq!(r.validate(), Err(Error::StatementMismatch));
     }
 }

@@ -285,10 +285,20 @@ fn bind_relation(bytes: &[u8], request: &Request, entry: &Entry) -> Result<(), E
     let mut substitutions = reserve(count)?;
     // The canonical decoder above checked every field; scan only names and byte offsets.
     let r = &mut Reader::new(bytes, Error::StatementMismatch);
-    r.take(31)?;
-    for _ in 0..r.count(5)? {
+    let magic = r.take(31)?;
+    let v2 = magic == b"stele/v0.1/relation/encoding/v2";
+    let skip_ref = |r: &mut Reader<'_>| -> Result<(), Error> {
+        r.take(4)?;
+        let n = usize::from(r.u8()?);
+        r.take(n)?;
+        Ok(())
+    };
+    for _ in 0..r.count(if v2 { 9 } else { 5 })? {
         r.blob()?;
         r.u8()?;
+        if v2 {
+            r.take(4)?;
+        }
     }
     r.u32()?;
     for column in &relation.columns {
@@ -306,10 +316,45 @@ fn bind_relation(bytes: &[u8], request: &Request, entry: &Entry) -> Result<(), E
                 r.take(n.checked_mul(8).ok_or(Error::Capacity)?)?;
                 value_end = r.position();
             }
+            3 if v2 => {
+                match r.u8()? {
+                    0 => {
+                        r.take(8)?;
+                        for _ in 0..r.count(13)? {
+                            r.take(8)?;
+                            skip_ref(r)?;
+                        }
+                    }
+                    1 => {
+                        for _ in 0..r.count(9)? {
+                            r.take(8)?;
+                            for _ in 0..usize::from(r.u8()?) {
+                                skip_ref(r)?;
+                            }
+                        }
+                    }
+                    2 => {
+                        r.take(2)?;
+                        skip_ref(r)?;
+                        skip_ref(r)?;
+                    }
+                    _ => return Err(Error::StatementMismatch),
+                }
+                match r.u8()? {
+                    0 => {}
+                    1 => {
+                        r.take(4)?;
+                    }
+                    _ => return Err(Error::StatementMismatch),
+                }
+            }
             _ => return Err(Error::StatementMismatch),
         }
         let width_at = r.position();
         r.take(3)?;
+        if v2 {
+            r.take(1)?;
+        }
         let Some(id) = request_id(name, blocks, entry.shift)? else {
             continue;
         };

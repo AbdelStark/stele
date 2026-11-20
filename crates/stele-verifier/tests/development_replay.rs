@@ -15,7 +15,12 @@ use std::process::Command;
 use std::time::Instant;
 use stele_field::{Field, Inverse, Serialize, QM31};
 use stele_verifier::development::{verify, Error};
-use stele_verifier::{fraction, logup, pcs, plan::Plan, relation::Relation, sumcheck};
+use stele_verifier::{
+    fraction, logup, pcs,
+    plan::{Plan, SegmentedPlan},
+    relation::Relation,
+    sumcheck,
+};
 
 struct Window {
     public: Vec<u8>,
@@ -50,13 +55,53 @@ fn production(w: &Window, scratch: &Path) -> Option<bool> {
     Some(text.lines().last() == Some("YES"))
 }
 
-/// The byte offsets of each container section (A15 §4), for one-byte tampers.
+fn is_v2(proof: &[u8]) -> bool {
+    proof.starts_with(b"stele-dev-e2e-v2")
+}
+
+/// The byte offsets of each container section (A15 §4 / A26 §1), for one-byte tampers.
 fn sections(proof: &[u8]) -> Vec<(String, usize, usize)> {
     let mut at = 82;
     let mut out = vec![("header".to_string(), 18, 82)];
     let u32 = |at: usize| {
         u32::from_le_bytes(proof[at..at + 4].try_into().expect("replay fixture")) as usize
     };
+    if is_v2(proof) {
+        let segs = u32(at);
+        at += 4;
+        for s in 0..segs {
+            for name in [
+                "groups",
+                "multiplicities",
+                "identities",
+                "lookups",
+                "matmuls",
+                "reductions",
+                "openings",
+            ] {
+                let n = u32(at);
+                at += 4;
+                for i in 0..n {
+                    let len = u32(at);
+                    let label = if s == 0 {
+                        format!("{name}[{i}]")
+                    } else {
+                        format!("s{s}/{name}[{i}]")
+                    };
+                    out.push((label, at + 4, len));
+                    at += 4 + len;
+                }
+            }
+        }
+        let n = u32(at);
+        at += 4;
+        for i in 0..n {
+            let len = u32(at);
+            out.push((format!("model_openings[{i}]"), at + 4, len));
+            at += 4 + len;
+        }
+        return out;
+    }
     for name in [
         "groups",
         "multiplicities",
@@ -85,24 +130,34 @@ fn map_k(b: &mut [u8], at: usize, f: impl Fn(QM31) -> QM31) {
     b[at..at + 16].copy_from_slice(&v.to_le_bytes());
 }
 
-/// Semantic tampers, each aimed at one check of A15 §6.4 and expected to fail there:
-/// `(name, mutate, expected)`.
+/// Semantic tampers, each aimed at one check of A15 §6.4 / RFC-0028 §2.5 and expected to
+/// fail there: `(name, mutate, expected)`.
 type Tamper = (String, Box<dyn Fn(&mut Vec<u8>)>, Error);
 
 fn semantic(w: &Window) -> Vec<Tamper> {
     let rel = Relation::decode(&w.relation).expect("relation");
-    let plan = Plan::derive(&rel).expect("plan");
+    let checks = if rel.has_virtual() || rel.is_segmented() {
+        SegmentedPlan::derive(&rel)
+            .expect("segmented plan")
+            .segments
+            .into_iter()
+            .next()
+            .expect("segment 0")
+            .checks
+    } else {
+        Plan::derive(&rel).expect("plan").checks
+    };
     let list = sections(&w.proof);
-    let find = |kind: &str, i: usize| {
+    let find_opt = |kind: &str, i: usize| {
         list.iter()
             .find(|(n, _, _)| *n == format!("{kind}[{i}]"))
             .map(|(_, at, _)| *at)
-            .expect("section")
     };
+    let find = |kind: &str, i: usize| find_opt(kind, i).expect("section");
     let one = QM31::from_i64(1);
     let mut out: Vec<Tamper> = Vec::new();
     let tree = |v: usize| 2 + 2 * v * v + 3 * v;
-    for (i, check) in plan.checks.iter().enumerate().take(3) {
+    for (i, check) in checks.iter().enumerate().take(3) {
         let (m, k, c) = (usize::from(check.m), usize::from(check.k), check.c);
         let base = find("lookups", i) + 8 * usize::from(check.k_lu >= 1);
         let members = base + 16 * (tree(m) + tree(k) + 4 * m + c + 2);
@@ -138,46 +193,51 @@ fn semantic(w: &Window) -> Vec<Tamper> {
             (0..mm.free).any(|d| mm.lhs.vars.contains(&d) && mm.rhs.vars.contains(&d))
         })
     {
-        let at = find("matmuls", i);
-        let len = list
-            .iter()
-            .find(|(n, _, _)| *n == format!("matmuls[{i}]"))
-            .expect("matmul")
-            .2;
-        let eq = at + len - 48;
-        out.push((
-            format!("eq final of matmul {i}"),
-            Box::new(move |b: &mut Vec<u8>| {
-                let two = QM31::from_i64(2);
-                map_k(b, eq, |x| x * two);
-                let half = two.inverse().expect("inverse");
-                map_k(b, eq + 16, |x| x * half);
-            }),
-            Error::EqMismatch,
-        ));
+        if let Some(at) = find_opt("matmuls", i) {
+            let len = list
+                .iter()
+                .find(|(n, _, _)| *n == format!("matmuls[{i}]"))
+                .expect("matmul")
+                .2;
+            let eq = at + len - 48;
+            out.push((
+                format!("eq final of matmul {i}"),
+                Box::new(move |b: &mut Vec<u8>| {
+                    let two = QM31::from_i64(2);
+                    map_k(b, eq, |x| x * two);
+                    let half = two.inverse().expect("inverse");
+                    map_k(b, eq + 16, |x| x * half);
+                }),
+                Error::EqMismatch,
+            ));
+        }
     }
     // A1 round sums: the first matmul's out~(ρ), the first zerocheck's first round.
-    let mm = find("matmuls", 0);
-    out.push((
-        "out of matmul 0".into(),
-        Box::new(move |b: &mut Vec<u8>| map_k(b, mm, |x| x + one)),
-        Error::Sumcheck(sumcheck::Error::RoundSumMismatch),
-    ));
-    let id = find("identities", 0);
-    out.push((
-        "first zerocheck round".into(),
-        Box::new(move |b: &mut Vec<u8>| map_k(b, id, |x| x + one)),
-        Error::Sumcheck(sumcheck::Error::RoundSumMismatch),
-    ));
+    if let Some(mm) = find_opt("matmuls", 0) {
+        out.push((
+            "out of matmul 0".into(),
+            Box::new(move |b: &mut Vec<u8>| map_k(b, mm, |x| x + one)),
+            Error::Sumcheck(sumcheck::Error::RoundSumMismatch),
+        ));
+    }
+    if let Some(id) = find_opt("identities", 0) {
+        out.push((
+            "first zerocheck round".into(),
+            Box::new(move |b: &mut Vec<u8>| map_k(b, id, |x| x + one)),
+            Error::Sumcheck(sumcheck::Error::RoundSumMismatch),
+        ));
+    }
     // A noncanonical limb in a tree value.
-    let lk = find("lookups", 0) + 8 * usize::from(plan.checks[0].k_lu >= 1);
-    out.push((
-        "noncanonical tree root".into(),
-        Box::new(move |b: &mut Vec<u8>| {
-            b[lk..lk + 4].copy_from_slice(&0x7fff_ffffu32.to_le_bytes())
-        }),
-        Error::Fraction(fraction::Error::NoncanonicalField),
-    ));
+    if let Some(lk_base) = find_opt("lookups", 0) {
+        let lk = lk_base + 8 * usize::from(checks[0].k_lu >= 1);
+        out.push((
+            "noncanonical tree root".into(),
+            Box::new(move |b: &mut Vec<u8>| {
+                b[lk..lk + 4].copy_from_slice(&0x7fff_ffffu32.to_le_bytes())
+            }),
+            Error::Fraction(fraction::Error::NoncanonicalField),
+        ));
+    }
     // The stacked root: its certificate's tensor nonce no longer passes (A14 item 4).
     let g = find("groups", 0);
     out.push((
@@ -188,8 +248,64 @@ fn semantic(w: &Window) -> Vec<Tamper> {
     out
 }
 
-/// The container with its section lists edited and re-encoded (A15 §4).
+/// The container with its section lists edited and re-encoded (A15 §4 / A26 §1).
 fn reshape(proof: &[u8], edit: impl FnOnce(&mut [Vec<Vec<u8>>])) -> Vec<u8> {
+    if is_v2(proof) {
+        let mut at = 82;
+        let u32 = |at: usize| {
+            u32::from_le_bytes(proof[at..at + 4].try_into().expect("replay fixture")) as usize
+        };
+        let segs = u32(at);
+        at += 4;
+        let mut all_segs: Vec<Vec<Vec<Vec<u8>>>> = Vec::with_capacity(segs);
+        for _ in 0..segs {
+            let mut seg_lists = Vec::with_capacity(7);
+            for _ in 0..7 {
+                let n = u32(at);
+                at += 4;
+                let mut blobs = Vec::with_capacity(n);
+                for _ in 0..n {
+                    let len = u32(at);
+                    at += 4;
+                    blobs.push(proof[at..at + len].to_vec());
+                    at += len;
+                }
+                seg_lists.push(blobs);
+            }
+            all_segs.push(seg_lists);
+        }
+        let n = u32(at);
+        at += 4;
+        let mut model_openings = Vec::with_capacity(n);
+        for _ in 0..n {
+            let len = u32(at);
+            at += 4;
+            model_openings.push(proof[at..at + len].to_vec());
+            at += len;
+        }
+        let mut flat: Vec<Vec<Vec<u8>>> = all_segs[0].clone();
+        flat.push(model_openings);
+        edit(&mut flat);
+        let model_openings = flat.pop().expect("model_openings");
+        all_segs[0] = flat;
+        let mut out = proof[..82].to_vec();
+        out.extend_from_slice(&(all_segs.len() as u32).to_le_bytes());
+        for seg_lists in &all_segs {
+            for list in seg_lists {
+                out.extend_from_slice(&(list.len() as u32).to_le_bytes());
+                for blob in list {
+                    out.extend_from_slice(&(blob.len() as u32).to_le_bytes());
+                    out.extend_from_slice(blob);
+                }
+            }
+        }
+        out.extend_from_slice(&(model_openings.len() as u32).to_le_bytes());
+        for blob in &model_openings {
+            out.extend_from_slice(&(blob.len() as u32).to_le_bytes());
+            out.extend_from_slice(blob);
+        }
+        return out;
+    }
     let mut lists: Vec<Vec<Vec<u8>>> = vec![Vec::new(); 6];
     let mut current = 0;
     for (name, at, len) in sections(proof).into_iter().skip(1) {
@@ -219,20 +335,38 @@ fn reshape(proof: &[u8], edit: impl FnOnce(&mut [Vec<Vec<u8>>])) -> Vec<u8> {
     out
 }
 
-/// A15 §4/§6.4: a long, short, missing or extra section is ProofShape.
+/// A15 §4/§6.4 & A26 §1: a long, short, missing or extra section is ProofShape.
 fn shapes(proof: &[u8]) -> Vec<(String, Vec<u8>)> {
     let mut out = vec![("unchanged re-encoding".to_string(), reshape(proof, |_| {}))];
-    for (l, name) in [
-        "groups",
-        "multiplicities",
-        "identities",
-        "lookups",
-        "matmuls",
-        "openings",
-    ]
-    .iter()
-    .enumerate()
-    {
+    let names: &[&str] = if is_v2(proof) {
+        &[
+            "groups",
+            "multiplicities",
+            "identities",
+            "lookups",
+            "matmuls",
+            "reductions",
+            "openings",
+            "model_openings",
+        ]
+    } else {
+        &[
+            "groups",
+            "multiplicities",
+            "identities",
+            "lookups",
+            "matmuls",
+            "openings",
+        ]
+    };
+    for (l, name) in names.iter().enumerate() {
+        let mut non_empty = false;
+        let _ = reshape(proof, |s| {
+            non_empty = !s[l].is_empty();
+        });
+        if !non_empty {
+            continue;
+        }
         out.push((
             format!("{name}[0] one byte long"),
             reshape(proof, |s| s[l][0].push(0)),

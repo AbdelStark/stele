@@ -13,8 +13,11 @@
 //! E8-02f2. Every check names its section; every failure is a typed [`Error`].
 
 use crate::batch::ClaimBatch;
-use crate::plan::{self, Check, Plan, MATMUL_ID, TUPLE_ID, ZEROCHECK_ID};
-use crate::relation::{pow2, Kind, Ref, Relation, FIXED_0, FIXED_1};
+use crate::plan::{
+    self, Check, Committed, Plan, SegmentedPlan, MATMUL_ID, TUPLE_ID, VIRTUAL_BATCH_ID,
+    VIRTUAL_CONTRACTION_ID, VIRTUAL_POINTWISE_ID, ZEROCHECK_ID,
+};
+use crate::relation::{pow2, Def, Kind, Ref, Relation, FIXED_0, FIXED_1};
 use crate::sumcheck::{self, Instance, Proof, Term};
 use crate::zerocheck::{self, Zerocheck};
 use crate::{fraction, logup, pcs};
@@ -44,8 +47,10 @@ pub enum Error {
     MemberSumMismatch,
     /// formal/native-lookup.md §2: the pieces do not sum to the table numerator.
     PieceSumMismatch,
-    /// A15 §6.4 step 6: the matmul's eq final.
+    /// A15 §6.4 step 6 / RFC-0028 §2.5: the matmul/contraction/pointwise eq final.
     EqMismatch,
+    /// RFC-0028 §2.4: a Linear virtual column reduction disagrees with its claimed value.
+    LinearMismatch,
     /// A15 §6.4 step 8: a public column's MLE differs from its claim.
     PublicMismatch,
     /// A16 §1: the trusted entry is not canonically encoded or has invalid metadata.
@@ -196,6 +201,7 @@ const PUBLIC_MAGIC: &[u8; 19] = b"stele-dev-public-v4";
 const INPUT_TAG: &[u8; 31] = b"stele/v0.1/dev-e2e/public-input";
 const STATEMENT_TAG: &[u8; 28] = b"stele/v0.1/dev-e2e/statement";
 const CONTAINER_MAGIC: &[u8; 16] = b"stele-dev-e2e-v1";
+const CONTAINER_V2_MAGIC: &[u8; 16] = b"stele-dev-e2e-v2";
 /// A14 item 1: the profile byte.
 const PROFILE: u8 = 5;
 
@@ -326,6 +332,54 @@ impl<'a> Container<'a> {
     }
 }
 
+/// The segmented / virtual container's per-segment section lists (RFC-0026 A26 §1).
+struct ContainerV2<'a> {
+    cqis_id: [u8; 32],
+    digest: [u8; 32],
+    segments: Vec<[Vec<&'a [u8]>; 7]>,
+    model_openings: Vec<&'a [u8]>,
+}
+
+impl<'a> ContainerV2<'a> {
+    fn decode(bytes: &'a [u8]) -> Result<Self, Error> {
+        if bytes.len() < 18 || &bytes[..16] != CONTAINER_V2_MAGIC || bytes[16..18] != [2, 0] {
+            return Err(Error::Header);
+        }
+        let r = &mut Reader::new(&bytes[18..], Error::ProofShape);
+        let cqis_id = r.array()?;
+        let digest = r.array()?;
+        let seg_count = r.u32()? as usize;
+        let rem = bytes.len() - 18 - r.position();
+        if seg_count == 0 || rem < 4 || seg_count > (rem - 4) / 28 {
+            return Err(Error::ProofShape);
+        }
+        let mut segments = reserve(seg_count)?;
+        for _ in 0..seg_count {
+            let mut lists: [Vec<&[u8]>; 7] = Default::default();
+            for list in &mut lists {
+                let n = r.count(4)?;
+                *list = reserve(n)?;
+                for _ in 0..n {
+                    list.push(r.blob()?);
+                }
+            }
+            segments.push(lists);
+        }
+        let n = r.count(4)?;
+        let mut model_openings = reserve(n)?;
+        for _ in 0..n {
+            model_openings.push(r.blob()?);
+        }
+        r.end()?;
+        Ok(ContainerV2 {
+            cqis_id,
+            digest,
+            segments,
+            model_openings,
+        })
+    }
+}
+
 /// A section that must be exactly `len` bytes (A15 §4: short or long is ProofShape).
 fn exact(section: &[u8], len: usize) -> Result<Reader<'_>, Error> {
     if section.len() != len {
@@ -433,9 +487,12 @@ pub fn verify(
     cqis_id: &[u8; 32],
 ) -> Result<(), Error> {
     let file = Public::decode(public)?;
-    // A15 §6.0: the relation is decoded and validated (in `Plan::derive`) before any
-    // proof byte is read. Against a caller-chosen relation this is the only §3.6 check.
+    // A15 §6.0: the relation is decoded and validated (in `Plan::derive` / `SegmentedPlan::derive`)
+    // before any proof byte is read. Against a caller-chosen relation this is the only §3.6 check.
     let rel = Relation::decode(relation)?;
+    if rel.has_virtual() || rel.is_segmented() {
+        return verify_v2(&file, container, &rel, relation, cqis_id);
+    }
     let plan = Plan::derive(&rel)?;
     let relation_digest = stele_hash::blake3_digest(relation);
     let input = file.input(cqis_id)?;
@@ -494,7 +551,15 @@ pub fn verify(
     let mut claims = Claims(reserve(rel.columns.len())?);
     claims.0.resize_with(rel.columns.len(), Vec::new);
     for (m, section) in plan.sizes.iter().zip(identities) {
-        identity(&rel, *m, section, t, &mut claims)?;
+        identity(
+            &rel,
+            None,
+            *m,
+            ZEROCHECK_ID + u64::from(*m),
+            section,
+            t,
+            &mut claims,
+        )?;
     }
     for (i, ((check, section), cert)) in plan.checks.iter().zip(lookups).zip(&mu).enumerate() {
         lookup(&rel, i as u64, check, cert, section, t, &mut claims)?;
@@ -516,17 +581,489 @@ pub fn verify(
     Ok(())
 }
 
-/// A15 §6.4 step 4: the zerocheck of domain size `m`.
+/// RFC-0026 A26/A27 & RFC-0028 §§2.4–2.5: segmented / virtual-column development replay.
+fn verify_v2(
+    file: &Public<'_>,
+    container: &[u8],
+    rel: &Relation,
+    relation_bytes: &[u8],
+    cqis_id: &[u8; 32],
+) -> Result<(), Error> {
+    let plan = SegmentedPlan::derive(rel)?;
+    let col_segs = rel.column_segments()?;
+    let relation_digest = stele_hash::blake3_digest(relation_bytes);
+    let input = file.input(cqis_id)?;
+    let proof = ContainerV2::decode(container)?;
+    if proof.cqis_id != *cqis_id || proof.digest != statement_digest(&input, &relation_digest)? {
+        return Err(Error::StatementMismatch);
+    }
+    if proof.segments.len() != plan.segments.len() {
+        return Err(Error::ProofShape);
+    }
+    // Step 1: statement digest and model roots.
+    let t = &mut Transcript::<K>::new(&input)?;
+    t.absorb(AbsorbLabel::RelationStatement, &relation_digest)?;
+    if file.roots.len() != plan.models.len() {
+        return Err(Error::StatementMismatch);
+    }
+    let mut model_certs = reserve(plan.models.len())?;
+    for ((m, root), cert) in plan.models.iter().zip(&file.roots).zip(&file.certificates) {
+        t.absorb(AbsorbLabel::RelationRoots, root)?;
+        model_certs.push(pcs::verify_certificate::<K>(
+            &m.geometry.source(*root),
+            cert,
+        )?);
+    }
+    let mut claims = Claims(reserve(rel.columns.len())?);
+    claims.0.resize_with(rel.columns.len(), Vec::new);
+    let mut prev: Option<(usize, pcs::VerifiedCertificate<K>)> = None;
+    for (s, (seg, sections)) in plan.segments.iter().zip(&proof.segments).enumerate() {
+        let [groups, multiplicities, identities, lookups, matmuls, reductions, _openings] =
+            sections;
+        if groups.len() != usize::from(seg.stack.is_some())
+            || multiplicities.len() != seg.checks.len()
+            || identities.len() != seg.sizes.len()
+            || lookups.len() != seg.checks.len()
+            || matmuls.len() != seg.matmuls.len()
+        {
+            return Err(Error::ProofShape);
+        }
+        // Step 2.1: segment stacked source root and certificate.
+        let curr = match (seg.stack, groups.first()) {
+            (Some(stack), Some(section)) => {
+                let g = stack.geometry;
+                let r = &mut exact(section, 32 + g.certificate)?;
+                let root = r.array::<32>()?;
+                let cert = pcs::verify_certificate::<K>(&g.source(root), r.rest())?;
+                t.absorb(AbsorbLabel::RelationRoots, &root)?;
+                Some((s, cert))
+            }
+            (None, None) => None,
+            _ => return Err(Error::ProofShape),
+        };
+        // Step 2.2: segment multiplicity roots and certificates.
+        let mut mu = reserve(seg.checks.len())?;
+        for (check, section) in seg.checks.iter().zip(multiplicities) {
+            let r = &mut exact(section, 32 + check.multiplicity.certificate)?;
+            let root = r.array::<32>()?;
+            mu.push(pcs::verify_certificate::<K>(
+                &check.multiplicity.source(root),
+                r.rest(),
+            )?);
+            t.absorb(AbsorbLabel::RelationRoots, &root)?;
+        }
+        // Step 2.3: zerochecks, lookups, and matmuls owned by segment `s`.
+        let seg_zc_base = ZEROCHECK_ID | (u64::from(seg.segment) << 16);
+        for (&m, section) in seg.sizes.iter().zip(identities) {
+            identity(
+                rel,
+                Some((seg.segment, &col_segs)),
+                m,
+                seg_zc_base | u64::from(m),
+                section,
+                t,
+                &mut claims,
+            )?;
+        }
+        for ((check, section), cert) in seg.checks.iter().zip(lookups).zip(&mu) {
+            lookup(rel, check.id, check, cert, section, t, &mut claims)?;
+        }
+        for (&mm_idx, section) in seg.matmuls.iter().zip(matmuls) {
+            matmul(mm_idx as u64, &rel.matmuls[mm_idx], section, t, &mut claims)?;
+        }
+        // Step 2.4: virtual column reductions in strictly decreasing `ColumnId` order.
+        let mut red_used = 0usize;
+        for &col_id in &seg.virtuals {
+            let col_claims = core::mem::take(&mut claims.0[col_id as usize]);
+            if col_claims.is_empty() {
+                continue;
+            }
+            let section = reductions.get(red_used).ok_or(Error::ProofShape)?;
+            red_used += 1;
+            reduce_virtual(rel, col_id, col_claims, section, t, &mut claims)?;
+        }
+        if red_used != reductions.len() {
+            return Err(Error::ProofShape);
+        }
+        // Step 2.5: open segment `s - 1`'s witness stack (all claims on it are complete).
+        if let Some((prev_s, prev_cert)) = prev.take() {
+            let prev_seg = &plan.segments[prev_s];
+            let open_sections = &proof.segments[prev_s][6];
+            let mut used = 0usize;
+            if let Some(stack) = prev_seg.stack {
+                used += open_one(
+                    rel,
+                    stack,
+                    &prev_seg.stack_columns,
+                    &prev_cert,
+                    open_sections,
+                    0,
+                    t,
+                    &claims,
+                )?;
+            }
+            if used != open_sections.len() {
+                return Err(Error::ProofShape);
+            }
+        } else if s > 0 && !proof.segments[s - 1][6].is_empty() {
+            return Err(Error::ProofShape);
+        }
+        prev = curr;
+    }
+    // Step 3: open the last segment's witness stack, then each model source once.
+    if let Some((last_s, last_cert)) = prev.take() {
+        let last_seg = &plan.segments[last_s];
+        let open_sections = &proof.segments[last_s][6];
+        let mut used = 0usize;
+        if let Some(stack) = last_seg.stack {
+            used += open_one(
+                rel,
+                stack,
+                &last_seg.stack_columns,
+                &last_cert,
+                open_sections,
+                0,
+                t,
+                &claims,
+            )?;
+        }
+        if used != open_sections.len() {
+            return Err(Error::ProofShape);
+        }
+    } else if let Some(last) = proof.segments.last() {
+        if !last[6].is_empty() {
+            return Err(Error::ProofShape);
+        }
+    }
+    let mut model_used = 0usize;
+    for ((source, cols), cert) in plan
+        .models
+        .iter()
+        .zip(&plan.model_columns)
+        .zip(&model_certs)
+    {
+        model_used += open_one(
+            rel,
+            *source,
+            cols,
+            cert,
+            &proof.model_openings,
+            model_used,
+            t,
+            &claims,
+        )?;
+    }
+    if model_used != proof.model_openings.len() {
+        return Err(Error::ProofShape);
+    }
+    // Every virtual-column claim must have been discharged during its segment's Step 2.4.
+    for (c, list) in rel.columns.iter().zip(&claims.0) {
+        if matches!(c.kind, Kind::Virtual(_)) && !list.is_empty() {
+            return Err(Error::ProofShape);
+        }
+    }
+    // Public-column claims, evaluated against each public column's MLE.
+    for (c, list) in rel.columns.iter().zip(&claims.0) {
+        if let Kind::Public(v) = &c.kind {
+            for (point, value) in list {
+                if mle(v, point, |x| K::from_i64(*x))? != *value {
+                    return Err(Error::PublicMismatch);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// `Π_i (x_i·y_i + (1 − x_i)·(1 − y_i))`.
+fn eq_eval(x: &[K], y: &[K]) -> Result<K, Error> {
+    if x.len() != y.len() {
+        return Err(Error::ProofShape);
+    }
+    let one = K::from_i64(1);
+    Ok(x.iter()
+        .zip(y)
+        .fold(one, |acc, (&a, &b)| acc * (a * b + (one - a) * (one - b))))
+}
+
+/// RFC-0028 §2.4–2.5: reduce all filed claims on virtual column `col_id`.
+fn reduce_virtual(
+    rel: &Relation,
+    col_id: u32,
+    col_claims: Vec<(Vec<K>, K)>,
+    section: &[u8],
+    t: &mut Transcript<K>,
+    claims: &mut Claims,
+) -> Result<(), Error> {
+    let col = rel.column(col_id)?;
+    let Kind::Virtual(def) = &col.kind else {
+        return Err(Error::Unsupported);
+    };
+    let nvars = usize::from(col.log_len);
+    match def {
+        Def::Linear { constant, terms } => {
+            let need = col_claims
+                .len()
+                .checked_mul(terms.len())
+                .and_then(|n| n.checked_mul(W))
+                .ok_or(Error::Capacity)?;
+            let r = &mut exact(section, need)?;
+            let mut payload = reserve(8 + terms.len().checked_mul(W).ok_or(Error::Capacity)?)?;
+            for (claim_idx, (z, claimed_val)) in col_claims.iter().enumerate() {
+                let evals = values(r, terms.len())?;
+                payload.clear();
+                payload.extend_from_slice(&col_id.to_le_bytes());
+                payload.extend_from_slice(&(claim_idx as u32).to_le_bytes());
+                for v in &evals {
+                    payload.extend_from_slice(&v.to_le_bytes());
+                }
+                t.absorb(AbsorbLabel::Final, &payload)?;
+                let sum = terms
+                    .iter()
+                    .zip(&evals)
+                    .fold(K::from_i64(*constant), |acc, ((c, _), v)| {
+                        acc + K::from_i64(*c) * *v
+                    });
+                if sum != *claimed_val {
+                    return Err(Error::LinearMismatch);
+                }
+                for ((_, rf), &eval) in terms.iter().zip(&evals) {
+                    claims.push(rf.column, read(rf, domain(z))?, eval)?;
+                }
+            }
+            Ok(())
+        }
+        Def::Contraction {
+            free,
+            summed,
+            lhs,
+            rhs,
+        } => {
+            let a = *free;
+            let reads = |rf: &Ref, d: u8| rf.vars.contains(&d);
+            let mut vars = reserve(usize::from(a) + usize::from(*summed))?;
+            for d in (0..a + *summed).rev() {
+                if d >= a || (reads(lhs, d) && reads(rhs, d)) {
+                    vars.push(d);
+                }
+            }
+            let shared = vars.iter().any(|&d| d < a);
+            let (width, finals) = if shared { (4, 3) } else { (3, 2) };
+            let batch_k = if col_claims.len() > 1 {
+                3 * nvars + 1
+            } else {
+                0
+            };
+            let sc_k = vars.len() * width + finals;
+            let r = &mut exact(
+                section,
+                (batch_k + sc_k).checked_mul(W).ok_or(Error::Capacity)?,
+            )?;
+            let (z, claimed_val) = if col_claims.len() > 1 {
+                let all = values(r, batch_k)?;
+                let bp = Proof {
+                    rounds: rows(&all[..3 * nvars], 3)?,
+                    final_values: alloc::vec![all[3 * nvars]],
+                };
+                let reduced = ClaimBatch {
+                    id: VIRTUAL_BATCH_ID | u64::from(col_id),
+                    tensor: u64::from(col_id),
+                    num_vars: u32::from(col.log_len),
+                    claims: &col_claims,
+                }
+                .verify(&bp, t)?;
+                (reduced.point, reduced.claims[0].value)
+            } else {
+                col_claims.into_iter().next().ok_or(Error::ProofShape)?
+            };
+            let all = values(r, sc_k)?;
+            let (round, last) = all.split_at(vars.len() * width);
+            let mut inputs = reserve(finals)?;
+            inputs.extend(0..finals as u64);
+            let mut factors = reserve(finals)?;
+            factors.extend(0..finals as u32);
+            let instance = Instance {
+                id: VIRTUAL_CONTRACTION_ID | u64::from(col_id),
+                num_vars: vars.len() as u32,
+                inputs,
+                terms: alloc::vec![Term {
+                    coefficient: K::from_i64(1),
+                    factors,
+                }],
+                claimed_sum: claimed_val,
+            };
+            let sp = Proof {
+                rounds: rows(round, width)?,
+                final_values: last.to_vec(),
+            };
+            let reduction = sumcheck::verify(&instance, &sp, t)?;
+            let point = &reduction.point;
+            let z_at = |d: u8| z[usize::from(a - 1 - d)];
+            let at = |d: u8| match vars.iter().position(|v| *v == d) {
+                Some(p) => point[p],
+                None => z_at(d),
+            };
+            if shared {
+                let one = K::from_i64(1);
+                let eq = vars.iter().filter(|d| **d < a).fold(one, |acc, d| {
+                    let (x, y) = (z_at(*d), at(*d));
+                    acc * (x * y + (one - x) * (one - y))
+                });
+                if last[0] != eq {
+                    return Err(Error::EqMismatch);
+                }
+            }
+            claims.push(lhs.column, read(lhs, at)?, last[finals - 2])?;
+            claims.push(rhs.column, read(rhs, at)?, last[finals - 1])?;
+            Ok(())
+        }
+        Def::Pointwise { terms } => {
+            let mut inputs: Vec<&Ref> = Vec::new();
+            let mut sc_terms = reserve(terms.len())?;
+            let mut degree = 1usize;
+            for term in terms {
+                let mut factors = reserve(1 + term.factors.len())?;
+                factors.push(0u32);
+                for f in &term.factors {
+                    let idx = match inputs.iter().position(|r| *r == f) {
+                        Some(at) => at,
+                        None => {
+                            inputs.try_reserve(1).map_err(|_| Error::Capacity)?;
+                            inputs.push(f);
+                            inputs.len() - 1
+                        }
+                    };
+                    factors.push((1 + idx) as u32);
+                }
+                degree = degree.max(factors.len());
+                sc_terms.push(Term {
+                    coefficient: K::from_i64(term.coeff),
+                    factors,
+                });
+            }
+            let width = degree + 1;
+            let finals = 1 + inputs.len();
+            let batch_k = if col_claims.len() > 1 {
+                3 * nvars + 1
+            } else {
+                0
+            };
+            let sc_k = nvars * width + finals;
+            let r = &mut exact(
+                section,
+                (batch_k + sc_k).checked_mul(W).ok_or(Error::Capacity)?,
+            )?;
+            let (z, claimed_val) = if col_claims.len() > 1 {
+                let all = values(r, batch_k)?;
+                let bp = Proof {
+                    rounds: rows(&all[..3 * nvars], 3)?,
+                    final_values: alloc::vec![all[3 * nvars]],
+                };
+                let reduced = ClaimBatch {
+                    id: VIRTUAL_BATCH_ID | u64::from(col_id),
+                    tensor: u64::from(col_id),
+                    num_vars: u32::from(col.log_len),
+                    claims: &col_claims,
+                }
+                .verify(&bp, t)?;
+                (reduced.point, reduced.claims[0].value)
+            } else {
+                col_claims.into_iter().next().ok_or(Error::ProofShape)?
+            };
+            let all = values(r, sc_k)?;
+            let (round, last) = all.split_at(nvars * width);
+            let mut ids = reserve(finals)?;
+            ids.extend(0..finals as u64);
+            let instance = Instance {
+                id: VIRTUAL_POINTWISE_ID | u64::from(col_id),
+                num_vars: u32::from(col.log_len),
+                inputs: ids,
+                terms: sc_terms,
+                claimed_sum: claimed_val,
+            };
+            let sp = Proof {
+                rounds: rows(round, width)?,
+                final_values: last.to_vec(),
+            };
+            let reduction = sumcheck::verify(&instance, &sp, t)?;
+            if last[0] != eq_eval(&z, &reduction.point)? {
+                return Err(Error::EqMismatch);
+            }
+            for (rf, &val) in inputs.iter().zip(&last[1..]) {
+                claims.push(rf.column, read(rf, domain(&reduction.point))?, val)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+/// Batch and open one committed source if any of `columns` has a claim; returns `1` if opened.
+#[allow(clippy::too_many_arguments)]
+fn open_one(
+    rel: &Relation,
+    source: Committed,
+    columns: &[(u64, usize)],
+    cert: &pcs::VerifiedCertificate<K>,
+    sections: &[&[u8]],
+    used: usize,
+    t: &mut Transcript<K>,
+    claims: &Claims,
+) -> Result<usize, Error> {
+    let bits = usize::from(source.bits);
+    let mut batch = Vec::new();
+    for &(index, id) in columns {
+        let lead = bits - usize::from(rel.columns[id].log_len);
+        for (point, value) in &claims.0[id] {
+            let mut full = reserve(bits)?;
+            full.extend((0..lead).map(|j| bit((index >> (lead - 1 - j)) & 1 == 1)));
+            full.extend_from_slice(point);
+            batch.try_reserve(1).map_err(|_| Error::Capacity)?;
+            batch.push((full, *value));
+        }
+    }
+    if batch.is_empty() {
+        return Ok(0);
+    }
+    let section = sections.get(used).ok_or(Error::ProofShape)?;
+    let r = &mut exact(section, W * (3 * bits + 1) + source.geometry.opening)?;
+    let all = values(r, 3 * bits + 1)?;
+    let proof = Proof {
+        rounds: rows(&all[..3 * bits], 3)?,
+        final_values: alloc::vec![all[3 * bits]],
+    };
+    let reduced = ClaimBatch {
+        id: source.batch,
+        tensor: source.geometry.id,
+        num_vars: source.bits.into(),
+        claims: &batch,
+    }
+    .verify(&proof, t)?;
+    pcs::verify_point(
+        t,
+        source.geometry.id,
+        cert,
+        &reduced.point,
+        reduced.claims[0].value,
+        r.rest(),
+    )?;
+    Ok(1)
+}
+
+/// A15 §6.4 step 4 / A27 §3: the zerocheck of domain size `m` (optionally scoped to `segment`).
 fn identity(
     rel: &Relation,
+    segment: Option<(u32, &[Option<u32>])>,
     m: u8,
+    id: u64,
     section: &[u8],
     t: &mut Transcript<K>,
     claims: &mut Claims,
 ) -> Result<(), Error> {
     // Identities of size m in relation order, then composes as 1·column − Σ 2^s·limb.
     let mut polys: Vec<Vec<(i64, Vec<Ref>)>> = Vec::new();
-    for i in rel.identities.iter().filter(|i| i.vars == m) {
+    for i in rel.identities.iter().filter(|i| {
+        i.vars == m && segment.is_none_or(|(seg, cs)| rel.identity_segment_with(i, cs) == seg)
+    }) {
         let mut terms = reserve(i.terms.len())?;
         for term in &i.terms {
             let mut f = reserve(term.factors.len())?;
@@ -537,6 +1074,9 @@ fn identity(
         polys.push(terms);
     }
     for c in &rel.composes {
+        if segment.is_some_and(|(seg, cs)| rel.compose_segment_with(c, cs) != seg) {
+            continue;
+        }
         let n = rel.column(c.column)?.log_len;
         if n != m {
             continue;
@@ -585,7 +1125,7 @@ fn identity(
     let mut ids = reserve(inputs.len())?;
     ids.extend(0..inputs.len() as u64);
     let instance = Instance {
-        id: ZEROCHECK_ID + u64::from(m),
+        id,
         num_vars: u32::from(m),
         inputs: ids,
         terms,
@@ -771,6 +1311,29 @@ fn lookup(
         if sum != *total {
             return Err(Error::MemberSumMismatch);
         }
+    }
+    // RFC-0026 A28 item 2 / RFC-0028 §2.5: bind virtual member evaluations as sent.
+    let mut virtual_members = Vec::new();
+    for (m_idx, (member, row)) in check.members.iter().zip(split.chunks_exact(c)).enumerate() {
+        for (slot, (rf, v)) in member.tuple.iter().zip(row).enumerate() {
+            if matches!(rel.column(rf.column)?.kind, Kind::Virtual(_)) {
+                if virtual_members.is_empty() {
+                    virtual_members
+                        .try_reserve(8)
+                        .map_err(|_| Error::Capacity)?;
+                    virtual_members.extend_from_slice(&i.to_le_bytes());
+                }
+                virtual_members
+                    .try_reserve(5 + W)
+                    .map_err(|_| Error::Capacity)?;
+                virtual_members.extend_from_slice(&(m_idx as u32).to_le_bytes());
+                virtual_members.push(slot as u8);
+                virtual_members.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+    }
+    if !virtual_members.is_empty() {
+        t.absorb(AbsorbLabel::Final, &virtual_members)?;
     }
     for (member, row) in check.members.iter().zip(split.chunks_exact(c)) {
         let low = &leaf.point[m - usize::from(member.vars)..];
@@ -1195,5 +1758,36 @@ mod tests {
         c.extend_from_slice(&[0; 64]);
         c.extend_from_slice(&5u32.to_le_bytes());
         assert!(matches!(Container::decode(&c), Err(Error::ProofShape)));
+
+        // RFC-0026 A26 §1: ContainerV2 header, S == 0, inflated S, and trailing byte checks.
+        assert!(matches!(
+            ContainerV2::decode(b"stele-dev-e2e-v2\x02"),
+            Err(Error::Header)
+        ));
+        assert!(matches!(
+            ContainerV2::decode(b"stele-dev-e2e-v2\x01\x00"),
+            Err(Error::Header)
+        ));
+        let mut v2 = b"stele-dev-e2e-v2\x02\x00".to_vec();
+        v2.extend_from_slice(&[0; 64]);
+        v2.extend_from_slice(&0u32.to_le_bytes()); // S == 0
+        v2.extend_from_slice(&0u32.to_le_bytes());
+        assert!(matches!(ContainerV2::decode(&v2), Err(Error::ProofShape)));
+        let mut v2_good = b"stele-dev-e2e-v2\x02\x00".to_vec();
+        v2_good.extend_from_slice(&[1; 32]);
+        v2_good.extend_from_slice(&[2; 32]);
+        v2_good.extend_from_slice(&1u32.to_le_bytes()); // S == 1
+        v2_good.extend_from_slice(&[0; 28]); // 7 empty segment section lists
+        v2_good.extend_from_slice(&0u32.to_le_bytes()); // 0 model openings
+        let dec = ContainerV2::decode(&v2_good).expect("valid empty v2 container");
+        assert_eq!(
+            (dec.cqis_id, dec.digest, dec.segments.len()),
+            ([1; 32], [2; 32], 1)
+        );
+        v2_good.push(0);
+        assert!(matches!(
+            ContainerV2::decode(&v2_good),
+            Err(Error::ProofShape)
+        ));
     }
 }

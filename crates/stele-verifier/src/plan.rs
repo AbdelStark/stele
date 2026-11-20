@@ -10,13 +10,16 @@ use crate::pcs::Source;
 use crate::relation::{pow2, Kind, Ref, Relation};
 use alloc::vec::Vec;
 
-/// A15 §6.1 ids.
+/// A15 §6.1 & RFC-0028 §2.5 ids.
 pub const STACKED_ID: u64 = 2;
 pub const MODEL_ID: u64 = 1 << 32;
 pub const ZEROCHECK_ID: u64 = 1 << 62;
 pub const MATMUL_ID: u64 = (1 << 62) + (1 << 48);
 pub const BATCH_ID: u64 = (1 << 62) + (1 << 49);
 pub const TUPLE_ID: u64 = (1 << 62) + 3 * (1 << 48);
+pub const VIRTUAL_BATCH_ID: u64 = (1 << 62) | (4 << 48);
+pub const VIRTUAL_CONTRACTION_ID: u64 = (1 << 62) | (5 << 48);
+pub const VIRTUAL_POINTWISE_ID: u64 = (1 << 62) | (6 << 48);
 /// Byte-5 Circle blow-up exponent (A11 item 2, A12 item 2).
 pub const BLOWUP: u8 = 2;
 
@@ -136,6 +139,8 @@ pub struct Member {
 /// One A3 check with its multiplicity source.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Check {
+    /// Check identifier (`0..checks.len()` in v1; `(seg << 16) | j` in v2).
+    pub id: u64,
     pub members: Vec<Member>,
     pub m: u8,
     pub c: usize,
@@ -145,6 +150,29 @@ pub struct Check {
     pub rows: Vec<i64>,
     pub k_lu: u8,
     pub multiplicity: Geometry,
+}
+
+/// One segment's derived plan (RFC-0026 A27 §3, RFC-0028 §2.4).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SegmentPlan {
+    pub segment: u32,
+    pub stack: Option<Committed>,
+    /// `(block_index, column_id)` of this segment's witness columns in GroupId then group order.
+    pub stack_columns: Vec<(u64, usize)>,
+    pub checks: Vec<Check>,
+    pub sizes: Vec<u8>,
+    pub matmuls: Vec<usize>,
+    /// Virtual column ids owned by this segment, in strictly decreasing `ColumnId` order.
+    pub virtuals: Vec<u32>,
+}
+
+/// Segmented / virtual-column plan (RFC-0026 A27 §3, RFC-0028 §2.4).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SegmentedPlan {
+    pub segments: Vec<SegmentPlan>,
+    pub models: Vec<Committed>,
+    /// For each model source, `(block_index, column_id)` in `ColumnId` order.
+    pub model_columns: Vec<Vec<(u64, usize)>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -273,8 +301,172 @@ impl Plan {
             sources,
             stacked,
             homes,
-            checks: checks(rel)?,
+            checks: checks(rel, None, None, None)?,
             sizes,
+        })
+    }
+}
+
+impl SegmentedPlan {
+    /// Derive the segmented / virtual plan of `rel`, validated first (RFC-0026 A27 §3,
+    /// RFC-0028 §2.4).
+    pub fn derive(rel: &Relation) -> Result<Self, Error> {
+        rel.validate()?;
+        let seg_count = rel.segments();
+        if seg_count == 0 || seg_count > u32::from(u16::MAX) {
+            return Err(Error::Unsupported);
+        }
+        let col_segs = rel.column_segments()?;
+        let weight_segs = rel.weight_segments(&col_segs)?;
+        let mut group_members: Vec<Vec<usize>> = reserve(rel.groups.len())?;
+        group_members.resize_with(rel.groups.len(), Vec::new);
+        for (id, c) in rel.columns.iter().enumerate() {
+            if let Kind::Witness(g) = c.kind {
+                group_members[g as usize]
+                    .try_reserve(1)
+                    .map_err(|_| Error::Capacity)?;
+                group_members[g as usize].push(id);
+            }
+        }
+        let mut segments = reserve(seg_count as usize)?;
+        for seg in 0..seg_count {
+            let source_base = u64::from(seg) << 16;
+            let mut seg_groups = Vec::new();
+            let mut blocks = Vec::new();
+            for (g, &n) in rel.groups.iter().enumerate() {
+                if rel.group_segment(g) != seg {
+                    continue;
+                }
+                let size = u32::from(n) + ceil_log2(group_members[g].len().max(1) as u64);
+                if size > 30 {
+                    return Err(Error::Unsupported);
+                }
+                seg_groups.try_reserve(1).map_err(|_| Error::Capacity)?;
+                seg_groups.push(g);
+                blocks.try_reserve(1).map_err(|_| Error::Capacity)?;
+                blocks.push(size as u8);
+            }
+            let (stack, stack_columns) = if seg_groups.is_empty() {
+                (None, Vec::new())
+            } else {
+                let (offsets, total) = place(&blocks)?;
+                let s = ceil_log2(total);
+                if s > 30 {
+                    return Err(Error::Unsupported);
+                }
+                let bits = s.max(6) as u8;
+                let mut cols = Vec::new();
+                for (&g, &o) in seg_groups.iter().zip(&offsets) {
+                    let n = rel.groups[g];
+                    for (j, &col_id) in group_members[g].iter().enumerate() {
+                        cols.try_reserve(1).map_err(|_| Error::Capacity)?;
+                        cols.push(((o >> n) + j as u64, col_id));
+                    }
+                }
+                (
+                    Some(Committed {
+                        geometry: message_source(source_base + STACKED_ID, bits)?,
+                        batch: BATCH_ID | (u64::from(seg) << 32),
+                        bits,
+                    }),
+                    cols,
+                )
+            };
+            let seg_checks = checks(rel, Some(seg), Some(&col_segs), Some(&weight_segs))?;
+            let mut sizes = Vec::new();
+            for i in &rel.identities {
+                if rel.identity_segment_with(i, &col_segs) == seg {
+                    sizes.try_reserve(1).map_err(|_| Error::Capacity)?;
+                    sizes.push(i.vars);
+                }
+            }
+            for c in &rel.composes {
+                if rel.compose_segment_with(c, &col_segs) == seg {
+                    sizes.try_reserve(1).map_err(|_| Error::Capacity)?;
+                    sizes.push(rel.column(c.column)?.log_len);
+                }
+            }
+            sizes.sort_unstable();
+            sizes.dedup();
+            let mut matmuls = Vec::new();
+            for (idx, m) in rel.matmuls.iter().enumerate() {
+                if rel.matmul_segment_with(m, &col_segs) == seg {
+                    matmuls.try_reserve(1).map_err(|_| Error::Capacity)?;
+                    matmuls.push(idx);
+                }
+            }
+            let mut virtuals = Vec::new();
+            for idx in (0..rel.columns.len()).rev() {
+                if matches!(rel.columns[idx].kind, Kind::Virtual(_)) && col_segs[idx] == Some(seg) {
+                    // Reject Contraction virtuals whose sumcheck variables exceed MAX_VARS.
+                    if let Kind::Virtual(crate::relation::Def::Contraction {
+                        free,
+                        summed,
+                        lhs,
+                        rhs,
+                    }) = &rel.columns[idx].kind
+                    {
+                        let shared = (0..*free)
+                            .filter(|d| lhs.vars.contains(d) && rhs.vars.contains(d))
+                            .count();
+                        if shared + usize::from(*summed) > usize::from(crate::relation::MAX_VARS) {
+                            return Err(Error::Unsupported);
+                        }
+                    }
+                    virtuals.try_reserve(1).map_err(|_| Error::Capacity)?;
+                    virtuals.push(idx as u32);
+                }
+            }
+            segments.push(SegmentPlan {
+                segment: seg,
+                stack,
+                stack_columns,
+                checks: seg_checks,
+                sizes,
+                matmuls,
+                virtuals,
+            });
+        }
+        // Global A5 model sources (identical layout to v1).
+        let mut split: Vec<Vec<usize>> = Vec::new();
+        let mut total = 0u64;
+        for (id, c) in rel.columns.iter().enumerate() {
+            if c.kind != Kind::Weight {
+                continue;
+            }
+            let size = 1u64 << c.log_len;
+            if split.is_empty() || total + size > 1 << 30 {
+                split.try_reserve(1).map_err(|_| Error::Capacity)?;
+                split.push(Vec::new());
+                total = 0;
+            }
+            total += size;
+            let last = split.len() - 1;
+            split[last].try_reserve(1).map_err(|_| Error::Capacity)?;
+            split[last].push(id);
+        }
+        let mut models = reserve(split.len())?;
+        let mut model_columns = reserve(split.len())?;
+        for (k, ids) in split.iter().enumerate() {
+            let mut sizes = reserve(ids.len())?;
+            sizes.extend(ids.iter().map(|id| rel.columns[*id].log_len));
+            let (offsets, total) = place(&sizes)?;
+            let bits = ceil_log2(total).max(6) as u8;
+            let mut cols = reserve(ids.len())?;
+            for (&id, o) in ids.iter().zip(offsets) {
+                cols.push((o >> rel.columns[id].log_len, id));
+            }
+            model_columns.push(cols);
+            models.push(Committed {
+                geometry: message_source(MODEL_ID + k as u64, bits)?,
+                batch: BATCH_ID + 1 + k as u64,
+                bits,
+            });
+        }
+        Ok(SegmentedPlan {
+            segments,
+            models,
+            model_columns,
         })
     }
 }
@@ -285,8 +477,13 @@ enum Key {
     Range(u8),
 }
 
-/// A15 §6.3: checks keyed by table or range width, in order of first use.
-fn checks(rel: &Relation) -> Result<Vec<Check>, Error> {
+/// A15 §6.3 / A27 §3: checks keyed by table or range width, in order of first use.
+fn checks(
+    rel: &Relation,
+    segment: Option<u32>,
+    col_segs: Option<&[Option<u32>]>,
+    weight_segs: Option<&[u32]>,
+) -> Result<Vec<Check>, Error> {
     let mut keyed: Vec<(Key, Vec<Member>)> = Vec::new();
     let mut add = |key: Key, member: Member| -> Result<(), Error> {
         let at = match keyed.iter().position(|(k, _)| *k == key) {
@@ -302,6 +499,11 @@ fn checks(rel: &Relation) -> Result<Vec<Check>, Error> {
         Ok(())
     };
     for l in &rel.lookups {
+        if let (Some(seg), Some(cs)) = (segment, col_segs) {
+            if rel.lookup_segment_with(l, cs) != seg {
+                continue;
+            }
+        }
         let mut tuple = reserve(l.tuple.len())?;
         tuple.extend(l.tuple.iter().cloned());
         add(
@@ -316,6 +518,11 @@ fn checks(rel: &Relation) -> Result<Vec<Check>, Error> {
         )?;
     }
     for r in &rel.ranges {
+        if let (Some(seg), Some(cs), Some(ws)) = (segment, col_segs, weight_segs) {
+            if rel.range_segment_with(r, cs, ws) != seg {
+                continue;
+            }
+        }
         let n = rel.column(r.column)?.log_len;
         let mut vars = reserve(usize::from(n))?;
         vars.extend(0..n);
@@ -336,6 +543,10 @@ fn checks(rel: &Relation) -> Result<Vec<Check>, Error> {
             },
         )?;
     }
+    if segment.is_some() && keyed.len() >= (1 << 16) - 3 {
+        return Err(Error::Unsupported);
+    }
+    let source_base = u64::from(segment.unwrap_or(0)) << 16;
     let mut out = reserve(keyed.len())?;
     for (i, (key, mut members)) in keyed.into_iter().enumerate() {
         // A3: relation order, then stably sorted by m_i descending; cumulative offsets.
@@ -377,9 +588,10 @@ fn checks(rel: &Relation) -> Result<Vec<Check>, Error> {
         let k = ceil_log2(t as u64) as u8;
         // A14 item 3: the least k_LU for (c, 2^m, t); none up to 32 is Unsupported.
         let k_lu = logup::bits(c as u64, 1 << m, t as u64, 4).ok_or(Error::Unsupported)?;
-        // A12 item 2: ell ∈ [0, k] of least certificate plus opening, C = 2^(k − ell)·4.
-        let multiplicity = best(3 + i as u64, 0..=k, |ell| k - ell + 2)?;
+        // A12 item 2 / A27 §3: ell ∈ [0, k] of least certificate plus opening, C = 2^(k − ell)·4.
+        let multiplicity = best(source_base + 3 + i as u64, 0..=k, |ell| k - ell + 2)?;
         out.push(Check {
+            id: source_base | i as u64,
             members,
             m: m as u8,
             c,
