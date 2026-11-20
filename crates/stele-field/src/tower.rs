@@ -21,12 +21,14 @@ macro_rules! tower {
             /// Multiplicative identity.
             pub const ONE: Self = Self(<$base>::ONE, <$base>::ZERO);
 
+            #[inline]
             fn mul_nonresidue(value: $base) -> $base {
                 ($nr)(value)
             }
 
             /// RFC-0003 §2's product: three lower-field products, with fixed nonresidue
             /// maps (the reference every faster product must equal).
+            #[inline]
             pub fn karatsuba(self, rhs: Self) -> Self {
                 let ac = self.0 * rhs.0;
                 let bd = self.1 * rhs.1;
@@ -59,24 +61,28 @@ macro_rules! tower {
 
         impl Add for $name {
             type Output = Self;
+            #[inline]
             fn add(self, rhs: Self) -> Self {
                 Self(self.0 + rhs.0, self.1 + rhs.1)
             }
         }
         impl Sub for $name {
             type Output = Self;
+            #[inline]
             fn sub(self, rhs: Self) -> Self {
                 Self(self.0 - rhs.0, self.1 - rhs.1)
             }
         }
         impl Neg for $name {
             type Output = Self;
+            #[inline]
             fn neg(self) -> Self {
                 Self(-self.0, -self.1)
             }
         }
         impl Mul for $name {
             type Output = Self;
+            #[inline]
             fn mul(self, rhs: Self) -> Self {
                 ($mul)(self, rhs)
             }
@@ -101,6 +107,7 @@ macro_rules! tower {
                     self.0.to_i64_signed()
                 }
             }
+            #[inline]
             fn mul_m31(self, x: M31) -> Self {
                 // `from_i64` embeds in the first coefficient: (a + b·w)·c = a·c + b·c·w.
                 Self(self.0.mul_m31(x), self.1.mul_m31(x))
@@ -139,6 +146,7 @@ tower!(
 );
 
 // Fixed (2+i) multiplication uses additions only.
+#[inline]
 fn times_two_plus_i(x: CM31) -> CM31 {
     CM31(x.0 + x.0 - x.1, x.0 + x.1 + x.1)
 }
@@ -148,6 +156,7 @@ fn times_two_plus_i(x: CM31) -> CM31 {
 /// summed in u64 and reduced once per output limb. A subtracted product `x·y` is added
 /// as `x·(p − y)`, with `p − y ∈ [1, p]`. Every sum has at most four products, each
 /// below `p²`, so it stays below `4p² < 2^64`.
+#[inline]
 fn qm31_lazy(x: QM31, y: QM31) -> QM31 {
     const P: u64 = M31::MODULUS as u64;
     let limb = |v: M31| u64::from(v.as_u32());

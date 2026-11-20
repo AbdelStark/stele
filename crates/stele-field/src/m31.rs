@@ -88,10 +88,17 @@ impl Field for M31 {
             i64::from(self.0) - i64::from(Self::MODULUS)
         })
     }
+
+    // The default embeds `x` through `from_i64`; in the base field it is `x`.
+    #[inline]
+    fn mul_m31(self, x: M31) -> Self {
+        self * x
+    }
 }
 
 impl Add for M31 {
     type Output = Self;
+    #[inline]
     fn add(self, rhs: Self) -> Self {
         Self::reduce_lazy(self.0 + rhs.0)
     }
@@ -99,6 +106,7 @@ impl Add for M31 {
 
 impl Sub for M31 {
     type Output = Self;
+    #[inline]
     fn sub(self, rhs: Self) -> Self {
         Self::reduce_lazy(self.0 + Self::MODULUS - rhs.0)
     }
@@ -106,6 +114,7 @@ impl Sub for M31 {
 
 impl Mul for M31 {
     type Output = Self;
+    #[inline]
     fn mul(self, rhs: Self) -> Self {
         Self::from_u64(u64::from(self.0) * u64::from(rhs.0))
     }
@@ -113,6 +122,7 @@ impl Mul for M31 {
 
 impl Neg for M31 {
     type Output = Self;
+    #[inline]
     fn neg(self) -> Self {
         Self::reduce_lazy(Self::MODULUS - self.0)
     }
