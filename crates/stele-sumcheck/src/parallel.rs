@@ -42,9 +42,15 @@ impl Laps {
 #[cfg(feature = "std")]
 const MIN_CHUNK: usize = 1 << 8;
 
+/// Pieces per pool thread: a slow or busy core takes fewer of them (work stealing).
+#[cfg(feature = "std")]
+const PIECES: usize = 4;
+
 #[cfg(feature = "std")]
 fn chunks(len: usize) -> usize {
-    rayon::current_num_threads().min(len / MIN_CHUNK).max(1)
+    (PIECES * rayon::current_num_threads())
+        .min(len / MIN_CHUNK)
+        .max(1)
 }
 
 /// `out = Σ_chunks partial(chunk)` over `0..len`, each chunk filling a fresh `out`;
