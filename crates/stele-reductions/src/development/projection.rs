@@ -1269,17 +1269,21 @@ impl Projection {
             } else {
                 vec![&w.codes]
             };
+            // Every output is an independent integer dot product.
             w.sums = operands
                 .iter()
                 .map(|operand| {
-                    (0..out)
-                        .map(|x| {
+                    let mut sums = vec![0i64; out];
+                    stele_sumcheck::parallel::for_each_chunk(&mut sums, |start, chunk| {
+                        for (k, sum) in chunk.iter_mut().enumerate() {
+                            let x = start + k;
                             let (row, j) = (x >> lo, x & ((1 << lo) - 1));
-                            (0..1usize << ld)
+                            *sum = (0..1usize << ld)
                                 .map(|i| operand[(row << ld) | i] * w.weights[j][i])
-                                .sum()
-                        })
-                        .collect()
+                                .sum();
+                        }
+                    });
+                    sums
                 })
                 .collect();
         }
