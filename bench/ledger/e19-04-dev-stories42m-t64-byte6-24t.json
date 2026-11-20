@@ -1,7 +1,7 @@
 {
  "batch_size": 1,
  "bindings_all_on": true,
- "commit": "e85cae9b8aaeb95f677170b9c441bd72f1063f87",
+ "commit": "01076e8625629676d2a98c076aa26d112a7b0a8d",
  "controls": {
   "failed": 0,
   "passed": 4,
@@ -41,10 +41,10 @@
   "proof_section_matmuls_bytes": 1983024,
   "proof_section_multiplicities_bytes": 147536,
   "proof_section_openings_bytes": 1250267,
-  "prove_peak_rss_bytes": 15021785088,
+  "prove_peak_rss_bytes": 15023210496,
   "public_bytes": 17251931,
   "stacked_source_cells_padded": 134217728,
-  "verify_peak_rss_bytes": 2966097920,
+  "verify_peak_rss_bytes": 2966036480,
   "weight_elements_read": 310378496,
   "weight_reads": 5
  },
@@ -57,7 +57,7 @@
    "token": "Engine(Sumcheck(RoundSumMismatch))",
    "weight": "Engine(Recursive(Merkle(RootMismatch)))"
   },
-  "host_context": "Slurm job 7277, 24 allocated CPUs of a 224-CPU host, RAYON_NUM_THREADS=24, third of three runs (the earlier two are in the job log); flags: --dev-profile 6",
+  "host_context": "Slurm job 7524, 24 allocated CPUs of a 224-CPU host, RAYON_NUM_THREADS=24, last of 3 runs (the earlier ones are in the job log); flags: --dev-profile 6",
   "model": {
    "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
    "fidelity": "agents/reviews/e16-11-stories42m/fidelity.json",
@@ -92,26 +92,26 @@
  "profile": "development",
  "prompt_tokens": 24,
  "proof_size_bytes": 3927613,
- "prover_time_ns": 134720000000,
+ "prover_time_ns": 117790000000,
  "schema_version": 1,
  "stage_times_ns": {
-  "commitment": 4581329845,
-  "lookups": 43203200881,
-  "model_commitment": 2731131910,
-  "multiplicities": 1239441755,
-  "openings": 20062813719,
-  "plain_check": 4061554475,
-  "plan": 106726917,
-  "prove_dev_wall": 134720000000,
-  "reductions": 6622590009,
-  "witness": 26776330278,
-  "zerochecks": 433971591
+  "commitment": 3960911558,
+  "lookups": 37613787994,
+  "model_commitment": 2515206330,
+  "multiplicities": 1114033669,
+  "openings": 18133862928,
+  "plain_check": 3446912415,
+  "plan": 96199251,
+  "prove_dev_wall": 117790000000,
+  "reductions": 5509414167,
+  "witness": 24324453829,
+  "zerochecks": 404063234
  },
  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
  "verifier_time_ns": {
   "python": 0,
-  "rust": 11290000000
+  "rust": 11350000000
  },
- "witness_recompute_ns": 26776330278,
+ "witness_recompute_ns": 24324453829,
  "workload": "dev/stories42m-t64"
 }
