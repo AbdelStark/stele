@@ -245,6 +245,38 @@ pub fn eq_table_scaled<K: ChallengeField>(point: &[K], scale: K) -> Result<Vec<K
     Ok(out)
 }
 
+/// The three partial sums of a fraction-tree layer round with unit weights over `range`
+/// (`stele_simd::layer_round_reference`: `e[x]·t` for `t = q1·(p0 + γ·q0) + p1·q0` at `x`,
+/// at `x + half` and of their differences), from the host's kernel when the field is QM31
+/// and `std` is on. `None` otherwise: the caller runs its own loop.
+pub fn layer_round_kernel<K: ChallengeField>(
+    tables: [&[K]; 4],
+    suffix: &[K],
+    gamma: K,
+    range: core::ops::Range<usize>,
+) -> Option<[K; 3]> {
+    #[cfg(feature = "std")]
+    {
+        let tables = [
+            K::qm31_slice(tables[0])?,
+            K::qm31_slice(tables[1])?,
+            K::qm31_slice(tables[2])?,
+            K::qm31_slice(tables[3])?,
+        ];
+        let sums = stele_simd::layer_round(tables, K::qm31_slice(suffix)?, gamma.qm31()?, range);
+        Some([
+            K::from_qm31(sums[0])?,
+            K::from_qm31(sums[1])?,
+            K::from_qm31(sums[2])?,
+        ])
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        let _ = (tables, suffix, gamma, range);
+        None
+    }
+}
+
 /// Fix the leading coordinate: `t[j] += r·(t[j + half] − t[j])`, then halve.
 /// `table.len()` must be a power of two (a dense MLE table).
 pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {

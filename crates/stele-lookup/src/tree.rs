@@ -272,6 +272,21 @@ impl<'a, K: ChallengeField + Eq> Layer<'a, K> {
         };
         let mut sums = [K::from_i64(0); 3];
         stele_sumcheck::parallel::sum_ranges(half, &mut sums, |range, out| {
+            if unit {
+                // QM31 layers take the host's kernel: the sums of the loop below.
+                let kernel = stele_sumcheck::parallel::layer_round_kernel(
+                    [&p0[..], &q0[..], &p1[..], &q1[..]],
+                    &self.suffix,
+                    gamma,
+                    range.clone(),
+                );
+                if let Some(partial) = kernel {
+                    for (total, part) in out.iter_mut().zip(partial) {
+                        *total = *total + part;
+                    }
+                    return Ok(());
+                }
+            }
             for x in range {
                 let y = x + half;
                 let e = self.suffix[x];

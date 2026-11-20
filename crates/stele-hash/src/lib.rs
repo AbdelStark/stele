@@ -427,6 +427,10 @@ pub trait ChallengeField: sealed::Target + stele_field::Field + Send + Sync {
     fn qm31(self) -> Option<QM31> {
         None
     }
+    /// A QM31 element as `Self` when `Self` is QM31.
+    fn from_qm31(_value: QM31) -> Option<Self> {
+        None
+    }
 }
 impl sealed::Target for QM31 {
     const DEGREE: usize = 4;
@@ -443,6 +447,9 @@ impl ChallengeField for QM31 {
     }
     fn qm31(self) -> Option<QM31> {
         Some(self)
+    }
+    fn from_qm31(value: QM31) -> Option<Self> {
+        Some(value)
     }
 }
 impl sealed::Target for OM31 {
