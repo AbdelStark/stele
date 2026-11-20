@@ -114,19 +114,17 @@ fn claim(tokens: &[u32], next: Option<u32>, i: usize, c: u32) -> (Vec<u32>, Opti
     (tokens, next)
 }
 
-/// Attacker assignments for a false claim: the honest `sel` with every margin clamped
-/// into range, and `sel` raised to the row maximum (blocks consistent) with the margin
-/// re-solved.
+/// Attacker assignments for a false claim: since every Argmax column (`blocks`, `selected`,
+/// `margin`) is virtual under RFC-0028 §1.2, `check` computes them directly from `logits` and
+/// ignores any forged values placed in `Values` (still tested here to assert that forged entries
+/// cannot bypass rejection).
 fn false_claims(case: &Case) -> Vec<(&'static str, Values)> {
     let c = case.module.columns().expect("declared");
     let (_, v, nb) = case.module.bits();
     let vb = v - nb;
     let mut out = Vec::new();
     let honest = |id| {
-        case.values
-            .get(&case.relation, id)
-            .expect("column")
-            .to_vec()
+        stele_ir::relation::eval_column(&case.relation, &case.values, id).expect("eval virtual")
     };
     let mut clamped = case.values.clone();
     let margin: Vec<_> = honest(c.margin)
@@ -219,8 +217,8 @@ fn rejects_padded_vocabulary_id() {
     check(&case.relation, &case.values).expect("real greedy id beside larger padding");
 }
 
-/// Unchecked rows: a nonzero margin there is rejected, and their tokens are not
-/// constrained (outside `[r, e)` the statement claims nothing).
+/// Unchecked rows: virtual `margin` evaluates to 0 on every unchecked row and padded id,
+/// and unchecked tokens are not constrained (outside `[r, e)` the statement claims nothing).
 #[test]
 fn rejects_unchecked_row_margin() {
     let mut rng = Rng(9);
@@ -229,12 +227,10 @@ fn rejects_unchecked_row_margin() {
     let case = case(&rows, &tokens, (1, 3), next);
     check(&case.relation, &case.values).expect("honest");
     let margin = case.module.columns().expect("declared").margin;
+    let evaluated =
+        stele_ir::relation::eval_column(&case.relation, &case.values, margin).expect("eval margin");
     for index in [0, 7, 3 << 3, (3 << 3) + 5] {
-        let mut values = case.values.clone();
-        let mut column = values.get(&case.relation, margin).expect("margin").to_vec();
-        column[index] = 1;
-        values.set(&case.relation, margin, column).expect("set");
-        assert!(check(&case.relation, &values).is_err());
+        assert_eq!(evaluated[index], 0);
     }
     let (other, _) = claim(&tokens, next, 0, (greedy(&rows[0]) as u32 + 1) % 8);
     let unchecked = self::case(&rows, &other, (1, 3), next);
@@ -416,9 +412,13 @@ fn accepts_static_validity_realistic_shapes() {
         let mut module = Argmax::new(logits, &tokens, (0, t), Some(1), vocabulary).expect("plan");
         module.declare(&mut relation);
         relation.validate().expect("valid");
-        assert_eq!(
-            relation.matmuls.len(),
-            if vocabulary > 1 << 15 { 2 } else { 1 }
-        );
+        assert_eq!(relation.matmuls.len(), 0);
+        // Zero committed witness columns added by Argmax (RFC-0028 §1.2).
+        let argmax_witness = relation
+            .columns
+            .iter()
+            .filter(|c| c.name.starts_with(NAME) && matches!(c.kind, Kind::Witness(_)))
+            .count();
+        assert_eq!(argmax_witness, 0);
     }
 }

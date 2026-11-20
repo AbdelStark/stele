@@ -77,19 +77,53 @@ impl ProverHook<Case> for Hook {
                     .expect("fixture sigmaH");
                 assert!(matches!(&case.relation.columns[zero].kind,
                     Kind::Public(v) if v.iter().all(|x| *x == 0)));
-                let identity = case
+                if let Some(identity) = case
                     .relation
                     .identities
                     .iter_mut()
                     .find(|i| i.name == "L0/norm1/output/0")
-                    .expect("fixture identity");
-                let term = identity
-                    .terms
-                    .iter_mut()
-                    .find(|t| t.factors.iter().any(|r| r.column.0 as usize == zero))
-                    .expect("zero-factor term");
-                assert_eq!(term.coeff, 1);
-                term.coeff = -1;
+                {
+                    let term = identity
+                        .terms
+                        .iter_mut()
+                        .find(|t| t.factors.iter().any(|r| r.column.0 as usize == zero))
+                        .expect("zero-factor term");
+                    assert_eq!(term.coeff, 1);
+                    term.coeff = -1;
+                } else {
+                    // Under RFC-0028 virtualisation, `L0/norm1/output/0` is virtual column
+                    // `L0/norm1/Z0`, carrying the same `+1 * sigmaH` zero-factor term.
+                    let z0 = case
+                        .relation
+                        .columns
+                        .iter_mut()
+                        .find(|c| c.name == "L0/norm1/Z0")
+                        .expect("fixture Z0");
+                    match &mut z0.kind {
+                        Kind::Virtual(stele_reductions::stele_ir::relation::Def::Pointwise {
+                            terms,
+                        }) => {
+                            let term = terms
+                                .iter_mut()
+                                .find(|t| t.factors.iter().any(|r| r.column.0 as usize == zero))
+                                .expect("zero-factor term in Z0");
+                            assert_eq!(term.coeff, 1);
+                            term.coeff = -1;
+                        }
+                        Kind::Virtual(stele_reductions::stele_ir::relation::Def::Linear {
+                            terms,
+                            ..
+                        }) => {
+                            let (coeff, _) = terms
+                                .iter_mut()
+                                .find(|(_, r)| r.column.0 as usize == zero)
+                                .expect("zero-factor term in Z0");
+                            assert_eq!(*coeff, 1);
+                            *coeff = -1;
+                        }
+                        _ => unreachable!("L0/norm1/Z0 must be a virtual column"),
+                    }
+                }
             }
             _ => unreachable!("fixed registry control inventory"),
         }
@@ -326,24 +360,55 @@ fn fixture() -> Result<Fixture, String> {
         check(&case.relation, &values).map_err(err)?;
         let input = development::public_input(&public, &cqis, &statement);
         let mut transcript = Transcript::<relation::K>::new(&input).map_err(err)?;
-        let p = relation::prove(&mut transcript, &case.relation, &values, &sources, set)
-            .map_err(err)?;
         let mut digest = blake3::Hasher::new();
         digest.update(b"stele/v0.1/dev-e2e/statement");
         digest.update(&(input.len() as u64).to_le_bytes());
         digest.update(&input);
         digest.update(&relation::digest(&case.relation));
-        let forged = container::Container {
-            cqis_id: cqis,
-            statement: *digest.finalize().as_bytes(),
-            groups: p.groups,
-            multiplicities: p.multiplicities,
-            identities: p.identities,
-            lookups: p.lookups,
-            matmuls: p.matmuls,
-            openings: p.openings,
-        }
-        .encode();
+        let stmt_digest = *digest.finalize().as_bytes();
+        let forged = if case.relation.has_virtual() || case.relation.is_segmented() {
+            let p = relation::prove_segmented(
+                &mut transcript,
+                &case.relation,
+                |_| Ok(values.clone()),
+                &sources,
+                set,
+            )
+            .map_err(err)?;
+            container::ContainerV2 {
+                cqis_id: cqis,
+                statement: stmt_digest,
+                segments: p
+                    .segments
+                    .into_iter()
+                    .map(|s| container::SegmentSections {
+                        groups: s.groups,
+                        multiplicities: s.multiplicities,
+                        identities: s.identities,
+                        lookups: s.lookups,
+                        matmuls: s.matmuls,
+                        reductions: s.reductions,
+                        openings: s.openings,
+                    })
+                    .collect(),
+                model_openings: p.model_openings,
+            }
+            .encode()
+        } else {
+            let p = relation::prove(&mut transcript, &case.relation, &values, &sources, set)
+                .map_err(err)?;
+            container::Container {
+                cqis_id: cqis,
+                statement: stmt_digest,
+                groups: p.groups,
+                multiplicities: p.multiplicities,
+                identities: p.identities,
+                lookups: p.lookups,
+                matmuls: p.matmuls,
+                openings: p.openings,
+            }
+            .encode()
+        };
         stele_verifier::development::verify(
             &case.public,
             &forged,

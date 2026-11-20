@@ -4106,8 +4106,7 @@ tasks:
   skill: protocol-architect
   crate: stele-reductions
   lane: P
-  status: in_progress
-  branch: task/E18-02-linear-virtual-columns
+  status: done
   acceptance:
   - prover and verifier reduce claims on Linear columns with absorbed operand evaluations and no challenge
   - Compose targets, sign recombinations and equal-scale sums are virtual in every module; near-miss tests and the plain checker keep their outcomes
@@ -4124,7 +4123,7 @@ tasks:
   skill: protocol-architect
   crate: stele-reductions
   lane: P
-  status: in_progress
+  status: done
   branch: task/E18-03-contraction-virtual-columns
   acceptance:
   - claims on a contraction output are reduced to one point, then one sumcheck; each operand has one partial evaluation per contraction (counter)
@@ -4143,7 +4142,7 @@ tasks:
   skill: gkr-reduction-author
   crate: stele-reductions
   lane: P
-  status: ready
+  status: done
   acceptance:
   - rounding remainders and low limbs are virtual in every rounding pattern of RFC-0026 §5; range checks read them through Refs
   - NC-1339 and NC-1340 run through the actual verifier
@@ -4160,7 +4159,7 @@ tasks:
   skill: gkr-reduction-author
   crate: stele-reductions
   lane: P
-  status: ready
+  status: done
   acceptance:
   - for each RFC-0026 §5 row the committed columns are exactly the advice listed in the module header
   - E22-01 reports cells and lookup positions per token on the L1, L2 and L3 shapes, before and after

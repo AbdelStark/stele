@@ -15,6 +15,15 @@
 //!   `half_gap = (2beta-1)(2rho-D) - (1-beta) >= 0`, `q = q0 + beta <= 127`;
 //! - code `c = q - 2*sigma*q`.
 //!
+//! Committed witness advice columns (RFC-0028 §1.2):
+//! - Lane domain `(t, d)`: `sign` (`u1`), `hit` (`u1`, dynamic only), `quotient` (`u7`),
+//!   and `half` (`u1`, only when `scale_bound > 32768`; for `scale_bound <= 32768` the
+//!   compact `2a + D - 2Dq = r ∈ [0, 2D - 1]` formulation eliminates `floor`, `half`, and
+//!   `half_gap`).
+//! - Group domain `(t, d/g)` (dynamic only): `maximum`, `scale`, `zero` (`u1`).
+//! - Virtual: `magnitude`, `gap`, `slack`, `remainder`, `spare`, `codes` (and `floor`,
+//!   `half_gap` when `scale_bound > 32768`).
+//!
 //! A static policy makes `s` a public column and `z = 0`. Output-uniqueness lemma R
 //! and the mutation survey: `agents/reviews/e16-05-projections.md`.
 
@@ -23,7 +32,8 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_ir::relation::{
-    ColumnId, Invalid, Lookup, Matmul, Module, Relation, Table, Values, Violation, Width, MAX_VARS,
+    ColumnId, Def, Invalid, Kind, Lookup, Matmul, Module, Relation, Table, Values, Violation,
+    Width, MAX_VARS,
 };
 
 /// RFC-0025 §2.2 row policy for an int16 source row.
@@ -71,11 +81,11 @@ pub struct ConversionCapture {
 pub(crate) struct Columns {
     pub(crate) magnitude: ColumnId,
     pub(crate) sign: ColumnId,
-    pub(crate) floor: ColumnId,
+    pub(crate) floor: Option<ColumnId>,
     pub(crate) remainder: ColumnId,
     pub(crate) spare: ColumnId,
-    pub(crate) half: ColumnId,
-    pub(crate) half_gap: ColumnId,
+    pub(crate) half: Option<ColumnId>,
+    pub(crate) half_gap: Option<ColumnId>,
     pub(crate) quotient: ColumnId,
     pub(crate) codes: ColumnId,
     pub(crate) scale: ColumnId,
@@ -239,6 +249,12 @@ impl RowConversion {
         }
     }
 
+    /// Compact 1-limb half-away division (`2a + D = 2Dq + r`, `0 <= r <= 2D - 1`) fits `u16`
+    /// whenever `2 * scale_bound <= 65536` (all dynamic/grouped policies and static `s <= 32768`).
+    fn compact(&self) -> bool {
+        self.scale_bound() <= 32768
+    }
+
     /// Output column ids; `None` before `declare`.
     pub fn output(&self) -> Option<RowOutput> {
         let (log_rows, log_dimension, log_group) = self.logs();
@@ -313,13 +329,9 @@ impl RowConversion {
                 w.sign[x] = i64::from(source < 0);
             }
             if at(Step::Magnitude) {
-                // a = mask*x / (1 - 2*sigma) where that is exact, else |x|.
+                // Virtual magnitude is defined as `(1 - 2*sigma) * mask * x`.
                 let odd = 1 - 2 * w.sign[x];
-                w.magnitude[x] = if source % odd == 0 {
-                    source / odd
-                } else {
-                    source.abs()
-                };
+                w.magnitude[x] = odd * source;
             }
         }
         for k in 0..groups {
@@ -352,27 +364,41 @@ impl RowConversion {
                 w.zero[k] = i64::from(w.maximum[k] == 0);
             }
         }
+        let compact = self.compact();
         for x in 0..lanes {
             let divisor = w.scale[x >> lg] + w.zero[x >> lg];
             if at(Step::Floor) {
                 w.floor[x] = w.magnitude[x].checked_div(divisor).unwrap_or(0);
             }
-            if at(Step::Remainder) {
-                w.remainder[x] = w.magnitude[x] - w.floor[x] * divisor;
-            }
-            if at(Step::Spare) {
-                w.spare[x] = divisor - 1 - w.remainder[x];
-            }
-            let rho = w.remainder[x];
+            let rho_floor = w.magnitude[x] - w.floor[x] * divisor;
             if at(Step::Half) {
-                w.half[x] = i64::from(2 * rho >= divisor);
-            }
-            if at(Step::HalfGap) {
-                let beta = w.half[x];
-                w.half_gap[x] = (2 * beta - 1) * (2 * rho - divisor) - (1 - beta);
+                w.half[x] = i64::from(2 * rho_floor >= divisor);
             }
             if at(Step::Quotient) {
                 w.quotient[x] = w.floor[x] + w.half[x];
+            }
+            if compact {
+                if at(Step::Remainder) {
+                    w.remainder[x] = 2 * w.magnitude[x] + divisor - 2 * w.quotient[x] * divisor;
+                }
+                if at(Step::Spare) {
+                    w.spare[x] = 2 * divisor - 1 - w.remainder[x];
+                }
+                if at(Step::HalfGap) {
+                    w.half_gap[x] = 0;
+                }
+            } else {
+                if at(Step::Remainder) {
+                    w.remainder[x] = rho_floor;
+                }
+                if at(Step::Spare) {
+                    w.spare[x] = divisor - 1 - w.remainder[x];
+                }
+                let rho = w.remainder[x];
+                if at(Step::HalfGap) {
+                    let beta = w.half[x];
+                    w.half_gap[x] = (2 * beta - 1) * (2 * rho - divisor) - (1 - beta);
+                }
             }
             if at(Step::Code) {
                 w.codes[x] = w.quotient[x] - 2 * w.sign[x] * w.quotient[x];
@@ -391,14 +417,20 @@ impl RowConversion {
         let mut columns = vec![
             (c.magnitude, &w.magnitude),
             (c.sign, &w.sign),
-            (c.floor, &w.floor),
             (c.remainder, &w.remainder),
             (c.spare, &w.spare),
-            (c.half, &w.half),
-            (c.half_gap, &w.half_gap),
             (c.quotient, &w.quotient),
             (c.codes, &w.codes),
         ];
+        if let Some(floor) = c.floor {
+            columns.push((floor, &w.floor));
+        }
+        if let Some(half) = c.half {
+            columns.push((half, &w.half));
+        }
+        if let Some(half_gap) = c.half_gap {
+            columns.push((half_gap, &w.half_gap));
+        }
         if let Some((zero, maximum, slack, gap, hit)) = c.dynamic {
             columns.extend([
                 (c.scale, &w.scale),
@@ -410,7 +442,9 @@ impl RowConversion {
             ]);
         }
         for (id, column) in columns {
-            values.set(relation, id, column.clone())?;
+            if !matches!(relation.columns[id.0 as usize].kind, Kind::Virtual(_)) {
+                values.set(relation, id, column.clone())?;
+            }
         }
         Ok(())
     }
@@ -420,10 +454,11 @@ impl Module for RowConversion {
     type Capture = ConversionCapture;
 
     fn declare(&mut self, relation: &mut Relation) {
-        assert_eq!(
-            relation.column(self.input).map(|c| c.width),
-            Some(Width::signed(16)),
-            "row conversion input must be a signed-16 column (RFC-0026 §5.1)"
+        assert!(
+            relation
+                .column_magnitude(self.input)
+                .is_some_and(|m| m <= Width::signed(16).magnitude()),
+            "row conversion input must fit signed-16 magnitude (RFC-0026 §5.1, RFC-0028 §2.2)"
         );
         let (t, ld, lg) = self.logs();
         let lanes = t + ld;
@@ -438,15 +473,23 @@ impl Module for RowConversion {
         let lane = |c: ColumnId| r(c, 0..lanes);
         let group = |c: ColumnId| r(c, lg..lanes);
 
-        let magnitude = b.witness("magnitude", Width::unsigned(16), lanes);
+        let compact = self.compact();
+        // Committed advice on lanes: sign + quotient (compact) or sign + floor + half (wide static),
+        // plus hit when dynamic (RFC-0028 §1.2).
         let sign = b.witness("sign", Width::unsigned(1), lanes);
-        let floor = b.witness("floor", Width::unsigned(7), lanes);
-        let remainder = b.witness("remainder", Width::unsigned(16), lanes);
-        let spare = b.witness("spare", Width::unsigned(16), lanes);
-        let half = b.witness("half", Width::unsigned(1), lanes);
-        let half_gap = b.witness("half_gap", Width::unsigned(16), lanes);
-        let quotient = b.witness("quotient", Width::unsigned(7), lanes);
-        let codes = b.witness("codes", Width::signed(8), lanes);
+        // Virtual magnitude: a = (1 - 2*sigma) * mask * x ∈ [0, 2^16) (RFC-0028 §1.2).
+        let x = r(self.input, 0..lanes);
+        let magnitude = b.virtual_ranged(
+            "magnitude",
+            Def::Pointwise {
+                terms: vec![
+                    term(1, vec![lane(mask), x.clone()]),
+                    term(-2, vec![lane(sign), lane(mask), x]),
+                ],
+            },
+            Width::unsigned(16),
+            lanes,
+        );
         let (scale, zero, dynamic) = match self.policy {
             Policy::Static(s) => (
                 b.public(
@@ -463,105 +506,138 @@ impl Module for RowConversion {
                 let scale = b.witness("scale", scale_width, groups);
                 let zero = b.witness("zero", Width::unsigned(1), groups);
                 let maximum = b.witness("maximum", Width::unsigned(16), groups);
-                let slack = b.column("slack", Width::unsigned(7), groups);
-                let gap = b.witness("gap", Width::unsigned(16), lanes);
                 let hit = b.witness("hit", Width::unsigned(1), lanes);
+                let at = |c: ColumnId| r(c, 0..groups);
+                // Virtual slack = 127*s - M ∈ [0, 126] (RFC-0028 §1.2).
+                let slack = b.virtual_col(
+                    "slack",
+                    Def::Linear {
+                        constant: 0,
+                        terms: vec![(127, at(scale)), (-1, at(maximum))],
+                    },
+                    groups,
+                );
+                // Virtual gap = M - a ∈ [0, 2^16) (RFC-0028 §1.2).
+                let gap = b.virtual_ranged(
+                    "gap",
+                    Def::Linear {
+                        constant: 0,
+                        terms: vec![(1, group(maximum)), (-1, lane(magnitude))],
+                    },
+                    Width::unsigned(16),
+                    lanes,
+                );
                 (scale, zero, Some((zero, maximum, slack, gap, hit)))
             }
         };
-        let (x, s, z) = (r(self.input, 0..lanes), group(scale), group(zero));
+        let (s, z) = (group(scale), group(zero));
 
-        // mask*x - a + 2*sigma*a = 0.
-        b.identity(
-            "sign",
+        let (floor, half, half_gap, quotient, remainder, spare) = if compact {
+            // Compact half-away division (2*scale_bound <= 65536):
+            // 2a + D - 2Dq = r ∈ [0, 2^16), spare = 2D - 1 - r ∈ [0, 2^16).
+            let quotient = b.witness("quotient", Width::unsigned(7), lanes);
+            let remainder = b.virtual_ranged(
+                "remainder",
+                Def::Pointwise {
+                    terms: vec![
+                        term(2, vec![lane(magnitude)]),
+                        term(1, vec![s.clone()]),
+                        term(1, vec![z.clone()]),
+                        term(-2, vec![lane(quotient), s.clone()]),
+                        term(-2, vec![lane(quotient), z.clone()]),
+                    ],
+                },
+                Width::unsigned(16),
+                lanes,
+            );
+            let spare = b.virtual_ranged(
+                "spare",
+                Def::Linear {
+                    constant: -1,
+                    terms: vec![(2, s), (2, z), (-1, lane(remainder))],
+                },
+                Width::unsigned(16),
+                lanes,
+            );
+            (None, None, None, quotient, remainder, spare)
+        } else {
+            let floor = b.witness("floor", Width::unsigned(7), lanes);
+            let half = b.witness("half", Width::unsigned(1), lanes);
+            // Virtual remainder: rho = a - q0*(s + z) ∈ [0, 2^16) (RFC-0028 §1.2, A1).
+            let remainder = b.virtual_ranged(
+                "remainder",
+                Def::Pointwise {
+                    terms: vec![
+                        term(1, vec![lane(magnitude)]),
+                        term(-1, vec![lane(floor), s.clone()]),
+                        term(-1, vec![lane(floor), z.clone()]),
+                    ],
+                },
+                Width::unsigned(16),
+                lanes,
+            );
+            // Virtual spare = s + z - 1 - rho ∈ [0, 2^16): rho < D and D >= 1.
+            let spare = b.virtual_ranged(
+                "spare",
+                Def::Linear {
+                    constant: -1,
+                    terms: vec![(1, s.clone()), (1, z.clone()), (-1, lane(remainder))],
+                },
+                Width::unsigned(16),
+                lanes,
+            );
+            // Virtual half_gap = (2*beta - 1)*(2*rho - D) - (1 - beta) ∈ [0, 2^16).
+            let half_gap = b.virtual_ranged(
+                "half_gap",
+                Def::Pointwise {
+                    terms: vec![
+                        term(4, vec![lane(half), lane(remainder)]),
+                        term(-2, vec![lane(half), s.clone()]),
+                        term(-2, vec![lane(half), z.clone()]),
+                        term(-2, vec![lane(remainder)]),
+                        term(1, vec![s]),
+                        term(1, vec![z]),
+                        term(-1, vec![]),
+                        term(1, vec![lane(half)]),
+                    ],
+                },
+                Width::unsigned(16),
+                lanes,
+            );
+            // Virtual quotient q = q0 + beta ∈ [0, 128).
+            let quotient = b.virtual_ranged(
+                "quotient",
+                Def::Linear {
+                    constant: 0,
+                    terms: vec![(1, lane(floor)), (1, lane(half))],
+                },
+                Width::unsigned(7),
+                lanes,
+            );
+            (
+                Some(floor),
+                Some(half),
+                Some(half_gap),
+                quotient,
+                remainder,
+                spare,
+            )
+        };
+        // Virtual codes c = (1 - 2*sigma)*q ∈ [-128, 128) (range tightens magnitude to 128).
+        let codes = b.virtual_ranged(
+            "codes",
+            Def::Pointwise {
+                terms: vec![
+                    term(1, vec![lane(quotient)]),
+                    term(-2, vec![lane(sign), lane(quotient)]),
+                ],
+            },
+            Width::signed(8),
             lanes,
-            vec![
-                term(1, vec![lane(mask), x]),
-                term(-1, vec![lane(magnitude)]),
-                term(2, vec![lane(sign), lane(magnitude)]),
-            ],
-        );
-        // a = q0*(s+z) + rho.
-        b.identity(
-            "division",
-            lanes,
-            vec![
-                term(1, vec![lane(magnitude)]),
-                term(-1, vec![lane(floor), s.clone()]),
-                term(-1, vec![lane(floor), z.clone()]),
-                term(-1, vec![lane(remainder)]),
-            ],
-        );
-        // spare = s + z - 1 - rho >= 0: rho < D, and D >= 1.
-        b.identity(
-            "spare",
-            lanes,
-            vec![
-                term(1, vec![lane(spare)]),
-                term(-1, vec![s.clone()]),
-                term(-1, vec![z.clone()]),
-                term(1, vec![]),
-                term(1, vec![lane(remainder)]),
-            ],
-        );
-        // half_gap = (2beta-1)(2rho-D) - (1-beta) >= 0, D = s+z.
-        b.identity(
-            "half",
-            lanes,
-            vec![
-                term(1, vec![lane(half_gap)]),
-                term(-4, vec![lane(half), lane(remainder)]),
-                term(2, vec![lane(half), s.clone()]),
-                term(2, vec![lane(half), z.clone()]),
-                term(2, vec![lane(remainder)]),
-                term(-1, vec![s.clone()]),
-                term(-1, vec![z.clone()]),
-                term(1, vec![]),
-                term(-1, vec![lane(half)]),
-            ],
-        );
-        // q = q0 + beta.
-        b.identity(
-            "quotient",
-            lanes,
-            vec![
-                term(1, vec![lane(quotient)]),
-                term(-1, vec![lane(floor)]),
-                term(-1, vec![lane(half)]),
-            ],
-        );
-        // c = q - 2*sigma*q.
-        b.identity(
-            "code",
-            lanes,
-            vec![
-                term(1, vec![lane(codes)]),
-                term(-1, vec![lane(quotient)]),
-                term(2, vec![lane(sign), lane(quotient)]),
-            ],
         );
         if let Some((_, maximum, slack, gap, hit)) = dynamic {
-            b.identity(
-                "gap",
-                lanes,
-                vec![
-                    term(1, vec![lane(gap)]),
-                    term(-1, vec![group(maximum)]),
-                    term(1, vec![lane(magnitude)]),
-                ],
-            );
             b.identity("attained", lanes, vec![term(1, vec![lane(hit), lane(gap)])]);
             let at = |c: ColumnId| r(c, 0..groups);
-            // slack = 127*s - M, in [0,126] by the lookup below.
-            b.identity(
-                "ceiling",
-                groups,
-                vec![
-                    term(1, vec![at(slack)]),
-                    term(-127, vec![at(scale)]),
-                    term(1, vec![at(maximum)]),
-                ],
-            );
             b.identity("zero", groups, vec![term(1, vec![at(zero), at(maximum)])]);
             let table = b.relation.add_table(Table {
                 name: "range/0..=126".into(),

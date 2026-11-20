@@ -8,10 +8,10 @@
       "t": 16,
       "sources": "CircleAll",
       "profile_byte": 3,
-      "proof_bytes": 4534593,
-      "fnv1a_64": "61d3c1990e561b8f",
-      "sha256": "e910f3d4e08c8a7f8c6a288601921e70a1a0e160ac93d01bbd86c268b08c9bcf",
-      "amendment": "RFC-0026 A12"
+      "proof_bytes": 4526513,
+      "fnv1a_64": "51bd0624353c6708",
+      "sha256": "6614e2d330b3354c34a7617445bd84df302d0aaf76964d19bc9a8eef5fa287aa",
+      "amendment": "RFC-0026 A28"
     },
     {
       "rung": "L0",
@@ -19,10 +19,10 @@
       "t": 16,
       "sources": "CircleAllGrind",
       "profile_byte": 5,
-      "proof_bytes": 4534649,
-      "fnv1a_64": "59ee67e39aa25d4b",
-      "sha256": "b87cf7a35ea8c1f5879fe15cc400a32884841e6627a64e911b04eb401e21f70a",
-      "amendment": "RFC-0026 A14"
+      "proof_bytes": 4526577,
+      "fnv1a_64": "d5500f3c6fadd196",
+      "sha256": "fda6307bede538cf21c32efab40bd8b1371951c03d24e81cbcb9fc8203a463b1",
+      "amendment": "RFC-0026 A28"
     },
     {
       "rung": "L1",
@@ -30,10 +30,10 @@
       "t": 64,
       "sources": "CircleAll",
       "profile_byte": 3,
-      "proof_bytes": 7024521,
-      "fnv1a_64": "f2a864539644a144",
-      "sha256": "60bec98c7d81a01c364f0dc78a91f054b0e225f333682e3d5a3f6ae12f5ea900",
-      "amendment": "RFC-0026 A12"
+      "proof_bytes": 7467133,
+      "fnv1a_64": "671c7dc7a1e7910e",
+      "sha256": "93c16ae13909a19433ff3c8434a909fe3cd79d7589673978be952ba191b1440c",
+      "amendment": "RFC-0026 A28"
     },
     {
       "rung": "L1",
@@ -41,10 +41,10 @@
       "t": 64,
       "sources": "CircleAllGrind",
       "profile_byte": 5,
-      "proof_bytes": 7024665,
-      "fnv1a_64": "f66d7640b9de788e",
-      "sha256": "899e5745baedfb8a296112f6a61adde966d3f371c5845d94b0a2654ff561d9c1",
-      "amendment": "RFC-0026 A14"
+      "proof_bytes": 7467285,
+      "fnv1a_64": "0dccbffc2d07efc5",
+      "sha256": "b7f8b744461a77f16f726809f80cd3348f8e3c1ed012850b089aa5e208c6115c",
+      "amendment": "RFC-0026 A28"
     }
   ]
 }

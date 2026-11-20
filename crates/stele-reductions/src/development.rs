@@ -12,7 +12,8 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_ir::relation::{
-    ColumnId, Identity, Kind, Range, Ref, Relation, Term, Values, Violation, Width,
+    eval_column, ColumnId, Def, Identity, Kind, Range, Ref, Relation, Term, Values, Violation,
+    Width,
 };
 
 pub mod attention;
@@ -120,6 +121,29 @@ impl<'a> Builder<'a> {
         column
     }
 
+    /// Virtual column defined by `def` (RFC-0028 §2.1), never committed.
+    pub(crate) fn virtual_col(&mut self, name: &str, def: Def, log_len: u8) -> ColumnId {
+        let name = self.name(name);
+        self.relation.add_virtual(&name, def, log_len)
+    }
+
+    /// Virtual column with a range check (RFC-0028 §1.2, A1), never committed.
+    pub(crate) fn virtual_ranged(
+        &mut self,
+        name: &str,
+        def: Def,
+        width: Width,
+        log_len: u8,
+    ) -> ColumnId {
+        let column = self.virtual_col(name, def, log_len);
+        self.relation.ranges.push(Range {
+            name: self.name(&format!("{name}/range")),
+            column,
+            width,
+        });
+        column
+    }
+
     pub(crate) fn public(
         &mut self,
         name: &str,
@@ -192,7 +216,10 @@ impl Chain {
                     .factors
                     .iter()
                     .fold(t.coeff.unsigned_abs() as u128, |p, f| {
-                        p * b.relation.columns[f.column.0 as usize].width.magnitude()
+                        let m = b.relation.column_magnitude(f.column).unwrap_or_else(|| {
+                            b.relation.columns[f.column.0 as usize].width.magnitude()
+                        });
+                        p * m
                     })
             });
             incoming = if k == last { 0 } else { bound >> radix };
@@ -229,6 +256,133 @@ impl Chain {
         }
     }
 
+    /// Declare a wide chain `sum_k R^k * E_k = 0` where selected positions `k` carry an
+    /// unsigned remainder/output limb `target_k ∈ [0, R)` appearing with coefficient `-1`
+    /// (`E_k + c_{k-1} - R*c_k = target_k`, RFC-0028 §1.2, A1).
+    ///
+    /// Whenever `E_k + c_{k-1} - R*c_k` satisfies the static `<= HALF_MODULUS` bound, `target_k`
+    /// is declared as a ranged virtual column (`Def::Linear` when linear, else `Def::Pointwise`)
+    /// with no committed column and no position identity; otherwise it falls back to a committed
+    /// ranged witness column and an identity. Returns `(chain, target_ids)` in `targets` order.
+    pub(crate) fn declare_virtual(
+        b: &mut Builder<'_>,
+        name: &str,
+        vars: u8,
+        radix: u8,
+        mut positions: Vec<Vec<Term>>,
+        targets: &[(usize, String, Width)],
+    ) -> (Self, Vec<ColumnId>) {
+        use stele_ir::relation::HALF_MODULUS;
+        let mut target_at: Vec<Option<(usize, &str, Width)>> = vec![None; positions.len()];
+        for (idx, (pos, tname, width)) in targets.iter().enumerate() {
+            if positions.len() <= *pos {
+                positions.resize(*pos + 1, Vec::new());
+                target_at.resize(*pos + 1, None);
+            }
+            target_at[*pos] = Some((idx, tname.as_str(), *width));
+        }
+        let mut carries = Vec::with_capacity(positions.len());
+        let mut incoming = 0u128;
+        let last = positions.len().saturating_sub(1);
+        let mut pos_bounds = Vec::with_capacity(positions.len());
+        for (k, terms) in positions.iter().enumerate() {
+            let mut bound = terms.iter().fold(incoming, |sum, t| {
+                sum + t
+                    .factors
+                    .iter()
+                    .fold(t.coeff.unsigned_abs() as u128, |p, f| {
+                        let m = b.relation.column_magnitude(f.column).unwrap_or_else(|| {
+                            b.relation.columns[f.column.0 as usize].width.magnitude()
+                        });
+                        p * m
+                    })
+            });
+            let t_mag = target_at[k].map_or(0u128, |(_, _, w)| w.magnitude());
+            pos_bounds.push(bound);
+            bound = bound.saturating_add(t_mag);
+            incoming = if k == last { 0 } else { bound >> radix };
+            carries.push(match incoming {
+                0 => None,
+                c if c < 1 << 15 => Some(Carry::One(b.witness(
+                    &format!("{name}/carry{k}"),
+                    signed_for(c),
+                    vars,
+                ))),
+                c => Some(Carry::Split(
+                    b.witness(&format!("{name}/carry{k}/lo"), Width::unsigned(16), vars),
+                    b.witness(&format!("{name}/carry{k}/hi"), signed_for(c >> 16), vars),
+                )),
+            });
+        }
+        let mut target_ids = vec![ColumnId(0); targets.len()];
+        let carry_bounds: Vec<u128> = carries
+            .iter()
+            .map(|c| {
+                let col_m = |id: ColumnId| {
+                    b.relation
+                        .column_magnitude(id)
+                        .unwrap_or_else(|| b.relation.columns[id.0 as usize].width.magnitude())
+                };
+                match *c {
+                    None => 0u128,
+                    Some(Carry::One(id)) => col_m(id) << radix,
+                    Some(Carry::Split(lo, hi)) => (col_m(lo) + (col_m(hi) << 16)) << radix,
+                }
+            })
+            .collect();
+        for k in 0..positions.len() {
+            let mut all = positions[k].clone();
+            if let Some(c) = k.checked_sub(1).and_then(|p| carries[p]) {
+                all.extend(c.terms(1, vars));
+            }
+            if let Some(c) = carries[k] {
+                all.extend(c.terms(-(1 << radix), vars));
+            }
+            if let Some((idx, tname, width)) = target_at[k] {
+                let def_bound = pos_bounds[k].saturating_add(carry_bounds[k]);
+                if def_bound <= HALF_MODULUS && !all.is_empty() {
+                    let is_linear = all.iter().all(|t| t.factors.len() <= 1);
+                    let def = if is_linear {
+                        let mut constant = 0i64;
+                        let mut lterms = Vec::new();
+                        for t in all {
+                            if let Some(f) = t.factors.into_iter().next() {
+                                lterms.push((t.coeff, f));
+                            } else {
+                                constant += t.coeff;
+                            }
+                        }
+                        Def::Linear {
+                            constant,
+                            terms: lterms,
+                        }
+                    } else {
+                        Def::Pointwise { terms: all }
+                    };
+                    target_ids[idx] = b.virtual_ranged(tname, def, width, vars);
+                } else {
+                    let col = b.witness(tname, width, vars);
+                    target_ids[idx] = col;
+                    let neg = term(-1, vec![r(col, 0..vars)]);
+                    positions[k].push(neg.clone());
+                    all.push(neg);
+                    b.identity(&format!("{name}/{k}"), vars, all);
+                }
+            } else if !all.is_empty() {
+                b.identity(&format!("{name}/{k}"), vars, all);
+            }
+        }
+        (
+            Self {
+                vars,
+                radix,
+                positions,
+                carries,
+            },
+            target_ids,
+        )
+    }
+
     /// Fill the carries. With `skip = Some(k)`, carries below position `k` run
     /// forward from position 0 and the others run backward from the top, so every
     /// position identity except `k` holds whenever the terms allow it: the strongest
@@ -241,6 +395,18 @@ impl Chain {
     ) -> Result<(), Violation> {
         let size = 1usize << self.vars;
         let n = self.positions.len();
+        // Resolve every referenced column once (supporting virtual columns, RFC-0028).
+        let mut cache: alloc::collections::BTreeMap<ColumnId, Vec<i64>> =
+            alloc::collections::BTreeMap::new();
+        for terms in &self.positions {
+            for t in terms {
+                for f in &t.factors {
+                    if let alloc::collections::btree_map::Entry::Vacant(e) = cache.entry(f.column) {
+                        e.insert(eval_column(relation, values, f.column)?);
+                    }
+                }
+            }
+        }
         let mut columns: Vec<Vec<i64>> = vec![vec![0; size]; n];
         for x in 0..size as u64 {
             let mut sums = Vec::with_capacity(n);
@@ -249,9 +415,7 @@ impl Chain {
                 for t in terms {
                     let mut product = t.coeff as i128;
                     for f in &t.factors {
-                        let column = values
-                            .get(relation, f.column)
-                            .ok_or(Violation::Missing(f.column))?;
+                        let column = cache.get(&f.column).ok_or(Violation::Missing(f.column))?;
                         product *= column[f.index(x)] as i128;
                     }
                     sum += product;

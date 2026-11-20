@@ -12,18 +12,21 @@ struct Case {
 }
 
 impl Case {
-    fn column(&self, id: ColumnId) -> &[i64] {
-        self.values.get(&self.relation, id).expect("column")
+    fn column(&self, id: ColumnId) -> Vec<i64> {
+        stele_ir::relation::eval_column(&self.relation, &self.values, id).expect("column")
     }
 
     /// The honest values with every column of `plan` refilled, then `patches` applied.
     fn attack(&self, plan: &Plan, patches: &[(ColumnId, usize, i64)]) -> Values {
         let mut values = self.values.clone();
         for (id, column) in self.module.fill(plan) {
-            values.set(&self.relation, id, column).expect("set");
+            if !matches!(self.relation.columns[id.0 as usize].kind, Kind::Virtual(_)) {
+                values.set(&self.relation, id, column).expect("set");
+            }
         }
         for &(id, index, v) in patches {
-            let mut column = values.get(&self.relation, id).expect("column").to_vec();
+            let mut column =
+                stele_ir::relation::eval_column(&self.relation, &values, id).expect("column");
             column[index] = v;
             values.set(&self.relation, id, column).expect("set");
         }
@@ -31,33 +34,73 @@ impl Case {
     }
 }
 
-/// Declare the product limbs as signed-16/unsigned-15 witness columns (as
-/// [`super::super::GatedProduct`] does), the conversion, and assign both from `T`.
+/// Declare virtual `high = 2^15·h_hi + h_lo` (matching [`super::super::GatedProduct`]'s
+/// virtual `high`) and witness `low` (unsigned 14).
+fn add_product_limbs(
+    relation: &mut Relation,
+    group: stele_ir::relation::GroupId,
+    n: u8,
+) -> (ColumnId, ColumnId, ColumnId, ColumnId) {
+    let h_hi = relation.add_column("high/hi", Kind::Witness(group), Width::signed(2), n);
+    let h_lo = relation.add_column("high/lo", Kind::Witness(group), Width::unsigned(15), n);
+    let low = relation.add_column("low", Kind::Witness(group), Width::unsigned(LIMB_BITS), n);
+    for (name, column, width) in [
+        ("high/hi", h_hi, Width::signed(2)),
+        ("high/lo", h_lo, Width::unsigned(15)),
+        ("low", low, Width::unsigned(LIMB_BITS)),
+    ] {
+        relation.ranges.push(Range {
+            name: name.into(),
+            column,
+            width,
+        });
+    }
+    let high = relation.add_virtual(
+        "high",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1 << 15, r(h_hi, 0..n)), (1, r(h_lo, 0..n))],
+        },
+        n,
+    );
+    (high, low, h_hi, h_lo)
+}
+
+fn assign_product_limbs(
+    relation: &Relation,
+    values: &mut Values,
+    h_hi: ColumnId,
+    h_lo: ColumnId,
+    low_id: ColumnId,
+    product: &[i64],
+) {
+    let hi: Vec<i64> = product
+        .iter()
+        .map(|v| v.div_euclid(LIMB).div_euclid(1 << 15))
+        .collect();
+    let lo: Vec<i64> = product
+        .iter()
+        .map(|v| v.div_euclid(LIMB).rem_euclid(1 << 15))
+        .collect();
+    let low: Vec<i64> = product.iter().map(|v| v.rem_euclid(LIMB)).collect();
+    values.set(relation, h_hi, hi).expect("high/hi");
+    values.set(relation, h_lo, lo).expect("high/lo");
+    values.set(relation, low_id, low).expect("low");
+}
+
+/// Declare the product limbs as radix-`2^14` limbs (matching
+/// [`super::super::GatedProduct`]), the conversion, and assign both from `T`.
 fn case(product: &[i64], tokens: usize, hidden: usize) -> Case {
     let mut relation = Relation::default();
     let n = log2_ceil(tokens) + log2_ceil(hidden);
     let group = relation.add_group("L0/gated/test", n);
-    let mut limbs = [ColumnId(0); 2];
-    for (slot, (name, width)) in limbs
-        .iter_mut()
-        .zip([("high", Width::signed(16)), ("low", Width::unsigned(15))])
-    {
-        *slot = relation.add_column(name, Kind::Witness(group), width, n);
-        relation.ranges.push(Range {
-            name: name.into(),
-            column: *slot,
-            width,
-        });
-    }
+    let (high, low, h_hi, h_lo) = add_product_limbs(&mut relation, group, n);
     let mut module =
-        GatedConversion::new(0, limbs[0], limbs[1], tokens, hidden, Policy::Dynamic).expect("plan");
+        GatedConversion::new(0, high, low, tokens, hidden, Policy::Dynamic).expect("plan");
     module.declare(&mut relation);
     let mut values = Values::new(&relation);
     let plan = module.plan(product);
-    let high = plan.product.iter().map(|v| v.div_euclid(LIMB)).collect();
-    let low = plan.product.iter().map(|v| v.rem_euclid(LIMB)).collect();
-    values.set(&relation, limbs[0], high).expect("high");
-    values.set(&relation, limbs[1], low).expect("low");
+    assign_product_limbs(&relation, &mut values, h_hi, h_lo, low, &plan.product);
     module
         .assign(&relation, product, &mut values)
         .expect("honest");
@@ -288,7 +331,7 @@ fn rejects_relation_without_each_constraint() {
     plan.scale[1] = (plan.maximum[1] + 126) / 127;
     plan.slack[1] = 127 * plan.scale[1] - plan.maximum[1];
     plan.quotient = recomputed(&plan);
-    assert_eq!((plan.scale[1], plan.quotient[top]), (263, 2));
+    assert_eq!((plan.scale[1], plan.quotient[top]), (134, 4));
     attacks.push(("attained/high", case.attack(&plan, &[])));
     let honest_carry = case.column(c.ceiling_carry)[1];
     let mut plan = honest.clone();
@@ -368,6 +411,8 @@ fn rejects_relation_without_each_constraint() {
         .chain(case.relation.ranges.iter().map(|r| r.name.clone()))
         .filter(|name| name.starts_with(prefix))
         .collect();
+    // Virtualizations remove 11 identities/composes; retain attackers for remaining constraints.
+    attacks.retain(|(short, _)| names.iter().any(|n| &n[prefix.len()..] == *short));
     for name in &names {
         let short = &name[prefix.len()..];
         assert!(
@@ -498,10 +543,10 @@ fn range_attacks(case: &Case) -> Vec<(&'static str, Values)> {
     ];
     patches.extend((8..16).map(|lane| (c.gap_borrow, lane, 1)));
     attacks.push(("maximum/low/range", case.attack(honest, &patches)));
-    // scale/low: row 0 (s = 2^15) as sl = 2^15, sh = 0, carries moved.
+    // scale/low: row 0 (s = 2^15 = 2*LIMB) as sl = LIMB, sh = 1, carries moved.
     let mut patches = vec![
         (c.scale_low, 0, LIMB),
-        (c.scale_high, 0, 0),
+        (c.scale_high, 0, get(c.scale_high, 0) - 1),
         (c.ceiling_carry, 0, get(c.ceiling_carry, 0) + 127),
     ];
     for lane in 0..8 {
@@ -529,15 +574,7 @@ fn accepts_static_validity_and_down_projection_input() {
         let mut relation = Relation::default();
         let n = log2_ceil(tokens) + log2_ceil(hidden);
         let group = relation.add_group("L0/gated/test", n);
-        let high = relation.add_column("high", Kind::Witness(group), Width::signed(16), n);
-        let low = relation.add_column("low", Kind::Witness(group), Width::unsigned(15), n);
-        for (column, width) in [(high, Width::signed(16)), (low, Width::unsigned(15))] {
-            relation.ranges.push(Range {
-                name: "limb".into(),
-                column,
-                width,
-            });
-        }
+        let (high, low, _, _) = add_product_limbs(&mut relation, group, n);
         let mut module =
             GatedConversion::new(0, high, low, tokens, hidden, Policy::Dynamic).expect("plan");
         module.declare(&mut relation);
@@ -605,7 +642,7 @@ fn rejects_code_through_widened_sign() {
     plan.magnitude[lane] = 3 * 32668;
     plan.quotient = recomputed(&plan);
     let values = case.attack(&plan, &[(c.borrow, lane, 1)]);
-    let codes = values.get(&case.relation, c.codes).expect("codes");
+    let codes = stele_ir::relation::eval_column(&case.relation, &values, c.codes).expect("codes");
     assert_eq!(codes[lane], -9);
     assert!(check(&case.relation, &values).is_err());
     assert!(check_widened(
@@ -635,7 +672,10 @@ fn accepts_largest_remainder_and_spare_limbs() {
         case.column(c.remainder_high)[1],
         case.column(c.spare_high)[2],
     );
-    assert!(rh > 511 && ph > 511, "remainder high {rh}, spare high {ph}");
+    assert!(
+        rh > 1023 && ph > 1023,
+        "remainder high {rh}, spare high {ph}"
+    );
     let (reference_codes, _) = reference(&product, 8);
     assert_eq!(&case.column(c.codes)[..8], &reference_codes[..]);
 }
@@ -645,34 +685,14 @@ fn grouped_case(product: &[i64], tokens: usize, hidden: usize, group_size: u32) 
     let mut relation = Relation::default();
     let n = log2_ceil(tokens) + log2_ceil(hidden);
     let group = relation.add_group("L0/gated/test", n);
-    let mut limbs = [ColumnId(0); 2];
-    for (slot, (name, width)) in limbs
-        .iter_mut()
-        .zip([("high", Width::signed(16)), ("low", Width::unsigned(15))])
-    {
-        *slot = relation.add_column(name, Kind::Witness(group), width, n);
-        relation.ranges.push(Range {
-            name: name.into(),
-            column: *slot,
-            width,
-        });
-    }
-    let mut module = GatedConversion::new(
-        0,
-        limbs[0],
-        limbs[1],
-        tokens,
-        hidden,
-        Policy::Grouped(group_size),
-    )
-    .expect("plan");
+    let (high, low, h_hi, h_lo) = add_product_limbs(&mut relation, group, n);
+    let mut module =
+        GatedConversion::new(0, high, low, tokens, hidden, Policy::Grouped(group_size))
+            .expect("plan");
     module.declare(&mut relation);
     let mut values = Values::new(&relation);
     let plan = module.plan(product);
-    let high = plan.product.iter().map(|v| v.div_euclid(LIMB)).collect();
-    let low = plan.product.iter().map(|v| v.rem_euclid(LIMB)).collect();
-    values.set(&relation, limbs[0], high).expect("high");
-    values.set(&relation, limbs[1], low).expect("low");
+    assign_product_limbs(&relation, &mut values, h_hi, h_lo, low, &plan.product);
     module
         .assign(&relation, product, &mut values)
         .expect("honest");
@@ -796,15 +816,7 @@ fn validates_llama31_8b_grouped_gated_down_shape() {
     let mut relation = Relation::default();
     let n = log2_ceil(tokens) + log2_ceil(hidden);
     let group = relation.add_group("L0/gated/test", n);
-    let high = relation.add_column("high", Kind::Witness(group), Width::signed(16), n);
-    let low = relation.add_column("low", Kind::Witness(group), Width::unsigned(15), n);
-    for (column, width) in [(high, Width::signed(16)), (low, Width::unsigned(15))] {
-        relation.ranges.push(Range {
-            name: "limb".into(),
-            column,
-            width,
-        });
-    }
+    let (high, low, _, _) = add_product_limbs(&mut relation, group, n);
     let mut conv =
         GatedConversion::new(0, high, low, tokens, hidden, Policy::Grouped(128)).expect("plan");
     conv.declare(&mut relation);

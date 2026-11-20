@@ -6,16 +6,17 @@
 //! no rounding. Units are `fu + E`. `T` feeds [`GatedConversion`].
 //!
 //! `|T|` approaches `2^30`, beyond any column width, and `U·a` alone already has static
-//! magnitude `2^30` under the §3.6 bound rule. So the product is a byte-split limb
-//! product with explicit carries (RFC-0026 §3.5):
-//! - `U = 2^8·Uh + Ul`, `Ul` in unsigned 8, `Uh` in signed 8 (a `Compose`);
-//! - `Ul·a = 2^8·c + d`, `d` in unsigned 8, carry `c` in signed 16;
-//! - `Uh·a + c = 2^7·Th + w`, `w` in unsigned 7, `Th` in signed 16;
-//! - `Tl = 2^8·w + d` in unsigned 15 (a `Compose`).
+//! magnitude `2^30` under the §3.6 bound rule. Under RFC-0028 §1.2, the product commits
+//! only three advice columns (`silu`, `up_high`, `carry`) via a radix-`2^14` split:
+//! - `U = 2^14·Uh + Ul`, `Uh` in signed 2 (committed), `Ul` in unsigned 14 (virtual);
+//! - `Ul·a·mask = 2^14·c + Tl`, `c` in signed 16 (committed), `Tl` in unsigned 14 (virtual;
+//!   static magnitude `16383·32768 + 16384·32768 = 1,073,709,056 <= HALF_MODULUS`);
+//! - `Th = Uh·a·mask + c` (virtual, static magnitude `98,304`, actual value in `[-2^16, 2^16)`).
 //!
-//! Then `T = 2^15·Th + Tl` exactly. Both product identities carry a public mask that is
-//! 0 on padding, which pins `Th = Tl = 0` there (RFC-0026 §2.1).
-//! The output-uniqueness lemma is in `agents/reviews/e16-08-silu.md`. The gated row
+//! Then `T = 2^14·Th + Tl` exactly. On padding (`mask = 0`), `Tl = -2^14·c ∈ [0, 2^14)`
+//! forces `c = 0` over Z, which pins `Tl = Th = 0` (RFC-0026 §2.1).
+//! The output-uniqueness lemma is in `agents/reviews/e16-08-silu.md` (restated for
+//! radix `2^14` in `agents/reviews/e18-05-module-conversions.md`). The gated row
 //! conversion of `T` to down-projection codes is [`GatedConversion`].
 
 mod conversion;
@@ -27,27 +28,29 @@ use alloc::vec;
 use alloc::vec::Vec;
 use stele_cqis::tables::{Error as TableError, Table as CqisTable};
 use stele_ir::relation::{
-    ColumnId, Compose, Identity, Kind, Lookup, Module, Range, Ref, Relation, Table, Term, Values,
-    Violation, Width,
+    ColumnId, Def, Kind, Lookup, Module, Range, Ref, Relation, Table, Term, Values, Violation,
+    Width,
 };
 
-/// Radix of the high product limb: `T = 2^15·high + low`.
-pub const LOW_BITS: u8 = 15;
+/// Radix of the high product limb: `T = 2^14·high + low`.
+pub const LOW_BITS: u8 = 14;
 
 /// Column ids allocated by [`GatedProduct::declare`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GatedColumns {
-    /// `Th`, signed 16: the high limb of `T`, consumed by [`GatedConversion`].
+    /// `Th = Uh·a·mask + carry` (virtual): the high limb of `T`, consumed by [`GatedConversion`].
     pub high: ColumnId,
-    /// `Tl`, unsigned 15: the low limb of `T`, consumed by [`GatedConversion`].
+    /// `Tl = Ul·a·mask - 2^14·carry` (virtual, unsigned 14): the low limb of `T`,
+    /// consumed by [`GatedConversion`].
     pub low: ColumnId,
-    /// `silu_q[G]`, signed 16.
+    /// `silu_q[G]`, signed 16 (committed advice).
     pub activation: ColumnId,
+    /// `Ul = U - 2^14·Uh`, unsigned 14 (virtual).
     pub up_low: ColumnId,
+    /// `Uh = U >> 14`, signed 2 (committed advice).
     pub up_high: ColumnId,
+    /// `c = (Ul·a·mask) >> 14`, signed 16 (committed advice).
     pub carry: ColumnId,
-    pub byte: ColumnId,
-    pub middle: ColumnId,
 }
 
 /// Executor values this module needs: the unpadded `(tokens, hidden)` gate and up
@@ -161,16 +164,14 @@ impl Module for GatedProduct {
             }
             id
         };
-        // `activation` is disciplined by the lookup, `low` by its Compose.
-        let columns = GatedColumns {
-            high: witness(relation, "high", Width::signed(16), true),
-            low: witness(relation, "low", Width::unsigned(LOW_BITS), false),
-            activation: witness(relation, "silu", Width::signed(16), false),
-            up_low: witness(relation, "up_low", Width::unsigned(8), true),
-            up_high: witness(relation, "up_high", Width::signed(8), true),
-            carry: witness(relation, "carry", Width::signed(16), true),
-            byte: witness(relation, "byte", Width::unsigned(8), true),
-            middle: witness(relation, "middle", Width::unsigned(7), true),
+        let virtual_ranged = |relation: &mut Relation, label: &str, def: Def, width: Width| {
+            let id = relation.add_virtual(&format!("{name}/{label}"), def, n);
+            relation.ranges.push(Range {
+                name: format!("{name}/{label}"),
+                column: id,
+                width,
+            });
+            id
         };
         let mask = (0..1usize << n)
             .map(|x| i64::from(self.entry(x).is_some()))
@@ -181,6 +182,12 @@ impl Module for GatedProduct {
             Width::unsigned(1),
             n,
         );
+        let at = |c: ColumnId| Ref::identity(c, n);
+        // Committed advice only (RFC-0028 §1.2): silu table output, up_high (s2), carry (s16).
+        let activation = witness(relation, "silu", Width::signed(16), false);
+        let up_high = witness(relation, "up_high", Width::signed(2), true);
+        let carry = witness(relation, "carry", Width::signed(16), true);
+
         let table = relation.add_table(Table {
             name: "silu_q".into(),
             widths: vec![Width::signed(16), Width::signed(16)],
@@ -188,16 +195,7 @@ impl Module for GatedProduct {
                 .map(|i| vec![i as i64 - 32768, self.silu[i]])
                 .collect(),
         });
-        let at = |c: ColumnId| Ref::identity(c, n);
-        let (gate, a, mask) = (at(self.gate), at(columns.activation), at(mask));
-        let (ul, uh, c, d, w, th) = (
-            at(columns.up_low),
-            at(columns.up_high),
-            at(columns.carry),
-            at(columns.byte),
-            at(columns.middle),
-            at(columns.high),
-        );
+        let (gate, a, mask_ref) = (at(self.gate), at(activation), at(mask));
         relation.lookups.push(Lookup {
             name: format!("{name}/silu"),
             vars: n,
@@ -205,35 +203,48 @@ impl Module for GatedProduct {
             tuple: vec![gate, a.clone()],
             table,
         });
-        relation.composes.push(Compose {
-            name: format!("{name}/up"),
-            column: self.up,
-            limbs: vec![(columns.up_low, 0), (columns.up_high, 8)],
-        });
-        relation.composes.push(Compose {
-            name: format!("{name}/low"),
-            column: columns.low,
-            limbs: vec![(columns.byte, 0), (columns.middle, 8)],
-        });
-        relation.identities.push(Identity {
-            name: format!("{name}/low_product"),
-            vars: n,
-            terms: vec![
-                term(1, &[&ul, &a, &mask]),
-                term(-(1 << 8), &[&c]),
-                term(-1, &[&d]),
-            ],
-        });
-        relation.identities.push(Identity {
-            name: format!("{name}/high_product"),
-            vars: n,
-            terms: vec![
-                term(1, &[&uh, &a, &mask]),
-                term(1, &[&c]),
-                term(-(1 << 7), &[&th]),
-                term(-1, &[&w]),
-            ],
-        });
+        // Virtual up_low = U - 2^14 * Uh ∈ [0, 2^14) (RFC-0028 §1.2, A1).
+        let up_low = virtual_ranged(
+            relation,
+            "up_low",
+            Def::Linear {
+                constant: 0,
+                terms: vec![(1, at(self.up)), (-(1 << LOW_BITS), at(up_high))],
+            },
+            Width::unsigned(LOW_BITS),
+        );
+        // Virtual low Tl = Ul * a * mask - 2^14 * c ∈ [0, 2^14) (RFC-0028 §1.2, A1).
+        // Static mag = 16383 * 32768 + 16384 * 32768 = 1,073,709,056 <= HALF_MODULUS.
+        let low = virtual_ranged(
+            relation,
+            "low",
+            Def::Pointwise {
+                terms: vec![
+                    term(1, &[&at(up_low), &a, &mask_ref]),
+                    term(-(1 << LOW_BITS), &[&at(carry)]),
+                ],
+            },
+            Width::unsigned(LOW_BITS),
+        );
+        // Virtual high Th = Uh * a * mask + c (static mag = 98,304; no range needed).
+        let high = relation.add_virtual(
+            &format!("{name}/high"),
+            Def::Pointwise {
+                terms: vec![
+                    term(1, &[&at(up_high), &a, &mask_ref]),
+                    term(1, &[&at(carry)]),
+                ],
+            },
+            n,
+        );
+        let columns = GatedColumns {
+            high,
+            low,
+            activation,
+            up_low,
+            up_high,
+            carry,
+        };
         self.columns = Some(columns);
     }
 
@@ -252,7 +263,10 @@ impl Module for GatedProduct {
             return Err(Violation::Missing(self.up));
         }
         let size = 1usize << (self.bits().0 + self.bits().1);
-        let mut cols = [(); 8].map(|_| vec![0i64; size]);
+        let mut activation = vec![0i64; size];
+        let mut up_high = vec![0i64; size];
+        let mut carry = vec![0i64; size];
+        let mask_low = (1i64 << LOW_BITS) - 1;
         for index in 0..size {
             // Padding: the producer pins G = U = 0, so a = silu_q[0], and the mask pins T.
             let (g, u) = self.entry(index).map_or((0, 0), |(t, j)| {
@@ -261,27 +275,17 @@ impl Module for GatedProduct {
             });
             let a = self.silu[(g + 32768) as usize];
             let m = i64::from(self.entry(index).is_some());
-            let (uh, ul) = (u >> 8, u & 0xff);
-            let low = ul * a * m;
-            let (c, d) = (low >> 8, low & 0xff);
-            let middle = uh * a * m + c;
-            let (th, w) = (middle >> 7, middle & 0x7f);
-            let row = [th, (w << 8) | d, a, ul, uh, c, d, w];
-            for (column, v) in cols.iter_mut().zip(row) {
-                column[index] = v;
-            }
+            let (uh, ul) = (u >> LOW_BITS, u & mask_low);
+            let c = (ul * a * m) >> LOW_BITS;
+            activation[index] = a;
+            up_high[index] = uh;
+            carry[index] = c;
         }
-        let ids = [
-            columns.high,
-            columns.low,
-            columns.activation,
-            columns.up_low,
-            columns.up_high,
-            columns.carry,
-            columns.byte,
-            columns.middle,
-        ];
-        for (id, column) in ids.into_iter().zip(cols) {
+        for (id, column) in [
+            (columns.activation, activation),
+            (columns.up_high, up_high),
+            (columns.carry, carry),
+        ] {
             values.set(relation, id, column)?;
         }
         Ok(())

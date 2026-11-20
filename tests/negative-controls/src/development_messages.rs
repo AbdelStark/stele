@@ -1,7 +1,9 @@
 //! RFC-0026 §4, §9: NC-1303/1307 on L0 and L1, source profiles 3 and 5.
 use crate::{check_proof_control, development::span_of, ProverHook};
 use stele_prover::development::{
-    self, container::Container, Error, Layout, PlanData, Public, Statement,
+    self,
+    container::{self, Decoded},
+    Error, Layout, PlanData, Public, Statement,
 };
 use stele_reductions::relation;
 use stele_reductions::stele_cqis::model::{Model, Scales};
@@ -11,12 +13,54 @@ fn err(e: impl core::fmt::Debug) -> String {
     format!("{e:?}")
 }
 
+pub(crate) fn encode_decoded(proof: &Decoded) -> Vec<u8> {
+    match proof {
+        Decoded::V1(c) => c.encode(),
+        Decoded::V2(c) => c.encode(),
+    }
+}
+
+pub(crate) fn header_of(proof: &Decoded) -> ([u8; 32], [u8; 32]) {
+    match proof {
+        Decoded::V1(c) => (c.cqis_id, c.statement),
+        Decoded::V2(c) => (c.cqis_id, c.statement),
+    }
+}
+
+pub(crate) fn seg0_groups_mut(proof: &mut Decoded) -> &mut Vec<Vec<u8>> {
+    match proof {
+        Decoded::V1(c) => &mut c.groups,
+        Decoded::V2(c) => &mut c.segments[0].groups,
+    }
+}
+
+pub(crate) fn seg0_groups(proof: &Decoded) -> &[Vec<u8>] {
+    match proof {
+        Decoded::V1(c) => &c.groups,
+        Decoded::V2(c) => &c.segments[0].groups,
+    }
+}
+
+pub(crate) fn seg0_multiplicities(proof: &Decoded) -> &[Vec<u8>] {
+    match proof {
+        Decoded::V1(c) => &c.multiplicities,
+        Decoded::V2(c) => &c.segments[0].multiplicities,
+    }
+}
+
+pub(crate) fn seg0_matmuls_mut(proof: &mut Decoded) -> &mut Vec<Vec<u8>> {
+    match proof {
+        Decoded::V1(c) => &mut c.matmuls,
+        Decoded::V2(c) => &mut c.segments[0].matmuls,
+    }
+}
+
 pub(crate) struct Fixture {
     #[cfg(feature = "controls")]
     pub(crate) case: &'static str,
     pub(crate) public: Public,
     pub(crate) statement: Statement,
-    pub(crate) proof: Container,
+    pub(crate) proof: Decoded,
     row_at: usize,
     pub(crate) profile: u8,
 }
@@ -41,7 +85,7 @@ fn build() -> Result<Vec<Fixture>, String> {
                 profile,
             )
             .map_err(err)?;
-            let proof = development::container::decode(&proof).map_err(err)?;
+            let proof = container::decode_any(&proof).map_err(err)?;
             let model = Model::decode(&public.model).map_err(err)?;
             let scales = Scales::decode(&model, &public.scales).map_err(err)?;
             let layout = Layout::declare(
@@ -55,7 +99,9 @@ fn build() -> Result<Vec<Fixture>, String> {
                 &statement,
             )
             .map_err(err)?;
-            let group = proof.groups.first().ok_or("no stacked certificate")?;
+            let group = seg0_groups(&proof)
+                .first()
+                .ok_or("no stacked certificate")?;
             let root = group
                 .get(..32)
                 .ok_or("stacked root")?
@@ -98,16 +144,16 @@ struct Change {
     row_at: usize,
 }
 impl Change {
-    fn word<'a>(&self, proof: &'a mut Container) -> &'a mut [u8] {
+    fn word<'a>(&self, proof: &'a mut Decoded) -> &'a mut [u8] {
         match self.id {
-            1303 => &mut proof.groups[0][self.row_at..self.row_at + 4],
-            1307 => &mut proof.matmuls[0][..4],
+            1303 => &mut seg0_groups_mut(proof)[0][self.row_at..self.row_at + 4],
+            1307 => &mut seg0_matmuls_mut(proof)[0][..4],
             _ => unreachable!("fixed message control inventory"),
         }
     }
 }
-impl ProverHook<Container> for Change {
-    fn tamper(&self, proof: &mut Container) {
+impl ProverHook<Decoded> for Change {
+    fn tamper(&self, proof: &mut Decoded) {
         let before = proof.clone();
         let word = self.word(proof);
         let old: [u8; 4] = word.try_into().expect("one base-field limb");
@@ -139,7 +185,9 @@ pub fn run(id: u16) -> Result<(), String> {
                 id,
                 row_at: f.row_at,
             },
-            |proof| development::verify(&f.public, &f.statement, &proof.encode()).map(|_| ()),
+            |proof| {
+                development::verify(&f.public, &f.statement, &encode_decoded(proof)).map(|_| ())
+            },
             expected.clone(),
         )
         .map_err(err)?;

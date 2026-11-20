@@ -8,7 +8,7 @@ use alloc::collections::BTreeMap;
 use stele_cqis::bounds::arithmetic::Row;
 use stele_cqis::functions::Descriptor as Function;
 use stele_cqis::row::Quantiser;
-use stele_ir::relation::{check, check_except, Range};
+use stele_ir::relation::{check, check_except, eval_column, Def, Range};
 
 /// Deterministic test stream (xorshift64*); not a protocol RNG.
 struct Rng(u64);
@@ -301,27 +301,30 @@ struct Inputs {
 
 impl Case {
     fn column(&self, values: &Values, name: &str) -> Vec<i64> {
-        values
-            .get(&self.relation, self.id(name))
-            .expect("column")
-            .to_vec()
+        eval_column(&self.relation, values, self.id(name)).expect("column")
+    }
+    fn try_id(&self, name: &str) -> Option<ColumnId> {
+        let full = format!("L0/attention/{name}");
+        self.relation
+            .columns
+            .iter()
+            .position(|c| c.name == full)
+            .map(|p| ColumnId(p as u32))
     }
     fn id(&self, name: &str) -> ColumnId {
-        let full = format!("L0/attention/{name}");
-        ColumnId(
-            self.relation
-                .columns
-                .iter()
-                .position(|c| c.name == full)
-                .expect("column name") as u32,
-        )
+        self.try_id(name).expect("column name")
+    }
+    fn is_witness(&self, id: ColumnId) -> bool {
+        matches!(self.relation.columns[id.0 as usize].kind, Kind::Witness(_))
     }
     fn set(&self, values: &mut Values, name: &str, index: usize, v: i64) {
+        let id = self.id(name);
+        if !self.is_witness(id) {
+            return;
+        }
         let mut column = self.column(values, name);
         column[index] = v;
-        values
-            .set(&self.relation, self.id(name), column)
-            .expect("set");
+        values.set(&self.relation, id, column).expect("set");
     }
     /// The attention assignment of a tampered executor run (downstream follows it).
     fn attacked(&self, tamper: Tamper<'_>) -> Values {
@@ -624,8 +627,11 @@ fn recompose(case: &Case, values: &mut Values, from_limbs: bool) {
         if !compose.name.starts_with("L0/attention") {
             continue;
         }
-        let get = |v: &Values, id: ColumnId| v.get(&case.relation, id).expect("c").to_vec();
+        let get = |v: &Values, id: ColumnId| eval_column(&case.relation, v, id).expect("c");
         if from_limbs {
+            if !case.is_witness(compose.column) {
+                continue;
+            }
             let mut parent = vec![0i64; get(values, compose.column).len()];
             for &(limb, shift) in &compose.limbs {
                 for (p, l) in parent.iter_mut().zip(get(values, limb)) {
@@ -639,6 +645,9 @@ fn recompose(case: &Case, values: &mut Values, from_limbs: bool) {
             let parent = get(values, compose.column);
             let last = compose.limbs.len() - 1;
             for (k, &(limb, shift)) in compose.limbs.iter().enumerate() {
+                if !case.is_witness(limb) {
+                    continue;
+                }
                 let column = parent
                     .iter()
                     .map(|v| {
@@ -661,7 +670,6 @@ fn absorber(chain: &str) -> Option<&'static str> {
     Some(match chain {
         "score/scales" => "score/scales",
         "score/round" => "score/remainder",
-        "value/weight" => "value/weight",
         "total/sign" => "total/magnitude",
         "block/round" => "block/remainder",
         "output/split" => "output/low",
@@ -674,44 +682,62 @@ fn absorber(chain: &str) -> Option<&'static str> {
 /// Byte limbs `prefix/0..` of this module, low first.
 fn byte_ids(case: &Case, prefix: &str) -> Vec<ColumnId> {
     (0..)
-        .map_while(|i| {
-            let full = format!("L0/attention/{prefix}/{i}");
-            case.relation
-                .columns
-                .iter()
-                .position(|c| c.name == full)
-                .map(|p| ColumnId(p as u32))
+        .map_while(|i| case.try_id(&format!("{prefix}/{i}")))
+        .collect()
+}
+
+/// Values of a chain's identity `sum (2^radix)^k E_k` across all `x`, carries excluded.
+fn chain_values(case: &Case, values: &Values, chain: &Chain) -> Vec<i128> {
+    let size = 1usize << chain.vars;
+    let mut cache: BTreeMap<ColumnId, Vec<i64>> = BTreeMap::new();
+    for terms in &chain.positions {
+        for t in terms {
+            for f in &t.factors {
+                cache
+                    .entry(f.column)
+                    .or_insert_with(|| eval_column(&case.relation, values, f.column).expect("c"));
+            }
+        }
+    }
+    let r = usize::from(chain.radix);
+    (0..size)
+        .map(|x| {
+            let mut total = 0i128;
+            for (k, terms) in chain.positions.iter().enumerate() {
+                for t in terms {
+                    let mut p = t.coeff as i128;
+                    for f in &t.factors {
+                        p *= cache[&f.column][f.index(x as u64)] as i128;
+                    }
+                    total += p << (r * k);
+                }
+            }
+            total
         })
         .collect()
 }
 
-/// Value of a chain's identity `sum 256^k E_k` at `x`, carries excluded.
-fn chain_value(case: &Case, values: &Values, chain: &Chain, x: usize) -> i128 {
-    let mut total = 0i128;
-    for (k, terms) in chain.positions.iter().enumerate() {
-        for t in terms {
-            let mut p = t.coeff as i128;
-            for f in &t.factors {
-                p *= values.get(&case.relation, f.column).expect("c")[f.index(x as u64)] as i128;
-            }
-            total += p << (8 * k);
-        }
-    }
-    total
-}
-
-fn set_bytes(case: &Case, values: &mut Values, ids: &[ColumnId], v: &[i128]) {
+fn set_radix_limbs(case: &Case, values: &mut Values, ids: &[ColumnId], v: &[i128], radix: u8) {
     let last = ids.len() - 1;
+    let r = usize::from(radix);
+    let mask = (1i128 << r) - 1;
     for (i, id) in ids.iter().enumerate() {
+        if !case.is_witness(*id) {
+            continue;
+        }
         let column = v
             .iter()
             .map(|v| {
-                let y = v >> (8 * i);
-                (if i == last { y } else { y & 255 }) as i64
+                let y = v >> (r * i);
+                (if i == last { y } else { y & mask }) as i64
             })
             .collect();
-        values.set(&case.relation, *id, column).expect("bytes");
+        values.set(&case.relation, *id, column).expect("limbs");
     }
+}
+
+fn set_bytes(case: &Case, values: &mut Values, ids: &[ColumnId], v: &[i128]) {
+    set_radix_limbs(case, values, ids, v, 8);
 }
 
 /// The attacker's repair: each chain's residual goes into its remainder-like limbs
@@ -737,9 +763,7 @@ fn rebalance_except(case: &Case, values: &mut Values, skip: Option<&str>, redivi
             zeroed.set(&case.relation, qs, vec![0; size]).expect("z");
             set_bytes(case, &mut zeroed, &rs, &vec![0; size]);
             let c = u32::from(case.cfg.drop);
-            let num: Vec<i128> = (0..size)
-                .map(|x| chain_value(case, &zeroed, chain, x))
-                .collect();
+            let num = chain_values(case, &zeroed, chain);
             values
                 .set(
                     &case.relation,
@@ -751,27 +775,22 @@ fn rebalance_except(case: &Case, values: &mut Values, skip: Option<&str>, redivi
                 let low: Vec<i128> = num.iter().map(|v| v & ((1 << c) - 1)).collect();
                 set_bytes(case, values, &rs, &low);
             }
-            // Only a moved quotient moves B (an attacker leaves the rest honest).
-            if case.column(values, "block/quotient") != case.column(&case.values, "block/quotient")
-            {
-                rederive_block(case, values);
-            }
             continue;
         }
         if redivide && *name == "output/split" {
             let ids = [byte_ids(case, "output/high"), byte_ids(case, "output/low")];
             let mut zeroed = values.clone();
             for id in ids.iter().flatten() {
-                zeroed.set(&case.relation, *id, vec![0; size]).expect("z");
+                if case.is_witness(*id) {
+                    zeroed.set(&case.relation, *id, vec![0; size]).expect("z");
+                }
             }
             zeroed
                 .set(&case.relation, case.id("output/bit"), vec![0; size])
                 .expect("z");
             let j = -(i32::from(case.cfg.fractions[3]) - i32::from(case.cfg.fractions[2])
                 + i32::from(case.cfg.drop));
-            let num: Vec<i128> = (0..size)
-                .map(|x| chain_value(case, &zeroed, chain, x))
-                .collect();
+            let num = chain_values(case, &zeroed, chain);
             if !ids[0].is_empty() {
                 set_bytes(
                     case,
@@ -799,27 +818,19 @@ fn rebalance_except(case: &Case, values: &mut Values, skip: Option<&str>, redivi
             let mut zeroed = values.clone();
             set_bytes(case, &mut zeroed, &qs, &vec![0; size]);
             set_bytes(case, &mut zeroed, &rs, &vec![0; size]);
-            let tau = if case
-                .relation
-                .columns
-                .iter()
-                .any(|c| c.name == "L0/attention/block/sign")
-            {
-                case.column(values, "block/sign")
-            } else {
-                case.column(values, "total/sign")
-            };
             let b = case.attention.bits();
+            let z_cols: Vec<Vec<i64>> = zs
+                .iter()
+                .map(|id| eval_column(&case.relation, values, *id).expect("z"))
+                .collect();
+            let nums = chain_values(case, &zeroed, chain);
             let (mut q, mut r) = (vec![0i128; size], vec![0i128; size]);
-            let mut output = vec![0i64; size];
             for x in 0..size {
-                let numerator = chain_value(case, &zeroed, chain, x);
-                let z: i128 = zs
+                let numerator = nums[x];
+                let z: i128 = z_cols
                     .iter()
                     .enumerate()
-                    .map(|(i, id)| {
-                        (values.get(&case.relation, *id).expect("z")[x >> b.d] as i128) << (8 * i)
-                    })
+                    .map(|(i, col)| (col[x >> b.d] as i128) << (8 * i))
                     .sum();
                 if z > 0 {
                     q[x] = numerator.div_euclid(2 * z);
@@ -827,13 +838,9 @@ fn rebalance_except(case: &Case, values: &mut Values, skip: Option<&str>, redivi
                 } else {
                     r[x] = numerator;
                 }
-                output[x] = (q[x] * (1 - 2 * tau[x] as i128)) as i64;
             }
             set_bytes(case, values, &qs, &q);
             set_bytes(case, values, &rs, &r);
-            values
-                .set(&case.relation, case.id("output"), output)
-                .expect("o");
             recompose(case, values, true);
             continue;
         }
@@ -841,22 +848,28 @@ fn rebalance_except(case: &Case, values: &mut Values, skip: Option<&str>, redivi
             continue;
         };
         let ids = byte_ids(case, prefix);
-        if ids.is_empty() {
+        if ids.is_empty() || ids.iter().all(|id| !case.is_witness(*id)) {
             continue;
         }
+        let radix = chain.radix;
+        let r = usize::from(radix);
         let sign = (*name == "total/sign").then(|| case.column(values, "total/sign"));
+        let totals = chain_values(case, values, chain);
+        let limb_cols: Vec<Vec<i64>> = ids
+            .iter()
+            .map(|id| eval_column(&case.relation, values, *id).expect("l"))
+            .collect();
         let mut absorbed = vec![0i128; size];
         for (x, a) in absorbed.iter_mut().enumerate() {
-            let total = chain_value(case, values, chain, x);
-            let limbs: i128 = ids
+            let limbs: i128 = limb_cols
                 .iter()
                 .enumerate()
-                .map(|(i, id)| (values.get(&case.relation, *id).expect("l")[x] as i128) << (8 * i))
+                .map(|(i, col)| (col[x] as i128) << (r * i))
                 .sum();
             let flip = sign.as_ref().map_or(1, |s| 1 - 2 * s[x] as i128);
-            *a = limbs + total * flip;
+            *a = limbs + totals[x] * flip;
         }
-        set_bytes(case, values, &ids, &absorbed);
+        set_radix_limbs(case, values, &ids, &absorbed, radix);
         recompose(case, values, true);
     }
     for (name, chain) in &columns.chains {
@@ -868,21 +881,7 @@ fn rebalance_except(case: &Case, values: &mut Values, skip: Option<&str>, redivi
     }
 }
 
-/// `B = (1-2sigma)*qB` (block mode).
-fn rederive_block(case: &Case, values: &mut Values) {
-    let qb = case.column(values, "block/quotient");
-    let sigma = case.column(values, "total/sign");
-    let block: Vec<i64> = qb
-        .iter()
-        .zip(&sigma)
-        .map(|(q, s)| q * (1 - 2 * s))
-        .collect();
-    values
-        .set(&case.relation, case.id("block"), block)
-        .expect("b");
-}
-
-/// Block mode: `tau`, `|T|` from `T = B` (one block).
+/// Block mode: `tau`, `|T|` from virtual `T = B` (one block).
 fn rederive_numerator(case: &Case, values: &mut Values) {
     if case.cfg.accumulation != 1 {
         return;
@@ -927,12 +926,14 @@ fn semantic(case: &Case) -> Vec<(String, Values)> {
             format!("score{d:+}"),
             case.attacked(&move |s, k, v| v + d * i128::from(s == Stage::Score && k == (i, 0, 0))),
         );
-        push(
-            format!("masked dot{d:+}"),
-            case.attacked(&move |s, k, v| {
-                v + d * i128::from(s == Stage::Dot && k == (0, 0, n - 1))
-            }),
-        );
+        if case.is_witness(case.id("dot")) {
+            push(
+                format!("masked dot{d:+}"),
+                case.attacked(&move |s, k, v| {
+                    v + d * i128::from(s == Stage::Dot && k == (0, 0, n - 1))
+                }),
+            );
+        }
         push(
             format!("masked score{d:+}"),
             case.attacked(&move |s, k, v| {
@@ -943,12 +944,13 @@ fn semantic(case: &Case) -> Vec<(String, Values)> {
             format!("exp{d:+}"),
             case.attacked(&move |s, k, v| v + d * i128::from(s == Stage::Exp && k == (i, 0, 0))),
         );
-        push(
-            format!("normaliser{d:+}"),
-            case.attacked(&move |s, k, v| {
-                v + d * i128::from(s == Stage::Normaliser && k == (i, 0, 0))
-            }),
-        );
+        let norm_v = case
+            .attacked(&move |s, k, v| v + d * i128::from(s == Stage::Normaliser && k == (i, 0, 0)));
+        // Virtual `normaliser` and `normaliser/byte/0` are not prover-assigned; skip if `Z ± 1`
+        // left every committed witness column (higher Z bytes and quotient) identical to honest.
+        if norm_v != case.values {
+            push(format!("normaliser{d:+}"), norm_v);
+        }
         push(
             format!("output{d:+}"),
             case.attacked(&move |s, k, v| v + d * i128::from(s == Stage::Output && k == (i, 0, 0))),
@@ -1003,22 +1005,33 @@ fn semantic(case: &Case) -> Vec<(String, Values)> {
             out.push(("exp+1 absorbed by the correction".into(), v));
         }
     }
-    // Z bytes moved off the matmul's Z (the normaliser column stays honest).
-    let mut v = case.attacked(&|s, k, v| v + i128::from(s == Stage::Normaliser && k == (i, 0, 0)));
-    rebalance(case, &mut v);
-    let honest = case.column(&case.values, "normaliser");
-    v.set(&case.relation, case.id("normaliser"), honest)
-        .expect("z");
-    out.push(("normaliser bytes+1 under the honest Z".into(), v));
-    // A nonzero output on a padded row (Z = 0 there), q and o moved together.
+    // Z bytes moved off the virtual normaliser Z (Z stays honest; z1+1 forces z0 < 0).
+    let zs = byte_ids(case, "normaliser/byte");
+    if zs.len() > 1 {
+        let mut v = case.values.clone();
+        let hi_idx = i << case.attention.bits().hb;
+        let old = case.column(&v, "normaliser/byte/1")[hi_idx];
+        case.set(&mut v, "normaliser/byte/1", hi_idx, old + 1);
+        rebalance(case, &mut v);
+        out.push(("normaliser bytes+256 under the honest Z".into(), v));
+    }
+    // A nonzero output on a padded row (Z = 0 there), q and virtual o moved together.
     let b = case.attention.bits();
     if n < 1 << b.t {
         let x = n << (b.d + b.hb);
         let mut v = case.values.clone();
         case.set(&mut v, "output/quotient/byte/0", x, 1);
-        case.set(&mut v, "output/quotient", x, 1);
-        case.set(&mut v, "output", x, 1);
         out.push(("padded-row output 1".into(), v));
+    }
+    // q - 1 on every real entry where q >= 1: virtual remainder r gains +2*Z, pushing virtual spare < 0.
+    let q0 = case.column(&case.values, "output/quotient/byte/0");
+    for (x, &q0_x) in q0.iter().enumerate().take(n << (b.d + b.hb)) {
+        if q0_x >= 1 {
+            let mut v = case.values.clone();
+            case.set(&mut v, "output/quotient/byte/0", x, q0_x - 1);
+            rebalance(case, &mut v);
+            out.push((format!("output/quotient/byte/0[{x}]-1"), v));
+        }
     }
     out
 }
@@ -1098,16 +1111,47 @@ fn without(relation: &Relation, item: Item) -> Relation {
     r
 }
 
+/// Transitive committed witness operands of `cols` (expanding RFC-0028 virtual columns).
+fn expand_witness(relation: &Relation, cols: &[ColumnId]) -> Vec<ColumnId> {
+    let mut seen = Vec::new();
+    let mut stack: Vec<ColumnId> = cols.to_vec();
+    while let Some(id) = stack.pop() {
+        if seen.contains(&id) {
+            continue;
+        }
+        seen.push(id);
+        if let Kind::Virtual(def) = &relation.columns[id.0 as usize].kind {
+            match def {
+                Def::Linear { terms, .. } => {
+                    for (_, r) in terms {
+                        stack.push(r.column);
+                    }
+                }
+                Def::Contraction { lhs, rhs, .. } => {
+                    stack.push(lhs.column);
+                    stack.push(rhs.column);
+                }
+                Def::Pointwise { terms } => {
+                    for t in terms {
+                        for f in &t.factors {
+                            stack.push(f.column);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    seen.into_iter()
+        .filter(|id| {
+            let c = &relation.columns[id.0 as usize];
+            c.name.starts_with("L0/attention") && matches!(c.kind, Kind::Witness(_))
+        })
+        .collect()
+}
+
 /// Single-entry attacker edits of the constraint's own columns, with each repair.
 fn local<'a>(case: &'a Case, columns: &[ColumnId]) -> impl Iterator<Item = (String, Values)> + 'a {
-    let ids: Vec<ColumnId> = columns
-        .iter()
-        .copied()
-        .filter(|id| {
-            let c = &case.relation.columns[id.0 as usize];
-            c.name.starts_with("L0/attention") && !matches!(c.kind, Kind::Public(_))
-        })
-        .collect();
+    let ids = expand_witness(&case.relation, columns);
     ids.into_iter().flat_map(move |id| {
         let len = 1usize << case.relation.columns[id.0 as usize].log_len;
         let stride = len.div_ceil(128).max(1);
@@ -1115,7 +1159,7 @@ fn local<'a>(case: &'a Case, columns: &[ColumnId]) -> impl Iterator<Item = (Stri
             [1i64, -1, 2, -2, 256, -256, 1 << 16, -(1 << 16)]
                 .into_iter()
                 .flat_map(move |d| {
-                    (0..6).map(move |repair| {
+                    (0..7).map(move |repair| {
                         let mut v = case.values.clone();
                         let mut column = v.get(&case.relation, id).expect("c").to_vec();
                         column[x] += d;
@@ -1132,6 +1176,14 @@ fn local<'a>(case: &'a Case, columns: &[ColumnId]) -> impl Iterator<Item = (Stri
                                 rebalance_except(case, &mut v, None, true);
                             }
                             5 => rebalance_except(case, &mut v, None, true),
+                            6 => {
+                                // Repair only downstream chains (leave the edited column's chain carries intact).
+                                let skip_chain = case.relation.columns[id.0 as usize]
+                                    .name
+                                    .strip_prefix("L0/attention/")
+                                    .and_then(|s| s.rsplit_once("/carry").map(|(c, _)| c));
+                                rebalance_except(case, &mut v, skip_chain, false);
+                            }
                             _ => {}
                         }
                         let name = &case.relation.columns[id.0 as usize].name;
@@ -1155,10 +1207,11 @@ fn around(case: &Case, name: &str) -> Option<String> {
     let (chain_name, k) = rest.rsplit_once('/')?;
     let k: usize = k.parse().ok()?;
     let chain = &columns.chains.iter().find(|(n, _)| *n == chain_name)?.1;
-    // A primary moved by a multiple of 256^k that only position k sees.
+    // A primary moved by a multiple of (2^radix)^k that only position k sees.
+    let rbits = usize::from(chain.radix);
     let primary = match chain_name {
-        "total/sign" => Some(("total/magnitude", 8 * k)),
-        "block/round" => Some(("block/quotient", 8 * k)),
+        "total/sign" => Some(("total/magnitude", rbits * k)),
+        "block/round" => Some(("block/quotient", rbits * k)),
         _ => None,
     };
     if let Some((column, bit)) = primary {
@@ -1188,18 +1241,16 @@ fn around(case: &Case, name: &str) -> Option<String> {
                             ids.iter()
                                 .enumerate()
                                 .map(|(i, id)| {
-                                    (v.get(&case.relation, *id).expect("b")[y] as i128) << (8 * i)
+                                    (eval_column(&case.relation, &v, *id).expect("b")[y] as i128)
+                                        << (rbits * i)
                                 })
                                 .sum()
                         })
                         .collect();
                     value[x] += delta;
-                    set_bytes(case, &mut v, &ids, &value);
+                    set_radix_limbs(case, &mut v, &ids, &value, chain.radix);
                 }
                 recompose(case, &mut v, true);
-                if column == "block/quotient" {
-                    rederive_block(case, &mut v);
-                }
                 rebalance_except(case, &mut v, Some(chain_name), true);
                 if fill_around(case, &mut v, chain, k).is_some()
                     && check_except(&case.relation, &v, &[name]).is_ok()
@@ -1221,51 +1272,47 @@ fn around(case: &Case, name: &str) -> Option<String> {
         );
         let size = 1usize << chain.vars;
         let b = case.attention.bits();
-        let tau = if case.cfg.accumulation == 1 {
-            case.column(&case.values, "block/sign")
-        } else {
-            case.column(&case.values, "total/sign")
-        };
         let mut zeroed = case.values.clone();
         set_bytes(case, &mut zeroed, &qs, &vec![0; size]);
         set_bytes(case, &mut zeroed, &rs, &vec![0; size]);
+        let z_cols: Vec<Vec<i64>> = zs
+            .iter()
+            .map(|id| eval_column(&case.relation, &case.values, *id).expect("z"))
+            .collect();
+        let nums = chain_values(case, &zeroed, chain);
+        let read = |v: &Values, ids: &[ColumnId]| -> Vec<i128> {
+            let cols: Vec<Vec<i64>> = ids
+                .iter()
+                .map(|id| eval_column(&case.relation, v, *id).expect("b"))
+                .collect();
+            (0..size)
+                .map(|y| {
+                    cols.iter()
+                        .enumerate()
+                        .map(|(i, col)| (col[y] as i128) << (8 * i))
+                        .sum()
+                })
+                .collect()
+        };
+        let q0 = read(&case.values, &qs);
+        let r0 = read(&case.values, &rs);
         for x in 0..size {
-            let z: i128 = zs
+            let z: i128 = z_cols
                 .iter()
                 .enumerate()
-                .map(|(i, id)| {
-                    (case.values.get(&case.relation, *id).expect("z")[x >> b.d] as i128) << (8 * i)
-                })
+                .map(|(i, col)| (col[x >> b.d] as i128) << (8 * i))
                 .sum();
             if z == 0 {
                 continue;
             }
             for d in [1i128, -1] {
-                let numerator = chain_value(case, &zeroed, chain, x) - (d << (8 * k));
+                let numerator = nums[x] - (d << (8 * k));
                 let mut v = case.values.clone();
-                let read = |v: &Values, ids: &[ColumnId]| -> Vec<i128> {
-                    (0..size)
-                        .map(|y| {
-                            ids.iter()
-                                .enumerate()
-                                .map(|(i, id)| {
-                                    (v.get(&case.relation, *id).expect("b")[y] as i128) << (8 * i)
-                                })
-                                .sum()
-                        })
-                        .collect()
-                };
-                let (mut q, mut r) = (read(&v, &qs), read(&v, &rs));
+                let (mut q, mut r) = (q0.clone(), r0.clone());
                 q[x] = numerator.div_euclid(2 * z);
                 r[x] = numerator.rem_euclid(2 * z);
                 set_bytes(case, &mut v, &qs, &q);
                 set_bytes(case, &mut v, &rs, &r);
-                case.set(
-                    &mut v,
-                    "output",
-                    x,
-                    (q[x] * (1 - 2 * tau[x] as i128)) as i64,
-                );
                 recompose(case, &mut v, true);
                 rebalance_except(case, &mut v, Some(chain_name), false);
                 if fill_around(case, &mut v, chain, k).is_some()
@@ -1282,7 +1329,7 @@ fn around(case: &Case, name: &str) -> Option<String> {
     for t in &chain.positions[k] {
         for f in &t.factors {
             let c = &case.relation.columns[f.column.0 as usize];
-            if !c.name.starts_with("L0/attention") || matches!(c.kind, Kind::Public(_)) {
+            if !c.name.starts_with("L0/attention") || !matches!(c.kind, Kind::Witness(_)) {
                 continue;
             }
             let len = 1usize << c.log_len;
@@ -1336,16 +1383,25 @@ fn shifts<'a>(case: &'a Case, columns: &[ColumnId]) -> impl Iterator<Item = (Str
         }
         if let Some((base, i)) = name.rsplit_once('/') {
             if let Ok(i) = i.parse::<usize>() {
+                let cols = case.attention.columns.as_ref().expect("declared");
+                let w = if base.ends_with("total/magnitude") {
+                    1i64 << cols.total_radix
+                } else if base.ends_with("value/sv_v") {
+                    1i64 << cols.sv_v_bits
+                } else {
+                    256
+                };
                 for (a, b) in [(i.wrapping_sub(1), i), (i, i + 1)] {
                     if let (Some(lo), Some(hi)) =
                         (find(&format!("{base}/{a}")), find(&format!("{base}/{b}")))
                     {
-                        pairs.push((lo, hi, 256));
+                        pairs.push((lo, hi, w));
                     }
                 }
             }
         }
     }
+    pairs.retain(|(lo, hi, _)| case.is_witness(*lo) && case.is_witness(*hi));
     pairs.into_iter().flat_map(move |(lo, hi, w)| {
         let len = 1usize << case.relation.columns[lo.0 as usize].log_len;
         (0..len).flat_map(move |x| {
@@ -1422,6 +1478,34 @@ fn sweep(case: &Case) -> Vec<(String, String)> {
                     .validate()
                     .err()
                     .map(|e| format!("static: {e:?}; {}", redundant(&name)))
+            })
+            .or_else(|| {
+                // Virtual columns whose ranges enforce executor bounds or static-scale
+                // bound-rule tightness (RFC-0028 §1.2; `validate()` does not require a
+                // `Range` on `Kind::Virtual` at small test scales).
+                let short = name
+                    .trim_start_matches("L0/attention/")
+                    .trim_end_matches("/range");
+                let wm1_fixed = short == "score/wm1"
+                    && case
+                        .attention
+                        .columns
+                        .as_ref()
+                        .and_then(|c| c.mixed_score.as_ref())
+                        .is_some_and(|ms| ms.wm_last.is_none());
+                let spare_unreached = short == "output/spare/1"
+                    && case
+                        .column(&case.values, "output/quotient")
+                        .iter()
+                        .all(|&q| q == 0);
+                matches!(
+                    item,
+                    Item::Range(_)
+                        if ["output", "block", "exp/slack", "score/w0"].contains(&short)
+                            || wm1_fixed
+                            || spare_unreached
+                )
+                .then(|| format!("virtual range: {}", redundant(&name)))
             });
         table.push((
             format!("{item:?} {name}"),
@@ -1507,14 +1591,86 @@ fn rejects_every_remainder_range_widening() {
         let case = case_with(&cfg, 7, false);
         let mut attacks = semantic(&case);
         attacks.extend(split_bit(&case));
-        // score - 1 wherever Q >= 1: rho gains 2^k, one bit past its range.
-        let (n, q) = (cfg.rows, case.column(&case.values, "score/quotient"));
+        // score +-1 wherever score is nonzero (or any causal entry): rho gains 2^r, one bit past its range.
+        let score_name = if case.try_id("score/value").is_some() {
+            "score/value"
+        } else {
+            "score/quotient"
+        };
+        let (n, q) = (cfg.rows, case.column(&case.values, score_name));
         for (i, j) in (0..n).flat_map(|i| (0..n).map(move |j| (i, j))) {
-            if q[case.s(j, 0, i)] >= 1 {
+            for delta in [-1i128, 1] {
+                if q[case.s(j, 0, i)] != 0 || delta == 1 {
+                    let mut v = case.attacked(&move |s, k, v| {
+                        v + delta * i128::from(s == Stage::Score && k == (i, 0, j))
+                    });
+                    rebalance(&case, &mut v);
+                    attacks.push((format!("score({i},{j}){delta:+}"), v));
+                }
+            }
+        }
+        // exp - 1 on any entry where P >= 1 (e.g. causal argmax): virtual exp/rr gains +2^E.
+        let pcol = case.column(&case.values, "exp/p");
+        for (i, j) in (0..n).flat_map(|i| (0..=i).map(move |j| (i, j))) {
+            if pcol[case.s(j, 0, i)] >= 1 {
                 let mut v = case
-                    .attacked(&move |s, k, v| v - i128::from(s == Stage::Score && k == (i, 0, j)));
+                    .attacked(&move |s, k, v| v - i128::from(s == Stage::Exp && k == (i, 0, j)));
                 rebalance(&case, &mut v);
-                attacks.push((format!("score({i},{j})-1"), v));
+                attacks.push((format!("exp({i},{j})-1"), v));
+            }
+        }
+        // Mixed-radix score lower-limb carry bump: c_j += 1 shifts virtual rho_j by +2^r
+        // and virtual rho_{j+1} by -1 (accepting whenever rho_{j+1} >= 1).
+        if let Some(ms) = &case
+            .attention
+            .columns
+            .as_ref()
+            .expect("declared")
+            .mixed_score
+        {
+            for x in 0..1usize << case.attention.bits().s() {
+                for (j, &cid) in ms.carries.iter().enumerate() {
+                    for d in [-1i64, 1] {
+                        let mut v = case.values.clone();
+                        let mut col = v.get(&case.relation, cid).expect("c").to_vec();
+                        col[x] += d;
+                        v.set(&case.relation, cid, col).expect("s");
+                        attacks.push((format!("score/c{j}[{x}]{d:+}"), v));
+                    }
+                }
+            }
+        }
+        // Block-mode quotient - 1 (shifts top virtual block/remainder limb by +2^(c mod 8))
+        // and chain carry +-1 (shifts virtual limb k by -+256, limb k+1 by +-1).
+        if case.cfg.accumulation == 1 {
+            let qb = case.column(&case.values, "block/quotient");
+            for (x, &qval) in qb.iter().enumerate() {
+                if qval >= 1 {
+                    let mut v = case.values.clone();
+                    case.set(&mut v, "block/quotient", x, qval - 1);
+                    rebalance_except(&case, &mut v, Some("block/round"), true);
+                    attacks.push((format!("block/quotient[{x}]-1"), v));
+                }
+            }
+        }
+        for (cname, chain) in &case.attention.columns.as_ref().expect("declared").chains {
+            if *cname != "block/round" && *cname != "score/round" {
+                continue;
+            }
+            for (k, carry) in chain.carries.iter().enumerate() {
+                let Some(crate::development::Carry::One(cid)) = carry else {
+                    continue;
+                };
+                let len = 1usize << chain.vars;
+                for x in 0..len {
+                    for d in [-1i64, 1] {
+                        let mut v = case.values.clone();
+                        let mut col = v.get(&case.relation, *cid).expect("c").to_vec();
+                        col[x] += d;
+                        v.set(&case.relation, *cid, col).expect("s");
+                        attacks.push((format!("{cname}/carry{k}[{x}]{d:+}"), v));
+                    }
+                }
             }
         }
         for (k, range) in case.relation.ranges.iter().enumerate() {
@@ -1530,7 +1686,12 @@ fn rejects_every_remainder_range_widening() {
             }
             let mut widened = case.relation.clone();
             widened.ranges[k].width.bits += 1;
-            widened.columns[range.column.0 as usize].width.bits += 1;
+            if matches!(
+                widened.columns[range.column.0 as usize].kind,
+                Kind::Witness(_)
+            ) {
+                widened.columns[range.column.0 as usize].width.bits += 1;
+            }
             let accepted =
                 |v: &Values| check(&widened, v).is_ok() && check(&case.relation, v).is_err();
             let killer = attacks
@@ -1591,7 +1752,9 @@ fn split_bit(case: &Case) -> Vec<(String, Values)> {
             .map(|y| {
                 ids.iter()
                     .enumerate()
-                    .map(|(i, id)| (v.get(&case.relation, *id).expect("nl")[y] as i128) << (8 * i))
+                    .map(|(i, id)| {
+                        (eval_column(&case.relation, &v, *id).expect("nl")[y] as i128) << (8 * i)
+                    })
                     .sum()
             })
             .collect();
@@ -1627,26 +1790,42 @@ fn rejects_score_other_rounding_direction() {
     // and whichever differs is a +-1 near miss, rejected by the remainder range.
     let case = case(&Cfg::default(), 5);
     let x = case.s(0, 0, case.cfg.rows - 1);
-    let remainder = case.column(&case.values, "score/quotient");
-    let q = remainder[x];
-    for other in [q - 1, q + 1] {
-        let mut v = case.values.clone();
-        case.set(&mut v, "score/quotient", x, other);
-        for (k, byte) in [other & 255, other >> 8, other >> 16].iter().enumerate() {
-            if case
-                .relation
-                .columns
-                .iter()
-                .any(|c| c.name == format!("L0/attention/score/quotient/byte/{k}"))
-            {
-                case.set(&mut v, &format!("score/quotient/byte/{k}"), x, *byte);
-            }
+    if let Some(ms) = &case
+        .attention
+        .columns
+        .as_ref()
+        .expect("declared")
+        .mixed_score
+    {
+        let top_c = *ms.carries.last().expect("top carry");
+        let c_val = case.values.get(&case.relation, top_c).expect("c")[x];
+        for other in [c_val - 1, c_val + 1] {
+            let mut v = case.values.clone();
+            let mut col = v.get(&case.relation, top_c).expect("c").to_vec();
+            col[x] = other;
+            v.set(&case.relation, top_c, col).expect("set");
+            rebalance(&case, &mut v);
+            assert!(matches!(
+                check(&case.relation, &v),
+                Err(Violation::Range { .. })
+            ));
         }
-        rebalance(&case, &mut v);
-        assert!(matches!(
-            check(&case.relation, &v),
-            Err(Violation::Range { .. })
-        ));
+    } else {
+        let remainder = case.column(&case.values, "score/quotient");
+        let q = remainder[x];
+        for other in [q - 1, q + 1] {
+            let mut v = case.values.clone();
+            for (k, byte) in [other & 255, other >> 8, other >> 16].iter().enumerate() {
+                if case.try_id(&format!("score/quotient/byte/{k}")).is_some() {
+                    case.set(&mut v, &format!("score/quotient/byte/{k}"), x, *byte);
+                }
+            }
+            rebalance(&case, &mut v);
+            assert!(matches!(
+                check(&case.relation, &v),
+                Err(Violation::Range { .. })
+            ));
+        }
     }
 }
 
@@ -1814,21 +1993,23 @@ fn accepts_and_rejects_near_miss_tight_score_scale_8b_head_width() {
     };
     let c = build(&cfg, inputs, positions, true);
     assert_eq!(c.attention.score_wbits(Some(&c.relation)), 17);
-    let top_id = c.id("score/scales/2");
-    assert_eq!(
-        c.relation.column(top_id).expect("top limb").width,
-        Width::unsigned(1)
+    let w1_id = c.id("score/w1");
+    let w1_bits = c.relation.column(w1_id).expect("w1").width.bits;
+    assert!(
+        w1_bits < 17,
+        "w1 width ({w1_bits}) must reflect the tightened 17-bit W bound"
     );
-    assert!(c.relation.ranges.iter().any(|rg| rg.column == top_id
-        && rg.width == Width::unsigned(1)
-        && rg.name == "L0/attention/score/scales/2/range"));
+    let r_bits = 17 - w1_bits;
+    assert!(c.relation.ranges.iter().any(|rg| rg.column == w1_id
+        && rg.width == Width::unsigned(w1_bits)
+        && rg.name == "L0/attention/score/w1/range"));
     assert_eq!(c.relation.validate(), Ok(()));
     assert_eq!(check(&c.relation, &c.values), Ok(()));
 
-    // Direct negative control for the tightened 17-bit score/scales bound: forge
+    // Direct negative control for the tightened 17-bit score scale bound: forge
     // sq = sk = 511 (both still inside RowConversion's u9 column range), yielding
-    // W = 261,121 = 1 + 256*252 + 65536*3 with re-solved carries; rejected at
-    // L0/attention/score/scales/2/range before any downstream identity.
+    // W = 261,121 >= 2^17; setting w1 = W >> r_bits keeps virtual w0 = W - 2^r*w1
+    // in [0, 2^r) while overflowing w1's tightened (17 - r)-bit range.
     let mut forged = c.values.clone();
     let set_col = |values: &mut Values, col: ColumnId, index: usize, val: i64| {
         let mut data = values.get(&c.relation, col).expect("col").to_vec();
@@ -1837,16 +2018,24 @@ fn accepts_and_rejects_near_miss_tight_score_scale_8b_head_width() {
     };
     set_col(&mut forged, c.attention.plan.query.scale, 0, 511);
     set_col(&mut forged, c.attention.plan.key.scale, 0, 511);
-    c.set(&mut forged, "score/scales/0", 0, 1);
-    c.set(&mut forged, "score/scales/1", 0, 252);
-    c.set(&mut forged, "score/scales/2", 0, 3);
-    c.set(&mut forged, "score/scales/carry0", 0, 1020);
-    c.set(&mut forged, "score/scales/carry1", 0, 3);
-    assert!(matches!(
-        check(&c.relation, &forged),
-        Err(Violation::Range { ref relation, .. })
-            if relation == "L0/attention/score/scales/2/range"
-    ));
+    c.set(&mut forged, "score/w1", 0, (511 * 511) >> r_bits);
+    assert!(check(&c.relation, &forged).is_err());
+    // Skip upstream RowConversion ranges (which depend on virtual scale remainders) so
+    // the tightened 17-bit L0/attention/score/w1/range is tested directly.
+    let skip_upstream: Vec<&str> = c
+        .relation
+        .ranges
+        .iter()
+        .filter(|rg| !rg.name.starts_with("L0/attention/"))
+        .map(|rg| rg.name.as_str())
+        .collect();
+    assert_eq!(
+        check_except(&c.relation, &forged, &skip_upstream),
+        Err(Violation::Range {
+            relation: "L0/attention/score/w1/range".into(),
+            index: 0,
+        })
+    );
 
     let attacked_score = c.attacked(&|stage, at, v| {
         if stage == Stage::Score && at == (2, 1, 1) {
@@ -2018,4 +2207,48 @@ fn matches_reference_executor_capture_on_fixtures() {
         checked > 10 && modes.iter().all(|m| *m > 0) && blocks > 0,
         "{checked} {modes:?} {blocks}"
     );
+}
+
+/// Exercises the wide radix-16 `total/sign` chain and radix-12 `output/division` /
+/// `normaliser` / `output/spare` chains activated at realistic sequence lengths
+/// (`zmax >= 2^16`, `0 <= E2 <= 3`), checking honest assignment and near-miss rejection.
+#[test]
+fn accepts_radix16_total_and_radix12_division_and_rejects_near_misses() {
+    let cfg = Cfg {
+        rows: 32,
+        heads: 1,
+        groups: 1,
+        head_width: 4,
+        policy: [Policy::Dynamic, Policy::Dynamic, Policy::Dynamic],
+        score: (181, -10),
+        fractions: [7, 7, 7, 7],
+        accumulation: 0,
+        drop: 0,
+        exp: (0, 7, 2, 12, 0),
+    };
+    let case = case_with(&cfg, 42, false);
+    assert_eq!(check(&case.relation, &case.values), Ok(()));
+    // Verify radix-12 division actually activated (`normaliser/byte/0` is unsigned 12).
+    let norm_range = case
+        .relation
+        .ranges
+        .iter()
+        .find(|r| r.name == "L0/attention/normaliser/byte/0/range")
+        .expect("radix-12 normaliser low limb");
+    assert_eq!(norm_range.width.bits, 12);
+    // Verify radix-16 total/sign actually activated (`total/magnitude/0` is unsigned 16).
+    let mag_range = case
+        .relation
+        .ranges
+        .iter()
+        .find(|r| r.name == "L0/attention/total/magnitude/0/range")
+        .expect("radix-16 total/magnitude/0");
+    assert_eq!(mag_range.width.bits, 16);
+    // Near-miss: output +-1 is rejected on every real entry.
+    for (name, v) in semantic(&case) {
+        assert!(
+            check(&case.relation, &v).is_err(),
+            "accepted near-miss {name}"
+        );
+    }
 }

@@ -18,7 +18,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 mod check;
-pub use check::{check, check_except, check_segment};
+pub use check::{check, check_except, check_segment, eval_column};
 
 /// M31 modulus `p = 2^31 - 1` (RFC-0003 §1). Every identity is wrap-free below it.
 pub const MODULUS: u128 = (1 << 31) - 1;
@@ -791,6 +791,14 @@ impl Relation {
     /// columns this checks dependency order (`operand < column`), `Def` shape, and the strict
     /// `< p / 2` bound (`mag <= HALF_MODULUS`).
     pub fn derived_magnitudes(&self) -> Result<Vec<u128>, Invalid> {
+        let mut range_tight = vec![u128::MAX; self.columns.len()];
+        for range in &self.ranges {
+            if let Some(slot) = range_tight.get_mut(range.column.0 as usize) {
+                if range.width.bits >= 1 && range.width.bits <= MAX_RANGE_BITS {
+                    *slot = (*slot).min(range.width.magnitude());
+                }
+            }
+        }
         let mut mags = Vec::with_capacity(self.columns.len());
         for (i, column) in self.columns.iter().enumerate() {
             let id = ColumnId(i as u32);
@@ -839,7 +847,12 @@ impl Relation {
                     if column.width != Width::unsigned(0) {
                         return Err(Invalid::Column(id));
                     }
-                    self.validate_virtual_def(id, column, def, &mags)?
+                    let raw = self.validate_virtual_def(id, column, def, &mags)?;
+                    // RFC-0028 A1: once the defining formula is statically wrap-free
+                    // (`raw <= HALF_MODULUS`), any valid whole-column `Range` on `id`
+                    // confines its integer value to `range.width`, tightening downstream
+                    // magnitude bounds without weakening INV-5 or `NC-1340`.
+                    raw.min(range_tight[i])
                 }
             };
             mags.push(mag);
@@ -847,11 +860,93 @@ impl Relation {
         Ok(mags)
     }
 
-    /// Static integer magnitude bound of one column after validation, or `None` if invalid.
+    /// Static integer magnitude bound of one column computed lazily over its transitive
+    /// virtual operands (without scanning unrelated public value tables), or `None` if
+    /// the column or an operand is statically invalid.
     pub fn column_magnitude(&self, id: ColumnId) -> Option<u128> {
-        self.derived_magnitudes()
-            .ok()
-            .and_then(|m| m.get(id.0 as usize).copied())
+        let mut cache = alloc::collections::BTreeMap::new();
+        self.column_magnitude_cached(id, &mut cache)
+    }
+
+    fn column_magnitude_cached(
+        &self,
+        id: ColumnId,
+        cache: &mut alloc::collections::BTreeMap<ColumnId, u128>,
+    ) -> Option<u128> {
+        if let Some(&m) = cache.get(&id) {
+            return Some(m);
+        }
+        let col = self.columns.get(id.0 as usize)?;
+        if col.log_len > MAX_VARS {
+            return None;
+        }
+        let mag = match &col.kind {
+            Kind::Public(_) | Kind::Witness(_) | Kind::Weight => {
+                if col.width.bits < 1 || col.width.bits > MAX_WIDTH_BITS {
+                    return None;
+                }
+                col.width.magnitude()
+            }
+            Kind::Virtual(def) => {
+                if col.width != Width::unsigned(0) {
+                    return None;
+                }
+                let raw = match def {
+                    Def::Linear { constant, terms } => {
+                        let mut acc = constant.unsigned_abs() as u128;
+                        for (coeff, r) in terms {
+                            if *coeff == 0 || r.column.0 >= id.0 {
+                                return None;
+                            }
+                            let om = self.column_magnitude_cached(r.column, cache)?;
+                            acc = acc
+                                .saturating_add((coeff.unsigned_abs() as u128).saturating_mul(om));
+                        }
+                        acc
+                    }
+                    Def::Contraction {
+                        summed, lhs, rhs, ..
+                    } => {
+                        if *summed > MAX_VARS || lhs.column.0 >= id.0 || rhs.column.0 >= id.0 {
+                            return None;
+                        }
+                        let lm = self.column_magnitude_cached(lhs.column, cache)?;
+                        let rm = self.column_magnitude_cached(rhs.column, cache)?;
+                        (1u128 << *summed).saturating_mul(lm).saturating_mul(rm)
+                    }
+                    Def::Pointwise { terms } => {
+                        let mut acc = 0u128;
+                        for t in terms {
+                            let mut prod = t.coeff.unsigned_abs() as u128;
+                            for f in &t.factors {
+                                if f.column.0 >= id.0 {
+                                    return None;
+                                }
+                                let om = self.column_magnitude_cached(f.column, cache)?;
+                                prod = prod.saturating_mul(om);
+                            }
+                            acc = acc.saturating_add(prod);
+                        }
+                        acc
+                    }
+                };
+                if raw > HALF_MODULUS {
+                    return None;
+                }
+                let mut tightened = raw;
+                for range in &self.ranges {
+                    if range.column == id
+                        && range.width.bits >= 1
+                        && range.width.bits <= MAX_RANGE_BITS
+                    {
+                        tightened = tightened.min(range.width.magnitude());
+                    }
+                }
+                tightened
+            }
+        };
+        cache.insert(id, mag);
+        Some(mag)
     }
 
     fn validate_virtual_def(

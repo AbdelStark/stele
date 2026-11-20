@@ -1564,8 +1564,19 @@ fn route_column_claim(
     column: ColumnId,
     batch: &mut [(Vec<K>, K)],
 ) -> Result<(), Error> {
+    route_column_claim_for(&plan.groups, stack, claims, column, batch)
+}
+
+#[cfg(feature = "controls")]
+fn route_column_claim_for(
+    groups: &[Group],
+    stack: &Stack,
+    claims: &Claims,
+    column: ColumnId,
+    batch: &mut [(Vec<K>, K)],
+) -> Result<(), Error> {
     let mut index = 0;
-    for group in &plan.groups {
+    for group in groups {
         for (j, &c) in group.columns.iter().enumerate() {
             if c != column {
                 index += claims.0[c.0 as usize].len();
@@ -1681,10 +1692,16 @@ pub fn stack_source(
     sources: Sources,
     root: [u8; 32],
 ) -> Result<Option<Source<K>>, Error> {
-    plan(relation, sources)?
-        .stack
-        .map(|stack| stack.source(root))
-        .transpose()
+    let stack = if relation.has_virtual() || relation.is_segmented() {
+        plan_segmented(relation, sources)?
+            .segments
+            .into_iter()
+            .next()
+            .and_then(|seg| seg.stack)
+    } else {
+        plan(relation, sources)?.stack
+    };
+    stack.map(|s| s.source(root)).transpose()
 }
 
 /// The plan-derived multiplicity source of check `index` under `root` (RFC-0008 A5,
@@ -1695,10 +1712,25 @@ pub fn multiplicity_source(
     index: usize,
     root: [u8; 32],
 ) -> Result<Source<K>, Error> {
-    let plan = plan(relation, sources)?;
-    let check = plan.checks.get(index).ok_or(Error::Unsupported)?;
+    let check = if relation.has_virtual() || relation.is_segmented() {
+        let seg = plan_segmented(relation, sources)?
+            .segments
+            .into_iter()
+            .next()
+            .ok_or(Error::Unsupported)?;
+        seg.checks
+            .into_iter()
+            .nth(index)
+            .ok_or(Error::Unsupported)?
+    } else {
+        plan(relation, sources)?
+            .checks
+            .into_iter()
+            .nth(index)
+            .ok_or(Error::Unsupported)?
+    };
     let l = check.layout;
-    sources.source(l.id, l.ell, mu_code(check)?.code_id(), root)
+    sources.source(l.id, l.ell, mu_code(&check)?.code_id(), root)
 }
 
 /// Place per-weight messages (`ColumnId` order, `2^n` entries each, signed
@@ -2726,6 +2758,8 @@ struct SegmentedPlan {
     weights: Vec<Weight>,
     model: Vec<Stack>,
     sources: Sources,
+    #[cfg(feature = "controls")]
+    column_claim: Option<ColumnId>,
 }
 
 /// Shared RFC-0006 A1 sumcheck instance for a `Def::Pointwise` virtual column:
@@ -2953,6 +2987,8 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
         weights,
         model,
         sources,
+        #[cfg(feature = "controls")]
+        column_claim: None,
     })
 }
 
@@ -3106,10 +3142,109 @@ fn prove_sumcheck_forged(
     ))
 }
 
+/// Forge a segmented or virtual-column proof (`ProofV2`, RFC-0028) by applying a
+/// `Forge` tamper (`table` shift or `public` entry bump) while keeping `relation`'s
+/// original statement digest in the transcript (controls only).
+#[cfg(feature = "controls")]
+pub fn prove_segmented_forged(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+    forge: &Forge,
+) -> Result<ProofV2, Error> {
+    let plan_timer = Stopwatch::start();
+    let mut plan = plan_segmented(relation, sources)?;
+    let plan_ns = plan_timer.elapsed_ns();
+    if let Some(c) = forge.column_claim {
+        if forge.table.is_some() || forge.public.is_some() || forge.witness.is_some() {
+            return Err(Error::Unsupported);
+        }
+        let group = plan
+            .segments
+            .iter()
+            .flat_map(|seg| seg.groups.iter())
+            .find(|g| g.columns.contains(&c))
+            .ok_or(Error::Unsupported)?;
+        let j = group
+            .columns
+            .iter()
+            .position(|&id| id == c)
+            .ok_or(Error::Unsupported)?;
+        let next = *group.columns.get(j + 1).ok_or(Error::Unsupported)?;
+        let selected = values.get(relation, c).ok_or(Error::Unsupported)?;
+        let adjacent = values.get(relation, next).ok_or(Error::Unsupported)?;
+        if selected != adjacent {
+            return Err(Error::Unsupported);
+        }
+        plan.column_claim = Some(c);
+    }
+    if let Some(i) = forge.table {
+        plan.segments
+            .first_mut()
+            .and_then(|seg| seg.checks.get_mut(i))
+            .ok_or(Error::Unsupported)?
+            .shift = 1;
+    }
+    let mut read = relation.clone();
+    if let Some((c, j)) = forge.public {
+        match read.columns.get_mut(c.0 as usize).map(|c| &mut c.kind) {
+            Some(Kind::Public(v)) if j < v.len() => v[j] += 1,
+            _ => return Err(Error::Unsupported),
+        }
+    }
+    let changed = forge
+        .witness
+        .map(|(c, j)| {
+            let column = read.columns.get(c.0 as usize).ok_or(Error::Unsupported)?;
+            if !matches!(column.kind, Kind::Witness(_))
+                || !plan.segments.iter().any(|seg| {
+                    seg.sizes.iter().any(|&m| {
+                        identities_for(&read, Some(seg.segment), m)
+                            .iter()
+                            .any(|identity| {
+                                identity
+                                    .terms
+                                    .iter()
+                                    .any(|term| term.factors.iter().any(|r| r.column == c))
+                            })
+                    })
+                })
+            {
+                return Err(Error::Unsupported);
+            }
+            let mut entries = values.get(&read, c).ok_or(Error::Unsupported)?.to_vec();
+            let entry = entries.get_mut(j).ok_or(Error::Unsupported)?;
+            *entry = entry
+                .checked_add(1)
+                .filter(|v| column.width.contains(*v))
+                .ok_or(Error::Unsupported)?;
+            let mut changed = values.clone();
+            changed
+                .set(&read, c, entries)
+                .map_err(|_| Error::Unsupported)?;
+            Ok::<_, Error>(changed)
+        })
+        .transpose()?;
+    let actual = changed.as_ref().unwrap_or(values);
+    prove_segmented_with_plan(
+        t,
+        &read,
+        &plan,
+        plan_ns,
+        |_| Ok(actual.clone()),
+        model,
+        None,
+        changed.as_ref().map(|_| values),
+    )
+    .map(|(p, _)| p)
+}
+
 fn prove_segmented_impl<F>(
     t: &mut Transcript<K>,
     relation: &Relation,
-    mut segment_values: F,
+    segment_values: F,
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
     sources: Sources,
     forge_virtual: Option<(ColumnId, usize, Option<usize>)>,
@@ -3120,6 +3255,32 @@ where
     let plan_timer = Stopwatch::start();
     let plan = plan_segmented(relation, sources)?;
     let plan_ns = plan_timer.elapsed_ns();
+    prove_segmented_with_plan(
+        t,
+        relation,
+        &plan,
+        plan_ns,
+        segment_values,
+        model,
+        forge_virtual,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prove_segmented_with_plan<F>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    plan: &SegmentedPlan,
+    plan_ns: u64,
+    mut segment_values: F,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    forge_virtual: Option<(ColumnId, usize, Option<usize>)>,
+    round_values: Option<&Values>,
+) -> Result<(ProofV2, Metrics), Error>
+where
+    F: FnMut(u32) -> Result<Values, Error>,
+{
     if let Some((col_id, idx, comp)) = forge_virtual {
         let col = relation
             .columns
@@ -3346,6 +3507,12 @@ where
 
         // Step 2.3 (a): zerochecks for segment `s`.
         let zerocheck_timer = Stopwatch::start();
+        #[cfg(feature = "controls")]
+        let round_resolved = round_values
+            .map(|rv| ResolvedColumns::for_segment(relation, rv, &seg.virtuals, None))
+            .transpose()?;
+        #[cfg(not(feature = "controls"))]
+        let _ = round_values;
         let seg_zc_base = ZEROCHECK | (u64::from(seg.segment) << 16);
         for &m in &seg.sizes {
             let lambdas = identity_lambdas_for(t, relation, Some(seg.segment), m)?;
@@ -3362,21 +3529,34 @@ where
                     col_reads[w_idx] = col_reads[w_idx].saturating_add(zc_reads);
                 }
             }
-            let mut tables = Vec::with_capacity(inputs.len());
-            for r in &inputs {
-                let col = resolved.get(r.column)?;
-                let mut table = vec![K::from_i64(0); 1 << m];
-                stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
-                    for (j, out) in chunk.iter_mut().enumerate() {
-                        *out = K::from_i64(col[r.index((start + j) as u64)]);
-                    }
-                });
-                tables.push(table);
-            }
+            let tables_for = |res: &ResolvedColumns<'_>| -> Result<Vec<Vec<K>>, Error> {
+                let mut tables = Vec::with_capacity(inputs.len());
+                for r in &inputs {
+                    let col = res.get(r.column)?;
+                    let mut table = vec![K::from_i64(0); 1 << m];
+                    stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
+                        for (j, out) in chunk.iter_mut().enumerate() {
+                            *out = K::from_i64(col[r.index((start + j) as u64)]);
+                        }
+                    });
+                    tables.push(table);
+                }
+                Ok(tables)
+            };
+            let tables = tables_for(&resolved)?;
             let z = zerocheck::Zerocheck {
                 instance: &instance,
                 skip: 0,
             };
+            #[cfg(feature = "controls")]
+            let (zp, point) = match round_resolved.as_ref() {
+                Some(orig) => {
+                    let reference = tables_for(orig)?;
+                    z.prove_forged_finals(&reference, &tables, t)
+                }
+                None => z.prove_with_point(&tables, t),
+            }?;
+            #[cfg(not(feature = "controls"))]
             let (zp, point) = z.prove_with_point(&tables, t)?;
             let mut out = Vec::new();
             for row in &zp.rounds {
@@ -3708,8 +3888,21 @@ where
         if let Some((prev_s, prev_prepared, prev_handle)) = prev.take() {
             let prev_seg = &plan.segments[prev_s];
             if let Some(prev_stack) = &prev_seg.stack {
-                let batch = group_claims_for(&prev_seg.groups, prev_stack, &claims);
+                #[allow(unused_mut)]
+                let mut batch = group_claims_for(&prev_seg.groups, prev_stack, &claims);
                 if !batch.is_empty() {
+                    #[cfg(feature = "controls")]
+                    if let Some(c) = plan.column_claim {
+                        if prev_seg.groups.iter().any(|g| g.columns.contains(&c)) {
+                            route_column_claim_for(
+                                &prev_seg.groups,
+                                prev_stack,
+                                &claims,
+                                c,
+                                &mut batch,
+                            )?;
+                        }
+                    }
                     let opening = Opening {
                         id: BATCH | ((prev_s as u64) << 32),
                         tensor: prev_stack.id,
@@ -3733,8 +3926,21 @@ where
     if let Some((last_s, last_prepared, last_handle)) = prev.take() {
         let last_seg = &plan.segments[last_s];
         if let Some(last_stack) = &last_seg.stack {
-            let batch = group_claims_for(&last_seg.groups, last_stack, &claims);
+            #[allow(unused_mut)]
+            let mut batch = group_claims_for(&last_seg.groups, last_stack, &claims);
             if !batch.is_empty() {
+                #[cfg(feature = "controls")]
+                if let Some(c) = plan.column_claim {
+                    if last_seg.groups.iter().any(|g| g.columns.contains(&c)) {
+                        route_column_claim_for(
+                            &last_seg.groups,
+                            last_stack,
+                            &claims,
+                            c,
+                            &mut batch,
+                        )?;
+                    }
+                }
                 let opening = Opening {
                     id: BATCH | ((last_s as u64) << 32),
                     tensor: last_stack.id,

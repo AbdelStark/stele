@@ -66,6 +66,36 @@ impl Norm {
         let mut relation = Relation::default();
         let group = relation.add_group("L0/residual", log);
         let x = relation.add_column("R", Kind::Witness(group), Width::signed(self.xbits), log);
+        if self.xbits <= 16 {
+            relation.ranges.push(stele_ir::relation::Range {
+                name: "R/range".into(),
+                column: x,
+                width: Width::signed(self.xbits),
+            });
+        } else {
+            let lo = relation.add_column("R/lo", Kind::Witness(group), Width::unsigned(16), log);
+            let hi = relation.add_column(
+                "R/hi",
+                Kind::Witness(group),
+                Width::signed(self.xbits - 16),
+                log,
+            );
+            relation.ranges.push(stele_ir::relation::Range {
+                name: "R/lo/range".into(),
+                column: lo,
+                width: Width::unsigned(16),
+            });
+            relation.ranges.push(stele_ir::relation::Range {
+                name: "R/hi/range".into(),
+                column: hi,
+                width: Width::signed(self.xbits - 16),
+            });
+            relation.composes.push(stele_ir::relation::Compose {
+                name: "R/compose".into(),
+                column: x,
+                limbs: vec![(lo, 0), (hi, 16)],
+            });
+        }
         let plan = RmsNormPlan {
             descriptor: self.descriptor,
             gains: self.gains.clone(),
@@ -97,7 +127,15 @@ impl Norm {
             }
         }
         let mut values = Values::new(&relation);
-        values.set(&relation, x, input).expect("input");
+        values.set(&relation, x, input.clone()).expect("input");
+        if self.xbits > 16 {
+            let lo_id = ColumnId(x.0 + 1);
+            let hi_id = ColumnId(x.0 + 2);
+            let lo: Vec<i64> = input.iter().map(|&v| v.rem_euclid(1 << 16)).collect();
+            let hi: Vec<i64> = input.iter().map(|&v| v.div_euclid(1 << 16)).collect();
+            values.set(&relation, lo_id, lo).expect("R/lo");
+            values.set(&relation, hi_id, hi).expect("R/hi");
+        }
         module.assign(&relation, capture, &mut values)?;
         Ok((relation, values))
     }
@@ -330,6 +368,7 @@ fn largest(shift: i16, code_bits: u8) -> i64 {
     }
 }
 
+#[derive(Clone)]
 struct Gather {
     plan: EmbeddingPlan,
     weights: Vec<i16>,
@@ -460,10 +499,17 @@ fn rejects_embedding_near_misses() {
             capture.output[1][k] = if product < 0 { -other } else { other } as i16;
             assert!(gather.check(&capture).is_err());
         }
-        let mut capture = honest.clone();
-        capture.codes[0][0] += 1;
+        // G is virtual (RFC-0028 §1.2): tampering the committed weight entry E[token_0, 0]
+        // while keeping R0 honest must be rejected by the rounding check.
+        let mut tampered_gather = gather.clone();
+        let idx = tampered_gather.plan.tokens[0] as usize * usize::from(tampered_gather.plan.width);
+        tampered_gather.weights[idx] = if tampered_gather.weights[idx] == 127 {
+            126
+        } else {
+            tampered_gather.weights[idx] + 1
+        };
         assert!(
-            gather.check(&capture).is_err(),
+            tampered_gather.check(&honest).is_err(),
             "a code off the gathered row"
         );
     }

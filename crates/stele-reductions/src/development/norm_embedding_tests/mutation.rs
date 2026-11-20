@@ -14,7 +14,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::format;
 use alloc::string::{String, ToString};
 use core::cell::Cell;
-use stele_ir::relation::{check_except, Ref};
+use stele_ir::relation::{check_except, eval_column, Def, Ref, Term};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum Constraint {
@@ -70,38 +70,44 @@ impl<'a> Eval<'a> {
 
     pub(super) fn violations(&self, v: &Values, cap: usize) -> Vec<Constraint> {
         let r = self.r;
-        let col = |c: ColumnId| v.get(r, c).expect("assigned");
-        let read = |f: &Ref, x: u64| i128::from(col(f.column)[f.index(x)]);
+        let evals: Vec<Option<Vec<i64>>> = (0..r.columns.len())
+            .map(|i| eval_column(r, v, ColumnId(i as u32)).ok())
+            .collect();
+        let col = |c: ColumnId| evals[c.0 as usize].as_deref();
+        let read = |f: &Ref, x: u64| col(f.column).map(|s| i128::from(s[f.index(x)]));
         let mut out = Vec::new();
         for (i, g) in r.ranges.iter().enumerate() {
-            if col(g.column).iter().any(|&x| !g.width.contains(x)) {
+            if col(g.column).is_none_or(|s| s.iter().any(|&x| !g.width.contains(x))) {
                 out.push(Constraint::Range(i));
             }
         }
         for (i, l) in r.lookups.iter().enumerate() {
             let bad = (0..1u64 << l.vars).any(|x| {
-                l.selector.as_ref().is_none_or(|s| read(s, x) != 0)
-                    && !self.tables[l.table.0 as usize].contains(
-                        &l.tuple
-                            .iter()
-                            .map(|f| read(f, x) as i64)
-                            .collect::<Vec<_>>(),
-                    )
+                let active = l.selector.as_ref().is_none_or(|s| read(s, x) != Some(0));
+                if !active {
+                    return false;
+                }
+                let tuple: Option<Vec<i64>> = l
+                    .tuple
+                    .iter()
+                    .map(|f| read(f, x).map(|n| n as i64))
+                    .collect();
+                tuple.is_none_or(|t| !self.tables[l.table.0 as usize].contains(&t))
             });
             if bad {
                 out.push(Constraint::Lookup(i));
             }
         }
         for (i, c) in r.composes.iter().enumerate() {
-            let column = col(c.column);
-            let bad = (0..column.len()).any(|x| {
-                let sum: i128 = c
-                    .limbs
-                    .iter()
-                    .map(|&(l, s)| i128::from(col(l)[x]) << s)
-                    .sum();
-                sum != i128::from(column[x])
-            });
+            let bad = match col(c.column) {
+                None => true,
+                Some(column) => (0..column.len()).any(|x| {
+                    let sum: Option<i128> = c.limbs.iter().try_fold(0i128, |acc, &(l, s)| {
+                        Some(acc + (i128::from(col(l)?[x]) << s))
+                    });
+                    sum != Some(i128::from(column[x]))
+                }),
+            };
             if bad {
                 out.push(Constraint::Compose(i));
             }
@@ -111,15 +117,14 @@ impl<'a> Eval<'a> {
         }
         for (i, d) in r.identities.iter().enumerate() {
             let bad = (0..1u64 << d.vars).any(|x| {
-                d.terms
-                    .iter()
-                    .map(|t| {
-                        t.factors
-                            .iter()
-                            .fold(i128::from(t.coeff), |p, f| p * read(f, x))
-                    })
-                    .sum::<i128>()
-                    != 0
+                let sum: Option<i128> = d.terms.iter().try_fold(0i128, |acc, t| {
+                    let prod = t
+                        .factors
+                        .iter()
+                        .try_fold(i128::from(t.coeff), |p, f| p.checked_mul(read(f, x)?))?;
+                    acc.checked_add(prod)
+                });
+                sum != Some(0)
             });
             if bad {
                 out.push(Constraint::Identity(i));
@@ -130,9 +135,11 @@ impl<'a> Eval<'a> {
         }
         for (i, m) in r.matmuls.iter().enumerate() {
             let bad = (0..1u64 << m.free).any(|x| {
-                let s: i128 = (0..1u64 << m.summed)
-                    .map(|y| read(&m.lhs, x | (y << m.free)) * read(&m.rhs, x | (y << m.free)))
-                    .sum();
+                let s: Option<i128> = (0..1u64 << m.summed).try_fold(0i128, |acc, y| {
+                    let prod = read(&m.lhs, x | (y << m.free))?
+                        .checked_mul(read(&m.rhs, x | (y << m.free))?)?;
+                    acc.checked_add(prod)
+                });
                 s != read(&m.out, x)
             });
             if bad {
@@ -144,7 +151,7 @@ impl<'a> Eval<'a> {
 }
 
 pub(super) fn referenced_witness(r: &Relation, c: Constraint) -> Vec<ColumnId> {
-    let mut v: Vec<ColumnId> = match c {
+    let v: Vec<ColumnId> = match c {
         Constraint::Identity(i) => r.identities[i]
             .terms
             .iter()
@@ -161,10 +168,24 @@ pub(super) fn referenced_witness(r: &Relation, c: Constraint) -> Vec<ColumnId> {
             vec![m.out.column, m.lhs.column, m.rhs.column]
         }
     };
-    v.sort();
-    v.dedup();
-    v.retain(|c| matches!(r.columns[c.0 as usize].kind, Kind::Witness(_)));
-    v
+    // Transitively expand virtual columns to their committed witness operands so mutation
+    // searches cover ranges and lookups over virtual columns (RFC-0028 §1.2).
+    let mut stack = v;
+    let mut out = Vec::new();
+    let mut seen = BTreeSet::new();
+    while let Some(col) = stack.pop() {
+        if !seen.insert(col) {
+            continue;
+        }
+        match &r.columns[col.0 as usize].kind {
+            Kind::Witness(_) => out.push(col),
+            Kind::Virtual(def) => stack.extend(def.operands()),
+            _ => {}
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
 }
 
 pub(super) fn column(r: &Relation, name: &str) -> Option<ColumnId> {
@@ -175,14 +196,17 @@ pub(super) fn column(r: &Relation, name: &str) -> Option<ColumnId> {
 }
 
 fn read(r: &Relation, v: &Values, f: &Ref, x: u64) -> i128 {
-    i128::from(v.get(r, f.column).expect("assigned")[f.index(x)])
+    i128::from(eval_column(r, v, f.column).expect("assigned")[f.index(x)])
 }
 
 pub(super) fn get(r: &Relation, v: &Values, c: ColumnId, i: usize) -> i128 {
-    i128::from(v.get(r, c).expect("assigned")[i])
+    i128::from(eval_column(r, v, c).expect("assigned")[i])
 }
 
 pub(super) fn set(r: &Relation, v: &mut Values, c: ColumnId, i: usize, value: i128) {
+    if matches!(r.columns[c.0 as usize].kind, Kind::Virtual(_)) {
+        return;
+    }
     let mut col = v.get(r, c).expect("assigned").to_vec();
     col[i] = value as i64;
     v.set(r, c, col).expect("length");
@@ -191,7 +215,7 @@ pub(super) fn set(r: &Relation, v: &mut Values, c: ColumnId, i: usize, value: i1
 /// Re-derive the byte limbs of Compose `k` from its column (top limb keeps the rest).
 pub(super) fn derive_limbs(r: &Relation, v: &mut Values, k: usize) {
     let c = r.composes[k].clone();
-    let column = v.get(r, c.column).expect("column").to_vec();
+    let column = eval_column(r, v, c.column).expect("column");
     let n = c.limbs.len();
     let split: Vec<Vec<i64>> = column
         .iter()
@@ -203,7 +227,8 @@ pub(super) fn derive_limbs(r: &Relation, v: &mut Values, k: usize) {
     }
 }
 
-/// Recompute every witness matmul output except `skip`, and the limbs of its Compose.
+/// Recompute every witness matmul output except `skip`, and the limbs of its Compose
+/// (including `Compose` limbs of virtual `Def::Contraction` columns, RFC-0028 §1.2).
 pub(super) fn recompute_matmuls(r: &Relation, v: &mut Values, skip: Constraint) {
     for (j, m) in r.matmuls.iter().enumerate() {
         if skip == Constraint::Matmul(j)
@@ -227,16 +252,27 @@ pub(super) fn recompute_matmuls(r: &Relation, v: &mut Values, skip: Constraint) 
             }
         }
     }
+    for (k, c) in r.composes.iter().enumerate() {
+        if skip != Constraint::Compose(k)
+            && matches!(
+                r.columns[c.column.0 as usize].kind,
+                Kind::Virtual(Def::Contraction { .. })
+            )
+        {
+            derive_limbs(r, v, k);
+        }
+    }
 }
 
 /// One radix-256 chain: identities `{name}/{i}`, free bytes `{free}{i}` and an optional
 /// free wide column (the norm output). Carries are found structurally: the columns
-/// with coefficient `−256` (or `−2^24`) at a position.
+/// with coefficient `−2^radix` (or `−2^(radix+16)`) at a position.
 #[derive(Clone, Copy)]
 pub(super) struct ChainSpec<'a> {
     pub(super) name: &'a str,
     pub(super) free: &'a str,
     pub(super) wide: Option<&'a str>,
+    pub(super) radix: u32,
 }
 
 pub(super) struct Solver<'a> {
@@ -245,28 +281,106 @@ pub(super) struct Solver<'a> {
     pub(super) specs: &'a [ChainSpec<'a>],
     /// The tampered columns: the solver never overwrites them.
     pub(super) keep: Cell<Option<ColumnId>>,
+    /// Target `(virtual_col, index, value)` override for a kept virtual chain limb.
+    pub(super) keep_val: Cell<Option<(ColumnId, usize, i128)>>,
+}
+
+enum ChainPos {
+    Identity(usize, u8, Vec<Term>),
+    Virtual(ColumnId, u8, Vec<Term>),
+}
+
+impl ChainPos {
+    fn vars(&self) -> u8 {
+        match *self {
+            Self::Identity(_, v, _) | Self::Virtual(_, v, _) => v,
+        }
+    }
+
+    fn terms(&self) -> &[Term] {
+        match self {
+            Self::Identity(_, _, t) | Self::Virtual(_, _, t) => t,
+        }
+    }
+
+    fn identity_id(&self) -> Option<usize> {
+        match *self {
+            Self::Identity(id, _, _) => Some(id),
+            Self::Virtual(_, _, _) => None,
+        }
+    }
+
+    fn virtual_col(&self) -> Option<ColumnId> {
+        match *self {
+            Self::Virtual(col, _, _) => Some(col),
+            Self::Identity(_, _, _) => None,
+        }
+    }
 }
 
 impl Solver<'_> {
-    fn ids(&self, spec: ChainSpec) -> Vec<usize> {
+    fn positions(&self, spec: ChainSpec) -> Vec<ChainPos> {
         let s = self.scope;
-        (0..)
-            .map_while(|i| {
-                self.r
-                    .identities
-                    .iter()
-                    .position(|d| d.name == format!("{s}/{}/{i}", spec.name))
-            })
-            .collect()
+        let mut out = Vec::new();
+        for i in 0.. {
+            if let Some(id) = self
+                .r
+                .identities
+                .iter()
+                .position(|d| d.name == format!("{s}/{}/{i}", spec.name))
+            {
+                let d = &self.r.identities[id];
+                out.push(ChainPos::Identity(id, d.vars, d.terms.clone()));
+                continue;
+            }
+            let target_name = format!("{s}/{}{i}", spec.free);
+            if let Some(col_idx) = self.r.columns.iter().position(|c| c.name == target_name) {
+                match &self.r.columns[col_idx].kind {
+                    Kind::Virtual(Def::Pointwise { terms }) => {
+                        out.push(ChainPos::Virtual(
+                            ColumnId(col_idx as u32),
+                            self.r.columns[col_idx].log_len,
+                            terms.clone(),
+                        ));
+                        continue;
+                    }
+                    Kind::Virtual(Def::Linear { constant, terms }) => {
+                        let mut ts: Vec<Term> = terms
+                            .iter()
+                            .map(|(c, f)| Term {
+                                coeff: *c,
+                                factors: vec![f.clone()],
+                            })
+                            .collect();
+                        if *constant != 0 {
+                            ts.push(Term {
+                                coeff: *constant,
+                                factors: Vec::new(),
+                            });
+                        }
+                        out.push(ChainPos::Virtual(
+                            ColumnId(col_idx as u32),
+                            self.r.columns[col_idx].log_len,
+                            ts,
+                        ));
+                        continue;
+                    }
+                    _ => {}
+                }
+            }
+            break;
+        }
+        out
     }
 
-    /// Carry-out columns of an identity: (column, weight) with `carry = Σ weight·column`.
-    fn carries(&self, id: usize) -> Vec<(ColumnId, i128)> {
-        self.r.identities[id]
-            .terms
+    /// Carry-out columns of a position: (column, weight) with `carry = Σ weight·column`.
+    fn carries(&self, pos: &ChainPos, radix: u32) -> Vec<(ColumnId, i128)> {
+        let base = 1i64 << radix;
+        let split = base << 16;
+        pos.terms()
             .iter()
-            .filter(|t| t.factors.len() == 1 && (t.coeff == -256 || t.coeff == -(1 << 24)))
-            .map(|t| (t.factors[0].column, i128::from(t.coeff / -256)))
+            .filter(|t| t.factors.len() == 1 && (t.coeff == -base || t.coeff == -split))
+            .map(|t| (t.factors[0].column, i128::from(t.coeff / -base)))
             .collect()
     }
 
@@ -301,9 +415,8 @@ impl Solver<'_> {
         }
     }
 
-    fn sum(&self, v: &Values, id: usize, x: u64, skip: &[ColumnId]) -> i128 {
-        self.r.identities[id]
-            .terms
+    fn sum(&self, v: &Values, pos: &ChainPos, x: u64, skip: &[ColumnId]) -> i128 {
+        pos.terms()
             .iter()
             .filter(|t| t.factors.iter().all(|f| !skip.contains(&f.column)))
             .map(|t| {
@@ -314,7 +427,48 @@ impl Solver<'_> {
             .sum()
     }
 
+    /// Recompute `P_q0` and `P2` from `(X0, X1, H0, H1)` unless kept.
+    fn solve_product(&self, v: &mut Values) -> Option<()> {
+        let (r, s) = (self.r, self.scope);
+        let (Some(qp0), Some(p2)) = (
+            column(r, &format!("{s}/P_q0")),
+            column(r, &format!("{s}/P2")),
+        ) else {
+            return Some(());
+        };
+        let x0 = column(r, &format!("{s}/X0"))?;
+        let x1 = column(r, &format!("{s}/X1"))?;
+        let h0 = column(r, &format!("{s}/H0"))?;
+        let h1 = column(r, &format!("{s}/H1"))?;
+        let keep = self.keep.get();
+        let len = 1usize << r.columns[qp0.0 as usize].log_len;
+        let d_len = 1usize << r.columns[h0.0 as usize].log_len;
+        let mut qv = v.get(r, qp0)?.to_vec();
+        let mut p2v = v.get(r, p2)?.to_vec();
+        for i in 0..len {
+            let k = i & (d_len - 1);
+            let xv0 = get(r, v, x0, i);
+            let xv1 = get(r, v, x1, i);
+            let hv0 = get(r, v, h0, k);
+            let hv1 = get(r, v, h1, k);
+            if keep != Some(qp0) {
+                qv[i] = (xv0 * hv0 + 256 * (xv0 * hv1 + xv1 * hv0)).div_euclid(4096) as i64;
+            }
+            if keep != Some(p2) {
+                p2v[i] = (i128::from(qv[i]) + 16 * xv1 * hv1).div_euclid(4096) as i64;
+            }
+        }
+        if keep != Some(qp0) {
+            v.set(r, qp0, qv).ok()?;
+        }
+        if keep != Some(p2) {
+            v.set(r, p2, p2v).ok()?;
+        }
+        Some(())
+    }
+
     pub(super) fn solve(&self, v: &mut Values, cut: Constraint) -> Option<()> {
+        self.solve_product(v)?;
         for spec in self.specs {
             self.chain(v, *spec, cut)?;
         }
@@ -325,29 +479,41 @@ impl Solver<'_> {
     /// identity `cut`, solve the positions above it top-down instead.
     pub(super) fn chain(&self, v: &mut Values, spec: ChainSpec, cut: Constraint) -> Option<()> {
         let (r, s) = (self.r, self.scope);
-        let ids = self.ids(spec);
-        let last = ids.len() - 1;
-        let split = ids.iter().position(|&id| cut == Constraint::Identity(id));
+        let base = 1i128 << spec.radix;
+        let positions = self.positions(spec);
+        if positions.is_empty() {
+            return Some(());
+        }
+        let last = positions.len() - 1;
+        let split = positions.iter().position(|p| {
+            p.identity_id()
+                .is_some_and(|id| cut == Constraint::Identity(id))
+        });
         let keep = self.keep.get();
+        let keep_val = self.keep_val.get();
         let wide = spec
             .wide
             .and_then(|w| column(r, &format!("{s}/{w}")))
             .filter(|&w| Some(w) != keep);
-        let size = 1u64 << r.identities[ids[0]].vars;
-        let mentions = |id: usize, c: ColumnId| {
-            r.identities[id]
-                .terms
+        let size = 1u64 << positions[0].vars();
+        let mentions = |pos: &ChainPos, c: ColumnId| {
+            pos.terms()
                 .iter()
                 .any(|t| t.factors.iter().any(|f| f.column == c))
         };
-        let outs: Vec<Vec<(ColumnId, i128)>> = ids.iter().map(|&id| self.carries(id)).collect();
+        let outs: Vec<Vec<(ColumnId, i128)>> = positions
+            .iter()
+            .map(|p| self.carries(p, spec.radix))
+            .collect();
         let cols = |k: usize| outs[k].iter().map(|c| c.0).collect::<Vec<_>>();
         let byte_at = |i: usize| {
+            if let Some(vc) = positions[i].virtual_col() {
+                return (Some(vc) != keep || keep_val.is_some_and(|(c, _, _)| c == vc))
+                    .then_some(vc);
+            }
             column(r, &format!("{s}/{}{i}", spec.free))
-                .filter(|&c| mentions(ids[i], c) && Some(c) != keep)
+                .filter(|&c| mentions(&positions[i], c) && Some(c) != keep)
         };
-        // Without a cut, the highest free byte takes whatever the positions above leave:
-        // its carry-out comes top-down, so a value change lands in that byte.
         let top_free = if split.is_none() && wide.is_none() {
             (0..=last).rev().find(|&i| byte_at(i).is_some())
         } else {
@@ -355,8 +521,8 @@ impl Solver<'_> {
         };
         for i in 0..split.or(top_free).unwrap_or(last + 1) {
             let byte = byte_at(i);
-            if let Some(w) = wide.filter(|&w| mentions(ids[i], w)) {
-                // Y = −(c_in + Σ_{j>=i} 256^(j−i)·T'_j): the output the chain implies.
+            let is_virtual = positions[i].virtual_col().is_some();
+            if let Some(w) = wide.filter(|&w| mentions(&positions[i], w)) {
                 let mut y = Vec::new();
                 for x in 0..size {
                     let mut total = 0i128;
@@ -366,7 +532,7 @@ impl Solver<'_> {
                         if j > i {
                             skip.extend(cols(j - 1));
                         }
-                        total = total * 256 + self.sum(v, ids[j], x, &skip);
+                        total = total * base + self.sum(v, &positions[j], x, &skip);
                     }
                     y.push((-total) as i64);
                 }
@@ -376,42 +542,59 @@ impl Solver<'_> {
             skip.extend(byte);
             let (mut carries, mut bytes) = (Vec::new(), Vec::new());
             for x in 0..size {
-                let mut sum = self.sum(v, ids[i], x, &skip);
-                if byte.is_some() {
-                    let b = if i == last { sum } else { sum.rem_euclid(256) };
+                let mut sum = self.sum(v, &positions[i], x, &skip);
+                if let Some(b_col) = byte {
+                    let b = if let Some((kc, kidx, kval)) = keep_val {
+                        if kc == b_col && kidx == x as usize {
+                            kval
+                        } else if i == last {
+                            sum
+                        } else {
+                            sum.rem_euclid(base)
+                        }
+                    } else if i == last {
+                        sum
+                    } else {
+                        sum.rem_euclid(base)
+                    };
                     bytes.push(b as i64);
                     sum -= b;
                 }
-                if (i == last && sum != 0) || sum % 256 != 0 {
+                if (i == last && sum != 0) || sum % base != 0 {
                     return None;
                 }
-                carries.push(sum / 256);
+                carries.push(sum / base);
             }
             if let Some(b) = byte {
-                v.set(r, b, bytes).ok()?;
+                if !is_virtual {
+                    v.set(r, b, bytes).ok()?;
+                }
             }
             self.put(v, &outs[i], &carries)?;
         }
         let mut above = vec![0i128; size as usize];
         if let Some(cut) = split.or(top_free) {
-            // c_{j-1} = 256·c_j − T'_j from the top down to the removed position.
             for j in (cut + 1..=last).rev() {
                 let mut skip = cols(j);
                 skip.extend(cols(j - 1));
                 for (x, c) in above.iter_mut().enumerate() {
-                    *c = 256 * *c - self.sum(v, ids[j], x as u64, &skip);
+                    *c = base * *c - self.sum(v, &positions[j], x as u64, &skip);
                 }
                 self.put(v, &outs[j - 1], &above)?;
             }
         }
         if let Some(t) = top_free {
-            let byte = byte_at(t).expect("free byte");
-            let mut skip = cols(t);
-            skip.push(byte);
-            let bytes = (0..size)
-                .map(|x| (self.sum(v, ids[t], x, &skip) - 256 * above[x as usize]) as i64)
-                .collect();
-            v.set(r, byte, bytes).ok()?;
+            if positions[t].virtual_col().is_none() {
+                let byte = byte_at(t).expect("free byte");
+                let mut skip = cols(t);
+                skip.push(byte);
+                let bytes = (0..size)
+                    .map(|x| {
+                        (self.sum(v, &positions[t], x, &skip) - base * above[x as usize]) as i64
+                    })
+                    .collect();
+                v.set(r, byte, bytes).ok()?;
+            }
         }
         Some(())
     }
@@ -460,10 +643,7 @@ pub(super) fn survey(
                     signed,
                     bits: g.width.bits + 1,
                 };
-                v.get(r, g.column)
-                    .expect("assigned")
-                    .iter()
-                    .all(|&x| wide.contains(x))
+                eval_column(r, v, g.column).is_ok_and(|s| s.iter().all(|&x| wide.contains(x)))
             }
             _ => true,
         };

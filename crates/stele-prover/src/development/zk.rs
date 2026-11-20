@@ -32,7 +32,8 @@ use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_field::Serialize;
 use stele_reductions::stele_hash::Transcript;
 use stele_reductions::stele_ir::relation::{
-    check, ColumnId, Identity, Kind, Range, Ref, Relation, Term as IdentityTerm, Values, Width,
+    check, eval_column, ColumnId, Compose, Def, GroupId, Identity, Kind, Matmul, Range, Ref,
+    Relation, Term as IdentityTerm, Values, Width,
 };
 use stele_reductions::zk::claims::{Lifetime, ModelSecret};
 use stele_reductions::zk::{claims, relation as zk_relation};
@@ -581,6 +582,274 @@ pub fn commit_records(
         }
         derived.push((low, h1, sigma));
     }
+    // Materialize every RFC-0028 virtual column into a disciplined witness column +
+    // explicit Identity/Matmul for legacy dev-zk (zk_relation requires no virtual columns
+    // until E23). Magnitudes are read AFTER 1-D gains become Weight so the materialized
+    // relation is identical on published and real inputs.
+    let orig_len = rel.columns.len();
+    let orig_mags: Vec<u128> = (0..orig_len)
+        .map(|i| rel.column_magnitude(ColumnId(i as u32)).unwrap_or(0))
+        .collect();
+    let mut ranged_width: alloc::collections::BTreeMap<ColumnId, Width> =
+        alloc::collections::BTreeMap::new();
+    for range in &rel.ranges {
+        ranged_width.entry(range.column).or_insert(range.width);
+    }
+    for lookup in rel.lookups.iter().filter(|l| l.selector.is_none()) {
+        let table = &rel.tables[lookup.table.0 as usize];
+        for (r, &w) in lookup.tuple.iter().zip(&table.widths) {
+            ranged_width.entry(r.column).or_insert(w);
+        }
+    }
+    let composed_map: alloc::collections::BTreeMap<ColumnId, usize> = rel
+        .composes
+        .iter()
+        .enumerate()
+        .map(|(idx, c)| (c.column, idx))
+        .collect();
+    let mut vgroups: alloc::collections::BTreeMap<u8, GroupId> =
+        alloc::collections::BTreeMap::new();
+    let mut virtual_ids: Vec<ColumnId> = Vec::new();
+    let mut virtual_limbs: Vec<(ColumnId, ColumnId, ColumnId)> = Vec::new();
+    let mut virtual_contractions: Vec<(usize, u8, ColumnId, ColumnId)> = Vec::new();
+    let signed_bits = |mag: u128| -> u8 {
+        if mag == 0 {
+            1
+        } else {
+            ((128 - mag.leading_zeros()) as u8 + 1).min(31)
+        }
+    };
+    let width_covering = |low: i128, high: i128| -> Width {
+        if low >= 0 {
+            let bits = if high == 0 {
+                1
+            } else {
+                (128 - (high as u128).leading_zeros()) as u8
+            };
+            Width::unsigned(bits.min(30))
+        } else {
+            let max_abs = (high.unsigned_abs()).max(low.unsigned_abs());
+            let mut bits = if max_abs == 0 {
+                1
+            } else {
+                (128 - max_abs.leading_zeros()) as u8
+            };
+            let w = Width::signed(bits.min(31));
+            if i128::from(w.min()) <= low && high <= i128::from(w.max()) {
+                w
+            } else {
+                bits = (bits + 1).min(31);
+                Width::signed(bits)
+            }
+        }
+    };
+    for i in 0..orig_len {
+        let def = match rel.columns[i].kind.clone() {
+            Kind::Virtual(def) => def,
+            _ => continue,
+        };
+        let id = ColumnId(i as u32);
+        let col_name = rel.columns[i].name.clone();
+        let log_len = rel.columns[i].log_len;
+        let group = *vgroups
+            .entry(log_len)
+            .or_insert_with(|| rel.add_group(&alloc::format!("dev-zk/virtual/{log_len}"), log_len));
+        virtual_ids.push(id);
+        match def {
+            Def::Contraction {
+                free,
+                summed,
+                lhs,
+                rhs,
+            } => {
+                rel.columns[i].kind = Kind::Witness(group);
+                if let Some(&w) = ranged_width.get(&id) {
+                    rel.columns[i].width = w;
+                } else {
+                    let worst = (1u128 << summed)
+                        .saturating_mul(orig_mags[lhs.column.0 as usize])
+                        .saturating_mul(orig_mags[rhs.column.0 as usize]);
+                    rel.columns[i].width = Width::signed(signed_bits(worst));
+                    virtual_contractions.push((i, summed, lhs.column, rhs.column));
+                }
+                rel.matmuls.push(Matmul {
+                    name: alloc::format!("{col_name}/virtual"),
+                    free,
+                    summed,
+                    out: Ref::identity(id, free),
+                    lhs,
+                    rhs,
+                });
+            }
+            Def::Linear { constant, terms } => {
+                let mut id_terms = Vec::with_capacity(terms.len() + 2);
+                id_terms.push(IdentityTerm {
+                    coeff: -1,
+                    factors: alloc::vec![Ref::identity(id, log_len)],
+                });
+                if constant != 0 {
+                    id_terms.push(IdentityTerm {
+                        coeff: constant,
+                        factors: Vec::new(),
+                    });
+                }
+                for (coeff, r) in terms {
+                    id_terms.push(IdentityTerm {
+                        coeff,
+                        factors: alloc::vec![r],
+                    });
+                }
+                rel.identities.push(Identity {
+                    name: alloc::format!("{col_name}/virtual"),
+                    vars: log_len,
+                    terms: id_terms,
+                });
+                rel.columns[i].kind = Kind::Witness(group);
+                if let Some(&w) = ranged_width.get(&id) {
+                    rel.columns[i].width = w;
+                } else if composed_map.contains_key(&id) {
+                    rel.columns[i].width = Width::signed(signed_bits(orig_mags[i]));
+                } else {
+                    let bits = signed_bits(orig_mags[i]);
+                    if bits <= 16 {
+                        let w = Width::signed(bits);
+                        rel.columns[i].width = w;
+                        rel.ranges.push(Range {
+                            name: alloc::format!("{col_name}/virtual/range"),
+                            column: id,
+                            width: w,
+                        });
+                    } else {
+                        rel.columns[i].width = Width::signed(bits);
+                        let lo = rel.add_column(
+                            &alloc::format!("{col_name}/virtual/lo"),
+                            Kind::Witness(group),
+                            Width::unsigned(15),
+                            log_len,
+                        );
+                        let hi_w = Width::signed(bits - 15);
+                        let hi = rel.add_column(
+                            &alloc::format!("{col_name}/virtual/hi"),
+                            Kind::Witness(group),
+                            hi_w,
+                            log_len,
+                        );
+                        rel.ranges.push(Range {
+                            name: alloc::format!("{col_name}/virtual/lo/range"),
+                            column: lo,
+                            width: Width::unsigned(15),
+                        });
+                        rel.ranges.push(Range {
+                            name: alloc::format!("{col_name}/virtual/hi/range"),
+                            column: hi,
+                            width: hi_w,
+                        });
+                        rel.composes.push(Compose {
+                            name: alloc::format!("{col_name}/virtual/compose"),
+                            column: id,
+                            limbs: alloc::vec![(lo, 0), (hi, 15)],
+                        });
+                        virtual_limbs.push((id, lo, hi));
+                    }
+                }
+            }
+            Def::Pointwise { terms } => {
+                let mut id_terms = Vec::with_capacity(terms.len() + 1);
+                id_terms.push(IdentityTerm {
+                    coeff: -1,
+                    factors: alloc::vec![Ref::identity(id, log_len)],
+                });
+                id_terms.extend(terms);
+                rel.identities.push(Identity {
+                    name: alloc::format!("{col_name}/virtual"),
+                    vars: log_len,
+                    terms: id_terms,
+                });
+                rel.columns[i].kind = Kind::Witness(group);
+                if let Some(&w) = ranged_width.get(&id) {
+                    rel.columns[i].width = w;
+                } else if composed_map.contains_key(&id) {
+                    rel.columns[i].width = Width::signed(signed_bits(orig_mags[i]));
+                } else {
+                    let bits = signed_bits(orig_mags[i]);
+                    if bits <= 16 {
+                        let w = Width::signed(bits);
+                        rel.columns[i].width = w;
+                        rel.ranges.push(Range {
+                            name: alloc::format!("{col_name}/virtual/range"),
+                            column: id,
+                            width: w,
+                        });
+                    } else {
+                        rel.columns[i].width = Width::signed(bits);
+                        let lo = rel.add_column(
+                            &alloc::format!("{col_name}/virtual/lo"),
+                            Kind::Witness(group),
+                            Width::unsigned(15),
+                            log_len,
+                        );
+                        let hi_w = Width::signed(bits - 15);
+                        let hi = rel.add_column(
+                            &alloc::format!("{col_name}/virtual/hi"),
+                            Kind::Witness(group),
+                            hi_w,
+                            log_len,
+                        );
+                        rel.ranges.push(Range {
+                            name: alloc::format!("{col_name}/virtual/lo/range"),
+                            column: lo,
+                            width: Width::unsigned(15),
+                        });
+                        rel.ranges.push(Range {
+                            name: alloc::format!("{col_name}/virtual/hi/range"),
+                            column: hi,
+                            width: hi_w,
+                        });
+                        rel.composes.push(Compose {
+                            name: alloc::format!("{col_name}/virtual/compose"),
+                            column: id,
+                            limbs: alloc::vec![(lo, 0), (hi, 15)],
+                        });
+                        virtual_limbs.push((id, lo, hi));
+                    }
+                }
+            }
+        }
+    }
+    // Fixpoint widths of materialized contractions and composed virtuals so
+    // `Relation::validate` disciplines every materialized witness column.
+    for _ in 0..8 {
+        let mut changed = false;
+        for &(i, summed, lhs, rhs) in &virtual_contractions {
+            let ml = rel.column_magnitude(lhs).unwrap_or(0);
+            let mr = rel.column_magnitude(rhs).unwrap_or(0);
+            let worst = (1u128 << summed).saturating_mul(ml).saturating_mul(mr);
+            let w = Width::signed(signed_bits(worst));
+            if rel.columns[i].width != w {
+                rel.columns[i].width = w;
+                changed = true;
+            }
+        }
+        for (&id, &cidx) in &composed_map {
+            if !virtual_ids.contains(&id) || ranged_width.contains_key(&id) {
+                continue;
+            }
+            let (mut low, mut high) = (0i128, 0i128);
+            for &(limb, shift) in &rel.composes[cidx].limbs {
+                let lw = rel.columns[limb.0 as usize].width;
+                low += i128::from(lw.min()) << shift;
+                high += i128::from(lw.max()) << shift;
+            }
+            let w = width_covering(low, high);
+            if rel.columns[id.0 as usize].width != w {
+                rel.columns[id.0 as usize].width = w;
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
     rel.validate().map_err(|_| Error::UnsupportedModel)?;
     let Some((values, real)) = values else {
         return Ok((rel, None));
@@ -588,7 +857,7 @@ pub fn commit_records(
     let mut out = Values::new(&rel);
     for i in 0..relation.columns.len() {
         let id = ColumnId(i as u32);
-        if matches!(relation.columns[i].kind, Kind::Public(_)) {
+        if matches!(relation.columns[i].kind, Kind::Public(_) | Kind::Virtual(_)) {
             continue;
         }
         let v = values.get(real, id).ok_or(Error::Witness)?.to_vec();
@@ -596,6 +865,17 @@ pub fn commit_records(
     }
     for (id, v) in &converted {
         out.set(&rel, *id, v.clone()).map_err(|_| Error::Witness)?;
+    }
+    for id in virtual_ids {
+        let v = eval_column(real, values, id).map_err(|_| Error::Witness)?;
+        out.set(&rel, id, v).map_err(|_| Error::Witness)?;
+    }
+    for (id, lo, hi) in virtual_limbs {
+        let v = out.get(&rel, id).ok_or(Error::Witness)?.to_vec();
+        let lov: Vec<i64> = v.iter().map(|x| x.rem_euclid(1 << 15)).collect();
+        let hiv: Vec<i64> = v.iter().map(|x| x.div_euclid(1 << 15)).collect();
+        out.set(&rel, lo, lov).map_err(|_| Error::Witness)?;
+        out.set(&rel, hi, hiv).map_err(|_| Error::Witness)?;
     }
     for (low, h1, sigma) in derived {
         let get = |id| out.get(&rel, id).map(<[i64]>::to_vec).ok_or(Error::Witness);

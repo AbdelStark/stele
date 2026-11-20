@@ -14,16 +14,44 @@ fn first_item<T: Sync>(
 ) -> Result<(), Violation> {
     let one = |item: &T| kept(item).then(|| failure(item)).flatten();
     #[cfg(feature = "std")]
-    let found = items
-        .par_iter()
-        .map(one)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .flatten()
-        .next();
+    let found = if items.len() >= 16 {
+        items
+            .par_iter()
+            .map(one)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .flatten()
+            .next()
+    } else {
+        items.iter().find_map(one)
+    };
     #[cfg(not(feature = "std"))]
     let found = items.iter().find_map(one);
     found.map_or(Ok(()), Err)
+}
+
+/// Fast index evaluator: direct bit-gather on small domains, byte-table on large ones.
+enum Indexer<'a> {
+    Direct(&'a Ref),
+    Table(Gather),
+}
+
+impl<'a> Indexer<'a> {
+    fn new(r: &'a Ref, domain_size: usize) -> Self {
+        if domain_size >= 512 {
+            Self::Table(Gather::new(r))
+        } else {
+            Self::Direct(r)
+        }
+    }
+
+    #[inline]
+    fn index(&self, x: u64) -> usize {
+        match self {
+            Self::Direct(r) => r.index(x),
+            Self::Table(g) => g.index(x),
+        }
+    }
 }
 
 /// [`Ref::index`] as one table per byte of the domain point: `index(x)` is the OR of
@@ -102,9 +130,9 @@ fn eval_virtual(
     let col = |id: ColumnId| resolved[id.0 as usize].as_ref().expect("operand resolved");
     match def {
         Def::Linear { constant, terms } => {
-            let compiled: Vec<(i128, &ColData<'_>, Gather)> = terms
+            let compiled: Vec<(i128, &ColData<'_>, Indexer<'_>)> = terms
                 .iter()
-                .map(|(c, r)| (*c as i128, col(r.column), Gather::new(r)))
+                .map(|(c, r)| (*c as i128, col(r.column), Indexer::new(r, n)))
                 .collect();
             let c0 = *constant as i128;
             let eval_at = |x: usize| {
@@ -115,7 +143,11 @@ fn eval_virtual(
             };
             #[cfg(feature = "std")]
             {
-                (0..n).into_par_iter().map(eval_at).collect()
+                if n >= 4096 {
+                    (0..n).into_par_iter().map(eval_at).collect()
+                } else {
+                    (0..n).map(eval_at).collect()
+                }
             }
             #[cfg(not(feature = "std"))]
             {
@@ -123,13 +155,13 @@ fn eval_virtual(
             }
         }
         Def::Pointwise { terms } => {
-            let compiled: Vec<(i128, Vec<(&ColData<'_>, Gather)>)> = terms
+            let compiled: Vec<(i128, Vec<(&ColData<'_>, Indexer<'_>)>)> = terms
                 .iter()
                 .map(|t| {
                     let factors = t
                         .factors
                         .iter()
-                        .map(|f| (col(f.column), Gather::new(f)))
+                        .map(|f| (col(f.column), Indexer::new(f, n)))
                         .collect();
                     (t.coeff as i128, factors)
                 })
@@ -144,7 +176,11 @@ fn eval_virtual(
             };
             #[cfg(feature = "std")]
             {
-                (0..n).into_par_iter().map(eval_at).collect()
+                if n >= 4096 {
+                    (0..n).into_par_iter().map(eval_at).collect()
+                } else {
+                    (0..n).map(eval_at).collect()
+                }
             }
             #[cfg(not(feature = "std"))]
             {
@@ -158,7 +194,9 @@ fn eval_virtual(
             rhs,
         } => {
             let (lc, rc) = (col(lhs.column), col(rhs.column));
-            let (lg, rg) = (Gather::new(lhs), Gather::new(rhs));
+            let total_work =
+                n.saturating_mul(1usize.checked_shl(u32::from(*summed)).unwrap_or(usize::MAX));
+            let (lg, rg) = (Indexer::new(lhs, total_work), Indexer::new(rhs, total_work));
             let summed_range = 0..1u64 << *summed;
             let ys: Vec<(usize, usize)> = if *summed <= summed_table {
                 summed_range
@@ -185,7 +223,11 @@ fn eval_virtual(
             };
             #[cfg(feature = "std")]
             {
-                (0..n).into_par_iter().map(eval_at).collect()
+                if n >= 256 {
+                    (0..n).into_par_iter().map(eval_at).collect()
+                } else {
+                    (0..n).map(eval_at).collect()
+                }
             }
             #[cfg(not(feature = "std"))]
             {
@@ -202,8 +244,9 @@ const SUMMED_TABLE: u8 = 20;
 /// The least `x < n` with `failed(x)`.
 fn first_point(n: u64, failed: impl Fn(u64) -> bool + Sync) -> Option<u64> {
     #[cfg(feature = "std")]
-    return (0..n).into_par_iter().find_first(|x| failed(*x));
-    #[cfg(not(feature = "std"))]
+    if n >= 4096 {
+        return (0..n).into_par_iter().find_first(|x| failed(*x));
+    }
     (0..n).find(|x| failed(*x))
 }
 
@@ -211,6 +254,65 @@ fn first_point(n: u64, failed: impl Fn(u64) -> bool + Sync) -> Option<u64> {
 /// the integers. Returns the first failure in that order.
 pub fn check(relation: &Relation, values: &Values) -> Result<(), Violation> {
     check_except(relation, values, &[])
+}
+
+/// Evaluate one column's integer values from `values` (borrowing public/witness/weight columns
+/// or recursively evaluating `Kind::Virtual` operands over `Z`, RFC-0028 §2.1).
+pub fn eval_column(
+    relation: &Relation,
+    values: &Values,
+    target: ColumnId,
+) -> Result<Vec<i64>, Violation> {
+    let idx = target.0 as usize;
+    if idx >= relation.columns.len() {
+        return Err(Violation::Missing(target));
+    }
+    if !matches!(relation.columns[idx].kind, Kind::Virtual(_)) {
+        return values
+            .get(relation, target)
+            .map(|s| s.to_vec())
+            .ok_or(Violation::Missing(target));
+    }
+    // Mark transitive dependencies needed for `target`.
+    let mut needed = alloc::vec![false; idx + 1];
+    needed[idx] = true;
+    for i in (0..=idx).rev() {
+        if needed[i] {
+            if let Kind::Virtual(def) = &relation.columns[i].kind {
+                for op in def.operands() {
+                    if (op.0 as usize) < i {
+                        needed[op.0 as usize] = true;
+                    }
+                }
+            }
+        }
+    }
+    let mut resolved: Vec<Option<ColData<'_>>> = (0..=idx).map(|_| None).collect();
+    for (i, &need) in needed.iter().enumerate() {
+        if !need {
+            continue;
+        }
+        let cid = ColumnId(i as u32);
+        let col = &relation.columns[i];
+        match &col.kind {
+            Kind::Virtual(def) => {
+                let data = eval_virtual(col.log_len, def, &resolved, SUMMED_TABLE);
+                resolved[i] = Some(ColData::Computed(data));
+            }
+            _ => {
+                let slice = values.get(relation, cid).ok_or(Violation::Missing(cid))?;
+                resolved[i] = Some(ColData::Borrowed(slice));
+            }
+        }
+    }
+    match resolved[idx].take().ok_or(Violation::Missing(target))? {
+        ColData::Borrowed(s) => Ok(s.to_vec()),
+        ColData::Computed(v) => v
+            .into_iter()
+            .map(|x| x.and_then(|n| i64::try_from(n).ok()))
+            .collect::<Option<Vec<i64>>>()
+            .ok_or(Violation::Missing(target)),
+    }
 }
 
 /// Validate `relation`, then evaluate every constraint owned by `segment` over the integers

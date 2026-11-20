@@ -4641,3 +4641,51 @@ soundness ledger lines with no new transcript label). Key choices:
 - Until E18-02 implements virtual reductions, `stele-reductions::relation::plan` and
   `plan_segmented` reject relations containing virtual columns with `Unsupported`.
   No security level or profile promotion is granted (Workflow 10).
+
+## ADR-151 — RFC-0028 A1 range-tightened virtual magnitudes and Bet B1 kill-criterion fallback (E18-05)
+
+Context: Task `E18-05` converts all ten RFC-0026 §5 inference modules (`Embedding`, `RmsNorm`,
+`RowConversion`, `Projection`, `Rope`, `Attention`, `GatedProduct`, `Residual`, `Argmax`, and
+the `GatedConversion` limb-wide bridge) to the RFC-0028 §1.2 commit rule (commit only advice
+and carried segment boundaries). Two findings emerged from converting every module under
+unchanged CQIS numerics (`RFC-0004`, `RFC-0025`):
+
+1. **Range-tightened virtual magnitudes (RFC-0028 A1):** Under RFC-0028 §2.2 alone, a virtual
+   low limb `rem = acc - 2^k * hi` carries raw magnitude `mag(acc) + 2^k * mag(hi)` into
+   downstream products even after a valid LogUp `Range` check confines `rem` to `[0, 2^k)`.
+   Without tightening, every ranged virtual limb that feeds a downstream multiplication or
+   contraction would have to commit a redundant copy.
+2. **Bet B1 kill criterion (`docs/plan.md` §2):** Bet B1 predicted >= 10x reduction in
+   committed cells per token (kill criterion: `< 4x` on L2 after `E18-05`) under unchanged
+   CQIS numerics. Measured via `stele-bench accounting` (`E22-01`, exact gain widths):
+   - L1 (`eight-layer`, `T = 64`): `15,618,112 -> 8,369,600` cells (**`1.87x`**), `15,027,520 -> 12,534,720` lookups (**`1.20x`**) (`bench/ledger/e22-01-static-accounting-l1.json` -> `bench/ledger/e18-05-static-accounting-l1.json`).
+   - L2a (`stories42m`, `T = 64`): `216,058,944 -> 65,002,624` cells (**`3.32x`**), `268,933,440 -> 203,484,736` lookups (**`1.32x`**) (`bench/ledger/e22-01-static-accounting-l2a.json` -> `bench/ledger/e18-05-static-accounting-l2a.json`).
+   - L2b (`stories42m`, `T = 1024`): `5,170,381,824 -> 1,387,710,464` cells (**`3.73x`**), `4,820,997,120 -> 2,818,040,832` lookups (**`1.71x`**) (`bench/ledger/e22-01-static-accounting-l2b.json` -> `bench/ledger/e18-05-static-accounting-l2b.json`).
+   - L3a (`Llama-3.1-8B`, `T = 64`): `5,331,956,672 -> 1,794,575,872` cells (**`2.97x`**), `13,815,824,896 -> 12,447,998,080` lookups (**`1.11x`**) (`bench/ledger/e22-01-static-accounting-l3a.json` -> `bench/ledger/e18-05-static-accounting-l3a.json`).
+   - L3b (`Llama-3.1-8B`, `T = 1024`): `119,896,488,960 -> 35,452,411,904` cells (**`3.38x`**, `-84.44B` cells), `119,742,930,944 -> 77,693,585,408` lookups (**`1.54x`**, `-42.05B` lookups) (`bench/ledger/e22-01-static-accounting-l3b.json` -> `bench/ledger/e18-05-static-accounting-l3b.json`).
+
+Decision:
+- **Accept RFC-0028 A1 at the development tier:** After `Relation::validate` verifies that a
+  virtual column's raw derived magnitude satisfies `raw <= (p - 1)/2` (wrap-free over `F_p`,
+  preserving `NC-1340` and INV-5), any valid whole-column `Range` (`1..=16` bits) on that
+  virtual column tightens its downstream magnitude bound to `min(raw, range.width.magnitude())`.
+  Because `HALF_MODULUS + 65535 < p`, the LogUp range check binds the unique integer value
+  over `Z` with zero wrap-around.
+- **Trigger Bet B1's kill criterion and take its stated fallback (`docs/plan.md` §2):** On
+  both L2a (`3.32x`) and L2b (`3.73x`), committed cells per token fall by less than `4x`
+  under unchanged CQIS numerics because grouped dynamic row scales, wide scaled-product
+  carries, variable divisions, and attained-maximum advice dominate the remaining committed
+  columns (~85% of L3b committed cells). Per `AGENTS.md` §5 and `docs/plan.md` §2, we record
+  the kill criterion as met, retain the full `3.3–3.7x` virtualisation gains already verified
+  across L1–L3b (with zero unnecessary virtualisation where committed advice is strictly
+  smaller or needed by `F_p` bounds), and direct subsequent effort to:
+  1. Engine and lookup speedups (`E20-01`, `E20-02`),
+  2. Succinct recursive openings and Gate M2 (`E19-01..06`, `E18-09`), and
+  3. Bet B4 co-designed static power-of-two numerics (`E22-05`) to eliminate the remaining
+     dynamic-scale, wide-product carry, and variable-division advice columns.
+
+Consequences:
+- Every RFC-0026 §5 module now satisfies the RFC-0028 §1.2 commit rule (only genuine advice
+  and carried boundaries are committed), cutting L3b committed cells by `84.44B` (`3.38x`)
+  and lookup positions by `42.05B` (`1.54x`).
+- No security level or profile promotion is granted (development tier only, RFC-0027 §2).

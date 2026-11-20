@@ -158,7 +158,28 @@ impl Scope {
             .collect()
     }
 
+    /// A radix-256 [`Chain`] named `{prefix}/{name}` with optional virtual ranged targets
+    /// (RFC-0028 §1.2, A1).
+    pub(crate) fn chain_virtual(
+        &self,
+        relation: &mut Relation,
+        name: &str,
+        vars: u8,
+        positions: Vec<Vec<Term>>,
+        targets: &[(usize, String, Width)],
+    ) -> (Chain, Vec<ColumnId>) {
+        Chain::declare_virtual(
+            &mut Builder::new(relation, &self.name),
+            name,
+            vars,
+            8,
+            positions,
+            targets,
+        )
+    }
+
     /// A radix-256 [`Chain`] named `{prefix}/{name}`.
+    #[allow(dead_code)]
     pub(crate) fn chain(
         &self,
         relation: &mut Relation,

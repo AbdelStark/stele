@@ -131,8 +131,13 @@ Rungs with no record: L2b, L3b, L3c, L4, L5, L6.
 
 | Target rung | Model / Window | T | Committed cells | Cells/token | Lookup positions | Lookups/token | Top module (cells/tok) | Top module (lookups/tok) | Ledger |
 |---|---|---|---|---|---|---|---|---|---|
+| L1 | eight-layer | 64 | 8,369,600 | 130,775 | 12,534,720 | 195,855 | attention (19,072) | attention (29,312) | [e18-05-static-accounting-l1](ledger/e18-05-static-accounting-l1.json) @ `17c425f` |
 | L1 | synthetic-8layer | 64 | 15,618,112 | 244,033 | 15,027,520 | 234,805 | attention (59,072) | attention (51,328) | [e22-01-static-accounting-l1](ledger/e22-01-static-accounting-l1.json) @ `4a41fe0` |
+| L2a | stories42m | 64 | 65,002,624 | 1,015,666 | 203,484,736 | 3,179,449 | head (197,120) | head (689,152) | [e18-05-static-accounting-l2a](ledger/e18-05-static-accounting-l2a.json) @ `17c425f` |
 | L2a | stories42m | 64 | 216,058,944 | 3,375,921 | 268,933,440 | 4,202,085 | head (787,456) | head (984,064) | [e22-01-static-accounting-l2a](ledger/e22-01-static-accounting-l2a.json) @ `4a41fe0` |
+| L2b | stories42m | 1024 | 1,387,710,464 | 1,355,186 | 2,818,040,832 | 2,751,993 | attention (426,304) | attention (692,544) | [e18-05-static-accounting-l2b](ledger/e18-05-static-accounting-l2b.json) @ `17c425f` |
 | L2b | stories42m | 1024 | 5,170,381,824 | 5,049,201 | 4,820,997,120 | 4,708,005 | attention (1,901,056) | attention (1,687,936) | [e22-01-static-accounting-l2b](ledger/e22-01-static-accounting-l2b.json) @ `4a41fe0` |
+| L3a | llama-3.1-8b | 64 | 1,794,575,872 | 28,040,248 | 12,447,998,080 | 194,499,970 | gated_row (3,694,592) | gate (41,025,536) | [e18-05-static-accounting-l3a](ledger/e18-05-static-accounting-l3a.json) @ `17c425f` |
 | L3a | Llama-3.1-8B-Instruct | 64 | 5,331,956,672 | 83,311,823 | 13,815,824,896 | 215,872,264 | up (13,008,896) | up (45,514,752) | [e22-01-static-accounting-l3a](ledger/e22-01-static-accounting-l3a.json) @ `4a41fe0` |
+| L3b | llama-3.1-8b | 1024 | 35,452,411,904 | 34,621,496 | 77,693,585,408 | 75,872,642 | attention (8,885,248) | attention (14,783,488) | [e18-05-static-accounting-l3b](ledger/e18-05-static-accounting-l3b.json) @ `17c425f` |
 | L3b | Llama-3.1-8B-Instruct | 1024 | 119,896,488,960 | 117,086,415 | 119,742,930,944 | 116,936,456 | attention (39,755,776) | attention (36,083,712) | [e22-01-static-accounting-l3b](ledger/e22-01-static-accounting-l3b.json) @ `4a41fe0` |

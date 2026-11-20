@@ -1530,3 +1530,89 @@ fn rejects_audit_edge_cases_and_validates_diamond_and_split_contraction() {
         })
     );
 }
+
+#[test]
+fn accepts_range_tightened_virtual_downstream_magnitude() {
+    // RFC-0028 A1: `v_lo = a - 65536 * hi` has raw magnitude `2^27 + 2^27 = 2^28 <= HALF_MODULUS`.
+    // Adding `Range(v_lo, u16)` tightens its downstream magnitude to `65535`, allowing `v_lo * m`
+    // (`65535 * 255 = 16,711,425 <= HALF_MODULUS`), which would fail at the raw bound (`2^28 * 255`).
+    let mut r = Relation::default();
+    let g = r.add_group("g", 1);
+    let a = r.add_column("a", Kind::Witness(g), Width::unsigned(16), 1);
+    let b = r.add_column("b", Kind::Witness(g), Width::unsigned(12), 1);
+    let hi = r.add_column("hi", Kind::Witness(g), Width::unsigned(12), 1);
+    let m = r.add_column("m", Kind::Public(vec![255, 255]), Width::unsigned(8), 1);
+    range(&mut r, a, Width::unsigned(16));
+    range(&mut r, b, Width::unsigned(12));
+    range(&mut r, hi, Width::unsigned(12));
+    // `wide = a + 4096 * b` has raw magnitude `65535 + 4096 * 4095 = 16,838,655`.
+    let wide = r.add_virtual(
+        "wide",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(a, 1)), (4096, Ref::identity(b, 1))],
+        },
+        1,
+    );
+    // `v_lo = wide - 65536 * hi`: raw magnitude `16,838,655 + 65536 * 4095 = 285,208,575 <= HALF_MODULUS`.
+    let v_lo = r.add_virtual(
+        "v_lo",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(wide, 1)), (-65536, Ref::identity(hi, 1))],
+        },
+        1,
+    );
+    // Without Range(u16), `v_lo * m` has bound `285,208,575 * 255 > HALF_MODULUS` -> Invalid::Bound.
+    let mut without_range = r.clone();
+    without_range.add_virtual(
+        "prod",
+        Def::Pointwise {
+            terms: vec![Term {
+                coeff: 1,
+                factors: vec![Ref::identity(v_lo, 1), Ref::identity(m, 1)],
+            }],
+        },
+        1,
+    );
+    assert!(matches!(
+        without_range.validate(),
+        Err(Invalid::Bound { .. })
+    ));
+
+    // With Range(v_lo, u16), downstream magnitude tightens to `65535` -> `prod` validates.
+    range(&mut r, v_lo, Width::unsigned(16));
+    let prod = r.add_virtual(
+        "prod",
+        Def::Pointwise {
+            terms: vec![Term {
+                coeff: 1,
+                factors: vec![Ref::identity(v_lo, 1), Ref::identity(m, 1)],
+            }],
+        },
+        1,
+    );
+    assert_eq!(r.validate(), Ok(()));
+    assert_eq!(r.column_magnitude(v_lo), Some(65535));
+    assert_eq!(r.column_magnitude(prod), Some(65535 * 255));
+}
+
+#[test]
+fn rejects_over_wide_virtual_even_with_narrow_range() {
+    // RFC-0028 A1 + NC-1340: if the defining formula itself exceeds `HALF_MODULUS`, a narrow
+    // `Range` on the virtual column MUST NOT bypass the wrap-free bound check.
+    let mut r = Relation::default();
+    let g = r.add_group("g", 1);
+    let x = r.add_column("x", Kind::Witness(g), Width::unsigned(16), 1);
+    range(&mut r, x, Width::unsigned(16));
+    let bad = r.add_virtual(
+        "bad",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1 << 16, Ref::identity(x, 1))],
+        },
+        1,
+    );
+    range(&mut r, bad, Width::unsigned(8));
+    assert!(matches!(r.validate(), Err(Invalid::Bound { .. })));
+}

@@ -39,7 +39,7 @@ impl EmbeddingAttack<'_> {
     }
 
     fn r0(&self, v: &Values) -> Vec<i64> {
-        v.get(self.r, self.col("R0")).expect("R0").to_vec()
+        stele_ir::relation::eval_column(self.r, v, self.col("R0")).expect("R0")
     }
 
     /// Set `R0` and `ρ` at cell `i` to satisfy the rounding (or exact) identity for the
@@ -214,7 +214,16 @@ fn accepts_embedding_row_blocks() {
         let gather = instance(exponent, mantissas, Some(3));
         let capture = gather.capture().expect("in range");
         let (r, values) = gather.assigned(&capture, 3 + 4).expect("assign");
-        assert!(r.matmuls.len() == 4 && r.identities.iter().any(|d| d.name.ends_with("/blocks")));
+        assert!(r.matmuls.is_empty());
+        assert_eq!(
+            r.columns
+                .iter()
+                .filter(
+                    |c| c.name.starts_with("G/embedding/G") && matches!(c.kind, Kind::Virtual(_))
+                )
+                .count(),
+            5
+        );
         check(&r, &values).expect("honest values pass through row blocks");
     }
 }

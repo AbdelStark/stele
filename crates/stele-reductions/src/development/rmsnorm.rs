@@ -9,27 +9,21 @@
 //! `e <= 0`. The executor rejects `a` outside `[−23, 9]` (`[−23, 16]` for version 2),
 //! `e` outside `[−16, 90]` (`97`), and any `Y` outside int16.
 //!
-//! Columns and relations (row domain `t`, element domain `(t, k)`, selector domain
-//! `(t, K)` with `K = a + 23`):
-//! - byte limbs `X_a` of the input with `X = Σ 256^a X_a` (Compose), the top limb's sign
-//!   `σX` by the lookup `(X_top, σX)`;
-//! - `S_pq = Σ_k X_p·X_q` (matmul row sums, disciplined by their operand widths), their
-//!   byte limbs (Compose) and the bytes `S_i` of `S` (chain `S`);
-//! - a one-hot `h[t, K]`: 0/1 by range, `Σ_K h·valid = 1` (matmul with public `valid`)
-//!   and `h·(1 − valid) = 0`; per-row bytes of the `K`-indexed public constants
-//!   `ed·fa`, `en·unit·fa`, `P·fd`, `g = 2^(Es − e')`, `pos·g` and `pos = [e' >= 1]`
-//!   selected by matmuls `Σ_K h·c[K]` and range-checked;
-//! - `M`, `J` by the lookup `(M, J) ∈ rsqrt_q` (real rows only), their bytes (Compose),
-//!   the remainder `R` and `gap` bytes, the chain `quotient`
-//!   `(ed·fa)·S + en·unit·fa − M·(P·fd) − R = 0` and the chain `remainder`
-//!   `P·fd − 1 − R − gap = 0`;
-//! - `Jg = J·g` bytes (chain `Jg`) and, per element, the output `Y` (int16 range), the
-//!   bytes of `Z ∈ [0, 2^Es)` and the chain `output`
-//!   `Y·2^Es − Jg·Σ 256^(a+b) X_a·H_b + pos·(σ − 1)·g + pos·2^(Es−1) − Z = 0` with
-//!   `σ = σX·(1 − 2σH) + σH` and public gain bytes `H_b` and gain sign `σH`.
+//! Committed witness advice columns (RFC-0028 §1.2):
+//! - Element domain `(t, k)`: high input bytes `X_{1..n-1}`, top-limb sign `sigmaX`,
+//!   pre-multiplied product carries `P_q0` (and `P_q1` for int24) and top limb `P2`/`P3`
+//!   (radix `2^12` product `P = X·H`), rounded output `Y` (`s16`), and unsplit radix-`2^12`
+//!   `output/carry*`.
+//! - Row domain `t`: `S_pq` byte-composed limbs (`S00_0..`), `S/carry*`, `M`, `M1`, `J`,
+//!   `J1`, `quotient/carry*`, `remainder/carry*`, and radix-`2^12` `Jg/carry*`.
+//! - Selector domain `(t, K)`: one-hot exponent selector `h` (`u1`).
+//! - Virtual: `X0`, `S_pq` contractions, `S_*`, `alpha*`/`beta*`/`gamma*`/`g*`/`gp*`/`pos`
+//!   selection contractions, `M0`, `J0`, `R*`, `gap*`, `Jg0..`, `P0..`, and `Z*`.
+//! - Public: gain bytes `H0`, `H1`, `sigmaH`, `flipH` (committed as weights under dev-zk),
+//!   `valid`, and `K`-indexed constant tables.
 //!
-//! `e' = min(e, Es_cap)` with `Es_cap = bits(X) + 30`; `Es` is the least multiple of 8
-//! at least `max(1, max e')`.
+//! `e' = min(e, Es_cap)` with `Es_cap = bits(X) + 30`; `Es` is the least multiple of
+//! `OUT_RADIX = 12` at least `max(1, max e')`.
 //!
 //! **Output uniqueness (RFC-0026 §5.2).** Fix `X` within its width.
 //! 1. The byte limbs of `X` are unique (low bytes in `[0, 256)`, top limb fixed), and
@@ -54,15 +48,16 @@
 //! producer pins its padding (RFC-0026 §2.1). Step 1 counts exactly the `d` real
 //! features only under that obligation.
 
-use super::limbs::{assign_chain, at, bytes, log2_ceil, sign_table, term, width_of, Scope};
-use super::{bit_length, Chain, Unsupported};
+use super::limbs::{assign_chain, at, bytes, log2_ceil, sign_table, term, Scope};
+use super::{bit_length, Builder, Chain, Unsupported};
 use alloc::format;
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_cqis::functions::{Descriptor, NormEvaluation};
 use stele_cqis::tables::Table as CqisTable;
 use stele_ir::relation::{
-    ColumnId, Lookup, Matmul, Module, Relation, Table, Term, Values, Violation, Width,
+    ColumnId, Def, Kind, Lookup, Matmul, Module, Range, Relation, Table, Term, Values, Violation,
+    Width,
 };
 
 /// Bits of the exponent selector domain: `K = a + 23 < 64`.
@@ -117,15 +112,18 @@ impl RmsNormRow {
     }
 }
 
+/// Radix in bits for the per-element output chain (`P = X*H`, `Jg`, `gp`, `Z`, RFC-0028 §1.2).
+const OUT_RADIX: u8 = 12;
+
 /// `base · 2^shift`, kept factored because some constants exceed 128 bits.
 #[derive(Clone, Copy)]
 struct Shifted(u128, u32);
 
 impl Shifted {
-    fn byte(self, j: usize) -> i64 {
-        let s = i64::from(self.1) - 8 * j as i64;
+    fn limb(self, j: usize, r: u32) -> i64 {
+        let s = i64::from(self.1) - i64::from(r) * j as i64;
         let v = if s >= 0 {
-            if s >= 8 {
+            if s >= i64::from(r) {
                 0
             } else {
                 self.0 << s
@@ -135,15 +133,19 @@ impl Shifted {
         } else {
             self.0 >> -s
         };
-        (v & 255) as i64
+        (v & ((1u128 << r) - 1)) as i64
     }
 
-    fn bytes(self) -> usize {
+    fn limbs(self, r: u32) -> usize {
         if self.0 == 0 {
             0
         } else {
-            (u32::from(bit_length(self.0)) + self.1).div_ceil(8) as usize
+            (u32::from(bit_length(self.0)) + self.1).div_ceil(r) as usize
         }
+    }
+
+    fn bytes(self) -> usize {
+        self.limbs(8)
     }
 }
 
@@ -172,6 +174,8 @@ struct Columns {
     remainder: Vec<ColumnId>,
     gap: Vec<ColumnId>,
     scaled: Vec<ColumnId>,
+    /// Committed advice columns for `P = X * H` in radix `2^12` (`[qp0, p2]` or `[qp0, qp1, p3]`).
+    p_advice: Vec<ColumnId>,
     output: ColumnId,
     z: Vec<ColumnId>,
     chains: Vec<Chain>,
@@ -223,7 +227,8 @@ impl RmsNorm {
             let (fa, fd) = (2 * (-a).max(0) as u32, 2 * a.max(0) as u32);
             exponents.push((valid, clamped, fa, fd));
         }
-        let es = ((top + 7) / 8 * 8) as u32;
+        let r = i32::from(OUT_RADIX);
+        let es = ((top + r - 1) / r * r) as u32;
         let unit = 2 * f as u32;
         let exponents = exponents
             .into_iter()
@@ -299,16 +304,41 @@ impl Module for RmsNorm {
         let elem = |c| at(c, 0..ev);
         let feature = |c| at(c, 0..ld);
 
-        // 1. Byte limbs of X and the input sign.
-        let mut limbs = Vec::new();
-        for a in 0..n {
-            limbs.push(if a + 1 < n {
+        // 1. Byte limbs of X (X0 virtual Linear under RFC-0028 §1.2, A1; X1.. committed)
+        // and the input sign.
+        let mut hi_limbs = Vec::new();
+        for a in 1..n {
+            hi_limbs.push(if a + 1 < n {
                 s.ranged(relation, &format!("X{a}"), Width::unsigned(8), ev)
             } else {
                 s.witness(relation, &format!("X{a}"), Width::signed(8), ev)
             });
         }
-        s.compose(relation, x, &limbs);
+        let mut x0_terms = vec![(1, elem(x))];
+        for (idx, &col) in hi_limbs.iter().enumerate() {
+            x0_terms.push((-(1i64 << (8 * (idx + 1))), elem(col)));
+        }
+        let x0 = if n == 1 {
+            s.witness(relation, "X0", Width::signed(8), ev)
+        } else {
+            let id = relation.add_virtual(
+                &format!("{}/X0", s.name),
+                Def::Linear {
+                    constant: 0,
+                    terms: x0_terms,
+                },
+                ev,
+            );
+            relation.ranges.push(Range {
+                name: format!("{}/X0/range", s.name),
+                column: id,
+                width: Width::unsigned(8),
+            });
+            id
+        };
+        let mut limbs = Vec::with_capacity(n);
+        limbs.push(x0);
+        limbs.extend(hi_limbs);
         let sign = s.witness(relation, "sigmaX", Width::unsigned(1), ev);
         let table = sign_table(relation, 8);
         relation.lookups.push(Lookup {
@@ -319,7 +349,8 @@ impl Module for RmsNorm {
             table,
         });
 
-        // 2. Row sums of limb products and their bytes, then the bytes of S.
+        // 2. Row sums of limb products (virtual Contractions, RFC-0028 §1.2) and their bytes,
+        // then virtual bytes of S via `chain_virtual`.
         let magnitude = |a: usize| if a + 1 < n { 255i128 } else { 128 };
         let mut sums = Vec::new();
         let mut positions: Vec<Vec<Term>> = Vec::new();
@@ -332,15 +363,16 @@ impl Module for RmsNorm {
         for p in 0..n {
             for q in p..n {
                 let bound = (magnitude(p) * magnitude(q)) << ld;
-                let out = s.witness(relation, &format!("S{p}{q}"), width_of(-bound, bound), lt);
-                relation.matmuls.push(Matmul {
-                    name: format!("{}/S{p}{q}/sum", s.name),
-                    free: lt,
-                    summed: ld,
-                    out: at(out, 0..lt),
-                    lhs: at(limbs[p], (lt..lt + ld).chain(0..lt)),
-                    rhs: at(limbs[q], (lt..lt + ld).chain(0..lt)),
-                });
+                let out = relation.add_virtual(
+                    &format!("{}/S{p}{q}", s.name),
+                    Def::Contraction {
+                        free: lt,
+                        summed: ld,
+                        lhs: at(limbs[p], (lt..lt + ld).chain(0..lt)),
+                        rhs: at(limbs[q], (lt..lt + ld).chain(0..lt)),
+                    },
+                    lt,
+                );
                 let low = if p == q { 0 } else { -bound };
                 let parts = s.byte_limbs(relation, &format!("S{p}{q}_"), low, bound, lt);
                 s.compose(relation, out, &parts);
@@ -353,15 +385,13 @@ impl Module for RmsNorm {
         }
         let largest = (self.d as u128) << (2 * (self.xbits - 1));
         let ns = bit_length(largest).div_ceil(8) as usize;
-        let statistic: Vec<_> = (0..ns)
-            .map(|i| s.ranged(relation, &format!("S_{i}"), Width::unsigned(8), lt))
+        let s_targets: Vec<_> = (0..ns)
+            .map(|i| (i, format!("S_{i}"), Width::unsigned(8)))
             .collect();
-        for (i, &b) in statistic.iter().enumerate() {
-            push(&mut positions, i, term(-1, vec![at(b, 0..lt)]));
-        }
-        let mut chains = vec![s.chain(relation, "S", lt, positions)];
+        let (s_chain, statistic) = s.chain_virtual(relation, "S", lt, positions, &s_targets);
+        let mut chains = vec![s_chain];
 
-        // 3. The exponent one-hot and the selected constant bytes.
+        // 3. The exponent one-hot and the selected constant bytes (virtual Contractions).
         let onehot = s.ranged(relation, "h", Width::unsigned(1), lt + KBITS);
         let valid: Vec<i64> = self.exponents.iter().map(|x| i64::from(x.valid)).collect();
         let invalid = valid.iter().map(|v| 1 - v).collect();
@@ -393,14 +423,20 @@ impl Module for RmsNorm {
             }
             let constant = s.public(relation, &format!("{name}/K"), column.clone(), KBITS);
             let width = relation.columns[constant.0 as usize].width;
-            let out = s.ranged(relation, name, width, lt);
-            relation.matmuls.push(Matmul {
-                name: format!("{}/{name}/select", s.name),
-                free: lt,
-                summed: KBITS,
-                out: at(out, 0..lt),
-                lhs: h_sel(),
-                rhs: at(constant, lt..lt + KBITS),
+            let out = relation.add_virtual(
+                &format!("{}/{name}", s.name),
+                Def::Contraction {
+                    free: lt,
+                    summed: KBITS,
+                    lhs: h_sel(),
+                    rhs: at(constant, lt..lt + KBITS),
+                },
+                lt,
+            );
+            relation.ranges.push(Range {
+                name: format!("{}/{name}/range", s.name),
+                column: out,
+                width,
             });
             selected.push((out, column));
             Some(out)
@@ -408,20 +444,20 @@ impl Module for RmsNorm {
         let na = self.width(|x| x.alpha.bytes());
         let nb = self.width(|x| x.beta.bytes());
         let nc = self.width(|x| x.gamma.bytes());
-        let ng = self.width(|x| x.g.bytes());
+        let ng = self.width(|x| x.g.limbs(u32::from(OUT_RADIX)));
         let positive = |x: &Exponent| if x.pos { x.g } else { Shifted(0, 0) };
-        let families: [(&str, Constant, usize); 5] = [
-            ("alpha", |x| x.alpha, na),
-            ("beta", |x| x.beta, nb),
-            ("gamma", |x| x.gamma, nc),
-            ("g", |x| x.g, ng),
-            ("gp", positive, ng),
+        let families: [(&str, Constant, usize, u32); 5] = [
+            ("alpha", |x| x.alpha, na, 8),
+            ("beta", |x| x.beta, nb, 8),
+            ("gamma", |x| x.gamma, nc, 8),
+            ("g", |x| x.g, ng, u32::from(OUT_RADIX)),
+            ("gp", positive, ng, u32::from(OUT_RADIX)),
         ];
-        let [alpha, beta, gamma, g, gp] = families.map(|(name, f, count)| {
+        let [alpha, beta, gamma, g, gp] = families.map(|(name, f, count, rbits)| {
             (0..count)
                 .map(|j| {
-                    let bytes = self.exponents.iter().map(|x| f(x).byte(j)).collect();
-                    select(relation, &format!("{name}{j}"), bytes)
+                    let vals = self.exponents.iter().map(|x| f(x).limb(j, rbits)).collect();
+                    select(relation, &format!("{name}{j}"), vals)
                 })
                 .collect::<Vec<_>>()
         });
@@ -431,7 +467,7 @@ impl Module for RmsNorm {
             self.exponents.iter().map(|x| i64::from(x.pos)).collect(),
         );
 
-        // 4. Mantissa, reciprocal, quotient and remainder.
+        // 4. Mantissa, reciprocal, quotient and remainder (virtual M0/J0 and virtual R/gap).
         let mantissa = s.witness(relation, "M", Width::unsigned(16), lt);
         let reciprocal = s.witness(relation, "J", Width::unsigned(15), lt);
         let rsqrt = CqisTable::rsqrt().expect("rsqrt_q generation is total");
@@ -453,22 +489,39 @@ impl Module for RmsNorm {
             tuple: vec![at(mantissa, 0..lt), at(reciprocal, 0..lt)],
             table,
         });
-        let m = vec![
-            s.ranged(relation, "M0", Width::unsigned(8), lt),
-            s.ranged(relation, "M1", Width::unsigned(8), lt),
-        ];
-        s.compose(relation, mantissa, &m);
-        let j = vec![
-            s.ranged(relation, "J0", Width::unsigned(8), lt),
-            s.ranged(relation, "J1", Width::unsigned(7), lt),
-        ];
-        s.compose(relation, reciprocal, &j);
-        let remainder: Vec<_> = (0..nc)
-            .map(|i| s.ranged(relation, &format!("R{i}"), Width::unsigned(8), lt))
-            .collect();
-        let gap: Vec<_> = (0..nc)
-            .map(|i| s.ranged(relation, &format!("gap{i}"), Width::unsigned(8), lt))
-            .collect();
+        let m1 = s.ranged(relation, "M1", Width::unsigned(8), lt);
+        let m0 = relation.add_virtual(
+            &format!("{}/M0", s.name),
+            Def::Linear {
+                constant: 0,
+                terms: vec![(1, at(mantissa, 0..lt)), (-256, at(m1, 0..lt))],
+            },
+            lt,
+        );
+        relation.ranges.push(Range {
+            name: format!("{}/M0/range", s.name),
+            column: m0,
+            width: Width::unsigned(8),
+        });
+        let m = vec![m0, m1];
+        let j1 = s.ranged(relation, "J1", Width::unsigned(15 - OUT_RADIX), lt);
+        let j0 = relation.add_virtual(
+            &format!("{}/J0", s.name),
+            Def::Linear {
+                constant: 0,
+                terms: vec![
+                    (1, at(reciprocal, 0..lt)),
+                    (-(1i64 << OUT_RADIX), at(j1, 0..lt)),
+                ],
+            },
+            lt,
+        );
+        relation.ranges.push(Range {
+            name: format!("{}/J0/range", s.name),
+            column: j0,
+            width: Width::unsigned(OUT_RADIX),
+        });
+        let j = vec![j0, j1];
         let r1 = |c| at(c, 0..lt);
         let mut quotient = Vec::new();
         for (mi, &sm) in statistic.iter().enumerate() {
@@ -490,27 +543,30 @@ impl Module for RmsNorm {
                 }
             }
         }
-        for (i, &r) in remainder.iter().enumerate() {
-            push(&mut quotient, i, term(-1, vec![r1(r)]));
-        }
-        chains.push(s.chain(relation, "quotient", lt, quotient));
+        let r_targets: Vec<_> = (0..nc)
+            .map(|i| (i, format!("R{i}"), Width::unsigned(8)))
+            .collect();
+        let (q_chain, remainder) = s.chain_virtual(relation, "quotient", lt, quotient, &r_targets);
+        chains.push(q_chain);
         let mut rest = vec![vec![term(-1, vec![])]];
         for (i, c) in gamma.iter().enumerate() {
             if let Some(c) = c {
                 push(&mut rest, i, term(1, vec![r1(*c)]));
             }
         }
-        for i in 0..nc {
-            push(&mut rest, i, term(-1, vec![r1(remainder[i])]));
-            push(&mut rest, i, term(-1, vec![r1(gap[i])]));
+        for (i, &rem_col) in remainder.iter().enumerate().take(nc) {
+            push(&mut rest, i, term(-1, vec![r1(rem_col)]));
         }
-        chains.push(s.chain(relation, "remainder", lt, rest));
-
-        // 5. Jg = J·g, then the per-element output chain.
-        let njg = (15 + self.width(|x| x.g.1 as usize) as u32).div_ceil(8) as usize;
-        let scaled: Vec<_> = (0..njg)
-            .map(|i| s.ranged(relation, &format!("Jg{i}"), Width::unsigned(8), lt))
+        let gap_targets: Vec<_> = (0..nc)
+            .map(|i| (i, format!("gap{i}"), Width::unsigned(8)))
             .collect();
+        let (rem_chain, gap) = s.chain_virtual(relation, "remainder", lt, rest, &gap_targets);
+        chains.push(rem_chain);
+
+        // 5. Jg = J·g in radix 2^12 (virtual limbs), P = X·H in radix 2^12 (degree-2),
+        // then the per-element output chain in radix 2^12 (unsplit carries, virtual Z0..Z_{top-1}).
+        let rbits = u32::from(OUT_RADIX);
+        let njg = (15 + self.width(|x| x.g.1 as usize) as u32).div_ceil(rbits) as usize;
         let mut jg = Vec::new();
         for (ci, &jc) in j.iter().enumerate() {
             for (gi, gc) in g.iter().enumerate() {
@@ -519,10 +575,18 @@ impl Module for RmsNorm {
                 }
             }
         }
-        for (i, &b) in scaled.iter().enumerate() {
-            push(&mut jg, i, term(-1, vec![r1(b)]));
-        }
-        chains.push(s.chain(relation, "Jg", lt, jg));
+        let jg_targets: Vec<_> = (0..njg)
+            .map(|i| (i, format!("Jg{i}"), Width::unsigned(OUT_RADIX)))
+            .collect();
+        let (jg_chain, scaled) = Chain::declare_virtual(
+            &mut Builder::new(relation, &s.name),
+            "Jg",
+            lt,
+            OUT_RADIX,
+            jg,
+            &jg_targets,
+        );
+        chains.push(jg_chain);
 
         let [h0, h1, sh, s1] = self.gain_bytes(ld);
         let fixed = self.plan.fixed_widths;
@@ -536,21 +600,108 @@ impl Module for RmsNorm {
         ];
         let sigma_h = public("sigmaH", sh, Width::unsigned(1));
         let flip = public("flipH", s1, Width::signed(2));
+
+        // P = X * H in radix 2^12 (`p0, p1` virtual u12 + committed carries/top).
+        let (p_limbs, p_advice): (Vec<ColumnId>, Vec<ColumnId>) = if n == 2 {
+            let qp0 = s.ranged(relation, "P_q0", Width::signed(13), ev);
+            let p0 = relation.add_virtual(
+                &format!("{}/P0", s.name),
+                Def::Pointwise {
+                    terms: vec![
+                        term(1, vec![elem(limbs[0]), feature(gains[0])]),
+                        term(256, vec![elem(limbs[0]), feature(gains[1])]),
+                        term(256, vec![elem(limbs[1]), feature(gains[0])]),
+                        term(-4096, vec![elem(qp0)]),
+                    ],
+                },
+                ev,
+            );
+            relation.ranges.push(Range {
+                name: format!("{}/P0/range", s.name),
+                column: p0,
+                width: Width::unsigned(OUT_RADIX),
+            });
+            let p2 = s.ranged(relation, "P2", Width::signed(8), ev);
+            let p1 = relation.add_virtual(
+                &format!("{}/P1", s.name),
+                Def::Pointwise {
+                    terms: vec![
+                        term(1, vec![elem(qp0)]),
+                        term(16, vec![elem(limbs[1]), feature(gains[1])]),
+                        term(-4096, vec![elem(p2)]),
+                    ],
+                },
+                ev,
+            );
+            relation.ranges.push(Range {
+                name: format!("{}/P1/range", s.name),
+                column: p1,
+                width: Width::unsigned(OUT_RADIX),
+            });
+            (vec![p0, p1, p2], vec![qp0, p2])
+        } else {
+            let qp0 = s.ranged(relation, "P_q0", Width::signed(14), ev);
+            let p0 = relation.add_virtual(
+                &format!("{}/P0", s.name),
+                Def::Pointwise {
+                    terms: vec![
+                        term(1, vec![elem(limbs[0]), feature(gains[0])]),
+                        term(256, vec![elem(limbs[0]), feature(gains[1])]),
+                        term(256, vec![elem(limbs[1]), feature(gains[0])]),
+                        term(-4096, vec![elem(qp0)]),
+                    ],
+                },
+                ev,
+            );
+            relation.ranges.push(Range {
+                name: format!("{}/P0/range", s.name),
+                column: p0,
+                width: Width::unsigned(OUT_RADIX),
+            });
+            let qp1 = s.ranged(relation, "P_q1", Width::signed(10), ev);
+            let p1 = relation.add_virtual(
+                &format!("{}/P1", s.name),
+                Def::Pointwise {
+                    terms: vec![
+                        term(1, vec![elem(qp0)]),
+                        term(16, vec![elem(limbs[1]), feature(gains[1])]),
+                        term(16, vec![elem(limbs[2]), feature(gains[0])]),
+                        term(-4096, vec![elem(qp1)]),
+                    ],
+                },
+                ev,
+            );
+            relation.ranges.push(Range {
+                name: format!("{}/P1/range", s.name),
+                column: p1,
+                width: Width::unsigned(OUT_RADIX),
+            });
+            let p3 = s.ranged(relation, "P3", Width::signed(4), ev);
+            let p2 = relation.add_virtual(
+                &format!("{}/P2", s.name),
+                Def::Pointwise {
+                    terms: vec![
+                        term(1, vec![elem(qp1)]),
+                        term(1, vec![elem(limbs[2]), feature(gains[1])]),
+                        term(-4096, vec![elem(p3)]),
+                    ],
+                },
+                ev,
+            );
+            relation.ranges.push(Range {
+                name: format!("{}/P2/range", s.name),
+                column: p2,
+                width: Width::unsigned(OUT_RADIX),
+            });
+            (vec![p0, p1, p2, p3], vec![qp0, qp1, p3])
+        };
+
         let output = s.ranged(relation, "Y", Width::signed(16), ev);
-        let top = (self.es / 8) as usize;
-        let z: Vec<_> = (0..top)
-            .map(|i| s.ranged(relation, &format!("Z{i}"), Width::unsigned(8), ev))
-            .collect();
+        let top = (self.es / rbits) as usize;
         let mut out = Vec::new();
-        for (a, &xa) in limbs.iter().enumerate() {
-            for (b, &hb) in gains.iter().enumerate() {
-                for (m, &jm) in scaled.iter().enumerate() {
-                    push(
-                        &mut out,
-                        a + b + m,
-                        term(-1, vec![elem(xa), feature(hb), row(jm)]),
-                    );
-                }
+        for (a, &pa) in p_limbs.iter().enumerate() {
+            for (m, &jm) in scaled.iter().enumerate() {
+                push(&mut out, a + m, term(-1, vec![elem(pa), row(jm)]));
             }
         }
         for (i, c) in gp.iter().enumerate() {
@@ -565,13 +716,25 @@ impl Module for RmsNorm {
             }
         }
         if let Some(pos) = pos {
-            push(&mut out, top - 1, term(128, vec![row(pos)]));
+            push(
+                &mut out,
+                top - 1,
+                term(1i64 << (OUT_RADIX - 1), vec![row(pos)]),
+            );
         }
         push(&mut out, top, term(1, vec![elem(output)]));
-        for (i, &zi) in z.iter().enumerate() {
-            push(&mut out, i, term(-1, vec![elem(zi)]));
-        }
-        chains.push(s.chain(relation, "output", ev, out));
+        let z_targets: Vec<_> = (0..top)
+            .map(|i| (i, format!("Z{i}"), Width::unsigned(OUT_RADIX)))
+            .collect();
+        let (out_chain, z) = Chain::declare_virtual(
+            &mut Builder::new(relation, &s.name),
+            "output",
+            ev,
+            OUT_RADIX,
+            out,
+            &z_targets,
+        );
+        chains.push(out_chain);
 
         self.columns = Some(Columns {
             limbs,
@@ -585,6 +748,7 @@ impl Module for RmsNorm {
             remainder,
             gap,
             scaled,
+            p_advice,
             output,
             z,
             chains,
@@ -626,7 +790,9 @@ impl Module for RmsNorm {
                 .collect()
         };
         for (a, &col) in c.limbs.iter().enumerate() {
-            values.set(relation, col, limbs[a].clone())?;
+            if !matches!(relation.columns[col.0 as usize].kind, Kind::Virtual(_)) {
+                values.set(relation, col, limbs[a].clone())?;
+            }
         }
         let sign: Vec<i64> = x.iter().map(|&v| i64::from(v < 0)).collect();
         values.set(relation, c.sign, sign.clone())?;
@@ -638,7 +804,9 @@ impl Module for RmsNorm {
                         .sum()
                 })
                 .collect();
-            values.set(relation, *out, sum.iter().map(|&v| v as i64).collect())?;
+            if !matches!(relation.columns[out.0 as usize].kind, Kind::Virtual(_)) {
+                values.set(relation, *out, sum.iter().map(|&v| v as i64).collect())?;
+            }
             set_bytes(relation, values, parts, &sum)?;
         }
         let statistic: Vec<i128> = (0..rows)
@@ -659,7 +827,9 @@ impl Module for RmsNorm {
         }
         values.set(relation, c.onehot, onehot)?;
         for (out, column) in &c.selected {
-            values.set(relation, *out, chosen.iter().map(|&k| column[k]).collect())?;
+            if !matches!(relation.columns[out.0 as usize].kind, Kind::Virtual(_)) {
+                values.set(relation, *out, chosen.iter().map(|&k| column[k]).collect())?;
+            }
         }
         let field = |f: fn(&RmsNormRow) -> i128| capture.iter().map(f).collect::<Vec<i128>>();
         let mantissa = field(|r| i128::from(r.mantissa));
@@ -675,7 +845,7 @@ impl Module for RmsNorm {
             c.reciprocal.0,
             reciprocal.iter().map(|&v| v as i64).collect(),
         )?;
-        set_bytes(relation, values, &c.reciprocal.1, &reciprocal)?;
+        set_limbs(relation, values, &c.reciprocal.1, &reciprocal, OUT_RADIX)?;
         let remainder: Vec<i128> = capture.iter().map(|r| r.remainder).collect();
         let gap: Vec<i128> = capture
             .iter()
@@ -685,9 +855,54 @@ impl Module for RmsNorm {
         set_bytes(relation, values, &c.gap, &gap)?;
         let ex = |t: usize| self.exponents[chosen[t]];
         let scaled: Vec<i128> = (0..rows).map(|t| reciprocal[t] << ex(t).g.1).collect();
-        set_bytes(relation, values, &c.scaled, &scaled)?;
+        set_limbs(relation, values, &c.scaled, &scaled, OUT_RADIX)?;
 
         let gains = &self.plan.gains;
+        let [gh0, gh1, _, _] = self.gain_bytes(ld);
+        let mask_d = (1usize << ld) - 1;
+        if n == 2 {
+            let mut qp0_col = Vec::with_capacity(size);
+            let mut p2_col = Vec::with_capacity(size);
+            for i in 0..size {
+                let k = i & mask_d;
+                let (x0, x1) = (i128::from(limbs[0][i]), i128::from(limbs[1][i]));
+                let (h0, h1) = (i128::from(gh0[k]), i128::from(gh1[k]));
+                let raw0 = x0 * h0 + 256 * (x0 * h1 + x1 * h0);
+                let qp0 = raw0.div_euclid(4096);
+                let raw1 = qp0 + 16 * x1 * h1;
+                let p2 = raw1.div_euclid(4096);
+                qp0_col.push(qp0 as i64);
+                p2_col.push(p2 as i64);
+            }
+            values.set(relation, c.p_advice[0], qp0_col)?;
+            values.set(relation, c.p_advice[1], p2_col)?;
+        } else {
+            let mut qp0_col = Vec::with_capacity(size);
+            let mut qp1_col = Vec::with_capacity(size);
+            let mut p3_col = Vec::with_capacity(size);
+            for i in 0..size {
+                let k = i & mask_d;
+                let (x0, x1, x2) = (
+                    i128::from(limbs[0][i]),
+                    i128::from(limbs[1][i]),
+                    i128::from(limbs[2][i]),
+                );
+                let (h0, h1) = (i128::from(gh0[k]), i128::from(gh1[k]));
+                let raw0 = x0 * h0 + 256 * (x0 * h1 + x1 * h0);
+                let qp0 = raw0.div_euclid(4096);
+                let raw1 = qp0 + 16 * (x1 * h1 + x2 * h0);
+                let qp1 = raw1.div_euclid(4096);
+                let raw2 = qp1 + x2 * h1;
+                let p3 = raw2.div_euclid(4096);
+                qp0_col.push(qp0 as i64);
+                qp1_col.push(qp1 as i64);
+                p3_col.push(p3 as i64);
+            }
+            values.set(relation, c.p_advice[0], qp0_col)?;
+            values.set(relation, c.p_advice[1], qp1_col)?;
+            values.set(relation, c.p_advice[2], p3_col)?;
+        }
+
         let es = self.es;
         let z: Vec<i128> = (0..size)
             .map(|i| {
@@ -702,12 +917,44 @@ impl Module for RmsNorm {
             })
             .collect();
         values.set(relation, c.output, y)?;
-        set_bytes(relation, values, &c.z, &z)?;
+        set_limbs(relation, values, &c.z, &z, OUT_RADIX)?;
         for chain in &c.chains {
             assign_chain(chain, relation, values)?;
         }
         Ok(())
     }
+}
+
+/// Set radix-`2^radix` limb columns of `v` (one value per index); the top limb keeps any excess.
+fn set_limbs(
+    relation: &Relation,
+    values: &mut Values,
+    columns: &[ColumnId],
+    v: &[i128],
+    radix: u8,
+) -> Result<(), Violation> {
+    let base = 1i128 << radix;
+    let count = columns.len();
+    for (i, &col) in columns.iter().enumerate() {
+        if !matches!(relation.columns[col.0 as usize].kind, Kind::Virtual(_)) {
+            let col_vals: Vec<i64> = v
+                .iter()
+                .map(|&x| {
+                    let mut rem = x;
+                    for _ in 0..i {
+                        rem = rem.div_euclid(base);
+                    }
+                    if i + 1 == count {
+                        rem as i64
+                    } else {
+                        rem.rem_euclid(base) as i64
+                    }
+                })
+                .collect();
+            values.set(relation, col, col_vals)?;
+        }
+    }
+    Ok(())
 }
 
 /// Set byte-limb columns of `v` (one value per index); the top limb keeps any excess.
@@ -719,7 +966,9 @@ fn set_bytes(
 ) -> Result<(), Violation> {
     let split: Vec<Vec<i64>> = v.iter().map(|&x| bytes(x, columns.len())).collect();
     for (i, &col) in columns.iter().enumerate() {
-        values.set(relation, col, split.iter().map(|b| b[i]).collect())?;
+        if !matches!(relation.columns[col.0 as usize].kind, Kind::Virtual(_)) {
+            values.set(relation, col, split.iter().map(|b| b[i]).collect())?;
+        }
     }
     Ok(())
 }

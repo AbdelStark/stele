@@ -138,17 +138,37 @@ fn proved(name: &str, t: usize, sources: Sources) -> (u64, Ledger) {
     let clock = Instant::now();
     let proof = prove(&public, &mut executor, &weights, &committed, &statement).expect("prove");
     let prove_ms = clock.elapsed().as_millis();
-    let sections = container::decode(&proof).expect("container");
-    for (label, list) in [
-        ("groups", &sections.groups),
-        ("multiplicities", &sections.multiplicities),
-        ("identities", &sections.identities),
-        ("lookups", &sections.lookups),
-        ("matmuls", &sections.matmuls),
-        ("openings", &sections.openings),
-    ] {
-        let bytes: usize = list.iter().map(Vec::len).sum();
-        eprintln!("{label}: {} sections, {bytes} bytes", list.len());
+    let decoded = container::decode_any(&proof).expect("container");
+    match &decoded {
+        container::Decoded::V1(sections) => {
+            for (label, list) in [
+                ("groups", &sections.groups),
+                ("multiplicities", &sections.multiplicities),
+                ("identities", &sections.identities),
+                ("lookups", &sections.lookups),
+                ("matmuls", &sections.matmuls),
+                ("openings", &sections.openings),
+            ] {
+                let bytes: usize = list.iter().map(Vec::len).sum();
+                eprintln!("{label}: {} sections, {bytes} bytes", list.len());
+            }
+        }
+        container::Decoded::V2(v2) => {
+            let s = &v2.segments[0];
+            for (label, list) in [
+                ("groups", &s.groups),
+                ("multiplicities", &s.multiplicities),
+                ("identities", &s.identities),
+                ("lookups", &s.lookups),
+                ("matmuls", &s.matmuls),
+                ("reductions", &s.reductions),
+                ("openings", &s.openings),
+                ("model_openings", &v2.model_openings),
+            ] {
+                let bytes: usize = list.iter().map(Vec::len).sum();
+                eprintln!("{label}: {} sections, {bytes} bytes", list.len());
+            }
+        }
     }
     let clock = Instant::now();
     let ledger = verify(&public, &statement, &proof).expect("verify");
@@ -246,7 +266,7 @@ fn enumerates_every_round_of_the_eight_layer_window() {
 #[test]
 fn accepts_one_layer_window_on_a14_sources() {
     let (hash, ledger) = proved("one-layer", 16, Sources::CircleAllGrind);
-    assert_eq!(hash, 0x59ee_67e3_9aa2_5d4b);
+    assert_eq!(hash, 0xd550_0f3c_6fad_d196);
     let (_, _, worst, floor) = enumerated(&ledger);
     assert!(
         worst >= 108 * 1024 && floor >= 100 * 1024,
@@ -260,10 +280,10 @@ fn accepts_eight_layer_window_on_a14_sources() {
     let (hash, ledger) = proved("eight-layer", 64, Sources::CircleAllGrind);
     let summary = enumerated(&ledger);
     eprintln!("{summary:?}");
-    assert_eq!(hash, 0xf66d_7640_b9de_788e);
+    assert_eq!(hash, 0x0dcc_bffc_2d07_efc5);
     // The PCS column rounds are exactly 2^-108; LU silu_q, at 2^-108.0000055 after 2 bits,
-    // ties with them at 1/1024 bit (110,592) and comes first in ledger order. Floor 2^-101.9.
-    assert_eq!(summary, (11_687, "LU silu_q".to_string(), 110_592, 104_436));
+    // ties with them at 1/1024 bit (110,592) and comes first in ledger order.
+    assert_eq!(summary, (28_447, "LU silu_q".to_string(), 110_592, 104_416));
 }
 
 // Pinned proof bytes. The default sources are RFC-0026 A12's: every source,
@@ -276,20 +296,20 @@ fn accepts_one_layer_window() {
     // the hash equals the sequential prover's.
     assert_eq!(
         run("one-layer", 16, Sources::CircleAll),
-        0x61d3_c199_0e56_1b8f
+        0x51bd_0624_353c_6708
     );
 }
 
 #[test]
 fn accepts_one_layer_window_on_a11_sources() {
-    assert_eq!(run("one-layer", 16, Sources::Circle), 0x11e8_0225_ea2f_e1bd);
+    assert_eq!(run("one-layer", 16, Sources::Circle), 0xaf9e_9609_ab01_0db8);
 }
 
 #[test]
 fn accepts_one_layer_window_on_pre_a10_sources() {
     assert_eq!(
         run("one-layer", 16, Sources::Expander),
-        0x035f_65b3_0541_72b5
+        0x4bea_5a71_8a5b_449f
     );
 }
 
@@ -297,7 +317,7 @@ fn accepts_one_layer_window_on_pre_a10_sources() {
 fn accepts_one_layer_grouped_window() {
     assert_eq!(
         run("one-layer-grouped", 16, Sources::CircleAll),
-        0xef75_7091_9e40_b790
+        0x35f7_8375_0655_f274
     );
 }
 
@@ -305,7 +325,7 @@ fn accepts_one_layer_grouped_window() {
 fn accepts_one_layer_grouped_window_on_a11_sources() {
     assert_eq!(
         run("one-layer-grouped", 16, Sources::Circle),
-        0x1e0e_81df_8e4a_37a6
+        0x95fe_21f4_45a9_47a5
     );
 }
 
@@ -313,7 +333,7 @@ fn accepts_one_layer_grouped_window_on_a11_sources() {
 fn accepts_one_layer_grouped_window_on_pre_a10_sources() {
     assert_eq!(
         run("one-layer-grouped", 16, Sources::Expander),
-        0xeacf_1ac6_dd87_6e3b
+        0x1e8c_50bd_6aaa_21e8
     );
 }
 
@@ -350,8 +370,8 @@ fn accepts_one_layer_wide_gqa_window() {
         Some(Error::StatementMismatch),
         "tampered next token must reject at header"
     );
-    let mut restamped = container::decode(&proof).expect("container");
-    restamped.statement = statement_digest_for(&public, &bad).expect("restamp");
+    let mut restamped = container::decode_any(&proof).expect("container");
+    restamped.set_statement(statement_digest_for(&public, &bad).expect("restamp"));
     assert!(
         matches!(
             verify(&public, &bad, &restamped.encode()).err(),
@@ -371,7 +391,7 @@ fn accepts_one_layer_wide_gqa_window() {
 fn accepts_eight_layer_window() {
     assert_eq!(
         run("eight-layer", 64, Sources::CircleAll),
-        0xf2a8_6453_9644_a144
+        0x671c_7dc7_a1e7_910e
     );
 }
 
@@ -380,7 +400,7 @@ fn accepts_eight_layer_window() {
 fn accepts_eight_layer_window_on_a11_sources() {
     assert_eq!(
         run("eight-layer", 64, Sources::Circle),
-        0xea0b_5946_0256_c917
+        0x4152_b781_47cf_85b1
     );
 }
 
@@ -389,7 +409,7 @@ fn accepts_eight_layer_window_on_a11_sources() {
 fn accepts_eight_layer_window_on_pre_a10_sources() {
     assert_eq!(
         run("eight-layer", 64, Sources::Expander),
-        0x4f2a_0f00_d2d8_3acb
+        0xef0c_927e_46ae_b06c
     );
 }
 
@@ -550,8 +570,8 @@ fn rejects_statement_and_container_tampers() {
     // the transcript (RFC-0026 §4 step 1), not the header.
     let rejects = |p: &Public, s: &Statement| {
         assert_eq!(verify(p, s, &proof).err(), Some(Error::StatementMismatch));
-        let mut c = container::decode(&proof).expect("container");
-        c.statement = statement_digest_for(p, s).expect("digest");
+        let mut c = container::decode_any(&proof).expect("container");
+        c.set_statement(statement_digest_for(p, s).expect("digest"));
         let error = verify(p, s, &c.encode()).expect_err("restamped tamper");
         assert!(matches!(error, Error::Engine(_)), "{error:?}");
     };
@@ -626,9 +646,18 @@ fn rejects_statement_and_container_tampers() {
         Some(Error::Container(container::Error::ProofShape))
     );
     // The same bytes with one section boundary moved: the engine derives each length.
-    let mut moved = container::decode(&proof).expect("container");
-    let byte = moved.multiplicities[0].pop().expect("multiplicity bytes");
-    moved.multiplicities[1].insert(0, byte);
+    let mut moved = container::decode_any(&proof).expect("container");
+    match &mut moved {
+        container::Decoded::V1(c) => {
+            let byte = c.multiplicities[0].pop().expect("multiplicity bytes");
+            c.multiplicities[1].insert(0, byte);
+        }
+        container::Decoded::V2(v2) => {
+            let s = &mut v2.segments[0];
+            let byte = s.multiplicities[0].pop().expect("multiplicity bytes");
+            s.multiplicities[1].insert(0, byte);
+        }
+    }
     assert_eq!(
         verify(&public, &statement, &moved.encode()).err(),
         Some(Error::Engine(stele_reductions::relation::Error::ProofShape))
@@ -971,7 +1000,7 @@ fn census(name: &str, t: usize) -> (usize, usize, usize, usize) {
 #[test]
 fn matches_reference_zk_claim_census() {
     // Pinned for the one-layer synthetic window (T = 4); see formal/zk-claims.md §4.4.
-    assert_eq!(census("one-layer", 4), (752, 1804, 33, 348));
+    assert_eq!(census("one-layer", 4), (689, 995, 3, 330));
 }
 
 /// The 8-layer window of the E16-10 acceptance case; release build only.
@@ -1250,7 +1279,7 @@ fn check_ledger(verified: &stele_prover::development::zk::Verified, sources: usi
 fn accepts_one_layer_window_under_dev_zk() {
     assert_eq!(
         zk_window("one-layer", 4, stele_prover::development::zk::PROFILE),
-        (0x5127_0022_790c_94fc, 2_678_737)
+        (0xc495_4929_9d1f_9f2f, 2_678_570)
     );
 }
 
@@ -1263,7 +1292,7 @@ fn accepts_one_layer_window_under_dev_zk_balanced() {
         stele_prover::development::zk::PROFILE_BALANCED,
     );
     assert!(sources.iter().all(|(_, p)| *p == Policy::Two));
-    assert_eq!((hash, interactive), (0x31c2_47c4_ebd8_7325, 2_678_735));
+    assert_eq!((hash, interactive), (0xd4d7_62d8_61cb_ac47, 2_678_568));
 }
 
 /// RFC-0013 A8 on the E16-10 acceptance window: the balanced shapes are A8 item 2's
@@ -1286,7 +1315,7 @@ fn accepts_eight_layer_window_under_dev_zk_balanced() {
             (6, Policy::Two)
         ]
     );
-    assert_eq!((hash, interactive), (0x3a27_f281_868d_803b, 57_662_820));
+    assert_eq!((hash, interactive), (0xb0c3_2117_fd61_f2d0, 58_030_425));
 }
 
 /// The E16-10 acceptance window under dev-zk; release build only.
@@ -1295,7 +1324,7 @@ fn accepts_eight_layer_window_under_dev_zk_balanced() {
 fn accepts_eight_layer_window_under_dev_zk() {
     assert_eq!(
         zk_window("eight-layer", 64, stele_prover::development::zk::PROFILE),
-        (0x1ae4_d78e_9daa_dc92, 57_662_822)
+        (0xc17e_5d27_123c_af04, 58_030_427)
     );
 }
 
@@ -1420,12 +1449,20 @@ fn a15_relation(rel: &Relation) -> Vec<u8> {
         out.push(r.vars.len() as u8);
         out.extend_from_slice(&r.vars);
     };
+    let v2 = rel.is_segmented() || rel.has_virtual();
     let count = |out: &mut Vec<u8>, n: usize| out.extend_from_slice(&(n as u32).to_le_bytes());
-    let mut out = b"stele/v0.1/relation/encoding/v1".to_vec();
+    let mut out = if v2 {
+        b"stele/v0.1/relation/encoding/v2".to_vec()
+    } else {
+        b"stele/v0.1/relation/encoding/v1".to_vec()
+    };
     count(&mut out, rel.groups.len());
     for g in &rel.groups {
         a15_blob(&mut out, g.name.as_bytes());
         out.push(g.log_len);
+        if v2 {
+            out.extend_from_slice(&g.segment.to_le_bytes());
+        }
     }
     count(&mut out, rel.columns.len());
     for c in &rel.columns {
@@ -1443,15 +1480,55 @@ fn a15_relation(rel: &Relation) -> Vec<u8> {
                     out.extend_from_slice(&v.to_le_bytes());
                 }
             }
-            Kind::Virtual(_) => {
-                assert!(
-                    !matches!(c.kind, Kind::Virtual(_)),
-                    "A15 v1 fixture codec has no virtual columns"
-                );
+            Kind::Virtual(def) => {
+                out.push(3);
+                match def {
+                    stele_reductions::stele_ir::relation::Def::Linear { constant, terms } => {
+                        out.push(0);
+                        out.extend_from_slice(&constant.to_le_bytes());
+                        count(&mut out, terms.len());
+                        for (coeff, r) in terms {
+                            out.extend_from_slice(&coeff.to_le_bytes());
+                            reference(&mut out, r);
+                        }
+                    }
+                    stele_reductions::stele_ir::relation::Def::Pointwise { terms } => {
+                        out.push(1);
+                        count(&mut out, terms.len());
+                        for term in terms {
+                            out.extend_from_slice(&term.coeff.to_le_bytes());
+                            out.push(term.factors.len() as u8);
+                            for f in &term.factors {
+                                reference(&mut out, f);
+                            }
+                        }
+                    }
+                    stele_reductions::stele_ir::relation::Def::Contraction {
+                        free,
+                        summed,
+                        lhs,
+                        rhs,
+                    } => {
+                        out.push(2);
+                        out.extend_from_slice(&[*free, *summed]);
+                        reference(&mut out, lhs);
+                        reference(&mut out, rhs);
+                    }
+                }
+                match c.segment {
+                    None => out.push(0),
+                    Some(seg) => {
+                        out.push(1);
+                        out.extend_from_slice(&seg.to_le_bytes());
+                    }
+                }
             }
         }
         width(&mut out, c.width);
         out.push(c.log_len);
+        if v2 {
+            out.push(u8::from(c.carried));
+        }
     }
     count(&mut out, rel.tables.len());
     for t in &rel.tables {
@@ -1736,10 +1813,41 @@ fn matches_a15_codecs_on_the_one_layer_byte5_window() {
         digest,
         statement_digest_for(&public, &statement).expect("digest")
     );
-    // §4: the container, header first.
-    let c = container::decode(&proof).expect("container");
-    assert_eq!((c.cqis_id, c.statement), (cqis_id, digest));
-    assert!(a15_container(&c) == proof, "container");
+    // §4: the container, header first (v2 when virtual columns are present, RFC-0028).
+    let (counts, header_len) = match container::decode_any(&proof).expect("container") {
+        container::Decoded::V1(c) => {
+            assert_eq!((c.cqis_id, c.statement), (cqis_id, digest));
+            assert!(a15_container(&c) == proof, "container");
+            (
+                [
+                    c.groups.len(),
+                    c.multiplicities.len(),
+                    c.identities.len(),
+                    c.lookups.len(),
+                    c.matmuls.len(),
+                    c.openings.len(),
+                ],
+                82,
+            )
+        }
+        container::Decoded::V2(c) => {
+            assert_eq!((c.cqis_id, c.statement), (cqis_id, digest));
+            assert!(c.encode() == proof, "container v2");
+            assert_eq!(c.segments.len(), 1);
+            let s = &c.segments[0];
+            (
+                [
+                    s.groups.len(),
+                    s.multiplicities.len(),
+                    s.identities.len(),
+                    s.lookups.len(),
+                    s.matmuls.len(),
+                    s.openings.len() + c.model_openings.len(),
+                ],
+                82,
+            )
+        }
+    };
     // §6: section counts from the relation alone.
     let mut targets: Vec<(bool, u32)> = Vec::new();
     for t in rel
@@ -1760,14 +1868,6 @@ fn matches_a15_codecs_on_the_one_layer_byte5_window() {
     );
     sizes.sort_unstable();
     sizes.dedup();
-    let counts = [
-        c.groups.len(),
-        c.multiplicities.len(),
-        c.identities.len(),
-        c.lookups.len(),
-        c.matmuls.len(),
-        c.openings.len(),
-    ];
     assert_eq!(
         counts,
         [
@@ -1791,7 +1891,7 @@ fn matches_a15_codecs_on_the_one_layer_byte5_window() {
             a15_hex(blake3::hash(&input).as_bytes()),
         ),
         ("relation", encoding.len(), a15_hex(&relation_digest)),
-        ("header", 82, a15_hex(&proof[..82])),
+        ("header", header_len, a15_hex(&proof[..header_len])),
     ];
     for (name, len, value) in &pins {
         eprintln!("A15 one-layer {name}: {len} bytes, {value}");
@@ -1800,7 +1900,7 @@ fn matches_a15_codecs_on_the_one_layer_byte5_window() {
     assert_eq!(A15_ONE_LAYER, format!("{pins:?} {counts:?}"));
 }
 
-const A15_ONE_LAYER: &str = r#"[("public file", 186425, "ba827bf43eb106898d4aeeedbff8d5dbd55c677ac17e3fbc16acbaaa2cbb937b"), ("public input", 4505, "a40ce6e36583f69cfed8afdd786e694d7e0099545a5b0bebddc6fd1573e44872"), ("relation", 3503903, "8d5be7124d20e9989bc23ec60c39dc3cfe9ea9fc50a0685e62817073480294ae"), ("header", 82, "7374656c652d6465762d6532652d76310100dbc4ca0489fdf0360e673f4dad6e4456d08dc2e8a78211ea1660dd392f7e8c0f9baa01ed802c4c4c38dcf8daf8604c931e98f30ced92de39c1d2b92354838c3c")] [1, 21, 6, 21, 127, 2]"#;
+const A15_ONE_LAYER: &str = r#"[("public file", 186425, "ba827bf43eb106898d4aeeedbff8d5dbd55c677ac17e3fbc16acbaaa2cbb937b"), ("public input", 4505, "a40ce6e36583f69cfed8afdd786e694d7e0099545a5b0bebddc6fd1573e44872"), ("relation", 3478469, "750ec9e534f3012c0677e477b566db15b7a7771d23ac5ca2d477e8a07b88d6e2"), ("header", 82, "7374656c652d6465762d6532652d76320200dbc4ca0489fdf0360e673f4dad6e4456d08dc2e8a78211ea1660dd392f7e8c0fb99b77fd0a47b22f916f9034fbf9722557e069e24eb9539b42ba7389cb10318d")] [1, 21, 5, 21, 12, 2]"#;
 
 /// RFC-0026 A15's second small vector: a lookup with no selector, a matmul ref fixing
 /// a bit to 0 (`0xFE`), and a statement with `next` absent (`e < T`).
@@ -2340,8 +2440,8 @@ fn accepts_one_layer_measured_with_unchanged_proof_bytes_and_stage_counters() {
         next: None,
     };
     for (profile, expected_hash) in [
-        (3u8, 0x61d3_c199_0e56_1b8fu64),
-        (5u8, 0x59ee_67e3_9aa2_5d4b),
+        (3u8, 0x51bd_0624_353c_6708u64),
+        (5u8, 0xd550_0f3c_6fad_d196),
     ] {
         let (public, statement, proof, report) =
             stele_prover::development::prove_window_development_measured(
@@ -2374,18 +2474,39 @@ fn accepts_one_layer_measured_with_unchanged_proof_bytes_and_stage_counters() {
             e.lookup_checks.iter().map(|(_, n)| *n).sum::<u64>(),
             e.lookup_positions
         );
-        // Development-tier weights currently undergo 4 physical passes: Step 3 Range counts,
-        // Step 5 Range originals, Step 6 matmul, and Step 7 model opening.
-        assert_eq!(e.weight_reads, 4);
+        // Development-tier weights currently undergo 5 physical passes under virtual
+        // contractions (RFC-0028, INV-7): virtual contraction evaluation, Step 3 Range
+        // counts, Step 5 Range originals, Step 6b contraction reduction, and Step 7
+        // model opening (fused in E18-07/E18-08).
+        assert_eq!(e.weight_reads, 5);
         assert!(e.weight_elements_read > 0);
-        let sections = container::decode(&proof).expect("container");
+        let decoded = container::decode_any(&proof).expect("container");
         let sum_len = |v: &[Vec<u8>]| -> u64 { v.iter().map(|s| s.len() as u64).sum() };
-        assert_eq!(e.groups_bytes, sum_len(&sections.groups));
-        assert_eq!(e.multiplicities_bytes, sum_len(&sections.multiplicities));
-        assert_eq!(e.identities_bytes, sum_len(&sections.identities));
-        assert_eq!(e.lookups_bytes, sum_len(&sections.lookups));
-        assert_eq!(e.matmuls_bytes, sum_len(&sections.matmuls));
-        assert_eq!(e.openings_bytes, sum_len(&sections.openings));
+        match &decoded {
+            container::Decoded::V1(sections) => {
+                assert_eq!(e.groups_bytes, sum_len(&sections.groups));
+                assert_eq!(e.multiplicities_bytes, sum_len(&sections.multiplicities));
+                assert_eq!(e.identities_bytes, sum_len(&sections.identities));
+                assert_eq!(e.lookups_bytes, sum_len(&sections.lookups));
+                assert_eq!(e.matmuls_bytes, sum_len(&sections.matmuls));
+                assert_eq!(e.openings_bytes, sum_len(&sections.openings));
+            }
+            container::Decoded::V2(v2) => {
+                let s = &v2.segments[0];
+                assert_eq!(e.groups_bytes, sum_len(&s.groups));
+                assert_eq!(e.multiplicities_bytes, sum_len(&s.multiplicities));
+                assert_eq!(e.identities_bytes, sum_len(&s.identities));
+                assert_eq!(e.lookups_bytes, sum_len(&s.lookups));
+                assert_eq!(
+                    e.matmuls_bytes,
+                    sum_len(&s.matmuls) + sum_len(&s.reductions)
+                );
+                assert_eq!(
+                    e.openings_bytes,
+                    sum_len(&s.openings) + sum_len(&v2.model_openings)
+                );
+            }
+        }
         // Deterministic counters across runs.
         let (_, _, proof2, report2) = stele_prover::development::prove_window_development_measured(
             case.bytes[0],

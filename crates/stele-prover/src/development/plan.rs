@@ -502,6 +502,12 @@ impl Layout {
                 )
             }
             .map_err(unsupported)?;
+            let end_of_chunk = segmented
+                && (l + 1 - seg_start_layer == usize::from(plan.segment_layers)
+                    || (l + 1) == model.blocks().len());
+            if end_of_chunk {
+                residual.set_carried(true);
+            }
             residual.declare(&mut relation);
             stream = declared(residual.columns().map(|c| c.output))?;
             incoming = block.output_fraction();

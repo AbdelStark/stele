@@ -19,6 +19,11 @@
 //!   because `16384` does not fit signed 15 and a signed 16 coefficient would break the
 //!   §3.6 bound: `3·2^29 + 2^16 + 2^15 < p`.
 //!
+//! Committed witness advice columns (RFC-0028 §1.2): `out` (`s16`), `low` (`u14`, kept
+//! committed so `numerator` uses the `Identity` `< p` bound rather than `Def::Pointwise`'s
+//! `<= (p − 1)/2`), `half` (`u1`), and `negative` (`u1`). Virtual: `partner` contraction,
+//! `twos`, and `tie`.
+//!
 //! Padding entries have zero coefficients, so `N = 0` pins `out = 0` (RFC-0026 §2.1).
 //! The output-uniqueness lemma is in `agents/reviews/e16-06-rope.md`.
 
@@ -28,7 +33,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use stele_cqis::model::{Error as ModelError, Rotation};
 use stele_ir::relation::{
-    ColumnId, Identity, Kind, Matmul, Module, Range, Ref, Relation, Term, Values, Violation, Width,
+    ColumnId, Def, Identity, Kind, Module, Range, Ref, Relation, Term, Values, Violation, Width,
 };
 
 /// Q14 rotary divisor `2^14` (RFC-0004 A7).
@@ -219,14 +224,14 @@ impl Module for Rope {
             });
             id
         };
-        let columns = RopeColumns {
-            output: witness(relation, "out", Width::signed(16)),
-            partner: witness(relation, "partner", Width::signed(16)),
-            low: witness(relation, "low", Width::unsigned(14)),
-            half: witness(relation, "half", Width::unsigned(1)),
-            negative: witness(relation, "negative", Width::unsigned(1)),
-            twos: witness(relation, "twos", Width::unsigned(16)),
-            tie: witness(relation, "tie", Width::unsigned(14)),
+        let virtual_ranged = |relation: &mut Relation, label: &str, def: Def, width: Width| {
+            let id = relation.add_virtual(&format!("{name}/{label}"), def, n);
+            relation.ranges.push(Range {
+                name: format!("{name}/{label}"),
+                column: id,
+                width,
+            });
+            id
         };
 
         // Public permutation over (i, i'): Perm[i][i'] = 1 iff i' is i's rotary partner.
@@ -263,34 +268,79 @@ impl Module for Rope {
         let partner_hi = add("partner_hi", partner_hi, Width::signed(15));
         let partner_one = add("partner_one", partner_one, Width::unsigned(1));
 
-        let at = |c: ColumnId| Ref::identity(c, n);
-        // P(t, head, i) = Σ_{i'} x(t, head, i')·Perm(i, i'); i' on domain bits n..n+d.
+        // Committed advice only (4 cols, RFC-0028 §1.2): out, low, half, negative.
+        let output = witness(relation, "out", Width::signed(16));
+        let low_col = witness(relation, "low", Width::unsigned(14));
+        let half_col = witness(relation, "half", Width::unsigned(1));
+        let negative_col = witness(relation, "negative", Width::unsigned(1));
+
+        // Virtual contraction P(t, head, i) = Σ_{i'} x(t, head, i')·Perm(i, i') (RFC-0028 §1.2, A1).
         let input_vars: Vec<u8> = (n..n + d).chain(d..n).collect();
         let perm_vars: Vec<u8> = (n..n + d).chain(0..d).collect();
-        relation.matmuls.push(Matmul {
-            name: format!("{name}/gather"),
-            free: n,
-            summed: d,
-            out: at(columns.partner),
-            lhs: Ref {
-                column: self.input,
-                vars: input_vars,
+        let partner = virtual_ranged(
+            relation,
+            "partner",
+            Def::Contraction {
+                free: n,
+                summed: d,
+                lhs: Ref {
+                    column: self.input,
+                    vars: input_vars,
+                },
+                rhs: Ref {
+                    column: perm,
+                    vars: perm_vars,
+                },
             },
-            rhs: Ref {
-                column: perm,
-                vars: perm_vars,
-            },
-        });
-        let (x, p, out, low, half, neg, twos, tie) = (
-            at(self.input),
-            at(columns.partner),
-            at(columns.output),
-            at(columns.low),
-            at(columns.half),
-            at(columns.negative),
-            at(columns.twos),
-            at(columns.tie),
+            Width::signed(16),
         );
+
+        let at = |c: ColumnId| Ref::identity(c, n);
+        let (x, p, out, low, half, neg) = (
+            at(self.input),
+            at(partner),
+            at(output),
+            at(low_col),
+            at(half_col),
+            at(negative_col),
+        );
+        // Virtual Linear twos = (out - beta) + 2^16*nu ∈ [0, 2^16).
+        let twos = virtual_ranged(
+            relation,
+            "twos",
+            Def::Linear {
+                constant: 0,
+                terms: vec![(1, out.clone()), (-1, half.clone()), (1 << 16, neg.clone())],
+            },
+            Width::unsigned(16),
+        );
+        // Virtual Pointwise tie = (2*beta - 1)*(L - 2^13 - nu) - (1 - beta) ∈ [0, 2^14).
+        let tie = virtual_ranged(
+            relation,
+            "tie",
+            Def::Pointwise {
+                terms: vec![
+                    term(2, &[&half, &low]),
+                    term(1 - 2 * HALF, &[&half]),
+                    term(-2, &[&half, &neg]),
+                    term(-1, &[&low]),
+                    term(1, &[&neg]),
+                    term(HALF - 1, &[]),
+                ],
+            },
+            Width::unsigned(14),
+        );
+
+        let columns = RopeColumns {
+            output,
+            partner,
+            low: low_col,
+            half: half_col,
+            negative: negative_col,
+            twos,
+            tie,
+        };
+
         // N = (out − β)·2^14 + L.
         relation.identities.push(Identity {
             name: format!("{name}/numerator"),
@@ -303,31 +353,6 @@ impl Module for Rope {
                 term(-DIVISOR, &[&out]),
                 term(DIVISOR, &[&half]),
                 term(-1, &[&low]),
-            ],
-        });
-        // tie = (2β−1)(L − 2^13 − ν) − (1−β), expanded.
-        relation.identities.push(Identity {
-            name: format!("{name}/rounding"),
-            vars: n,
-            terms: vec![
-                term(1, &[&tie]),
-                term(-2, &[&half, &low]),
-                term(2 * HALF - 1, &[&half]),
-                term(2, &[&half, &neg]),
-                term(1, &[&low]),
-                term(-1, &[&neg]),
-                term(1 - HALF, &[]),
-            ],
-        });
-        // tc = (out − β) + 2^16·ν.
-        relation.identities.push(Identity {
-            name: format!("{name}/sign"),
-            vars: n,
-            terms: vec![
-                term(1, &[&twos]),
-                term(-1, &[&out]),
-                term(1, &[&half]),
-                term(-(1 << 16), &[&neg]),
             ],
         });
         self.columns = Some(columns);
@@ -344,7 +369,10 @@ impl Module for Rope {
             return Err(Violation::Missing(self.input));
         }
         let len = 1usize << self.log_len();
-        let mut cols = [(); 7].map(|_| vec![0i64; len]);
+        let mut out_col = vec![0i64; len];
+        let mut low_col = vec![0i64; len];
+        let mut half_col = vec![0i64; len];
+        let mut neg_col = vec![0i64; len];
         for index in 0..len {
             let (own, partner, x) = match self.entry(index) {
                 Some((t, head, i)) => {
@@ -359,29 +387,24 @@ impl Module for Rope {
                 None => (0, None, 0),
             };
             let (partner_value, partner_coeff) = partner.unwrap_or((0, 0));
-            let [out, low, half, negative, twos, tie] =
-                solve(x * own + partner_value * partner_coeff);
+            let [out, low, half, negative, _, _] = solve(x * own + partner_value * partner_coeff);
             if !Width::signed(16).contains(out) {
                 return Err(Violation::Range {
                     relation: format!("{}/out", self.name),
                     index,
                 });
             }
-            let row = [out, partner_value, low, half, negative, twos, tie];
-            for (column, v) in cols.iter_mut().zip(row) {
-                column[index] = v;
-            }
+            out_col[index] = out;
+            low_col[index] = low;
+            half_col[index] = half;
+            neg_col[index] = negative;
         }
-        let ids = [
-            columns.output,
-            columns.partner,
-            columns.low,
-            columns.half,
-            columns.negative,
-            columns.twos,
-            columns.tie,
-        ];
-        for (id, column) in ids.into_iter().zip(cols) {
+        for (id, column) in [
+            (columns.output, out_col),
+            (columns.low, low_col),
+            (columns.half, half_col),
+            (columns.negative, neg_col),
+        ] {
             values.set(relation, id, column)?;
         }
         Ok(())

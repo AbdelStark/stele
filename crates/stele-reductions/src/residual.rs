@@ -24,9 +24,14 @@
 //! - Any column wider than 16 bits (`bits = 24`) is disciplined by a 2-limb `Compose`
 //!   of an unsigned 16-bit low limb and a signed/unsigned `(b − 16)`-bit high limb
 //!   (RFC-0026 §3.5a).
-//! - A shifted input that would break the §3.6 bound is read through a **narrow copy**:
-//!   a witness equal to it with a smaller declared width, which every non-overflowing
-//!   execution satisfies (`|G·2^e'| < 2^30`, or `< 2^bits` when `k = 0`).
+//!
+//! Committed witness advice columns (RFC-0028 §1.2):
+//! - `k = 0`: **none** (0 committed columns when inputs fit `<= HALF_MODULUS`; narrow-copy
+//!   witness only if an unshifted operand exceeds the static bound). `output` is virtual.
+//! - `k > 0`: rounded output (`out` for int16, or `out_lo`/`out_hi` for int24), `half` (`u1`),
+//!   `negative` (`u1`), plus stage-1 split advice (`first_hi`, `second_hi`, `sticky`, `carry`)
+//!   only when `s > 0`, and narrow-copy advice only when the static bound requires it.
+//!   Virtual: `low`, `twos`, `tie`, and stage-1 remainders.
 //!
 //! Padded lanes and token rows of the output are pinned to 0 by a public mask (RFC-0026 §2.1). The
 //! output-uniqueness lemma is in `agents/reviews/e16-09-residual-argmax.md`.
@@ -36,8 +41,8 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_ir::relation::{
-    ColumnId, Compose, GroupId, Identity, Invalid, Kind, Module, Range, Ref, Relation, Term,
-    Values, Violation, Width, MAX_RANGE_BITS,
+    ColumnId, Compose, Def, GroupId, Identity, Invalid, Kind, Module, Range, Ref, Relation, Term,
+    Values, Violation, Width, HALF_MODULUS, MAX_RANGE_BITS,
 };
 
 fn log2_ceil(n: usize) -> u8 {
@@ -151,6 +156,9 @@ pub struct Residual {
     tokens: usize,
     width: usize,
     shape: Shape,
+    /// RFC-0026 A27 / RFC-0028 §2.4: true when the output is a carried segment boundary
+    /// column (must remain a committed `Kind::Witness` column).
+    carried: bool,
     columns: Option<ResidualColumns>,
 }
 
@@ -208,8 +216,14 @@ impl Residual {
             tokens,
             width,
             shape: Shape::new(fx, fy, fo, bits),
+            carried: false,
             columns: None,
         })
+    }
+
+    /// Mark whether the output is a carried segment boundary column (RFC-0026 A27).
+    pub fn set_carried(&mut self, carried: bool) {
+        self.carried = carried;
     }
 
     /// Column ids, once declared.
@@ -353,178 +367,419 @@ impl Module for Residual {
         let n = self.log_len();
         let group = self.group(relation);
         let name = self.name.clone();
-        let mut ids = Vec::new();
-        let mut splits = Vec::new();
-        for (label, width) in self.labels() {
-            let column = format!("{name}/{label}");
-            let id = relation.add_column(&column, Kind::Witness(group), width, n);
+        let at = |c: ColumnId| Ref::identity(c, n);
+        let mut splits: Vec<(ColumnId, ColumnId, ColumnId)> = Vec::new();
+        let mut aux: Vec<(&'static str, ColumnId)> = Vec::new();
+
+        // Add a committed witness column (with Range if <= 16 bits; otherwise committed lo/hi
+        // plus either Compose when `must_commit_whole` or virtual Linear when not).
+        let add_witness = |relation: &mut Relation,
+                           splits: &mut Vec<(ColumnId, ColumnId, ColumnId)>,
+                           label: &str,
+                           width: Width,
+                           must_commit_whole: bool|
+         -> ColumnId {
+            let col_name = format!("{name}/{label}");
+            if width.bits <= MAX_RANGE_BITS {
+                let id = relation.add_column(&col_name, Kind::Witness(group), width, n);
+                relation.ranges.push(Range {
+                    name: col_name,
+                    column: id,
+                    width,
+                });
+                return id;
+            }
+            let lo_name = format!("{col_name}/lo");
+            let hi_name = format!("{col_name}/hi");
+            let lo_width = Width::unsigned(MAX_RANGE_BITS);
+            let hi_width = Width {
+                bits: width.bits - MAX_RANGE_BITS,
+                signed: width.signed,
+            };
+            let lo = relation.add_column(&lo_name, Kind::Witness(group), lo_width, n);
+            let hi = relation.add_column(&hi_name, Kind::Witness(group), hi_width, n);
+            relation.ranges.push(Range {
+                name: lo_name,
+                column: lo,
+                width: lo_width,
+            });
+            relation.ranges.push(Range {
+                name: hi_name,
+                column: hi,
+                width: hi_width,
+            });
+            let id = if must_commit_whole {
+                let id = relation.add_column(&col_name, Kind::Witness(group), width, n);
+                relation.composes.push(Compose {
+                    name: format!("{col_name}/compose"),
+                    column: id,
+                    limbs: vec![(lo, 0), (hi, MAX_RANGE_BITS)],
+                });
+                id
+            } else {
+                relation.add_virtual(
+                    &col_name,
+                    Def::Linear {
+                        constant: 0,
+                        terms: vec![(1, at(lo)), (1 << MAX_RANGE_BITS, at(hi))],
+                    },
+                    n,
+                )
+            };
+            splits.push((id, lo, hi));
+            id
+        };
+
+        // Add a virtual column with Range (<= 16 bits) or committed hi + virtual u16 lo (> 16 bits).
+        let add_virtual_ranged = |relation: &mut Relation,
+                                  splits: &mut Vec<(ColumnId, ColumnId, ColumnId)>,
+                                  label: &str,
+                                  def: Def,
+                                  width: Width|
+         -> ColumnId {
+            let col_name = format!("{name}/{label}");
+            let id = relation.add_virtual(&col_name, def, n);
             if width.bits <= MAX_RANGE_BITS {
                 relation.ranges.push(Range {
-                    name: column,
+                    name: col_name,
                     column: id,
                     width,
                 });
             } else {
-                let lo_name = format!("{column}/lo");
-                let hi_name = format!("{column}/hi");
-                let lo_width = Width::unsigned(MAX_RANGE_BITS);
+                let hi_name = format!("{col_name}/hi");
                 let hi_width = Width {
                     bits: width.bits - MAX_RANGE_BITS,
                     signed: width.signed,
                 };
-                let lo = relation.add_column(&lo_name, Kind::Witness(group), lo_width, n);
                 let hi = relation.add_column(&hi_name, Kind::Witness(group), hi_width, n);
-                relation.ranges.push(Range {
-                    name: lo_name,
-                    column: lo,
-                    width: lo_width,
-                });
                 relation.ranges.push(Range {
                     name: hi_name,
                     column: hi,
                     width: hi_width,
                 });
-                relation.composes.push(Compose {
-                    name: format!("{column}/compose"),
-                    column: id,
-                    limbs: vec![(lo, 0), (hi, MAX_RANGE_BITS)],
+                let lo_name = format!("{col_name}/lo");
+                let lo = relation.add_virtual(
+                    &lo_name,
+                    Def::Linear {
+                        constant: 0,
+                        terms: vec![(1, at(id)), (-(1 << MAX_RANGE_BITS), at(hi))],
+                    },
+                    n,
+                );
+                relation.ranges.push(Range {
+                    name: lo_name,
+                    column: lo,
+                    width: Width::unsigned(MAX_RANGE_BITS),
                 });
-                splits.push((id, lo, hi));
+                let recomposed = relation.add_virtual(
+                    &format!("{col_name}/recomposed"),
+                    Def::Linear {
+                        constant: 0,
+                        terms: vec![(1, at(lo)), (1 << MAX_RANGE_BITS, at(hi))],
+                    },
+                    n,
+                );
+                splits.push((recomposed, lo, hi));
+                return recomposed;
             }
-            ids.push((label, id));
-        }
-        let col = |label: &str| ids.iter().find_map(|&(l, id)| (l == label).then_some(id));
-        let at = |c: ColumnId| Ref::identity(c, n);
-        let get = |label: &str| col(label).map(at);
-        let mut identity = |label: &str, terms: Vec<Term>| {
-            relation.identities.push(Identity {
-                name: format!("{name}/{label}"),
-                vars: n,
-                terms,
-            })
+            id
         };
-        let Shape { e, m, k, s, .. } = self.shape;
-        let (first, second) = self.ordered();
-        let (first, out) = (at(first), at(ids[0].1));
-        // G in the unsplit identity: its narrow copy (= G) when one is declared.
-        let coarse = match get("narrow") {
-            Some(narrow) => {
-                identity("copy", vec![term(1, &[&narrow]), term(-1, &[&at(second)])]);
-                narrow
+
+        let Shape {
+            e, m, k, s, bits, ..
+        } = self.shape;
+        let (first_id, second_id) = self.ordered();
+        let (first, second) = (at(first_id), at(second_id));
+        // Virtual narrow copy (= G) tightens G's downstream magnitude via RFC-0028 A1 when
+        // b <= 16; for b > 16 keep a composed witness so its static magnitude is exact 2^(b-1).
+        let coarse = match self.shape.narrow() {
+            Some(b) if b <= MAX_RANGE_BITS => {
+                let narrow = add_virtual_ranged(
+                    relation,
+                    &mut splits,
+                    "narrow",
+                    Def::Linear {
+                        constant: 0,
+                        terms: vec![(1, second.clone())],
+                    },
+                    Width::signed(b),
+                );
+                aux.push(("narrow", narrow));
+                at(narrow)
             }
-            None => at(second),
+            Some(b) => {
+                let narrow = add_witness(relation, &mut splits, "narrow", Width::signed(b), true);
+                relation.identities.push(Identity {
+                    name: format!("{name}/copy"),
+                    vars: n,
+                    terms: vec![term(1, &[&at(narrow)]), term(-1, &[&second])],
+                });
+                aux.push(("narrow", narrow));
+                at(narrow)
+            }
+            None => second.clone(),
         };
-        let second = at(second);
+
+        let (output_id, rounding);
         if k == 0 {
-            // S = F + G·2^e, and out = 2^m·S.
-            let scaled = get("scaled").unwrap_or_else(|| out.clone());
-            identity(
-                "numerator",
-                vec![
-                    term(1, &[&scaled]),
-                    term(-1, &[&first]),
-                    term(-(1 << e), &[&coarse]),
-                ],
-            );
-            if m > 0 {
-                identity("scale", vec![term(1, &[&out]), term(-(1 << m), &[&scaled])]);
-            }
-        } else {
-            // Stage 1: T = high(F) + (G·2^(e−s) or high(G) + κ), st = [N mod 2^s ≠ 0].
-            let mut stage2 = Vec::new();
-            let mut sticky = None;
-            if s > 0 {
-                let (fh, fl) = (
-                    get("first_high").expect("split"),
-                    get("first_low").expect("split"),
+            let scaled_ref = if m > 0 {
+                let scaled = add_virtual_ranged(
+                    relation,
+                    &mut splits,
+                    "scaled",
+                    Def::Linear {
+                        constant: 0,
+                        terms: vec![(1, first.clone()), (1 << e, coarse.clone())],
+                    },
+                    Width::signed(bits.saturating_sub(m).max(1)),
                 );
-                identity(
-                    "first",
-                    vec![
-                        term(1, &[&first]),
-                        term(-(1 << s), &[&fh]),
-                        term(-1, &[&fl]),
-                    ],
-                );
-                stage2.push(term(1, &[&fh]));
-                let rest = match (get("second_high"), get("second_low")) {
-                    (Some(gh), Some(gl)) => {
-                        let (carry, rest) =
-                            (get("carry").expect("carry"), get("rest").expect("rest"));
-                        identity(
-                            "second",
-                            vec![
-                                term(1, &[&second]),
-                                term(-(1 << (s - e)), &[&gh]),
-                                term(-1, &[&gl]),
-                            ],
-                        );
-                        identity(
-                            "carry_sum",
-                            vec![
-                                term(1, &[&fl]),
-                                term(1 << e, &[&gl]),
-                                term(-(1 << s), &[&carry]),
-                                term(-1, &[&rest]),
-                            ],
-                        );
-                        stage2.extend([term(1, &[&gh]), term(1, &[&carry])]);
-                        rest
-                    }
-                    _ => {
-                        stage2.push(term(1 << (e - s), &[&coarse]));
-                        fl
-                    }
-                };
-                let (st, gap) = (get("sticky").expect("sticky"), get("gap").expect("gap"));
-                // st = [rest ≠ 0]: (1 − st)·rest = 0 and gap = st·(rest − 1) ≥ 0.
-                identity(
-                    "sticky_zero",
-                    vec![term(1, &[&rest]), term(-1, &[&st, &rest])],
-                );
-                identity(
-                    "sticky_gap",
-                    vec![term(1, &[&gap]), term(-1, &[&st, &rest]), term(1, &[&st])],
-                );
-                sticky = Some(st);
+                aux.push(("scaled", scaled));
+                Some(scaled)
             } else {
-                stage2.extend([term(1, &[&first]), term(1 << e, &[&coarse])]);
+                None
+            };
+            let out_terms: Vec<(i64, Ref)> = match scaled_ref {
+                Some(sc) => vec![(1 << m, at(sc))],
+                None => vec![(1, first.clone()), (1 << e, coarse.clone())],
+            };
+            let out_bound: u128 = out_terms
+                .iter()
+                .map(|(c, r)| {
+                    let mag = relation
+                        .column_magnitude(r.column)
+                        .unwrap_or_else(|| relation.columns[r.column.0 as usize].width.magnitude());
+                    u128::from(c.unsigned_abs()).saturating_mul(mag)
+                })
+                .fold(0u128, u128::saturating_add);
+            if self.carried || out_bound > HALF_MODULUS {
+                output_id = add_witness(
+                    relation,
+                    &mut splits,
+                    "out",
+                    Width::signed(bits),
+                    self.carried,
+                );
+                let out_ref = at(output_id);
+                if let Some(sc) = scaled_ref {
+                    relation.identities.push(Identity {
+                        name: format!("{name}/scale"),
+                        vars: n,
+                        terms: vec![term(1, &[&out_ref]), term(-(1 << m), &[&at(sc)])],
+                    });
+                } else {
+                    relation.identities.push(Identity {
+                        name: format!("{name}/numerator"),
+                        vars: n,
+                        terms: vec![
+                            term(1, &[&out_ref]),
+                            term(-1, &[&first]),
+                            term(-(1 << e), &[&coarse]),
+                        ],
+                    });
+                }
+            } else {
+                output_id = add_virtual_ranged(
+                    relation,
+                    &mut splits,
+                    "out",
+                    Def::Linear {
+                        constant: 0,
+                        terms: out_terms,
+                    },
+                    Width::signed(bits),
+                );
             }
-            // Stage 2: T − D2·(out − β) − L = 0.
-            let d2 = 1i64 << self.shape.k2();
-            let (low, half, neg) = (
-                get("low").expect("low"),
-                get("half").expect("half"),
-                get("negative").expect("negative"),
+            rounding = None;
+        } else {
+            // Committed advice output (when !carried && bits == 24, composed virtually from lo/hi).
+            output_id = add_witness(
+                relation,
+                &mut splits,
+                "out",
+                Width::signed(bits),
+                self.carried,
             );
-            stage2.extend([term(-d2, &[&out]), term(d2, &[&half]), term(-1, &[&low])]);
-            identity("numerator", stage2);
-            // tie = (2β−1)(2L + st − D2 − ν) − (1−β), expanded.
-            let mut tie = vec![
-                term(1, &[&get("tie").expect("tie")]),
-                term(-4, &[&half, &low]),
-                term(2 * d2 - 1, &[&half]),
-                term(2, &[&half, &neg]),
-                term(2, &[&low]),
-                term(-1, &[&neg]),
-                term(1 - d2, &[]),
+            let out = at(output_id);
+
+            // Stage 1: T = high(F) + (G·2^(e−s) or high(G) + κ), st = [N mod 2^s ≠ 0].
+            let mut stage2_linear: Vec<(i64, Ref)> = Vec::new();
+            let mut sticky_ref = None;
+            if s > 0 {
+                let fh = add_witness(
+                    relation,
+                    &mut splits,
+                    "first_high",
+                    Width::signed(bits.saturating_sub(s).max(1)),
+                    false,
+                );
+                let fl = add_virtual_ranged(
+                    relation,
+                    &mut splits,
+                    "first_low",
+                    Def::Linear {
+                        constant: 0,
+                        terms: vec![(1, first.clone()), (-(1 << s), at(fh))],
+                    },
+                    Width::unsigned(s),
+                );
+                aux.extend([("first_high", fh), ("first_low", fl)]);
+                stage2_linear.push((1, at(fh)));
+                let rest = if e < s {
+                    let j = s - e;
+                    let gh = add_witness(
+                        relation,
+                        &mut splits,
+                        "second_high",
+                        Width::signed(bits.saturating_sub(j).max(1)),
+                        false,
+                    );
+                    let gl = add_virtual_ranged(
+                        relation,
+                        &mut splits,
+                        "second_low",
+                        Def::Linear {
+                            constant: 0,
+                            terms: vec![(1, second.clone()), (-(1 << j), at(gh))],
+                        },
+                        Width::unsigned(j),
+                    );
+                    let carry =
+                        add_witness(relation, &mut splits, "carry", Width::unsigned(1), false);
+                    let rest = add_virtual_ranged(
+                        relation,
+                        &mut splits,
+                        "rest",
+                        Def::Linear {
+                            constant: 0,
+                            terms: vec![(1, at(fl)), (1 << e, at(gl)), (-(1 << s), at(carry))],
+                        },
+                        Width::unsigned(s),
+                    );
+                    aux.extend([
+                        ("second_high", gh),
+                        ("second_low", gl),
+                        ("carry", carry),
+                        ("rest", rest),
+                    ]);
+                    stage2_linear.push((1, at(gh)));
+                    stage2_linear.push((1, at(carry)));
+                    rest
+                } else {
+                    stage2_linear.push((1 << (e - s), coarse.clone()));
+                    fl
+                };
+                let st = add_witness(relation, &mut splits, "sticky", Width::unsigned(1), false);
+                relation.identities.push(Identity {
+                    name: format!("{name}/sticky_zero"),
+                    vars: n,
+                    terms: vec![term(1, &[&at(rest)]), term(-1, &[&at(st), &at(rest)])],
+                });
+                let gap = add_virtual_ranged(
+                    relation,
+                    &mut splits,
+                    "gap",
+                    Def::Pointwise {
+                        terms: vec![term(1, &[&at(st), &at(rest)]), term(-1, &[&at(st)])],
+                    },
+                    Width::unsigned(s),
+                );
+                aux.extend([("sticky", st), ("gap", gap)]);
+                sticky_ref = Some(at(st));
+            } else {
+                stage2_linear.push((1, first.clone()));
+                stage2_linear.push((1 << e, coarse.clone()));
+            }
+
+            // Stage 2: low = T - D2*(out - beta) ∈ [0, D2), twos = out - beta + 2^bits*nu,
+            // tie = (2*beta - 1)*(2*low + st - D2 - nu) - (1 - beta) ∈ [0, 2*D2).
+            let k2 = self.shape.k2();
+            let d2 = 1i64 << k2;
+            let half_id = add_witness(relation, &mut splits, "half", Width::unsigned(1), false);
+            let neg_id = add_witness(relation, &mut splits, "negative", Width::unsigned(1), false);
+            let (half, neg) = (at(half_id), at(neg_id));
+            let mut low_terms = stage2_linear;
+            low_terms.push((-d2, out.clone()));
+            low_terms.push((d2, half.clone()));
+            let low_bound: u128 = low_terms
+                .iter()
+                .map(|(c, r)| {
+                    let m = relation
+                        .column_magnitude(r.column)
+                        .unwrap_or_else(|| relation.columns[r.column.0 as usize].width.magnitude());
+                    u128::from(c.unsigned_abs()).saturating_mul(m)
+                })
+                .fold(0u128, u128::saturating_add);
+            let low_id = if low_bound <= HALF_MODULUS {
+                add_virtual_ranged(
+                    relation,
+                    &mut splits,
+                    "low",
+                    Def::Linear {
+                        constant: 0,
+                        terms: low_terms,
+                    },
+                    Width::unsigned(k2),
+                )
+            } else {
+                let id = add_witness(relation, &mut splits, "low", Width::unsigned(k2), false);
+                let mut id_terms: Vec<Term> = low_terms
+                    .into_iter()
+                    .map(|(c, r)| Term {
+                        coeff: c,
+                        factors: vec![r],
+                    })
+                    .collect();
+                id_terms.push(term(-1, &[&at(id)]));
+                relation.identities.push(Identity {
+                    name: format!("{name}/numerator"),
+                    vars: n,
+                    terms: id_terms,
+                });
+                id
+            };
+            let low = at(low_id);
+            let twos_id = add_virtual_ranged(
+                relation,
+                &mut splits,
+                "twos",
+                Def::Linear {
+                    constant: 0,
+                    terms: vec![
+                        (1, out.clone()),
+                        (-1, half.clone()),
+                        (1 << bits, neg.clone()),
+                    ],
+                },
+                Width::unsigned(bits),
+            );
+            let mut tie_terms = vec![
+                term(4, &[&half, &low]),
+                term(1 - 2 * d2, &[&half]),
+                term(-2, &[&half, &neg]),
+                term(-2, &[&low]),
+                term(1, &[&neg]),
+                term(d2 - 1, &[]),
             ];
-            if let Some(st) = &sticky {
-                tie.extend([term(-2, &[&half, st]), term(1, &[st])]);
+            if let Some(st) = &sticky_ref {
+                tie_terms.extend([term(2, &[&half, st]), term(-1, &[st])]);
             }
-            identity("round", tie);
-            // tc = (out − β) + 2^bits·ν.
-            identity(
-                "sign",
-                vec![
-                    term(1, &[&get("twos").expect("twos")]),
-                    term(-1, &[&out]),
-                    term(1, &[&half]),
-                    term(-(1 << self.shape.bits), &[&neg]),
-                ],
+            let tie_id = add_virtual_ranged(
+                relation,
+                &mut splits,
+                "tie",
+                Def::Pointwise { terms: tie_terms },
+                Width::unsigned(k2 + 1),
             );
+            rounding = Some(RoundingColumns {
+                low: low_id,
+                half: half_id,
+                negative: neg_id,
+                twos: twos_id,
+                tie: tie_id,
+            });
         }
         // RFC-0026 §2.1: padded lanes and padded token rows of the output are 0.
+        let out = at(output_id);
         if self.tokens * self.width != 1 << self.log_len() {
             let mask = (0..1usize << n)
                 .map(|i| i64::from(self.entry(i).is_none()))
@@ -541,21 +796,10 @@ impl Module for Residual {
                 terms: vec![term(1, &[&at(mask), &out])],
             });
         }
-        let rounding = (k > 0).then(|| RoundingColumns {
-            low: col("low").expect("low"),
-            half: col("half").expect("half"),
-            negative: col("negative").expect("negative"),
-            twos: col("twos").expect("twos"),
-            tie: col("tie").expect("tie"),
-        });
         self.columns = Some(ResidualColumns {
-            output: ids[0].1,
+            output: output_id,
             rounding,
-            auxiliary: ids[1..]
-                .iter()
-                .copied()
-                .filter(|(l, _)| !["low", "half", "negative", "twos", "tie"].contains(l))
-                .collect(),
+            auxiliary: aux,
             splits,
         });
     }
@@ -597,24 +841,47 @@ impl Module for Residual {
                 column[index] = i64::try_from(v).unwrap_or(i64::MAX);
             }
         }
-        let ids = core::iter::once(columns.output).chain(columns.auxiliary.iter().map(|a| a.1));
-        let rounding = columns
-            .rounding
-            .map(|r| [r.low, r.half, r.negative, r.twos, r.tie]);
-        for (id, column) in ids.chain(rounding.into_iter().flatten()).zip(cols) {
-            if let Some(&(_, lo, hi)) = columns.splits.iter().find(|&&(col, _, _)| col == id) {
-                let lo_vals: Vec<i64> = column
-                    .iter()
-                    .map(|&v| v.rem_euclid(1 << MAX_RANGE_BITS))
-                    .collect();
-                let hi_vals: Vec<i64> = column
-                    .iter()
-                    .map(|&v| v.div_euclid(1 << MAX_RANGE_BITS))
-                    .collect();
-                values.set(relation, lo, lo_vals)?;
-                values.set(relation, hi, hi_vals)?;
+        let is_virtual =
+            |id: ColumnId| matches!(relation.columns[id.0 as usize].kind, Kind::Virtual(_));
+        let id_for = |label: &str| -> ColumnId {
+            if label == "out" {
+                return columns.output;
             }
-            values.set(relation, id, column)?;
+            if let Some(r) = columns.rounding {
+                match label {
+                    "low" => return r.low,
+                    "half" => return r.half,
+                    "negative" => return r.negative,
+                    "twos" => return r.twos,
+                    "tie" => return r.tie,
+                    _ => {}
+                }
+            }
+            columns
+                .auxiliary(label)
+                .expect("declared residual column for label")
+        };
+        for ((label, _), column) in labels.iter().zip(cols) {
+            let id = id_for(label);
+            if let Some(&(_, lo, hi)) = columns.splits.iter().find(|&&(col, _, _)| col == id) {
+                if !is_virtual(lo) {
+                    let lo_vals: Vec<i64> = column
+                        .iter()
+                        .map(|&v| v.rem_euclid(1 << MAX_RANGE_BITS))
+                        .collect();
+                    values.set(relation, lo, lo_vals)?;
+                }
+                if !is_virtual(hi) {
+                    let hi_vals: Vec<i64> = column
+                        .iter()
+                        .map(|&v| v.div_euclid(1 << MAX_RANGE_BITS))
+                        .collect();
+                    values.set(relation, hi, hi_vals)?;
+                }
+            }
+            if !is_virtual(id) {
+                values.set(relation, id, column)?;
+            }
         }
         Ok(())
     }

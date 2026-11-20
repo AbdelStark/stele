@@ -1,21 +1,28 @@
 //! Gated row conversion of the SiLU product to down-projection codes (RFC-0026 §5
 //! row 10 and the §5 gated-scale ceiling; RFC-0025 §2.5, RFC-0004 A8 and A15, flow §1).
 //!
-//! Input: `T = 2^15·high + low` from [`super::GatedProduct`], one dynamic scale per row
+//! Input: `T = 2^14·high + low` from [`super::GatedProduct`], one dynamic scale per row
 //! (`Policy::Dynamic`) or per group of `g` features (`Policy::Grouped(g)`, RFC-0004 A15).
 //! `|T| < 2^30` follows from the `silu_q` table restriction (no output `−2^15`,
-//! `GatedProduct::new`); the executor's gated envelope is `[−2^30, 2^30]`. Every value wider than 16 bits is two radix-`2^15` limbs, and every
+//! `GatedProduct::new`); the executor's gated envelope is `[−2^30, 2^30]`. Every value wider than 16 bits is two radix-`2^14` limbs, and every
 //! wide identity is a low and a high limb identity joined by a carry (RFC-0026 §3.5):
-//! - sign/abs: `mask·T = (1 − 2σ)·A`, `A = 2^15·Ah + Al`, with the borrow `κ` of the
-//!   negation, so `A = |T|` on real lanes and 0 on padding;
-//! - attained maximum: `M − A = 2^15·gh + gl >= 0` (borrow `b`), a one-hot `h` per row
+//! - sign/abs: `mask·T = (1 − 2σ)·A`, `A = 2^14·Ah + Al` (`Al: u14, Ah: u16`), with the
+//!   borrow `κ` of the negation, so `A = |T|` on real lanes and 0 on padding;
+//! - attained maximum: `M − A = 2^14·gh + gl >= 0` (borrow `b`), a one-hot `h` per row
 //!   (matmul row sum) with `h·gl = 0` and `h·gh = 0`, so `M = max A`;
 //! - gated-scale ceiling: `127·s − M = slack ∈ [0, 126]` (lookup), so `s = ceil(M/127)`,
-//!   `s = 2^15·sh + sl <= 8454661`, and `scale` is their Compose (unsigned 24);
+//!   `s = 2^14·sh + sl <= 8454661` (`sl: u14, sh: u10`), and `scale` is virtual `Def::Linear`;
 //! - zero-row branch: Boolean `z` with `z·(Ml + Mh) = 0` and divisor `D = s + z`;
 //! - division: `2A + D − 2q·D = r` with `0 <= r <= 2D − 1` (`r` and `2D − 1 − r` in
-//!   limbs), so `q = floor((2A + D)/(2D))`, the executor's code magnitude, and `D >= 1`;
+//!   radix-`2^14` limbs `u14` / `u11`), so `q = floor((2A + D)/(2D))`, the executor's code
+//!   magnitude, and `D >= 1`;
 //! - code `c = (1 − 2σ)·q`.
+//!
+//! Committed advice columns (RFC-0028 §1.2):
+//! - Lane (`7` cols): `sign (u1)`, `borrow (u1)`, `gap/borrow (u1)`, `hit (u1)`,
+//!   `quotient (u7)`, `remainder/carry (s10)`, `spare/carry (s3)`.
+//! - Group (`6` cols): `maximum/low (u14)`, `maximum/high (u16)`, `scale/low (u14)`,
+//!   `scale/high (u10)`, `ceiling/carry (s8)`, `zero (u1)`.
 //!
 //! The output is E16-05's [`RowOutput`]. Output-uniqueness lemma:
 //! `agents/reviews/e16-08-silu.md`, lemma C.
@@ -26,12 +33,13 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_ir::relation::{
-    ColumnId, Compose, Lookup, Matmul, Module, Relation, Table, Values, Violation, Width,
+    ColumnId, Def, Kind, Lookup, Matmul, Module, Relation, Table, Values, Violation, Width,
 };
 
 /// Largest gated dynamic scale, `ceil((2^30 − 1)/127)` (RFC-0004 A8).
 pub const GATED_SCALE: u32 = 8454661;
-const LIMB: i64 = 1 << 15;
+const LIMB_BITS: u8 = super::LOW_BITS;
+const LIMB: i64 = 1 << LIMB_BITS;
 
 /// Lane columns, then row columns.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -150,125 +158,130 @@ impl Module for GatedConversion {
         let mask = b.public("mask", mask, Width::unsigned(1), n);
         let one = b.public("one", vec![1], Width::unsigned(1), 0);
         let u = Width::unsigned;
-        let c = ConversionColumns {
-            sign: b.witness("sign", u(1), n),
-            borrow: b.witness("borrow", u(1), n),
-            magnitude_low: b.witness("magnitude/low", u(15), n),
-            magnitude_high: b.witness("magnitude/high", u(15), n),
-            gap_low: b.witness("gap/low", u(15), n),
-            gap_high: b.witness("gap/high", u(15), n),
-            gap_borrow: b.witness("gap/borrow", u(1), n),
-            hit: b.witness("hit", u(1), n),
-            quotient: b.witness("quotient", u(7), n),
-            codes: b.witness("codes", Width::signed(8), n),
-            remainder_low: b.witness("remainder/low", u(15), n),
-            remainder_high: b.witness("remainder/high", u(10), n),
-            remainder_carry: b.witness("remainder/carry", Width::signed(10), n),
-            spare_low: b.witness("spare/low", u(15), n),
-            spare_high: b.witness("spare/high", u(10), n),
-            spare_carry: b.witness("spare/carry", Width::signed(3), n),
-            maximum_low: b.witness("maximum/low", u(15), groups),
-            maximum_high: b.witness("maximum/high", u(15), groups),
-            scale_low: b.witness("scale/low", u(15), groups),
-            scale_high: b.witness("scale/high", u(9), groups),
-            scale: b.column("scale", u(24), groups),
-            slack: b.column("slack", u(7), groups),
-            ceiling_carry: b.witness("ceiling/carry", Width::signed(8), groups),
-            zero: b.witness("zero", u(1), groups),
-        };
         let lane = |id: ColumnId| r(id, 0..n);
         let row = |id: ColumnId| r(id, lg..n);
-        let (m, sg, k) = (lane(mask), lane(c.sign), lane(c.borrow));
-        let (al, ah) = (lane(c.magnitude_low), lane(c.magnitude_high));
-        let (tl, th) = (lane(self.low), lane(self.high));
-        let (ml, mh, sl, sh, z) = (
-            row(c.maximum_low),
-            row(c.maximum_high),
-            row(c.scale_low),
-            row(c.scale_high),
-            row(c.zero),
+        let rows = |id: ColumnId| r(id, 0..groups);
+
+        // Committed lane advice (7 cols, RFC-0028 §1.2): sign, borrow, gap_borrow, hit,
+        // quotient, remainder_carry, spare_carry.
+        let sign = b.witness("sign", u(1), n);
+        let borrow = b.witness("borrow", u(1), n);
+        let gap_borrow = b.witness("gap/borrow", u(1), n);
+        let hit = b.witness("hit", u(1), n);
+        let quotient = b.witness("quotient", u(7), n);
+        let remainder_carry = b.witness("remainder/carry", Width::signed(10), n);
+        let spare_carry = b.witness("spare/carry", Width::signed(3), n);
+
+        // Committed group advice (6 cols): maximum_{low,high}, scale_{low,high}, ceiling_carry, zero.
+        let maximum_low = b.witness("maximum/low", u(LIMB_BITS), groups);
+        let maximum_high = b.witness("maximum/high", u(30 - LIMB_BITS), groups);
+        let scale_low = b.witness("scale/low", u(LIMB_BITS), groups);
+        let scale_high = b.witness("scale/high", u(24 - LIMB_BITS), groups);
+        let ceiling_carry = b.witness("ceiling/carry", Width::signed(8), groups);
+        let zero = b.witness("zero", u(1), groups);
+
+        // Virtual group columns (RFC-0028 §1.2): scale, slack.
+        let scale = b.virtual_col(
+            "scale",
+            Def::Linear {
+                constant: 0,
+                terms: vec![(1, rows(scale_low)), (LIMB, rows(scale_high))],
+            },
+            groups,
         );
-        let (q, rl, rh) = (
-            lane(c.quotient),
-            lane(c.remainder_low),
-            lane(c.remainder_high),
+        let slack = b.virtual_col(
+            "slack",
+            Def::Linear {
+                constant: 0,
+                terms: vec![
+                    (127, rows(scale_low)),
+                    (-1, rows(maximum_low)),
+                    (-LIMB, rows(ceiling_carry)),
+                ],
+            },
+            groups,
         );
 
-        // Sign/abs, low limb: mask·Tl − 2σ·mask·Tl − Al + 2^15·κ = 0.
-        b.identity(
-            "sign/low",
-            n,
-            vec![
-                term(1, vec![m.clone(), tl.clone()]),
-                term(-2, vec![sg.clone(), m.clone(), tl]),
-                term(-1, vec![al.clone()]),
-                term(LIMB, vec![k.clone()]),
-            ],
+        let (m, sg, k) = (lane(mask), lane(sign), lane(borrow));
+        let (tl, th) = (lane(self.low), lane(self.high));
+        let (ml, mh, sl, sh, z) = (
+            row(maximum_low),
+            row(maximum_high),
+            row(scale_low),
+            row(scale_high),
+            row(zero),
         );
-        // High limb: mask·Th − 2σ·mask·Th − κ − Ah = 0.
-        b.identity(
-            "sign/high",
+        let q = lane(quotient);
+
+        // Virtual sign/abs limbs: Al = mask*Tl - 2*sigma*mask*Tl + 2^14*borrow ∈ [0, 2^14).
+        let magnitude_low = b.virtual_ranged(
+            "magnitude/low",
+            Def::Pointwise {
+                terms: vec![
+                    term(1, vec![m.clone(), tl.clone()]),
+                    term(-2, vec![sg.clone(), m.clone(), tl]),
+                    term(LIMB, vec![k.clone()]),
+                ],
+            },
+            u(LIMB_BITS),
             n,
-            vec![
-                term(1, vec![m.clone(), th.clone()]),
-                term(-2, vec![sg.clone(), m, th]),
-                term(-1, vec![k]),
-                term(-1, vec![ah.clone()]),
-            ],
         );
-        // Gap M − A = 2^15·gh + gl, borrow gb.
-        let (gl, gh, gb) = (lane(c.gap_low), lane(c.gap_high), lane(c.gap_borrow));
-        b.identity(
+        // Ah = mask*Th - 2*sigma*mask*Th - borrow ∈ [0, 2^16).
+        let magnitude_high = b.virtual_ranged(
+            "magnitude/high",
+            Def::Pointwise {
+                terms: vec![
+                    term(1, vec![m.clone(), th.clone()]),
+                    term(-2, vec![sg.clone(), m, th]),
+                    term(-1, vec![k]),
+                ],
+            },
+            u(30 - LIMB_BITS),
+            n,
+        );
+        let (al, ah) = (lane(magnitude_low), lane(magnitude_high));
+
+        // Virtual gap limbs: gl = Ml - Al + 2^14*gb, gh = Mh - Ah - gb ∈ [0, 2^14) / [0, 2^16).
+        let gb = lane(gap_borrow);
+        let gap_low = b.virtual_ranged(
             "gap/low",
+            Def::Linear {
+                constant: 0,
+                terms: vec![(1, ml), (-1, al.clone()), (LIMB, gb.clone())],
+            },
+            u(LIMB_BITS),
             n,
-            vec![
-                term(1, vec![ml.clone()]),
-                term(-1, vec![al.clone()]),
-                term(-1, vec![gl.clone()]),
-                term(LIMB, vec![gb.clone()]),
-            ],
         );
-        b.identity(
+        let gap_high = b.virtual_ranged(
             "gap/high",
+            Def::Linear {
+                constant: 0,
+                terms: vec![(1, mh), (-1, ah.clone()), (-1, gb)],
+            },
+            u(30 - LIMB_BITS),
             n,
-            vec![
-                term(1, vec![mh.clone()]),
-                term(-1, vec![ah.clone()]),
-                term(-1, vec![gb]),
-                term(-1, vec![gh.clone()]),
-            ],
         );
-        let hit = lane(c.hit);
-        // One identity per limb, so each zero is a separately named constraint.
-        b.identity("attained/low", n, vec![term(1, vec![hit.clone(), gl])]);
-        b.identity("attained/high", n, vec![term(1, vec![hit, gh])]);
+        let (gl, gh) = (lane(gap_low), lane(gap_high));
+        let hit_ref = lane(hit);
+        b.identity("attained/low", n, vec![term(1, vec![hit_ref.clone(), gl])]);
+        b.identity("attained/high", n, vec![term(1, vec![hit_ref, gh])]);
         b.relation.matmuls.push(Matmul {
             name: format!("{prefix}/attained/one-hot"),
             free: groups,
             summed: lg,
             out: r(one, []),
-            lhs: r(c.hit, (groups..n).chain(0..groups)),
+            lhs: r(hit, (groups..n).chain(0..groups)),
             rhs: r(one, []),
         });
-        // Ceiling 127·s − M = slack: low 127·sl − Ml − slack = 2^15·e, high 127·sh − Mh + e = 0.
-        let rows = |id: ColumnId| r(id, 0..groups);
-        b.identity(
-            "ceiling/low",
-            groups,
-            vec![
-                term(127, vec![rows(c.scale_low)]),
-                term(-1, vec![rows(c.maximum_low)]),
-                term(-1, vec![rows(c.slack)]),
-                term(-LIMB, vec![rows(c.ceiling_carry)]),
-            ],
-        );
+
+        // High ceiling identity + slack lookup in [0, 126].
         b.identity(
             "ceiling/high",
             groups,
             vec![
-                term(127, vec![rows(c.scale_high)]),
-                term(-1, vec![rows(c.maximum_high)]),
-                term(1, vec![rows(c.ceiling_carry)]),
+                term(127, vec![rows(scale_high)]),
+                term(-1, vec![rows(maximum_high)]),
+                term(1, vec![rows(ceiling_carry)]),
             ],
         );
         let table = b.relation.add_table(Table {
@@ -280,85 +293,108 @@ impl Module for GatedConversion {
             name: format!("{prefix}/ceiling"),
             vars: groups,
             selector: None,
-            tuple: vec![rows(c.slack)],
+            tuple: vec![rows(slack)],
             table,
         });
-        b.relation.composes.push(Compose {
-            name: format!("{prefix}/scale"),
-            column: c.scale,
-            limbs: vec![(c.scale_low, 0), (c.scale_high, 15)],
-        });
-        // Zero-row branch: z·(Ml + Mh) = 0.
+        // Zero-row branch: z*(Ml + Mh) = 0.
         b.identity(
             "zero",
             groups,
             vec![
-                term(1, vec![rows(c.zero), rows(c.maximum_low)]),
-                term(1, vec![rows(c.zero), rows(c.maximum_high)]),
+                term(1, vec![rows(zero), rows(maximum_low)]),
+                term(1, vec![rows(zero), rows(maximum_high)]),
             ],
         );
-        // Division 2A + D − 2qD = r, D = sl + 2^15·sh + z:
-        // low 2Al + sl + z − 2q·sl − 2q·z − rl = 2^15·f; high 2Ah + sh − 2q·sh − rh + f = 0.
-        let f = lane(c.remainder_carry);
-        b.identity(
-            "division/low",
+
+        // Virtual division remainder limbs (RFC-0028 §1.2, A1).
+        let f = lane(remainder_carry);
+        let remainder_low = b.virtual_ranged(
+            "remainder/low",
+            Def::Pointwise {
+                terms: vec![
+                    term(2, vec![al]),
+                    term(1, vec![sl.clone()]),
+                    term(1, vec![z.clone()]),
+                    term(-2, vec![q.clone(), sl.clone()]),
+                    term(-2, vec![q.clone(), z.clone()]),
+                    term(-LIMB, vec![f.clone()]),
+                ],
+            },
+            u(LIMB_BITS),
             n,
-            vec![
-                term(2, vec![al]),
-                term(1, vec![sl.clone()]),
-                term(1, vec![z.clone()]),
-                term(-2, vec![q.clone(), sl.clone()]),
-                term(-2, vec![q.clone(), z.clone()]),
-                term(-1, vec![rl.clone()]),
-                term(-LIMB, vec![f.clone()]),
-            ],
         );
-        b.identity(
-            "division/high",
+        let remainder_high = b.virtual_ranged(
+            "remainder/high",
+            Def::Pointwise {
+                terms: vec![
+                    term(2, vec![ah]),
+                    term(1, vec![sh.clone()]),
+                    term(-2, vec![q.clone(), sh.clone()]),
+                    term(1, vec![f]),
+                ],
+            },
+            u(25 - LIMB_BITS),
             n,
-            vec![
-                term(2, vec![ah]),
-                term(1, vec![sh.clone()]),
-                term(-2, vec![q.clone(), sh.clone()]),
-                term(-1, vec![rh.clone()]),
-                term(1, vec![f]),
-            ],
         );
-        // Spare 2D − 1 − r = 2^15·ph + pl: low 2sl + 2z − 1 − rl − pl = 2^15·g; high 2sh − rh − ph + g = 0.
-        let g = lane(c.spare_carry);
-        b.identity(
+        let (rl, rh) = (lane(remainder_low), lane(remainder_high));
+
+        // Virtual spare limbs: pl = 2*sl + 2*z - 1 - rl - 2^14*g, ph = 2*sh - rh + g.
+        let g = lane(spare_carry);
+        let spare_low = b.virtual_ranged(
             "spare/low",
+            Def::Linear {
+                constant: -1,
+                terms: vec![(2, sl), (2, z), (-1, rl), (-LIMB, g.clone())],
+            },
+            u(LIMB_BITS),
             n,
-            vec![
-                term(2, vec![sl]),
-                term(2, vec![z]),
-                term(-1, vec![]),
-                term(-1, vec![rl]),
-                term(-1, vec![lane(c.spare_low)]),
-                term(-LIMB, vec![g.clone()]),
-            ],
         );
-        b.identity(
+        let spare_high = b.virtual_ranged(
             "spare/high",
+            Def::Linear {
+                constant: 0,
+                terms: vec![(2, sh), (-1, rh), (1, g)],
+            },
+            u(25 - LIMB_BITS),
             n,
-            vec![
-                term(2, vec![sh]),
-                term(-1, vec![rh]),
-                term(-1, vec![lane(c.spare_high)]),
-                term(1, vec![g]),
-            ],
         );
-        // Code c = q − 2σq.
-        b.identity(
-            "code",
+
+        // Virtual codes c = (1 - 2*sigma)*q ∈ [-128, 128) (range tightens magnitude to 128).
+        let codes = b.virtual_ranged(
+            "codes",
+            Def::Pointwise {
+                terms: vec![term(1, vec![q.clone()]), term(-2, vec![sg, q])],
+            },
+            Width::signed(8),
             n,
-            vec![
-                term(1, vec![lane(c.codes)]),
-                term(-1, vec![q.clone()]),
-                term(2, vec![sg, q]),
-            ],
         );
-        self.columns = Some(c);
+
+        self.columns = Some(ConversionColumns {
+            sign,
+            borrow,
+            magnitude_low,
+            magnitude_high,
+            gap_low,
+            gap_high,
+            gap_borrow,
+            hit,
+            quotient,
+            codes,
+            remainder_low,
+            remainder_high,
+            remainder_carry,
+            spare_low,
+            spare_high,
+            spare_carry,
+            maximum_low,
+            maximum_high,
+            scale_low,
+            scale_high,
+            scale,
+            slack,
+            ceiling_carry,
+            zero,
+        });
     }
 
     fn assign(
@@ -371,7 +407,9 @@ impl Module for GatedConversion {
             return Err(Violation::Missing(self.high));
         }
         for (id, column) in self.fill(&self.plan(capture)) {
-            values.set(relation, id, column)?;
+            if !matches!(relation.columns[id.0 as usize].kind, Kind::Virtual(_)) {
+                values.set(relation, id, column)?;
+            }
         }
         Ok(())
     }
