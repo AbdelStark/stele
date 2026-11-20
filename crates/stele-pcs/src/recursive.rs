@@ -93,6 +93,12 @@ fn reserve_vec<T>(len: usize) -> Result<Vec<T>, RecursiveError> {
     Ok(v)
 }
 
+fn clone_vec<T: Copy>(slice: &[T]) -> Result<Vec<T>, RecursiveError> {
+    let mut v = reserve_vec(slice.len())?;
+    v.extend_from_slice(slice);
+    Ok(v)
+}
+
 fn add_usize(a: usize, b: usize) -> Result<usize, RecursiveError> {
     a.checked_add(b).ok_or(RecursiveError::Capacity)
 }
@@ -2212,10 +2218,23 @@ impl CertifiedPlan {
                 if !BigUint::fits_cap(prox_num, &cap) {
                     return Err(RecursiveError::UnsupportedSource);
                 }
+                if i + 1 < levels.len() && !BigUint::fits_cap(u64::from(qo), &cap) {
+                    return Err(RecursiveError::UnsupportedSource);
+                }
                 cert_queries = qc;
                 level_queries.push(qo);
             } else {
-                let (q, _, _, _) = policy3_fresh_queries(spec.m, spec.b, target_bits)?;
+                let (q, _, _, e_i) = policy3_fresh_queries(spec.m, spec.b, target_bits)?;
+                let prox_num = 2u64
+                    .checked_mul(u64::from(spec.ell))
+                    .and_then(|v| v.checked_mul(e_i.checked_add(1)?))
+                    .ok_or(RecursiveError::UnsupportedSource)?;
+                if !BigUint::fits_cap(prox_num, &cap) {
+                    return Err(RecursiveError::UnsupportedSource);
+                }
+                if i + 1 < levels.len() && !BigUint::fits_cap(u64::from(q), &cap) {
+                    return Err(RecursiveError::UnsupportedSource);
+                }
                 level_queries.push(q);
             }
         }
@@ -2478,6 +2497,8 @@ pub struct CertificateLedger {
     pub field_degree: u8,
     /// Target security bits `T`.
     pub target_bits: u16,
+    /// Transcript hash work observed during registration verification (RFC-0012 A10).
+    pub transcript_usage: HashUsage,
     /// Local Merkle + ID hash work observed during registration verification.
     pub non_transcript_usage: HashUsage,
 }
@@ -2764,7 +2785,7 @@ impl<K: ChallengeField> CertifiedModelSource<K> {
                 if b.len() != cols {
                     return Err(RecursiveError::MessageShape);
                 }
-                b.to_vec()
+                clone_vec(b)?
             }
         };
         let mut acc = K::from_i64(0);
@@ -2813,7 +2834,7 @@ impl<K: ChallengeField> CertifiedModelSource<K> {
                 if b.len() != cols0 {
                     return Err(RecursiveError::MessageShape);
                 }
-                b.to_vec()
+                clone_vec(b)?
             }
         };
 
@@ -2844,7 +2865,7 @@ impl<K: ChallengeField> CertifiedModelSource<K> {
         plan.write_opening_header(&mut proof);
 
         let mut cur_committed: Option<CommittedLevel> = None;
-        let mut cur_eq_row = row_weights.to_vec();
+        let mut cur_eq_row = clone_vec(row_weights)?;
         let mut cur_claim = value;
         let mut commit_usage = HashUsage::default();
         let mut peak_codeword_bytes = 0usize;
@@ -3078,6 +3099,7 @@ where
         cert_queries: source.plan.cert_queries(),
         field_degree: K::DEGREE as u8,
         target_bits: source.plan.target_bits(),
+        transcript_usage: t.usage(),
         non_transcript_usage: usage,
     };
     Ok(VerifiedCertifiedSource { source, id, ledger })
@@ -3114,14 +3136,16 @@ where
             }
             WeightTerm::Eq {
                 coeff: K::from_i64(1),
-                point: pt.to_vec(),
+                point: clone_vec(pt)?,
             }
         }
         ColumnFunctional::Dense(b) => {
             if b.len() != l0.columns()? {
                 return Err(RecursiveError::MessageShape);
             }
-            WeightTerm::Dense { values: b.to_vec() }
+            WeightTerm::Dense {
+                values: clone_vec(b)?,
+            }
         }
     };
     let mut cursor = plan.check_opening_header(proof)?;
@@ -3156,7 +3180,7 @@ where
         };
 
         let eq_row = if i == 0 {
-            row_weights.to_vec()
+            clone_vec(row_weights)?
         } else {
             let (r_i, v_prime) = verify_row_sumcheck(
                 t,

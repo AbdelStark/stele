@@ -925,6 +925,13 @@ fn accepts_certified_model_source_general_functional_and_streaming_memory() {
         assert_eq!(verified_cert.id(), model.certificate_id());
         assert_eq!(verified_cert.ledger().certified_radius, e_c);
         assert_eq!(verified_cert.ledger().cert_queries, plan.cert_queries());
+        assert!(verified_cert.ledger().transcript_usage.state_updates > 0);
+        assert!(verified_cert.ledger().transcript_usage.xof_bytes > 0);
+        assert!(
+            verified_cert.ledger().transcript_usage.column_attempts
+                >= u64::from(plan.cert_queries())
+        );
+        assert!(verified_cert.ledger().non_transcript_usage.hash_evaluations > 0);
 
         // Arbitrary non-tensor row functional `a` (not an eq vector!).
         let row_weights = seeded_point::<K>(rows, format!("cert-row-{id}").as_bytes());
@@ -1148,4 +1155,38 @@ fn accepts_certified_model_source_general_functional_and_streaming_memory() {
         Err(RecursiveError::CertificateContext)
     );
     assert_eq!(tv_c.usage(), before);
+
+    // 5. CertifiedPlan cap enforcement on higher fresh levels (i >= 1) and non-final PcsLevelBeta (q_i).
+    // (a) Level 0 clears 2*9*(262143+1) = 4,718,592 <= 16,777,215, but level 1 has 2*4*(5242879+1) = 41,943,040 > cap.
+    assert_eq!(
+        CertifiedPlan::new(
+            vec![LevelSpec::new(9, 24, 2), LevelSpec::new(4, 20, 4)],
+            4,
+            100,
+            262_143,
+        ),
+        Err(RecursiveError::UnsupportedSource)
+    );
+    // (b) T=120 on QM31 has cap=15: level 0 clears 2*1*(1+1)=4 <= 15, but level-0 PcsLevelBeta q_open=63 > 15
+    //     and level-1 proximity 2*2*(3+1)=16 > 15.
+    assert_eq!(
+        CertifiedPlan::new(
+            vec![LevelSpec::new(1, 4, 2), LevelSpec::new(2, 2, 2)],
+            4,
+            120,
+            1,
+        ),
+        Err(RecursiveError::UnsupportedSource)
+    );
+    // (c) Pure PcsLevelBeta-only cap failure: level-0 proximity 2*1*2=4 <= 15 AND level-1 proximity 2*1*2=4 <= 15,
+    //     while level-0 q_open > 15 at T=120.
+    assert_eq!(
+        CertifiedPlan::new(
+            vec![LevelSpec::new(1, 3, 2), LevelSpec::new(1, 2, 1)],
+            4,
+            120,
+            1,
+        ),
+        Err(RecursiveError::UnsupportedSource)
+    );
 }
