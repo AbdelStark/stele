@@ -934,6 +934,8 @@ def field_sources(root):
                'src/requant_verifier.rs', 'src/requant_witness.rs', 'src/requant_witness_tests.rs', 'src/requant_producer.rs',
                'src/requant_embedded.rs','src/requant_embedded_tests.rs','tests/fixtures/embedded-requant.txt',
                'src/relation.rs', 'src/relation_codec.rs', 'src/relation_lookup.rs', 'src/relation_tests.rs',
+               # RFC-0026 A29 (E19-04): the joined RFC-0029 recursion of profile byte 6.
+               'src/relation_recursive.rs',
                'tests/relation.rs',
                'src/rope.rs', 'src/rope/tests.rs',
                'src/argmax.rs', 'src/argmax/tests.rs', 'src/residual.rs', 'src/residual/tests.rs',
@@ -2353,6 +2355,7 @@ def standard_quarantine(root):
                    'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
                    'crates/stele-pcs/src/source.rs', 'crates/stele-pcs/src/preparation.rs',
                    'crates/stele-reductions/src/relation.rs', 'crates/stele-reductions/src/relation_tests.rs',
+                   'crates/stele-reductions/src/relation_recursive.rs',  # A29 byte-6 development path
                    'crates/stele-prover/src/development.rs', 'crates/stele-prover/src/development/bundle.rs',
                    'crates/stele-prover/src/development/zk.rs', 'crates/stele-prover/tests/development.rs',
                    'crates/stele-prover/src/development/registry.rs',  # A16 byte-5 publisher
