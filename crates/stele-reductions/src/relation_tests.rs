@@ -3385,3 +3385,132 @@ fn matches_reference_matmul_summand_across_base_and_shared_shapes() {
         }
     }
 }
+
+/// RFC-0026 A8: unsplit plans (`B = 30`) produce byte-identical proofs; smaller `B` splits
+/// oversized members along leading domain bits (`block_bits > 0`) and packs members into
+/// ordered `<= 2^B` instances (for both `Range` and selected `Lookup`), verified under the
+/// matching plan bound and rejected under a mismatched bound (`ProofShape`).
+#[test]
+fn accepts_a8_split_lookup_instances_and_matches_unsplit_bytes() {
+    use stele_ir::relation::{Lookup, Range, Table};
+
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/a8/3", 3);
+    let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(2), 3);
+    let y = rel.add_column("y", Kind::Witness(g), Width::unsigned(2), 3);
+    let sel = rel.add_column(
+        "sel",
+        Kind::Public(vec![1, 0, 1, 1, 1, 1, 0, 1]),
+        Width::unsigned(1),
+        3,
+    );
+    let tbl = rel.add_table(Table {
+        name: "pairs".into(),
+        widths: vec![Width::unsigned(2), Width::unsigned(2)],
+        rows: vec![vec![0, 3], vec![1, 2], vec![2, 1], vec![3, 0]],
+    });
+    rel.ranges.push(Range {
+        name: "rx".into(),
+        column: x,
+        width: Width::unsigned(2),
+    });
+    rel.ranges.push(Range {
+        name: "ry".into(),
+        column: y,
+        width: Width::unsigned(2),
+    });
+    rel.lookups.push(Lookup {
+        name: "lxy".into(),
+        vars: 3,
+        selector: Some(Ref::identity(sel, 3)),
+        tuple: vec![Ref::identity(x, 3), Ref::identity(y, 3)],
+        table: tbl,
+    });
+    let mut values = Values::new(&rel);
+    values
+        .set(&rel, x, vec![0, 1, 2, 3, 3, 2, 1, 0])
+        .expect("x");
+    values
+        .set(&rel, y, vec![3, 2, 1, 0, 0, 1, 2, 3])
+        .expect("y");
+    assert_eq!(stele_ir::relation::check(&rel, &values), Ok(()));
+
+    // Unsplit B = 30 matches default `prove` byte-for-byte.
+    let mut t0 = Transcript::new(PUBLIC).expect("t");
+    let p_default = prove(&mut t0, &rel, &values, &[], Sources::CircleAll).expect("default");
+    let mut t1 = Transcript::new(PUBLIC).expect("t");
+    let p_b30 = prove_with_instance_bound(&mut t1, &rel, &values, &[], Sources::CircleAll, 30)
+        .expect("b30");
+    assert_eq!(p_default, p_b30);
+
+    // Split B = 2: `lxy` (8 pos) -> 2 instances of 4; `range_2` (`rx` + `ry` = 16 pos) -> 4 instances of 4.
+    let p = plan_with_bound(&rel, Sources::CircleAll, 2).expect("plan b2");
+    assert_eq!(p.checks.len(), 6);
+    assert!(p.checks.iter().all(|c| c.m <= 2));
+    assert!(p.checks.iter().all(|c| c.members[0].block_bits == 1));
+
+    let mut tp = Transcript::new(PUBLIC).expect("t");
+    let (proof_b2, metrics_b2) =
+        prove_measured_with_instance_bound(&mut tp, &rel, &values, &[], Sources::CircleAll, 2)
+            .expect("prove b2");
+    assert_eq!(metrics_b2.lookup_checks.len(), 6);
+
+    let mut tv = Transcript::new(PUBLIC).expect("t");
+    verify_with_instance_bound(&mut tv, &rel, &[], &proof_b2, Sources::CircleAll, 2)
+        .expect("verify b2");
+
+    // Verifier with wrong plan bound rejects immediately with ProofShape.
+    let mut tv_wrong = Transcript::new(PUBLIC).expect("t");
+    assert_eq!(
+        verify_with_instance_bound(&mut tv_wrong, &rel, &[], &proof_b2, Sources::CircleAll, 30),
+        Err(Error::ProofShape)
+    );
+}
+
+/// RFC-0026 A8 negative control: moving a member value across an instance boundary without
+/// moving its multiplicity is rejected by the receiving instance's root equation (`RootMismatch`).
+#[test]
+fn rejects_a8_member_value_moved_across_instance_boundary_without_multiplicity() {
+    use stele_ir::relation::Range;
+
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/a8ctrl/3", 3);
+    let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(2), 3);
+    rel.ranges.push(Range {
+        name: "rx".into(),
+        column: x,
+        width: Width::unsigned(2),
+    });
+    // Honest split at B = 2:
+    //   instance 0 (block 0): [0, 1, 2, 3] -> counts [1, 1, 1, 1]
+    //   instance 1 (block 1): [3, 2, 1, 0] -> counts [1, 1, 1, 1]
+    // Move value `0` from instance 0 into instance 1 (swapping x[0]=0 with x[4]=3 ->
+    // instance 0 gets [3, 1, 2, 3], instance 1 receives [0, 2, 1, 0]):
+    // global counts across x are unchanged ([2, 2, 2, 2]), instance 0 gets its true counts
+    // [0, 1, 1, 2], while the receiving instance 1 retains the unmoved counts [1, 1, 1, 1].
+    let mut moved = Values::new(&rel);
+    moved
+        .set(&rel, x, vec![3, 1, 2, 3, 0, 2, 1, 0])
+        .expect("moved");
+    assert_eq!(stele_ir::relation::check(&rel, &moved), Ok(()));
+
+    // Honest proof with moved values AND updated per-instance multiplicities verifies cleanly.
+    let mut th = Transcript::new(PUBLIC).expect("t");
+    let honest = prove_with_instance_bound(&mut th, &rel, &moved, &[], Sources::CircleAll, 2)
+        .expect("honest");
+    let mut tvh = Transcript::new(PUBLIC).expect("t");
+    verify_with_instance_bound(&mut tvh, &rel, &[], &honest, Sources::CircleAll, 2)
+        .expect("honest verify");
+
+    // Malicious prover: receiving instance 1 keeps unmoved multiplicity [1, 1, 1, 1].
+    let mut p = plan_with_bound(&rel, Sources::CircleAll, 2).expect("plan b2");
+    assert_eq!(p.checks.len(), 2);
+    p.checks[1].count_override = Some(vec![1, 1, 1, 1]);
+    let mut tf = Transcript::new(PUBLIC).expect("t");
+    let forged = prove_plan(&mut tf, &rel, &p, &moved, &moved, &[], None).expect("forged bytes");
+    let mut tvf = Transcript::new(PUBLIC).expect("t");
+    assert_eq!(
+        verify_with_instance_bound(&mut tvf, &rel, &[], &forged, Sources::CircleAll, 2),
+        Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+    );
+}

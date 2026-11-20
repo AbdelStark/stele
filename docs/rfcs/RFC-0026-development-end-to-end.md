@@ -953,7 +953,7 @@ Controls: NC-1303, NC-1304 and NC-1306 run unchanged against the new sources.
 
 ### A8 — Plan-fixed split of lookup checks
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task: E20-02.
+Status: Accepted (development tier, RFC-0027 §2; task E20-02).
 Motivation: A3 rejects a check whose concatenated domain exceeds `2^30` positions and
 names a splitting rule as a further amendment. RFC-0030 (Draft) caps a lookup
 instance for `standard`. Large models reach both limits.

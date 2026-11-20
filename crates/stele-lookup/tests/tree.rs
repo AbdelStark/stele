@@ -110,6 +110,105 @@ fn accepts_qm31_fraction_tree_original_consumers() {
 fn accepts_om31_fraction_tree_original_consumers() {
     check::<OM31>();
 }
+
+fn check_base_leaves_parity<K: ChallengeField + Eq + core::fmt::Debug>() {
+    use stele_field::{Field, M31};
+    use stele_lookup::fraction::BaseLeaves;
+
+    let one = K::from_i64(1);
+    for m in [0u32, 1, 2, 5] {
+        let len = 1usize << m;
+        for b in [m, m.saturating_sub(1)] {
+            let mut seed = Transcript::<K>::new(b"e20-02-tree-seed").expect("t");
+            let alpha = seed.challenge(ChallengeLabel::Sumcheck).expect("alpha");
+            let beta = seed.challenge(ChallengeLabel::Sumcheck).expect("beta");
+            let theta: Vec<K> = (0..(m - b))
+                .map(|_| seed.challenge(ChallengeLabel::Sumcheck).expect("theta"))
+                .collect();
+            let d = Descriptor::new(42, m, b, [10, 11], &theta).expect("desc");
+            let sigma: Vec<M31> = (0..len)
+                .map(|i| if i % 5 == 0 { M31::ZERO } else { M31::ONE })
+                .collect();
+            // Include both in-table and out-of-table values (for malicious-prover fallback).
+            let x0: Vec<M31> = (0..len)
+                .map(|i| {
+                    if i + 1 == len && len > 2 {
+                        M31::from_i64(70_000)
+                    } else {
+                        M31::from_i64((i * 13 + 3) as i64 % 64)
+                    }
+                })
+                .collect();
+            let x1: Vec<M31> = (0..len)
+                .map(|i| M31::from_i64(((i * 7 + 1) % 31) as i64 - 15))
+                .collect();
+
+            // 1. SmallDomain (both pair-table <= 256 and denom-only 512).
+            let leaves_c1: Vec<[K; 2]> = (0..len)
+                .map(|i| {
+                    let s = one.mul_m31(sigma[i]);
+                    [s, one - s + s * (alpha - one.mul_m31(x0[i]))]
+                })
+                .collect();
+            let mut t_ref = Transcript::new(b"e20-02-c1").expect("t");
+            let (ref_p, ref_r) = d.prove(&leaves_c1, &mut t_ref).expect("ref");
+            let ref_next = t_ref.challenge(ChallengeLabel::Sumcheck);
+            for table_size in [64usize, 512usize] {
+                let mut t_opt = Transcript::new(b"e20-02-c1").expect("t");
+                let (opt_p, opt_r) = d
+                    .prove_base_leaves(
+                        BaseLeaves::SmallDomain {
+                            sigma: &sigma,
+                            values: &x0,
+                            alpha,
+                            table_size,
+                        },
+                        &mut t_opt,
+                    )
+                    .expect("opt");
+                assert_eq!(opt_p, ref_p);
+                assert_eq!(opt_r, ref_r);
+                assert_eq!(t_opt.challenge(ChallengeLabel::Sumcheck), ref_next);
+            }
+
+            // 2. General (c = 2).
+            let leaves_c2: Vec<[K; 2]> = (0..len)
+                .map(|i| {
+                    let s = one.mul_m31(sigma[i]);
+                    let row = one.mul_m31(x0[i]) + beta * one.mul_m31(x1[i]);
+                    [s, one - s + s * (alpha - row)]
+                })
+                .collect();
+            let mut t_ref2 = Transcript::new(b"e20-02-c2").expect("t");
+            let (ref_p2, ref_r2) = d.prove(&leaves_c2, &mut t_ref2).expect("ref2");
+            let xs = vec![x0, x1];
+            let mut t_opt2 = Transcript::new(b"e20-02-c2").expect("t");
+            let (opt_p2, opt_r2) = d
+                .prove_base_leaves(
+                    BaseLeaves::General {
+                        sigma: &sigma,
+                        xs: &xs,
+                        alpha,
+                        beta,
+                    },
+                    &mut t_opt2,
+                )
+                .expect("opt2");
+            assert_eq!(opt_p2, ref_p2);
+            assert_eq!(opt_r2, ref_r2);
+            assert_eq!(
+                t_opt2.challenge(ChallengeLabel::Sumcheck),
+                t_ref2.challenge(ChallengeLabel::Sumcheck)
+            );
+        }
+    }
+}
+
+#[test]
+fn matches_reference_base_leaves_fraction_tree_qm31_and_om31() {
+    check_base_leaves_parity::<QM31>();
+    check_base_leaves_parity::<OM31>();
+}
 #[test]
 fn rejects_fraction_tree_source_shape_and_poles() {
     use stele_field::Field;

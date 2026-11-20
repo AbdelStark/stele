@@ -576,9 +576,16 @@ impl Stack {
     }
 }
 
-/// One lookup or range inside its table's batched A5 statement (RFC-0026 A3).
+/// Default lookup instance domain bound `B` (RFC-0026 A8): 2^30 positions per instance.
+pub const DEFAULT_INSTANCE_BOUND: u8 = 30;
+
+/// One lookup or range inside its table's batched A5 statement (RFC-0026 A3, A8).
 pub(crate) struct Member {
     m: u8,
+    /// Leading domain bits cut by RFC-0026 A8 when the original member exceeded `2^B`; 0 if unsplit.
+    block_bits: u8,
+    /// Aligned block index in `0..2^block_bits`; 0 if unsplit.
+    block_index: usize,
     tuple: Vec<(Ref, i64)>,
     selector: Option<Ref>,
     /// Start of this member's block in the concatenated domain; a multiple of 2^m.
@@ -604,6 +611,11 @@ pub(crate) struct Check {
     /// Test-only malicious-prover seam: added to the committed count of row 0.
     #[cfg(test)]
     skew: i64,
+    /// Test-only malicious-prover seam (RFC-0026 A8 control): override this instance's
+    /// committed multiplicities without moving the member value's multiplicity across
+    /// the instance boundary.
+    #[cfg(test)]
+    count_override: Option<Vec<i64>>,
     /// Test-only malicious-prover seam: member evaluations taken from these values.
     #[cfg(test)]
     split: Option<Values>,
@@ -785,6 +797,8 @@ fn check(
         #[cfg(test)]
         skew: 0,
         #[cfg(test)]
+        count_override: None,
+        #[cfg(test)]
         split: None,
         #[cfg(any(test, feature = "controls"))]
         shift: 0,
@@ -792,6 +806,19 @@ fn check(
 }
 
 fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
+    plan_with_bound(relation, sources, DEFAULT_INSTANCE_BOUND)
+}
+
+/// Derive the plan with RFC-0026 A8 lookup instance bound `B` (`1 <= B <= 30`; default 30).
+/// Unsplit plans (every target total `<= 2^B`) produce identical checks, ids and proof bytes.
+fn plan_with_bound(
+    relation: &Relation,
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<Plan, Error> {
+    if instance_bound == 0 || instance_bound > 30 {
+        return Err(Error::Unsupported);
+    }
     relation.validate().map_err(Error::StatementMismatch)?;
     if relation.has_virtual() {
         return Err(Error::Unsupported);
@@ -838,8 +865,8 @@ fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
         }
     };
     let base = 3;
-    // RFC-0026 A3: one check per table, in order of first use (lookups, then ranges);
-    // members keep relation order before the size sort.
+    // RFC-0026 A3 & A8: one check (an ordered list of instances of <= 2^B positions) per table,
+    // in order of first use (lookups, then ranges); members keep relation order before size sort.
     let mut targets: Vec<(Target, Vec<Member>)> = Vec::new();
     let mut add =
         |target: Target, member: Member| match targets.iter_mut().find(|(t, _)| *t == target) {
@@ -851,6 +878,8 @@ fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
             Target::Table(lookup.table.0),
             Member {
                 m: lookup.vars,
+                block_bits: 0,
+                block_index: 0,
                 tuple: lookup.tuple.iter().map(|r| (r.clone(), 0)).collect(),
                 selector: lookup.selector.clone(),
                 offset: 0,
@@ -864,19 +893,21 @@ fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
             Target::Range(range.width.bits),
             Member {
                 m: log_len,
+                block_bits: 0,
+                block_index: 0,
                 tuple: vec![(Ref::identity(range.column, log_len), -range.width.min())],
                 selector: None,
                 offset: 0,
             },
         );
     }
+    let cap = 1usize << instance_bound;
     let mut checks = Vec::new();
-    for (id, (target, members)) in targets.into_iter().enumerate() {
-        let id = id as u64;
-        let (name, t, entries) = match target {
+    for (target, raw_members) in targets {
+        let (base_name, t, entries) = match target {
             Target::Table(table) => {
                 let table = &relation.tables[table as usize];
-                let entries = table.rows.iter().flatten().copied().collect();
+                let entries: Vec<i64> = table.rows.iter().flatten().copied().collect();
                 (table.name.clone(), table.rows.len(), entries)
             }
             Target::Range(bits) => {
@@ -884,7 +915,62 @@ fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
                 (alloc::format!("range_{bits}"), t, (0..t as i64).collect())
             }
         };
-        checks.push(check(id, base + id, name, members, t, entries, sources)?);
+        // RFC-0026 A8: cut members larger than 2^B along their leading domain bits first,
+        // then sort in A3 descending-size order and split into <= 2^B instances.
+        let mut expanded = Vec::new();
+        for member in raw_members {
+            if member.m > instance_bound {
+                let block_bits = member.m - instance_bound;
+                let blocks = 1usize << block_bits;
+                for block_index in 0..blocks {
+                    expanded.push(Member {
+                        m: instance_bound,
+                        block_bits,
+                        block_index,
+                        tuple: member.tuple.clone(),
+                        selector: member.selector.clone(),
+                        offset: 0,
+                    });
+                }
+            } else {
+                expanded.push(member);
+            }
+        }
+        expanded.sort_by(|a, b| b.m.cmp(&a.m));
+        let mut buckets: Vec<Vec<Member>> = Vec::new();
+        let mut cur = Vec::new();
+        let mut cur_total = 0usize;
+        for member in expanded {
+            let size = 1usize << member.m;
+            if !cur.is_empty() && cur_total + size > cap {
+                buckets.push(cur);
+                cur = Vec::new();
+                cur_total = 0;
+            }
+            cur_total += size;
+            cur.push(member);
+        }
+        if !cur.is_empty() {
+            buckets.push(cur);
+        }
+        let multi = buckets.len() > 1;
+        for (inst_idx, members) in buckets.into_iter().enumerate() {
+            let id = checks.len() as u64;
+            let name = if multi {
+                alloc::format!("{base_name}/inst{inst_idx}")
+            } else {
+                base_name.clone()
+            };
+            checks.push(check(
+                id,
+                base + id,
+                name,
+                members,
+                t,
+                entries.clone(),
+                sources,
+            )?);
+        }
     }
     let lengths: Vec<u8> = (0..relation.columns.len())
         .filter(|i| relation.columns[*i].kind == Kind::Weight)
@@ -2001,10 +2087,35 @@ pub fn prove_measured(
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
     sources: Sources,
 ) -> Result<(Proof, Metrics), Error> {
+    prove_measured_with_instance_bound(t, relation, values, model, sources, DEFAULT_INSTANCE_BOUND)
+}
+
+/// [`prove`] with an explicit plan-fixed RFC-0026 A8 lookup instance bound `B` (`1 <= B <= 30`).
+pub fn prove_with_instance_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<Proof, Error> {
+    prove_measured_with_instance_bound(t, relation, values, model, sources, instance_bound)
+        .map(|(proof, _)| proof)
+}
+
+/// [`prove_measured`] with an explicit plan-fixed RFC-0026 A8 lookup instance bound `B`.
+pub fn prove_measured_with_instance_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<(Proof, Metrics), Error> {
     // E16-22: stage timing, off unless STELE_STAGE_TIMES.
     let mut laps = parallel::Laps::start();
     let plan_timer = Stopwatch::start();
-    let plan = plan(relation, sources)?;
+    let plan = plan_with_bound(relation, sources, instance_bound)?;
     let plan_ns = plan_timer.elapsed_ns();
     laps.lap("dev/plan");
     let (proof, mut metrics) =
@@ -2177,11 +2288,12 @@ fn prove_plan_measured(
     }
     let mut col_reads = vec![0u64; plan.weights.len()];
     let member_selected = |member: &Member| -> u64 {
+        let block_base = (member.block_index as u64) << member.m;
         match &member.selector {
             None => 1u64 << member.m,
             Some(sel) => match &relation.columns[sel.column.0 as usize].kind {
                 Kind::Public(v) => (0..(1u64 << member.m))
-                    .filter(|&x| v[sel.index(x)] != 0)
+                    .filter(|&local| v[sel.index(block_base | local)] != 0)
                     .count() as u64,
                 _ => 0,
             },
@@ -2234,6 +2346,12 @@ fn prove_plan_measured(
     };
     let resolved = ResolvedColumns::borrowed(relation, values);
     let mu_messages = |i: usize| {
+        #[cfg(test)]
+        let counts = match &plan.checks[i].count_override {
+            Some(overridden) => overridden.clone(),
+            None => lookup::counts(&plan.checks[i], relation, &resolved)?,
+        };
+        #[cfg(not(test))]
         let counts = lookup::counts(&plan.checks[i], relation, &resolved)?;
         let message = lookup::multiplicities(&plan.checks[i], &counts)?;
         Ok::<_, Error>((counts, message))
@@ -2397,12 +2515,27 @@ fn prove_plan_measured(
             }
         }
         let shape = MatmulShape::new(t, mm)?;
-        let out = column(relation, values, mm.out.column)?;
-        let out_value = mle(out, &restrict(&mm.out, &shape.rho))?;
+        let out_col = column(relation, values, mm.out.column)?;
+        let lhs_col = column(relation, values, mm.lhs.column)?;
+        let rhs_col = column(relation, values, mm.rhs.column)?;
+        // Evaluate `out~(ρ)` and build both operand tables concurrently on the work pool (E20-02).
+        let ((out_value, eq), (lhs, rhs)) = parallel::join(
+            || {
+                let out_pt = restrict(&mm.out, &shape.rho);
+                (mle(out_col, &out_pt), shape.eq_shared())
+            },
+            || {
+                parallel::join(
+                    || shape.table_mixed(&mm.lhs, lhs_col),
+                    || shape.table_mixed(&mm.rhs, rhs_col),
+                )
+            },
+        );
+        let out_value = out_value?;
+        let eq = eq?;
+        let lhs = lhs?;
+        let rhs = rhs?;
         let instance = shape.instance(MATMUL | i as u64, out_value);
-        let eq = shape.eq_shared()?;
-        let lhs = shape.table_mixed(&mm.lhs, column(relation, values, mm.lhs.column)?)?;
-        let rhs = shape.table_mixed(&mm.rhs, column(relation, values, mm.rhs.column)?)?;
         let mut sc = Vec::new();
         let summand = MatmulSummand {
             rem: 1usize << shape.vars.len(),
@@ -2922,7 +3055,19 @@ pub fn verify(
     proof: &Proof,
     sources: Sources,
 ) -> Result<Ledger, Error> {
-    let plan = plan(relation, sources)?;
+    verify_with_instance_bound(t, relation, model, proof, sources, DEFAULT_INSTANCE_BOUND)
+}
+
+/// [`verify`] with an explicit plan-fixed RFC-0026 A8 lookup instance bound `B` (`1 <= B <= 30`).
+pub fn verify_with_instance_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    model: &[&VerifiedCertificate<K>],
+    proof: &Proof,
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<Ledger, Error> {
+    let plan = plan_with_bound(relation, sources, instance_bound)?;
     model_check(&plan, model)?;
     let mut ledger = Ledger::default();
     for (k, certificate) in model.iter().enumerate() {
@@ -3264,6 +3409,8 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
                 Target::Table(lookup.table.0),
                 Member {
                     m: lookup.vars,
+                    block_bits: 0,
+                    block_index: 0,
                     tuple: lookup.tuple.iter().map(|r| (r.clone(), 0)).collect(),
                     selector: lookup.selector.clone(),
                     offset: 0,
@@ -3279,6 +3426,8 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
                 Target::Range(range.width.bits),
                 Member {
                     m: log_len,
+                    block_bits: 0,
+                    block_index: 0,
                     tuple: vec![(Ref::identity(range.column, log_len), -range.width.min())],
                     selector: None,
                     offset: 0,

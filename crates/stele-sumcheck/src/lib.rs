@@ -32,6 +32,7 @@ pub use buffers::prove_into;
 pub use dense::{Dense, DenseTable};
 pub use instance::{Instance, Term};
 pub use small::{Small, SmallTable};
+pub use stele_field::M31;
 pub use streaming::{Source, Streaming};
 pub use work::{ProverWork, RoundWork, VerifierWork};
 
