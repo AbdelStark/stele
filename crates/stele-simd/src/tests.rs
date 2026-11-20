@@ -282,3 +282,25 @@ fn matches_reference_m31_butterflies_on_seeded_and_edge_rows() {
         assert_eq!((l, h), (expected_low, expected_high));
     }
 }
+
+#[test]
+fn matches_reference_qm31_products_on_seeded_and_edge_slices() {
+    let backends = backends();
+    let mut seed = 0x5354_454c_4500_0023;
+    for case in 0..1000usize {
+        let n = case % 41;
+        let edge = case % 4 == 0;
+        let a: Vec<_> = (0..n).map(|_| element(&mut seed, edge)).collect();
+        let b: Vec<_> = (0..n).map(|_| element(&mut seed, case % 8 == 0)).collect();
+        let mut expected = a.clone();
+        crate::mul_assign_reference(&mut expected, &b);
+        for backend in &backends {
+            let mut product = a.clone();
+            backend.mul_assign(&mut product, &b).expect("available");
+            assert_eq!(product, expected, "{backend:?} case {case}");
+        }
+        let mut product = a.clone();
+        crate::mul_assign(&mut product, &b);
+        assert_eq!(product, expected);
+    }
+}

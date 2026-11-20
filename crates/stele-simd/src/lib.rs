@@ -172,5 +172,5 @@ mod tests;
 mod x86;
 pub use slices::{
     accelerated, butterflies, butterflies_reference, fold, fold_reference, layer_round,
-    layer_round_reference, LayerTables,
+    layer_round_reference, mul_assign, mul_assign_reference, LayerTables,
 };

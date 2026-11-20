@@ -229,3 +229,47 @@ pub fn butterflies(low: &mut [M31], high: &mut [M31], twiddles: &[M31]) {
         butterflies_reference(low, high, twiddles);
     }
 }
+
+/// The reference element-wise product: `a[j] *= b[j]` over the first `min` of the lengths.
+pub fn mul_assign_reference(a: &mut [QM31], b: &[QM31]) {
+    for (x, y) in a.iter_mut().zip(b) {
+        *x = *x * *y;
+    }
+}
+
+impl Backend {
+    /// [`mul_assign_reference`] on this backend.
+    pub fn mul_assign(self, a: &mut [QM31], b: &[QM31]) -> Result<(), UnsupportedBackend> {
+        if !self.available() {
+            return Err(UnsupportedBackend);
+        }
+        let n = a.len().min(b.len());
+        let (a, b) = (&mut a[..n], &b[..n]);
+        let done = match self {
+            #[cfg(target_arch = "x86_64")]
+            Self::Avx2 | Self::Avx512 => {
+                // SAFETY: RFC-0003 §6. The feature was checked above. `a` and `b` are `n`
+                // elements of four `u32` limbs each (layout asserted above), read and
+                // written in whole elements. Every stored limb is canonical.
+                unsafe {
+                    let (a, b) = (a.as_mut_ptr().cast::<u32>(), b.as_ptr().cast::<u32>());
+                    if self == Self::Avx512 {
+                        crate::x86::avx512::mul_assign(a, b, n)
+                    } else {
+                        crate::x86::avx2::mul_assign(a, b, n)
+                    }
+                }
+            }
+            _ => 0,
+        };
+        mul_assign_reference(&mut a[done..], &b[done..]);
+        Ok(())
+    }
+}
+
+/// [`mul_assign_reference`] on the widest backend of this host.
+pub fn mul_assign(a: &mut [QM31], b: &[QM31]) {
+    if Backend::detect().mul_assign(a, b).is_err() {
+        mul_assign_reference(a, b);
+    }
+}

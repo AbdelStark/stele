@@ -44,6 +44,10 @@ pub struct Dense<K> {
     tables: Vec<DenseTable<K>>,
     remaining: u32,
 }
+/// Columns per block of the kernel-backed round: every input's values and steps of one
+/// block stay in cache.
+const ROUND_BLOCK: usize = 64;
+
 impl<K: ChallengeField> Dense<K> {
     // RFC-0006 A5: a materialized prefix tail keeps the original A1 instance.
     pub fn from_folded(tables: Vec<Vec<K>>, remaining: u32) -> Result<Self, Error> {
@@ -231,6 +235,59 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
             return Ok(());
         }
         // All tables are extension-field `Ext`.
+        if parallel::layer_kernel_available::<K>() {
+            // Where the host has kernels, the same sum by blocks of columns: each term's
+            // product runs element-wise over the block. Field arithmetic is exact, so the
+            // round values are those of the loop below.
+            let zero = K::from_i64(0);
+            let partial = |range: core::ops::Range<usize>, out: &mut [K]| {
+                out.fill(zero);
+                let mut values = Vec::new();
+                let mut steps = Vec::new();
+                reserve(&mut values, inputs * ROUND_BLOCK)?;
+                reserve(&mut steps, inputs * ROUND_BLOCK)?;
+                values.resize(inputs * ROUND_BLOCK, zero);
+                steps.resize(inputs * ROUND_BLOCK, zero);
+                let (mut product, mut sums) = ([zero; ROUND_BLOCK], [zero; ROUND_BLOCK]);
+                let mut start = range.start;
+                while start < range.end {
+                    let n = (range.end - start).min(ROUND_BLOCK);
+                    for (idx, table) in self.tables.iter().enumerate() {
+                        let DenseTable::Ext(table) = table else {
+                            return Err(Error::PublicShape);
+                        };
+                        let at = idx * ROUND_BLOCK;
+                        for b in 0..n {
+                            values[at + b] = table[start + b];
+                            steps[at + b] = table[start + b + half] - table[start + b];
+                        }
+                    }
+                    for (node, result) in out.iter_mut().enumerate() {
+                        if node > 0 {
+                            for (value, step) in values.iter_mut().zip(&steps) {
+                                *value = *value + *step;
+                            }
+                        }
+                        sums[..n].fill(zero);
+                        for term in &i.terms {
+                            product[..n].fill(term.coefficient);
+                            for &f in &term.factors {
+                                let at = f as usize * ROUND_BLOCK;
+                                parallel::mul_assign(&mut product[..n], &values[at..at + n]);
+                            }
+                            for (sum, p) in sums[..n].iter_mut().zip(&product[..n]) {
+                                *sum = *sum + *p;
+                            }
+                        }
+                        *result = sums[..n].iter().fold(*result, |total, sum| total + *sum);
+                    }
+                    start += n;
+                }
+                Ok(())
+            };
+            parallel::sum_ranges(half, out, partial)?;
+            return Ok(());
+        }
         let partial = |range: core::ops::Range<usize>, out: &mut [K]| {
             out.fill(K::from_i64(0));
             let mut values = Vec::new();

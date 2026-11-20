@@ -245,6 +245,21 @@ pub fn eq_table_scaled<K: ChallengeField>(point: &[K], scale: K) -> Result<Vec<K
     Ok(out)
 }
 
+/// `a[j] *= b[j]`, through the host's kernel when the field is QM31 and `std` is on: the
+/// elements of the loop either way.
+pub fn mul_assign<K: ChallengeField>(a: &mut [K], b: &[K]) {
+    #[cfg(feature = "std")]
+    if let Some(b) = K::qm31_slice(b) {
+        if let Some(a) = K::qm31_slice_mut(a) {
+            stele_simd::mul_assign(a, b);
+            return;
+        }
+    }
+    for (x, y) in a.iter_mut().zip(b) {
+        *x = *x * *y;
+    }
+}
+
 /// Whether [`layer_round_kernel`] runs a host kernel for `K`, and not the reference loop:
 /// a caller whose operands are not tables copies them into tables only then.
 pub fn layer_kernel_available<K: ChallengeField>() -> bool {

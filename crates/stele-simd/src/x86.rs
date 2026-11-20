@@ -97,6 +97,24 @@ macro_rules! x86_backend {
                 let lane = |low: u32, high: u32| i64::from(low) | (i64::from(high) << 32);
                 $pair(lane(c[0], c[1]), lane(c[2], c[3]))
             }
+            /// `a[j] *= b[j]` on whole vectors of QM31 elements. Returns the number of
+            /// elements done.
+            #[target_feature(enable=$feature)]
+            pub(crate) unsafe fn mul_assign(a: *mut u32, b: *const u32, n: usize) -> usize {
+                let per = $width / 4;
+                let done = n / per * per;
+                // SAFETY: RFC-0003 §6: the caller enables the feature and supplies `n`
+                // elements behind each pointer; each load and store covers `per` whole
+                // elements below `done <= n`.
+                unsafe {
+                    let mut i = 0;
+                    while i < done {
+                        store(a.add(4 * i), mul4(load(a.add(4 * i)), load(b.add(4 * i))));
+                        i += per;
+                    }
+                }
+                done
+            }
             /// `lo[j] += c·(hi[j] − lo[j])` on whole vectors of QM31 elements. Returns the
             /// number of elements done; the caller finishes the tail with the reference.
             #[target_feature(enable=$feature)]
