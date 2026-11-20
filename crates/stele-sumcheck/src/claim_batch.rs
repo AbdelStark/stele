@@ -73,13 +73,13 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
                 start = 2 * start + usize::from(*x == one);
                 prefix += 1;
             }
-            let suffix = crate::parallel::eq_table(&z[prefix..])?;
+            let suffix = crate::parallel::eq_table_scaled(&z[prefix..], weight)?;
             // A2: start < 2^prefix and suffix.len() = 2^(m-prefix), so the block fits.
             let begin = start * suffix.len();
             let block = &mut out[begin..begin + suffix.len()];
             crate::parallel::for_each_chunk(block, |offset, chunk| {
                 for (target, value) in chunk.iter_mut().zip(&suffix[offset..]) {
-                    *target = *target + weight * *value;
+                    *target = *target + *value;
                 }
             });
             weight = weight * gamma;

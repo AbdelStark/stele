@@ -203,6 +203,41 @@ pub fn eq_table<K: ChallengeField>(point: &[K]) -> Result<Vec<K>, Error> {
     stele_poly::eq_table(point).map_err(|_| Error::Capacity)
 }
 
+/// `scale · eq_table(point)`. The scale rides on the leading block of the split table, so
+/// a large table needs no extra pass; every entry equals `scale` times [`eq_table`]'s.
+pub fn eq_table_scaled<K: ChallengeField>(point: &[K], scale: K) -> Result<Vec<K>, Error> {
+    #[cfg(feature = "std")]
+    {
+        let k = chunks(1usize.checked_shl(point.len() as u32).unwrap_or(0))
+            .next_power_of_two()
+            .trailing_zeros() as usize;
+        if k > 0 && k <= point.len() {
+            let mut high = stele_poly::eq_table(&point[..k]).map_err(|_| Error::Capacity)?;
+            for h in &mut high {
+                *h = *h * scale;
+            }
+            let low = stele_poly::eq_table(&point[k..]).map_err(|_| Error::Capacity)?;
+            let mut out = Vec::new();
+            out.try_reserve_exact(high.len() * low.len())
+                .map_err(|_| Error::Capacity)?;
+            out.resize(high.len() * low.len(), K::from_i64(0));
+            out.par_chunks_mut(low.len())
+                .zip(high.par_iter())
+                .for_each(|(block, h)| {
+                    for (o, l) in block.iter_mut().zip(&low) {
+                        *o = *h * *l;
+                    }
+                });
+            return Ok(out);
+        }
+    }
+    let mut out = stele_poly::eq_table(point).map_err(|_| Error::Capacity)?;
+    for value in &mut out {
+        *value = *value * scale;
+    }
+    Ok(out)
+}
+
 /// Fix the leading coordinate: `t[j] += r·(t[j + half] − t[j])`, then halve.
 /// `table.len()` must be a power of two (a dense MLE table).
 pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
@@ -287,6 +322,17 @@ mod tests {
             expected[1] = expected[1] + table[i] * table[i + len];
         }
         assert_eq!(out, expected);
+        // The scaled table is the plain one times the scale, split or not.
+        let scale = QM31::from_i64(-77);
+        for vars in [0usize, 3, 14] {
+            let point: Vec<QM31> = (0..vars as i64)
+                .map(|i| QM31::from_i64(5 * i + 2))
+                .collect();
+            let plain = eq_table(&point).expect("eq");
+            let scaled = eq_table_scaled(&point, scale).expect("scaled");
+            assert!(plain.iter().zip(&scaled).all(|(a, b)| *a * scale == *b));
+            assert_eq!(plain.len(), scaled.len());
+        }
         let r = QM31::from_i64(123_456_789);
         let mut folded = table.clone();
         fold(&mut folded, r);
