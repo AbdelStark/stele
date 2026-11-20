@@ -176,6 +176,18 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || development::run_virtual_linear(1338),
     },
     catalog::RegisteredControl {
+        id: 1339,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || development::run_virtual_rounding(1339),
+    },
+    catalog::RegisteredControl {
+        id: 1340,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "StatementMismatch",
+        run: || development::run_virtual_rounding(1340),
+    },
+    catalog::RegisteredControl {
         id: 316,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",

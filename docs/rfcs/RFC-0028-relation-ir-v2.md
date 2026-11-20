@@ -240,6 +240,16 @@ verifier.
 
 ## 8. Amendment log
 
+- **E18-04 implementation note (`Pointwise` reductions, `NC-1339..1340`):** Every claimed
+  `Def::Pointwise` column is reduced individually in strictly decreasing `ColumnId` order,
+  emitting one reduction section `[optional RFC-0006 A2 mode-1 claim batch] ||
+  [eq-weighted RFC-0006 A1 sumcheck]` under disjoint instance IDs `VIRTUAL_BATCH | col_id`
+  (`(1 << 62) | (4 << 48) | col_id`) and `VIRTUAL_POINTWISE | col_id`
+  (`(1 << 62) | (6 << 48) | col_id`), checking `final_values[0] == eq(z, r)` (`Error::EqMismatch`)
+  and routing each deduplicated operand `Ref` claim downstream. Controls `NC-1339` (committed
+  `y + 1` with virtual `rem` range lookup rejecting with `RootMismatch`) and `NC-1340`
+  (advice declared as `Linear` with field inverse of `2^k` rejecting with `StatementMismatch`)
+  execute through `verify_segmented`.
 - **E18-03 implementation note (`Contraction` reductions, unsplit `shared + summed <= MAX_VARS`):**
   Every claimed `Def::Contraction` column is reduced individually in strictly decreasing
   `ColumnId` order, emitting one reduction section `[optional RFC-0006 A2 mode-1 claim batch] ||

@@ -1978,13 +1978,136 @@ pub fn run_virtual_linear(id: u32) -> Result<(), String> {
 
 #[cfg(test)]
 #[test]
-fn rejects_nc_1335_to_nc_1338_segments_and_virtual_linear() {
+fn rejects_nc_1335_to_nc_1340_segments_and_virtual_columns() {
     for id in [1335, 1336] {
         assert_eq!(run_segments(id), Ok(()), "NC-{id}");
     }
     assert_eq!(run_virtual_linear(1337), Ok(()), "NC-1337");
     #[cfg(feature = "controls")]
     assert_eq!(run_virtual_linear(1338), Ok(()), "NC-1338");
+    for id in [1339, 1340] {
+        assert_eq!(run_virtual_rounding(id), Ok(()), "NC-{id}");
+    }
+}
+
+/// RFC-0028 §2.2, §6 & RFC-0008 A9 (task E18-04):
+/// - `1339`: commit `y + 1` for one rounding, with virtual remainder `rem = acc - 2^k * y`
+///   recomputed; the virtual range lookup rejects at `verify_segmented` with `RootMismatch`.
+/// - `1340`: declare rounding output `y` as `Def::Linear` using the integer field inverse of
+///   `2^k` mod `p`; `verify_segmented` rejects with `StatementMismatch(Invalid::Bound)`.
+pub fn run_virtual_rounding(id: u16) -> Result<(), String> {
+    use stele_reductions::relation::{verify_segmented, ProofV2, Sources};
+    use stele_reductions::stele_hash::Transcript;
+    use stele_reductions::stele_ir::relation::{Def, Invalid, Kind, Range, Ref, Width};
+
+    const PUBLIC: &[u8] = b"stele/nc/e18-04/virtual-rounding/v1";
+    let sources = Sources::CircleAll;
+
+    // Honest relation: `acc = 2^4 * y + rem`, with `y` committed advice and `rem` virtual `Linear`
+    // range-checked to `u4` (0..16).
+    let mut rel = Relation::default();
+    let g = rel.add_group_in("nc/rnd", 2, 0);
+    let acc = rel.add_column("nc/acc", Kind::Witness(g), Width::unsigned(12), 2);
+    let y = rel.add_column("nc/y", Kind::Witness(g), Width::unsigned(8), 2);
+    for (name, col, width) in [
+        ("r_acc", acc, Width::unsigned(12)),
+        ("r_y", y, Width::unsigned(8)),
+    ] {
+        rel.ranges.push(Range {
+            name: name.into(),
+            column: col,
+            width,
+        });
+    }
+    let rem = rel.add_virtual(
+        "nc/rem",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(acc, 2)), (-16, Ref::identity(y, 2))],
+        },
+        2,
+    );
+    rel.ranges.push(Range {
+        name: "r_rem".into(),
+        column: rem,
+        width: Width::unsigned(4),
+    });
+    rel.validate().map_err(|e| format!("validate: {e:?}"))?;
+
+    let mut honest_vals = Values::new(&rel);
+    honest_vals
+        .set(&rel, acc, vec![100, 205, 19, 31])
+        .map_err(|e| format!("acc: {e:?}"))?;
+    honest_vals
+        .set(&rel, y, vec![6, 12, 1, 1])
+        .map_err(|e| format!("y: {e:?}"))?;
+    let mut tp = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+    let honest =
+        relation::prove_segmented(&mut tp, &rel, |_| Ok(honest_vals.clone()), &[], sources)
+            .map_err(|e| format!("honest prove: {e:?}"))?;
+    let mut tv = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+    verify_segmented(&mut tv, &rel, &[], &honest, sources)
+        .map_err(|e| format!("honest verify: {e:?}"))?;
+
+    match id {
+        1339 => {
+            // Tamper: commit `y[0] + 1 = 7` -> virtual `rem[0] = 100 - 112 = -12` outside `u4`.
+            let mut bad_vals = honest_vals;
+            bad_vals
+                .set(&rel, y, vec![7, 12, 1, 1])
+                .map_err(|e| format!("bad y: {e:?}"))?;
+            let mut tp = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            let bad =
+                relation::prove_segmented(&mut tp, &rel, |_| Ok(bad_vals.clone()), &[], sources)
+                    .map_err(|e| format!("bad prove: {e:?}"))?;
+            let mut tv = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            match verify_segmented(&mut tv, &rel, &[], &bad, sources) {
+                Err(relation::Error::Fraction(stele_lookup::fraction::Error::RootMismatch)) => {
+                    Ok(())
+                }
+                other => Err(format!(
+                    "NC-1339: expected Fraction(RootMismatch), got {other:?}"
+                )),
+            }
+        }
+        1340 => {
+            // Tamper: declare advice `y` as `Def::Linear` using `inv(16) mod p = 2^27`.
+            let mut bad_rel = Relation::default();
+            let g_inv = bad_rel.add_group_in("nc/inv", 2, 0);
+            let i_acc = bad_rel.add_column("nc/acc", Kind::Witness(g_inv), Width::unsigned(12), 2);
+            let i_rem = bad_rel.add_column("nc/rem", Kind::Witness(g_inv), Width::unsigned(4), 2);
+            bad_rel.ranges.push(Range {
+                name: "r_acc".into(),
+                column: i_acc,
+                width: Width::unsigned(12),
+            });
+            bad_rel.ranges.push(Range {
+                name: "r_rem".into(),
+                column: i_rem,
+                width: Width::unsigned(4),
+            });
+            let inv_16: i64 = 1i64 << 27;
+            let _y_fake = bad_rel.add_virtual(
+                "nc/y_fake",
+                Def::Linear {
+                    constant: 0,
+                    terms: vec![
+                        (inv_16, Ref::identity(i_acc, 2)),
+                        (-inv_16, Ref::identity(i_rem, 2)),
+                    ],
+                },
+                2,
+            );
+            let mut tv = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            match verify_segmented(&mut tv, &bad_rel, &[], &ProofV2::default(), sources) {
+                Err(relation::Error::StatementMismatch(Invalid::Bound { .. })) => Ok(()),
+                other => Err(format!(
+                    "NC-1340: expected StatementMismatch(Invalid::Bound), got {other:?}"
+                )),
+            }
+        }
+        _ => Err(format!("unknown virtual rounding control {id}")),
+    }
 }
 
 /// E8-02f1b (controls only): forged one-layer byte-5 windows (T = 16) for the independent
