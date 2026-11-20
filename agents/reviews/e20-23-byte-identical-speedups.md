@@ -352,7 +352,7 @@ onto the lane E review fixes, so their hashes changed; 14 of 16 kept their patch
 | F2 (d) | Resolved | `matches_reference_rows_across_block_and_round_boundaries`: a per-row reference at lengths 1, 63, 64, 65, 129 and 200 with one, two and three blocks per round. Mutant M-rot fails it. |
 | F2 (e) | Resolved | `matches_reference_range_multiplicities_past_one_histogram_piece`: a range over 2^17 positions against a direct count. A mutant that skips one position of later pieces fails it. |
 | F3 | Resolved | `peak_codeword_bytes` is the structural bound `(blocks + 1)·N_0·4 + payloads`: a function of the shape, never below the live buffers. The field's comment says so. |
-| F4 | Resolved in the ledger commit that follows | L2a before and after on the reference class, verify time, and the proof digests on two hosts. |
+| F4 | Resolved | Ledgers below: L1 and L2a before and after on the reference class, verify time, and the same proof and public digests on two hosts. |
 | F5 | Resolved | The contiguous path also requires that no higher index bit reads a summed bit. `matches_reference_definition_when_a_higher_index_bit_reads_a_summed_bit` is the review's example. |
 | F6 | Resolved | A worker panic is re-raised after every worker is joined; otherwise the first error in worker order is returned (`stele_cqis::join_all`). The worker count is capped by `RAYON_NUM_THREADS`. Buffers are allocated per block in use, not per CPU. |
 | F7 | Resolved | `prove_base` takes the reference rounds for an extension selector, and its comment describes what it does. |
@@ -370,3 +370,27 @@ Commits added after the audited head, not covered by the record above:
 
 They are sent back to the same reviewer; its second record is appended below when it
 returns.
+
+## Ledgers
+
+Recorded at `1b1676eb`, the parent of the commit that adds them. "Before" is the lane C2
+tip (`01076e86`). Reference class: Xeon Platinum 8480CL, 24 allocated CPUs (12 physical
+cores), singleton runs, profile byte 6. `bench/ledger/<name>.json`.
+
+| Rung | Ledger | Prove s | Verify s | Peak RSS GB | Verify RSS GB |
+|---|---|---|---|---|---|
+| L1 | `e19-04-dev-synthetic-8layer-byte6-24t` (before) | 17.32 | 1.05 | 2.08 | 0.14 |
+| L1 | `e22-10-dev-synthetic-8layer-byte6-24t` | 7.69 | 0.55 | 1.98 | 0.07 |
+| L2a | `e19-04-dev-stories42m-t64-byte6-24t` (before) | 117.79 | 11.35 | 13.99 | 2.76 |
+| L2a | `e22-10-dev-stories42m-t64-byte6-24t` | 36.33 | 2.05 | 12.67 | 0.69 |
+| L2a | `e22-10-dev-stories42m-t64-byte6-24t-hugepages` | 31.85 | 1.57 | 12.56 | 0.70 |
+| L2a | `e22-10-dev-stories42m-t64-byte6-mac` (arm64, 16 threads) | 23.53 | 1.13 | 18.14 | — |
+
+- The L2a proof is 3,927,613 bytes with SHA-256 `afb3581b…67cb` and the public input
+  `8da645cd…44b3` in every one of these ledgers, before and after, on both hosts.
+- The huge-page ledger sets `GLIBC_TUNABLES=glibc.malloc.hugetlb=1` for prover and
+  verifier; its host context says so. Nothing else differs from the ledger above it.
+- Against Gate M2's L2a lines on the reference class: prove 36.33 s against 10 s and
+  peak RSS 12.67 GB against 4 GB are not met; proof size is met; verify is 2.05 s
+  against 2 s, and 1.57 s with huge pages.
+
