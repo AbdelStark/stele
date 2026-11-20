@@ -4781,7 +4781,8 @@ Consequences:
   - `RFC-0026 A29` is added as an Accepted development-tier amendment in
     `docs/rfcs/RFC-0026-development-end-to-end.md` and indexed in `RFC-0000`.
   - L2a (`stories42M`, `T = 64`) under `--dev-profile 6`: the proof is 3,927,613 bytes
-    (`bench/ledger/e19-04-dev-stories42m-t64-byte6-24t.json`; 15.6 MB under byte 3), with the
+    (`bench/ledger/e19-04-dev-stories42m-t64-byte6-24t.json`; 12.4 MB under byte 3,
+    `bench/ledger/e20-02-dev-stories42m-24t.json`), with the
     same bytes in three runs on the 24-thread class and on an arm64 host. The public bundle
     grows to 17.3 MB: it carries the registration certificates of the certified model
     sources, made once per model. Controls: `NC-0631` and `NC-0633..0636` through the
