@@ -135,6 +135,20 @@ fn build(
     bits: u8,
     outputs: Vec<Vec<i64>>,
 ) -> Result<Setup, Violation> {
+    build_with_bits(rows, weights, m, shift, policy, bits, 16, outputs)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_with_bits(
+    rows: &ConversionCapture,
+    weights: &[Vec<i64>],
+    m: &[u16],
+    shift: i32,
+    policy: Policy,
+    bits: u8,
+    output_bits: u8,
+    outputs: Vec<Vec<i64>>,
+) -> Result<Setup, Violation> {
     let (t, ld) = (
         log2_ceil(rows.inputs.len()),
         log2_ceil(rows.inputs[0].len()),
@@ -158,6 +172,7 @@ fn build(
         weight_bits: bits,
         mantissas: m.to_vec(),
         shift,
+        output_bits,
     };
     let output = conversion.output().expect("declared");
     let mut projection = Projection::new("L0/q", output, None, plan).expect("projection plan");
@@ -515,6 +530,7 @@ fn projection_case_within(
         weight_bits: 8,
         mantissas: m.to_vec(),
         shift,
+        output_bits: 16,
     };
     let mut projection = Projection::new("L0/q", input, None, plan).expect("plan");
     projection.limit = t + lo + ld - splits;
@@ -1494,6 +1510,7 @@ fn validate(
         weight_bits: bits,
         mantissas: vec![65535; o],
         shift: -40,
+        output_bits: 16,
     };
     let output = conversion.output().expect("declared");
     let mut projection = Projection::new("L0/q", output, None, plan).expect("plan");
@@ -1541,6 +1558,7 @@ fn accepts_gated_scale_bound_under_the_bound_rule() {
         weight_bits: 8,
         mantissas: vec![65535; 2048],
         shift: -60,
+        output_bits: 16,
     };
     let mut projection = Projection::new("L0/down", input, None, plan).expect("plan");
     projection.declare(&mut relation);
@@ -1562,6 +1580,7 @@ fn accepts_projection_domain_over_max_vars_in_row_blocks() {
         weight_bits: 8,
         mantissas: vec![1; 8192],
         shift: -20,
+        output_bits: 16,
     };
     let output = conversion.output().expect("declared");
     let mut projection = Projection::new("L0/q", output, None, plan).expect("plan");
@@ -1599,6 +1618,7 @@ fn rejects_projection_output_domain_over_max_vars() {
         weight_bits: 8,
         mantissas: vec![1; 1 << 25],
         shift: -20,
+        output_bits: 16,
     };
     let output = conversion.output().expect("declared");
     assert!(matches!(
@@ -1668,7 +1688,7 @@ fn cases<'a>(json: &str, bin: &'a [u8]) -> Vec<Case<'a>> {
         .collect()
 }
 
-const CORPORA: [(&str, &[u8]); 3] = [
+const CORPORA: [(&str, &[u8]); 4] = [
     (
         include_str!("../../../stele-cqis/tests/fixtures/execution-boundaries.json"),
         include_bytes!("../../../stele-cqis/tests/fixtures/execution-boundaries.bin"),
@@ -1680,6 +1700,10 @@ const CORPORA: [(&str, &[u8]); 3] = [
     (
         include_str!("../../../stele-cqis/tests/fixtures/grouped-rows.json"),
         include_bytes!("../../../stele-cqis/tests/fixtures/grouped-rows.bin"),
+    ),
+    (
+        include_str!("../../../stele-cqis/tests/fixtures/wide-residual.json"),
+        include_bytes!("../../../stele-cqis/tests/fixtures/wide-residual.bin"),
     ),
 ];
 
@@ -1837,13 +1861,13 @@ fn weights_of(model: &stele_cqis::model::Model, artifact: &[u8], ordinal: u16) -
 fn matches_reference_executor_capture() {
     use stele_cqis::execution::{capture::Quantised, Executor};
     use stele_cqis::model::{Model, Preparation, Scales};
-    let mut checked = 0;
+    let (mut checked, mut wide_checked, mut grouped_down) = (0, 0, 0);
     for (json, bin) in CORPORA {
         for case in cases(json, bin) {
             let (Ok(model), Some(id)) = (Model::decode(case.model), case.artifact_id) else {
                 continue;
             };
-            if model.shape().family() != 1 || model.wide() || case.tokens.is_empty() {
+            if model.shape().family() != 1 || case.tokens.is_empty() {
                 continue;
             }
             let Ok(scales) = Scales::decode(&model, case.scales) else {
@@ -1864,8 +1888,97 @@ fn matches_reference_executor_capture() {
             let layers = model.blocks().len();
             for (index, (ordinal, policy, _, _)) in roles.iter().enumerate() {
                 let (layer, role) = (index / 7, index % 7);
-                // The down row is E16-08's gated conversion.
+                let weights = weights_of(&model, case.artifact, *ordinal);
+                let matrix = scales.matrix(*ordinal).expect("matrix");
+                let (_, _, fraction, fo) = roles[index];
+                let shift = i32::from(matrix.exponent()) - i32::from(fraction) + i32::from(fo);
+                let bits = model.formats()[*ordinal as usize].bits();
+                let output_bits = if model.wide() && layer < layers && matches!(role, 3 | 6) {
+                    24
+                } else {
+                    16
+                };
                 if layer < layers && role == 6 {
+                    // Check dynamic and grouped gated down projections (E16-08 / E22-03).
+                    if matches!(policy, Policy::Static(_)) {
+                        continue;
+                    }
+                    let tokens = case.tokens.len();
+                    let hidden = usize::from(model.shape().hidden());
+                    let n = log2_ceil(tokens) + log2_ceil(hidden);
+                    let mut relation = Relation::default();
+                    let g = relation.add_group("L0/gated/test", n);
+                    let high = relation.add_column("high", Kind::Witness(g), Width::signed(16), n);
+                    let low = relation.add_column("low", Kind::Witness(g), Width::unsigned(15), n);
+                    for (col, w) in [(high, Width::signed(16)), (low, Width::unsigned(15))] {
+                        relation.ranges.push(Range {
+                            name: "limb".into(),
+                            column: col,
+                            width: w,
+                        });
+                    }
+                    let mut conv = crate::silu::GatedConversion::new(
+                        layer, high, low, tokens, hidden, *policy,
+                    )
+                    .expect("gated conv plan");
+                    conv.declare(&mut relation);
+                    let plan = ProjectionPlan {
+                        rows: tokens,
+                        inner: hidden,
+                        outputs: weights.len(),
+                        weight_bits: bits,
+                        mantissas: matrix.mantissas().to_vec(),
+                        shift,
+                        output_bits,
+                    };
+                    let mut proj =
+                        Projection::new("L0/down", conv.output().expect("declared"), None, plan)
+                            .expect("down plan");
+                    proj.declare(&mut relation);
+                    let mut values = Values::new(&relation);
+                    let product: Vec<i64> = (0..tokens)
+                        .flat_map(|p| capture.blocks[layer][p].gated.iter().copied())
+                        .collect();
+                    let d = log2_ceil(hidden);
+                    let limb = 1i64 << 15;
+                    let mut h_col = vec![0i64; 1 << n];
+                    let mut l_col = vec![0i64; 1 << n];
+                    for p in 0..tokens {
+                        for j in 0..hidden {
+                            let v = product[p * hidden + j];
+                            h_col[(p << d) | j] = v.div_euclid(limb);
+                            l_col[(p << d) | j] = v.rem_euclid(limb);
+                        }
+                    }
+                    values.set(&relation, high, h_col).expect("high");
+                    values.set(&relation, low, l_col).expect("low");
+                    conv.assign(&relation, &product, &mut values).expect("conv");
+                    let lo = log2_ceil(weights.len());
+                    values
+                        .set(
+                            &relation,
+                            proj.weight().expect("w"),
+                            padded(&weights, lo, d),
+                        )
+                        .expect("weight");
+                    let down_cap = ProjectionCapture {
+                        codes: (0..tokens)
+                            .map(|p| capture.blocks[layer][p].down_row.codes.clone())
+                            .collect(),
+                        scales: (0..tokens)
+                            .map(|p| capture.blocks[layer][p].down_row.scales.clone())
+                            .collect(),
+                        weights,
+                        outputs: (0..tokens)
+                            .map(|p| capture.blocks[layer][p].down.output.quotient.clone())
+                            .collect(),
+                    };
+                    proj.assign(&relation, &down_cap, &mut values)
+                        .expect("down capture consistent");
+                    assert_eq!(check(&relation, &values), Ok(()), "down ordinal {ordinal}");
+                    checked += 1;
+                    wide_checked += usize::from(output_bits == 24);
+                    grouped_down += usize::from(matches!(policy, Policy::Grouped(_)));
                     continue;
                 }
                 let picked: Vec<(&Quantised, &Vec<i64>)> = (0..case.tokens.len())
@@ -1877,28 +1990,488 @@ fn matches_reference_executor_capture() {
                     scales: picked.iter().map(|(q, _)| q.scales.clone()).collect(),
                 };
                 let outputs = picked.iter().map(|(_, y)| (*y).clone()).collect();
-                let weights = weights_of(&model, case.artifact, *ordinal);
-                let matrix = scales.matrix(*ordinal).expect("matrix");
-                let (_, _, fraction, fo) = roles[index];
-                let shift = i32::from(matrix.exponent()) - i32::from(fraction) + i32::from(fo);
-                let bits = model.formats()[*ordinal as usize].bits();
-                let s = build(
+                let s = build_with_bits(
                     &rows,
                     &weights,
                     matrix.mantissas(),
                     shift,
                     *policy,
                     bits,
+                    output_bits,
                     outputs,
                 )
                 .expect("capture is consistent with the relations");
                 assert_eq!(check(&s.relation, &s.values), Ok(()), "ordinal {ordinal}");
                 checked += 1;
+                wide_checked += usize::from(output_bits == 24);
             }
         }
     }
-    assert!(checked > 0, "no family-1 capture checked");
-    std::println!("executor capture: {checked} projections checked");
+    assert!(
+        checked > 0 && wide_checked > 0 && grouped_down > 0,
+        "checked={checked} wide={wide_checked} grouped_down={grouped_down}"
+    );
+    std::println!(
+        "executor capture: {checked} projections checked ({wide_checked} wide, {grouped_down} grouped down)"
+    );
+}
+
+/// Wide int24 projection outputs (RFC-0004 A14, RFC-0026 A25) and grouped gated inputs
+/// (RFC-0004 A15): honest agreement across shifts and boundaries (`-2^23`, `2^23 - 1`),
+/// overflow rejection (`+2^23`, `-2^23 - 1`), and adversarial near-miss rejection
+/// (`output ± 1` and opposite rounding direction at ties, plus grouped gated `X - p` alias).
+#[test]
+fn accepts_wide_and_grouped_gated_projections_and_rejects_near_misses() {
+    use stele_ir::relation::check;
+    // Helper: signed-24 affine reference.
+    let affine_wide = |codes: &[Vec<i64>],
+                       scales: &[Vec<u32>],
+                       weights: &[Vec<i64>],
+                       m: &[u16],
+                       shift: i32|
+     -> Vec<Vec<i64>> {
+        codes
+            .iter()
+            .zip(scales)
+            .map(|(codes, scales)| {
+                let g = codes.len() / scales.len();
+                weights
+                    .iter()
+                    .zip(m)
+                    .map(|(w, mj)| {
+                        let v: i128 = if scales.len() > 1 {
+                            codes
+                                .iter()
+                                .zip(w)
+                                .enumerate()
+                                .map(|(i, (c, w))| i128::from(scales[i / g]) * i128::from(c * w))
+                                .sum()
+                        } else {
+                            i128::from(scales[0])
+                                * codes
+                                    .iter()
+                                    .zip(w)
+                                    .map(|(c, w)| i128::from(c * w))
+                                    .sum::<i128>()
+                        };
+                        let p = v * i128::from(*mj);
+                        if p == 0 {
+                            0
+                        } else if shift >= 0 {
+                            (p << shift) as i64
+                        } else {
+                            let k = (-shift).min(100);
+                            (p.signum() * ((p.abs() + (1 << (k - 1))) >> k)) as i64
+                        }
+                    })
+                    .collect()
+            })
+            .collect()
+    };
+
+    // 1. Wide int24 outputs on dynamic + grouped int16 inputs across shift < 0, 0, > 0, vanishing.
+    for (policy, shift, m, peak) in [
+        // Exact tie at shift = -1: P = 3 -> +2, P = -3 -> -2; plus wide magnitude > 2^16.
+        (Policy::Dynamic, -1, vec![3, 100, 65535, 1], 32000),
+        // Zero shift, large wide outputs up to ±2^23 - 1.
+        (Policy::Grouped(4), 0, vec![1, 200, 1024, 3], 10000),
+        // Positive shift with both byte offset (shift/8 = 1) and bit factor (shift%8 = 7 -> 128).
+        (Policy::Dynamic, 15, vec![1, 2, 1, 0], 10),
+        // Positive shift >= 24 (clamped to 24; only P = 0 fits).
+        (Policy::Dynamic, 25, vec![0, 0, 0, 0], 100),
+        // Vanishing negative shift (all outputs identically 0).
+        (Policy::Grouped(4), -90, vec![65535, 32768, 1, 7], 32000),
+    ] {
+        let inputs = vec![
+            vec![peak, -peak / 2, 3, 0, -3, peak / 4, 1, -1],
+            vec![-peak, peak / 3, -1, 2, 1, -peak / 5, 0, 1],
+        ];
+        let rows = convert(policy, &inputs).expect("convert");
+        let weights = vec![
+            vec![1, 0, 0, 0, 0, 0, 0, 0],
+            vec![-1, 1, 0, 0, 0, 0, 0, 0],
+            vec![0, 0, 1, 0, 0, 0, 0, 0],
+            vec![1, 1, -1, 1, 1, -1, 1, -1],
+        ];
+        let outputs = affine_wide(&rows.codes, &rows.scales, &weights, &m, shift);
+        assert!(
+            outputs
+                .iter()
+                .flatten()
+                .all(|&v| Width::signed(24).contains(v)),
+            "test outputs fit int24: {outputs:?}"
+        );
+        let setup = build_with_bits(&rows, &weights, &m, shift, policy, 8, 24, outputs.clone())
+            .expect("honest wide");
+        assert_eq!(check(&setup.relation, &setup.values), Ok(()));
+
+        // Near-miss attack: forge output ± 1 (including opposite rounding direction), re-solving
+        // magnitude, magnitude_bytes, remainder, output_bytes, and all chains.
+        let mut w = setup
+            .projection
+            .source(
+                &setup.relation,
+                &ProjectionCapture {
+                    codes: rows.codes.clone(),
+                    scales: rows.scales.clone(),
+                    weights: weights.clone(),
+                    outputs: outputs.clone(),
+                },
+            )
+            .expect("source");
+        setup.projection.complete(&mut w, PStep::Digits, None);
+        for x in 0..w.output.len() {
+            if !setup.projection.real(x) {
+                continue;
+            }
+            for delta in [-1i64, 1] {
+                let forged = w.output[x] + delta;
+                let mut bad = w.clone();
+                bad.output[x] = forged;
+                for k in 0..3 {
+                    bad.output_bytes[k][x] = if k == 2 {
+                        forged.div_euclid(1 << 16)
+                    } else {
+                        forged.div_euclid(1 << (8 * k)).rem_euclid(256)
+                    };
+                }
+                let mut v = setup.values.clone();
+                setup
+                    .projection
+                    .write(&setup.relation, &bad, &mut v, None)
+                    .expect("write");
+                assert!(
+                    check(&setup.relation, &v).is_err(),
+                    "forged output {forged} at x={x} shift={shift}"
+                );
+                // Also try forging magnitude directly to match |forged| and recomputing remainder!
+                if shift < 0 && !setup.projection.vanishing() {
+                    let mut bad_mag = w.clone();
+                    bad_mag.sign[x] = i64::from(forged < 0);
+                    bad_mag.magnitude[x] = forged.abs();
+                    for k in 0..3 {
+                        bad_mag.magnitude_bytes[k][x] = if k == 2 {
+                            bad_mag.magnitude[x].div_euclid(1 << 16)
+                        } else {
+                            bad_mag.magnitude[x]
+                                .div_euclid(1 << (8 * k))
+                                .rem_euclid(256)
+                        };
+                    }
+                    setup
+                        .projection
+                        .complete(&mut bad_mag, PStep::Remainder, None);
+                    let mut v2 = setup.values.clone();
+                    setup
+                        .projection
+                        .write(&setup.relation, &bad_mag, &mut v2, None)
+                        .expect("write");
+                    assert!(
+                        check(&setup.relation, &v2).is_err(),
+                        "forged magnitude for {forged} at x={x} shift={shift}"
+                    );
+                }
+            }
+        }
+    }
+
+    // 2. Exact int24 boundary (-2^23 accepted, +2^23 rejected) and exact tie half-away-from-zero.
+    {
+        // With Static(1), inputs = [1, -1, 3, -3], shift = 23 for lanes 0..2:
+        // lane 0: -1 * 1 * 2^23 = -2^23 (VALID); lane 1: +1 * 1 * 2^23 = +2^23 (OVERFLOW!).
+        let rows_ok = convert(Policy::Static(1), &[vec![-1, 0, 0, 0]]).expect("conv");
+        let w = vec![vec![1, 0, 0, 0]];
+        let ok = build_with_bits(
+            &rows_ok,
+            &w,
+            &[1],
+            23,
+            Policy::Static(1),
+            8,
+            24,
+            vec![vec![-(1 << 23)]],
+        )
+        .expect("ok -2^23");
+        assert_eq!(check(&ok.relation, &ok.values), Ok(()));
+
+        // +2^23 must be rejected!
+        let rows_ov = convert(Policy::Static(1), &[vec![1, 0, 0, 0]]).expect("conv");
+        let ov = build_with_bits(
+            &rows_ov,
+            &w,
+            &[1],
+            23,
+            Policy::Static(1),
+            8,
+            24,
+            vec![vec![1 << 23]],
+        )
+        .expect("assign ov");
+        assert!(
+            check(&ov.relation, &ov.values).is_err(),
+            "+2^23 must reject"
+        );
+
+        // Exact ties ±3/2 with wide output: +3/2 -> +2, -3/2 -> -2; +1 / -1 (towards zero) rejected.
+        let rows_tie = convert(Policy::Static(1), &[vec![3, -3, 0, 0]]).expect("conv");
+        let w_tie = vec![vec![1, 0, 0, 0], vec![0, 1, 0, 0]];
+        let tie = build_with_bits(
+            &rows_tie,
+            &w_tie,
+            &[1, 1],
+            -1,
+            Policy::Static(1),
+            8,
+            24,
+            vec![vec![2, -2]],
+        )
+        .expect("tie");
+        assert_eq!(check(&tie.relation, &tie.values), Ok(()));
+        let mut wt = tie
+            .projection
+            .source(
+                &tie.relation,
+                &ProjectionCapture {
+                    codes: rows_tie.codes,
+                    scales: rows_tie.scales,
+                    weights: w_tie,
+                    outputs: vec![vec![2, -2]],
+                },
+            )
+            .expect("source");
+        tie.projection.complete(&mut wt, PStep::Digits, None);
+        for (x, toward_zero) in [(0usize, 1i64), (1, -1)] {
+            let mut bad = wt.clone();
+            bad.magnitude[x] = toward_zero.abs();
+            for k in 0..3 {
+                bad.magnitude_bytes[k][x] = bad.magnitude[x].div_euclid(1 << (8 * k)) & 255;
+            }
+            tie.projection.complete(&mut bad, PStep::Remainder, None);
+            let mut v = tie.values.clone();
+            tie.projection
+                .write(&tie.relation, &bad, &mut v, None)
+                .expect("write");
+            assert!(check(&tie.relation, &v).is_err(), "tie toward zero at {x}");
+        }
+    }
+
+    // 3. Grouped gated input (scale_bound = GATED_SCALE = 8454661, wide_grouped = true) with
+    //    wide int24 output, including maximum gated fold 127 * 8454661 = 1_073_741_947 > p/2
+    //    AND explicit test rejecting the RFC-0004 A15 `X - p` alias digits (124, 0, 0, -64)!
+    {
+        let (tokens, inner, outputs, group_size) = (2usize, 8usize, 4usize, 4u32);
+        let mut relation = Relation::default();
+        let (t, ld, lg) = (
+            log2_ceil(tokens),
+            log2_ceil(inner),
+            group_size.trailing_zeros() as u8,
+        );
+        let mut b = Builder::new(&mut relation, "L0/gated/row");
+        let codes_col = b.witness("codes", Width::signed(8), t + ld);
+        let scale_lo = b.witness("scale/lo", Width::unsigned(16), t + ld - lg);
+        let scale_hi = b.witness("scale/hi", Width::unsigned(8), t + ld - lg);
+        let scale_col = b.column("scale", Width::unsigned(24), t + ld - lg);
+        b.relation.composes.push(stele_ir::relation::Compose {
+            name: "L0/gated/row/scale".into(),
+            column: scale_col,
+            limbs: vec![(scale_lo, 0), (scale_hi, 16)],
+        });
+        let input = RowOutput {
+            codes: codes_col,
+            scale: scale_col,
+            log_rows: t,
+            log_dimension: ld,
+            log_group: lg,
+            scale_bound: 8_454_661,
+        };
+        let m = vec![100, 3, 65535, 1];
+        let shift = -24;
+        let mut proj = Projection::new(
+            "L0/down",
+            input,
+            None,
+            ProjectionPlan {
+                rows: tokens,
+                inner,
+                outputs,
+                weight_bits: 8,
+                mantissas: m.clone(),
+                shift,
+                output_bits: 24,
+            },
+        )
+        .expect("grouped gated plan");
+        proj.declare(&mut relation);
+        assert_eq!(relation.validate(), Ok(()));
+
+        // Row 0 group 0 attains max gated fold: q = 127, s = 8454661 (1_073_741_947 > p/2).
+        // Row 0 group 1 has negative max fold: q = -127, s = 8454661.
+        let codes = vec![
+            vec![127, -100, 0, 5, -127, 64, -1, 0],
+            vec![0, 0, 0, 0, 12, -12, 3, -3],
+        ];
+        let scales = vec![vec![8_454_661u32, 8_454_661], vec![0, 12_345]];
+        let weights = vec![
+            vec![127, -128, 1, 2, -127, 3, -4, 5],
+            vec![1, 0, 0, 0, 0, 0, 0, 0],
+            vec![0, 0, 0, 0, 1, 0, 0, 0],
+            vec![-1, 1, -1, 1, -1, 1, -1, 1],
+        ];
+        let y = affine_wide(&codes, &scales, &weights, &m, shift);
+        let mut values = Values::new(&relation);
+        let flat_codes = padded(&codes, t, ld);
+        let flat_scales: Vec<i64> = scales.iter().flatten().map(|&s| i64::from(s)).collect();
+        values.set(&relation, codes_col, flat_codes).expect("codes");
+        values
+            .set(
+                &relation,
+                scale_lo,
+                flat_scales.iter().map(|s| s & 65535).collect(),
+            )
+            .expect("slo");
+        values
+            .set(
+                &relation,
+                scale_hi,
+                flat_scales.iter().map(|s| s >> 16).collect(),
+            )
+            .expect("shi");
+        values
+            .set(&relation, scale_col, flat_scales)
+            .expect("scales");
+        values
+            .set(
+                &relation,
+                proj.weight().expect("w"),
+                padded(&weights, log2_ceil(outputs), ld),
+            )
+            .expect("weights");
+        let cap = ProjectionCapture {
+            codes,
+            scales,
+            weights,
+            outputs: y,
+        };
+        proj.assign(&relation, &cap, &mut values)
+            .expect("honest grouped gated");
+        assert_eq!(check(&relation, &values), Ok(()));
+
+        // RFC-0004 A15 alias attack: replace lane 0's digits (123, 0, 0, 64) for
+        // X = 1_073_741_947 with the mod-p alias X - p = -1_073_741_700 = (124, 0, 0, -64)
+        // and recompute all downstream sums/bytes/output/chains -> MUST REJECT!
+        let mut w_alias = proj.source(&relation, &cap).expect("source");
+        proj.complete(&mut w_alias, PStep::Digits, None);
+        assert_eq!(
+            [
+                w_alias.digits[0][0],
+                w_alias.digits[1][0],
+                w_alias.digits[2][0],
+                w_alias.digits[3][0]
+            ],
+            [123, 0, 0, 64]
+        );
+        w_alias.digits[0][0] = 124;
+        w_alias.digits[1][0] = 0;
+        w_alias.digits[2][0] = 0;
+        w_alias.digits[3][0] = -64;
+        proj.complete(&mut w_alias, PStep::Sums, None);
+        let mut v_alias = values.clone();
+        proj.write(&relation, &w_alias, &mut v_alias, None)
+            .expect("write alias");
+        assert!(
+            check(&relation, &v_alias).is_err(),
+            "grouped gated X - p alias must reject"
+        );
+    }
+}
+
+/// Static validation of every Llama-3.1-8B G7 projection shape at T = 64 (RFC-0026 A25),
+/// including A6 row blocks on Gate/Up (4 blocks), Down (4 blocks, wide int24, grouped gated)
+/// and Head (32 blocks, int16, grouped int16).
+#[test]
+fn validates_llama31_8b_projection_shapes() {
+    for (name, inner, outputs, output_bits, scale_bound, group) in [
+        ("L0/q", 4096, 4096, 16, 259u32, 128u32),
+        ("L0/k", 4096, 1024, 16, 259, 128),
+        ("L0/o", 4096, 4096, 24, 259, 128),
+        ("L0/gate", 4096, 14336, 16, 259, 128),
+        ("L0/down", 14336, 4096, 24, 8_454_661, 128),
+        ("G/head", 4096, 128256, 16, 259, 128),
+    ] {
+        let rows = 64usize;
+        let (t, ld, lg) = (
+            log2_ceil(rows),
+            log2_ceil(inner),
+            group.trailing_zeros() as u8,
+        );
+        let mut relation = Relation::default();
+        let mut b = Builder::new(&mut relation, "L0/in");
+        let codes = b.witness("codes", Width::signed(8), t + ld);
+        let scale = if scale_bound <= 259 {
+            b.witness("scale", Width::unsigned(9), t + ld - lg)
+        } else {
+            let lo = b.witness("scale/lo", Width::unsigned(16), t + ld - lg);
+            let hi = b.witness("scale/hi", Width::unsigned(8), t + ld - lg);
+            let s = b.column("scale", Width::unsigned(24), t + ld - lg);
+            b.relation.composes.push(stele_ir::relation::Compose {
+                name: "L0/in/scale".into(),
+                column: s,
+                limbs: vec![(lo, 0), (hi, 16)],
+            });
+            s
+        };
+        let input = RowOutput {
+            codes,
+            scale,
+            log_rows: t,
+            log_dimension: ld,
+            log_group: lg,
+            scale_bound,
+        };
+        let mut proj = Projection::new(
+            name,
+            input,
+            None,
+            ProjectionPlan {
+                rows,
+                inner,
+                outputs,
+                weight_bits: 8,
+                mantissas: vec![65535; outputs],
+                shift: -20,
+                output_bits,
+            },
+        )
+        .expect("Llama-3.1-8B projection plan");
+        proj.declare(&mut relation);
+        assert_eq!(relation.validate(), Ok(()), "{name} validates");
+    }
+    // Unsupported output_bits rejected directly by Projection::new.
+    for bad_bits in [0, 8, 15, 23, 32] {
+        let mut relation = Relation::default();
+        let mut b = Builder::new(&mut relation, "L0/in");
+        let input = RowOutput {
+            codes: b.witness("codes", Width::signed(8), 4),
+            scale: b.witness("scale", Width::unsigned(9), 1),
+            log_rows: 1,
+            log_dimension: 3,
+            log_group: 3,
+            scale_bound: 259,
+        };
+        let plan = ProjectionPlan {
+            rows: 2,
+            inner: 8,
+            outputs: 4,
+            weight_bits: 8,
+            mantissas: vec![1; 4],
+            shift: 0,
+            output_bits: bad_bits,
+        };
+        assert_eq!(
+            Projection::new("L0/bad", input, None, plan).err(),
+            Some(Unsupported::Shape)
+        );
+    }
 }
 
 /// The input row and projection output of one (layer, role, position) of a capture;

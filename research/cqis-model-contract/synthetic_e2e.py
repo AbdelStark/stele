@@ -28,24 +28,49 @@ from scales_codec import Scale, encode as encode_scales
 from source_map import Shape
 
 
-def synthetic(seed, layers, d, heads, hidden, vocabulary, context, group=False):
-    """One family-1 model; `group` gives every dynamic affine-input row RFC-0004 A15 groups."""
+def synthetic(
+    seed,
+    layers,
+    d,
+    heads,
+    hidden,
+    vocabulary,
+    context,
+    group=False,
+    groups=None,
+    wide=False,
+    group_down=False,
+):
+    """One family-1 model; `group` gives dynamic affine-input rows RFC-0004 A15 groups,
+    `groups` sets GQA KV heads, `wide` selects RFC-0004 A14 int24 residuals (rmsnorm_q v2),
+    and `group_down` also groups the gated down-projection input row."""
     rng = Random(seed); width = d // heads
-    s = Shape(1, layers, d, heads, heads, width, hidden, vocabulary, context)
+    kv_heads = heads if groups is None else groups
+    s = Shape(1, layers, d, heads, kv_heads, width, hidden, vocabulary, context)
     m = make(rng, 1, s)
     exp = Exponential(s.context, 15, 6, 6, 0, 0)
-    norm = lambda n, fraction: replace(n, F=fraction, G=6, E=6, en=1, ed=100000)
+    norm = lambda n, fraction: replace(
+        n,
+        version=2 if wide else 1,
+        F=fraction,
+        G=6,
+        E=6,
+        en=1,
+        ed=100000,
+    )
     g = lambda n: (2, n // 2) if group else (0, 0)
     blocks = []; f0 = 7; incoming = f0
+    res_f = 10 if wide else 7
     for b in m.blocks:
         rotation = Rotation(width, s.context, 0, 0, 0, ((500000, 1), (1, 1), (0, 1), (0, 1)))
-        policies = (g(d), (0, 0), (0, 0), (0, 0), g(d), g(d), (0, 0))
-        fractions = (7,) * 7
-        blocks.append(replace(b, norm1=norm(b.norm1, incoming), norm2=norm(b.norm2, 7), fractions=fractions,
-                              mid=7, out=7, attention=7, policies=policies, score_m=1, score_e=-4,
+        down_p = g(hidden) if group_down else (0, 0)
+        policies = (g(d), (0, 0), (0, 0), (0, 0), g(d), g(d), down_p)
+        fractions = (7, 7, 7, res_f, 7, 7, res_f)
+        blocks.append(replace(b, norm1=norm(b.norm1, incoming), norm2=norm(b.norm2, res_f), fractions=fractions,
+                              mid=res_f, out=res_f, attention=7, policies=policies, score_m=1, score_e=-4,
                               accumulation=0, drop=0, exp=exp, activation=Activation(s.hidden, 1, 7, 6),
                               rotation=rotation))
-        incoming = 7
+        incoming = res_f
     formats = tuple((8, 0) if len(ds) == 2 else (16, 6) for _, _, ds in roles(s))
     m = replace(m, formats=formats, f0=f0, blocks=tuple(blocks), final_norm=norm(m.final_norm, incoming),
                 final_policy=g(d), logits_fraction=7, decoding=None)
@@ -69,6 +94,22 @@ CASES = (
     ('one-layer', dict(seed=1, layers=1, d=64, heads=4, hidden=128, vocabulary=256, context=16)),
     ('one-layer-grouped', dict(seed=2, layers=1, d=64, heads=4, hidden=128, vocabulary=256, context=16, group=True)),
     ('eight-layer', dict(seed=8, layers=8, d=64, heads=4, hidden=128, vocabulary=256, context=64)),
+    (
+        'one-layer-wide-gqa',
+        dict(
+            seed=3,
+            layers=1,
+            d=64,
+            heads=4,
+            groups=2,
+            hidden=128,
+            vocabulary=256,
+            context=16,
+            group=True,
+            wide=True,
+            group_down=True,
+        ),
+    ),
 )
 
 

@@ -118,6 +118,7 @@ fn case(f: &Fixture, claims: &[u32]) -> Option<Case> {
             mantissas: matrix.mantissas().to_vec(),
             shift: i32::from(matrix.exponent()) - i32::from(fraction)
                 + i32::from(model.logits_fraction()),
+            output_bits: 16,
         },
         tied: None,
         tokens: core::iter::once(0)
@@ -278,6 +279,7 @@ fn accepts_tied_head_on_embedding_source() {
                 weight_bits: bits,
                 mantissas: embedding.mantissas().to_vec(),
                 shift,
+                output_bits: 16,
             },
             tied: Some(source),
             tokens: core::iter::once(0)
@@ -384,6 +386,7 @@ fn accepts_static_validity_e2e_shape() {
             weight_bits: 8,
             mantissas: vec![1 << 15; vocabulary],
             shift: -20,
+            output_bits: 16,
         },
         tied: None,
         tokens: vec![1; t],
@@ -409,6 +412,18 @@ fn accepts_static_validity_e2e_shape() {
     short.tokens.truncate(60);
     let mut rows = plan.clone();
     rows.head.rows = 32;
+    let mut wide_head = plan.clone();
+    wide_head.head.output_bits = 24;
+    assert_eq!(
+        Finish::new(wide_head, input, &relation).err(),
+        Some(FinishError::Unsupported(Unsupported::Shape))
+    );
+    let mut bad_bits = plan.clone();
+    bad_bits.head.output_bits = 8;
+    assert_eq!(
+        Finish::new(bad_bits, input, &relation).err(),
+        Some(FinishError::Unsupported(Unsupported::Shape))
+    );
     let bad = FinishPlan {
         next: Some(vocabulary as u32),
         ..plan

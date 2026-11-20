@@ -484,10 +484,10 @@ impl Attention {
         }
     }
 
-    /// `(|A| bound, Q bound)` from the dot width and scale bounds.
-    fn score_bound(&self) -> (u128, u128) {
+    /// Shifted score magnitude bound `S_max = Q_max * 2^max(e, 0)` for `W <= 2^wbits - 1`.
+    fn score_qmax(&self, wbits: u8) -> u128 {
         let a = (128u128 * 128) << self.bits().d;
-        let w = Self::scale_max(&self.plan.query, None) * Self::scale_max(&self.plan.key, None);
+        let w = (1u128 << wbits) - 1;
         let n = a * w * u128::from(self.plan.score_multiplier.0);
         let e = self.exponent();
         let q = if e >= 0 {
@@ -495,7 +495,33 @@ impl Attention {
         } else {
             (n + (1u128 << (-e - 1).min(126))) >> (-e).min(127)
         };
-        (a, q << e.clamp(0, 60))
+        q.checked_shl(e.clamp(0, 60) as u32).unwrap_or(u128::MAX)
+    }
+
+    /// Bit width of the scale product `W = sq * sk` (RFC-0026 A25).
+    ///
+    /// Keeps the power-of-two dynamic scale bound whenever its score bound fits `< 2^28`
+    /// (preserving pre-A25 proof bytes), and tightens to the true `RowConversion` ceiling
+    /// product `scale_bound_q * scale_bound_k` (e.g. `259 * 259 = 67,081 < 2^17` for
+    /// Llama-3.1-8B `head_width = 128`) otherwise.
+    fn score_wbits(&self, relation: Option<&Relation>) -> u8 {
+        let smax_q = Self::scale_max(&self.plan.query, relation);
+        let smax_k = Self::scale_max(&self.plan.key, relation);
+        let loose = bit_length(smax_q * smax_k);
+        if self.score_qmax(loose) < 1 << 28 {
+            loose
+        } else {
+            bit_length(
+                u128::from(self.plan.query.scale_bound) * u128::from(self.plan.key.scale_bound),
+            )
+        }
+    }
+
+    /// `(|A| bound, Q bound)` from the dot width and scale bounds.
+    fn score_bound(&self) -> (u128, u128) {
+        let a = (128u128 * 128) << self.bits().d;
+        let wbits = self.score_wbits(None);
+        (a, self.score_qmax(wbits))
     }
 
     /// Output column (`T x h*dh`, int16), the O-input row conversion's input.
@@ -528,8 +554,7 @@ impl Module for Attention {
         let sk = scale_terms(&self.plan.key, relation);
         let sv = scale_terms(&self.plan.value, relation);
         let (amax, _) = self.score_bound();
-        let smax_q = Self::scale_max(&self.plan.query, Some(relation));
-        let smax_k = Self::scale_max(&self.plan.key, Some(relation));
+        let wbits = self.score_wbits(Some(relation));
         let smax_v = Self::scale_max(&self.plan.value, Some(relation));
         let prefix = self.prefix.clone();
         let mut b = Builder::new(relation, &prefix);
@@ -579,7 +604,6 @@ impl Module for Attention {
         b.identity("score/sign", sd, terms);
 
         // W = sq*sk in bytes on (j, i).
-        let wbits = bit_length(smax_q * smax_k);
         let weight = bytes(&mut b, "score/scales", wbits, 2 * t);
         let mut positions = Positions(Vec::new());
         for &(oq, cq, fq) in &sq {

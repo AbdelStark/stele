@@ -1,7 +1,8 @@
 //! Gated row conversion of the SiLU product to down-projection codes (RFC-0026 §5
-//! row 10 and the §5 gated-scale ceiling; RFC-0025 §2.5, RFC-0004 A8, flow §1).
+//! row 10 and the §5 gated-scale ceiling; RFC-0025 §2.5, RFC-0004 A8 and A15, flow §1).
 //!
-//! Input: `T = 2^15·high + low` from [`super::GatedProduct`], one dynamic scale per row.
+//! Input: `T = 2^15·high + low` from [`super::GatedProduct`], one dynamic scale per row
+//! (`Policy::Dynamic`) or per group of `g` features (`Policy::Grouped(g)`, RFC-0004 A15).
 //! `|T| < 2^30` follows from the `silu_q` table restriction (no output `−2^15`,
 //! `GatedProduct::new`); the executor's gated envelope is `[−2^30, 2^30]`. Every value wider than 16 bits is two radix-`2^15` limbs, and every
 //! wide identity is a low and a high limb identity joined by a carry (RFC-0026 §3.5):
@@ -69,12 +70,14 @@ pub struct GatedConversion {
     low: ColumnId,
     tokens: usize,
     hidden: usize,
+    policy: Policy,
     columns: Option<ConversionColumns>,
 }
 
 impl GatedConversion {
-    /// `high`, `low`: the [`super::GatedColumns`] limbs. Only the dynamic per-row
-    /// policy is supported (RFC-0026 §1.3).
+    /// `high`, `low`: the [`super::GatedColumns`] limbs. Supports dynamic per-row
+    /// (`Policy::Dynamic`) and grouped dynamic (`Policy::Grouped(g)`, RFC-0004 A15)
+    /// policies; static gated policies are rejected.
     pub fn new(
         layer: usize,
         high: ColumnId,
@@ -86,9 +89,14 @@ impl GatedConversion {
         if tokens == 0 || !(1..=16384).contains(&hidden) {
             return Err(Unsupported::Shape);
         }
-        // shortcut: static and grouped gated rows are rejected; add them with a plan
-        // that needs them (static: public scale; grouped: per-group scale folds).
-        if policy != Policy::Dynamic {
+        let policy_ok = match policy {
+            Policy::Dynamic => true,
+            Policy::Grouped(g) => {
+                g.is_power_of_two() && (g as usize) < hidden && hidden.is_multiple_of(g as usize)
+            }
+            Policy::Static(_) => false,
+        };
+        if !policy_ok {
             return Err(Unsupported::Policy);
         }
         if log2_ceil(tokens) + log2_ceil(hidden) > stele_ir::relation::MAX_VARS {
@@ -100,6 +108,7 @@ impl GatedConversion {
             low,
             tokens,
             hidden,
+            policy,
             columns: None,
         })
     }
@@ -110,13 +119,13 @@ impl GatedConversion {
 
     /// What the down projection reads (E16-05 `Projection::new`).
     pub fn output(&self) -> Option<RowOutput> {
-        let (t, d) = (log2_ceil(self.tokens), log2_ceil(self.hidden));
+        let (t, d, lg) = self.logs();
         self.columns.map(|c| RowOutput {
             codes: c.codes,
             scale: c.scale,
             log_rows: t,
             log_dimension: d,
-            log_group: d,
+            log_group: lg,
             scale_bound: GATED_SCALE,
         })
     }
@@ -132,8 +141,9 @@ impl Module for GatedConversion {
     type Capture = [i64];
 
     fn declare(&mut self, relation: &mut Relation) {
-        let (t, d) = (log2_ceil(self.tokens), log2_ceil(self.hidden));
+        let (t, d, lg) = self.logs();
         let n = t + d;
+        let groups = n - lg;
         let mask = (0..1usize << n).map(|x| i64::from(self.real(x))).collect();
         let prefix = self.prefix.clone();
         let mut b = Builder::new(relation, &prefix);
@@ -157,17 +167,17 @@ impl Module for GatedConversion {
             spare_low: b.witness("spare/low", u(15), n),
             spare_high: b.witness("spare/high", u(10), n),
             spare_carry: b.witness("spare/carry", Width::signed(3), n),
-            maximum_low: b.witness("maximum/low", u(15), t),
-            maximum_high: b.witness("maximum/high", u(15), t),
-            scale_low: b.witness("scale/low", u(15), t),
-            scale_high: b.witness("scale/high", u(9), t),
-            scale: b.column("scale", u(24), t),
-            slack: b.column("slack", u(7), t),
-            ceiling_carry: b.witness("ceiling/carry", Width::signed(8), t),
-            zero: b.witness("zero", u(1), t),
+            maximum_low: b.witness("maximum/low", u(15), groups),
+            maximum_high: b.witness("maximum/high", u(15), groups),
+            scale_low: b.witness("scale/low", u(15), groups),
+            scale_high: b.witness("scale/high", u(9), groups),
+            scale: b.column("scale", u(24), groups),
+            slack: b.column("slack", u(7), groups),
+            ceiling_carry: b.witness("ceiling/carry", Width::signed(8), groups),
+            zero: b.witness("zero", u(1), groups),
         };
         let lane = |id: ColumnId| r(id, 0..n);
-        let row = |id: ColumnId| r(id, d..n);
+        let row = |id: ColumnId| r(id, lg..n);
         let (m, sg, k) = (lane(mask), lane(c.sign), lane(c.borrow));
         let (al, ah) = (lane(c.magnitude_low), lane(c.magnitude_high));
         let (tl, th) = (lane(self.low), lane(self.high));
@@ -234,17 +244,17 @@ impl Module for GatedConversion {
         b.identity("attained/high", n, vec![term(1, vec![hit, gh])]);
         b.relation.matmuls.push(Matmul {
             name: format!("{prefix}/attained/one-hot"),
-            free: t,
-            summed: d,
+            free: groups,
+            summed: lg,
             out: r(one, []),
-            lhs: r(c.hit, (t..t + d).chain(0..t)),
+            lhs: r(c.hit, (groups..n).chain(0..groups)),
             rhs: r(one, []),
         });
         // Ceiling 127·s − M = slack: low 127·sl − Ml − slack = 2^15·e, high 127·sh − Mh + e = 0.
-        let rows = |id: ColumnId| r(id, 0..t);
+        let rows = |id: ColumnId| r(id, 0..groups);
         b.identity(
             "ceiling/low",
-            t,
+            groups,
             vec![
                 term(127, vec![rows(c.scale_low)]),
                 term(-1, vec![rows(c.maximum_low)]),
@@ -254,7 +264,7 @@ impl Module for GatedConversion {
         );
         b.identity(
             "ceiling/high",
-            t,
+            groups,
             vec![
                 term(127, vec![rows(c.scale_high)]),
                 term(-1, vec![rows(c.maximum_high)]),
@@ -268,7 +278,7 @@ impl Module for GatedConversion {
         });
         b.relation.lookups.push(Lookup {
             name: format!("{prefix}/ceiling"),
-            vars: t,
+            vars: groups,
             selector: None,
             tuple: vec![rows(c.slack)],
             table,
@@ -281,7 +291,7 @@ impl Module for GatedConversion {
         // Zero-row branch: z·(Ml + Mh) = 0.
         b.identity(
             "zero",
-            t,
+            groups,
             vec![
                 term(1, vec![rows(c.zero), rows(c.maximum_low)]),
                 term(1, vec![rows(c.zero), rows(c.maximum_high)]),
@@ -391,12 +401,17 @@ pub(crate) struct Plan {
 }
 
 impl GatedConversion {
-    fn bits(&self) -> (u8, u8) {
-        (log2_ceil(self.tokens), log2_ceil(self.hidden))
+    fn logs(&self) -> (u8, u8, u8) {
+        let (t, d) = (log2_ceil(self.tokens), log2_ceil(self.hidden));
+        let lg = match self.policy {
+            Policy::Grouped(g) => g.trailing_zeros() as u8,
+            _ => d,
+        };
+        (t, d, lg)
     }
 
     pub(crate) fn plan(&self, capture: &[i64]) -> Plan {
-        let (t, d) = self.bits();
+        let (t, d, lg) = self.logs();
         let product: Vec<i64> = (0..1usize << (t + d))
             .map(|x| {
                 if self.real(x) {
@@ -407,7 +422,7 @@ impl GatedConversion {
             })
             .collect();
         let magnitude: Vec<i64> = product.iter().map(|v| v.abs()).collect();
-        let width = 1usize << d;
+        let width = 1usize << lg;
         let maximum: Vec<i64> = magnitude
             .chunks(width)
             .map(|m| m.iter().copied().max().unwrap_or(0))
@@ -422,7 +437,7 @@ impl GatedConversion {
         }
         let quotient = (0..product.len())
             .map(|x| {
-                let divisor = scale[x >> d] + zero[x >> d];
+                let divisor = scale[x >> lg] + zero[x >> lg];
                 (2 * magnitude[x] + divisor) / (2 * divisor)
             })
             .collect();
@@ -448,11 +463,11 @@ impl GatedConversion {
     /// floors, so a consistent plan satisfies every relation exactly.
     pub(crate) fn fill(&self, plan: &Plan) -> Vec<(ColumnId, Vec<i64>)> {
         let c = self.columns.expect("GatedConversion::fill before declare");
-        let (_, d) = self.bits();
+        let (_, _, lg) = self.logs();
         let split = |v: i64| (v.rem_euclid(LIMB), v.div_euclid(LIMB));
         let mut lanes = [(); 16].map(|_| Vec::with_capacity(plan.product.len()));
         for x in 0..plan.product.len() {
-            let row = x >> d;
+            let row = x >> lg;
             let (sign, a, q) = (plan.sign[x], plan.magnitude[x], plan.quotient[x]);
             let (sl, _) = split(plan.scale[row]);
             let z = plan.zero[row];

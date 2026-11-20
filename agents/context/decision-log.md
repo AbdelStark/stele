@@ -4502,3 +4502,28 @@ charge and the inclusion of the full late-source preparation interval.
 Machine-readable evidence, input hashes, retained stages and per-sample charges
 are in [the projection](../../bench/ledger/e16-40ag-t32-resident-projection.json)
 and [the host calibration](../../bench/ledger/e16-40ag-t32-mac-source-batch-host.json).
+
+## ADR-146 — Accept RFC-0026 A25: wide int24 residual stream, GQA and grouped gated FFN at the development tier (E22-03)
+
+To prove real Llama-3.1-8B G7 windows (RFC-0004 A14/A15, Gate M1 / E22-04), the
+development proving modules must admit RFC-0004 A14 version-2 (int24) residual
+streams on the five specified value classes (`O`, `down`, `R_mid`, `R_l` for `l >= 1`,
+final-norm input), GQA (`groups != heads`), and RFC-0004 A15 grouped policies on the
+gated FFN down-projection input row (`hidden = 14336`, `g = 128`).
+
+Accepted RFC-0026 A25 at the development tier under RFC-0027 §2 / Workflow 02 item 4
+following independent Lane P review ([E22-03 review](../reviews/e22-03-wide-residual-8b.md)).
+Key choices:
+- Grouped gated projections decompose group scales into unsigned bytes and fold `q·s`
+  into balanced signed-8 radix-256 digits via a byte `Chain`, preventing RFC-0004 A15's
+  `X - p` modular alias while keeping matmul sums within `Width::signed(30)` up to
+  `inner = 16384` (with A6 row-block splits past `MAX_VARS = 30`).
+- Wide int24 projection outputs (`O`, `down`) discipline `magnitude` (`u24`) and
+  `output` (`i24`) via 3-byte `Compose`s and a 3-limb `output` chain; `Finish` rejects
+  wide logits (`head.output_bits != 16`).
+- Wide int24 residual adds use stage-2 cap `k2 <= 6` (`s = max(0, k - 6)`), `2^24`
+  two's-complement sign checks, and 2-limb `Compose(u16, hi)` discipline for columns
+  wider than 16 bits, validated exhaustively across all `31^3` fraction triples.
+- Version-1 non-wide models preserve bit-identical relations, digests, and proof bytes.
+
+Promotion to `standard` or `treaty` is not granted (Workflow 10).

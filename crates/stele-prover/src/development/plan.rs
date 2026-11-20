@@ -79,6 +79,11 @@ impl PlanData<'_> {
             .ok_or(Error::UnsupportedModel)?;
         let scale = self.scales.matrix(ordinal).ok_or(Error::UnsupportedModel)?;
         let dims = physical.dimensions();
+        let output_bits = if self.model.wide() && matches!(role, Role::Output | Role::Down) {
+            24
+        } else {
+            16
+        };
         Ok(ProjectionPlan {
             rows,
             inner: dims[1] as usize,
@@ -86,6 +91,7 @@ impl PlanData<'_> {
             weight_bits: self.model.formats()[usize::from(ordinal)].bits(),
             mantissas: scale.mantissas().to_vec(),
             shift: i32::from(scale.exponent()) - i32::from(unit) + i32::from(fo),
+            output_bits,
         })
     }
 }
@@ -153,7 +159,7 @@ impl Layout {
     pub fn declare(plan: &PlanData<'_>, statement: &Statement) -> Result<Self, Error> {
         let model = plan.model;
         let shape = model.shape();
-        if shape.family() != 1 || model.wide() || shape.groups() != shape.heads() {
+        if shape.family() != 1 {
             return Err(Error::UnsupportedModel);
         }
         let t = statement.tokens.len();
@@ -342,15 +348,27 @@ impl Layout {
                 block.attention_fraction(),
                 fr[3],
             )?;
-            let mut mid = Residual::new(
-                l,
-                "mid",
-                (stream, incoming),
-                (declared(o.output())?, fr[3]),
-                block.mid_fraction(),
-                t,
-                d,
-            )
+            let mut mid = if model.wide() {
+                Residual::new_wide(
+                    l,
+                    "mid",
+                    (stream, incoming),
+                    (declared(o.output())?, fr[3]),
+                    block.mid_fraction(),
+                    t,
+                    d,
+                )
+            } else {
+                Residual::new(
+                    l,
+                    "mid",
+                    (stream, incoming),
+                    (declared(o.output())?, fr[3]),
+                    block.mid_fraction(),
+                    t,
+                    d,
+                )
+            }
             .map_err(unsupported)?;
             mid.declare(&mut relation);
             let mid_out = declared(mid.columns().map(|c| c.output))?;
@@ -422,15 +440,27 @@ impl Layout {
                 activation[1] + fr[4],
                 fr[6],
             )?;
-            let mut residual = Residual::new(
-                l,
-                "out",
-                (mid_out, block.mid_fraction()),
-                (declared(down.output())?, fr[6]),
-                block.output_fraction(),
-                t,
-                d,
-            )
+            let mut residual = if model.wide() {
+                Residual::new_wide(
+                    l,
+                    "out",
+                    (mid_out, block.mid_fraction()),
+                    (declared(down.output())?, fr[6]),
+                    block.output_fraction(),
+                    t,
+                    d,
+                )
+            } else {
+                Residual::new(
+                    l,
+                    "out",
+                    (mid_out, block.mid_fraction()),
+                    (declared(down.output())?, fr[6]),
+                    block.output_fraction(),
+                    t,
+                    d,
+                )
+            }
             .map_err(unsupported)?;
             residual.declare(&mut relation);
             stream = declared(residual.columns().map(|c| c.output))?;

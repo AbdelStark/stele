@@ -2422,3 +2422,143 @@ model reservation transaction. Every selected proof reports actual source
 visits and batch operations, including the final shared batch. E20-22 compares
 complete pinned CPU/device proofs and the ordinary independently verified
 T32 run with these counts enabled.
+
+### A25 — Wide int24 residual stream, GQA and grouped gated FFN in the development model class
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task: E22-03. Decision: ADR-146.
+Review: [E22-03 Lane-P review](../../agents/reviews/e22-03-wide-residual-8b.md).
+
+**Motivation.** Section 1.3 excluded RFC-0004 A14 version-2 (int24) residual
+streams, `Layout::declare` rejected GQA (`groups != heads`), and the gated FFN
+row conversion (`GatedConversion`) rejected RFC-0004 A15 grouped policies
+(`Policy::Grouped`). Real Llama-3.1-8B G7 checkpoints (`H = 32`, `G = 8`,
+`d = 4096`, `hidden = 14336`, `V = 128256`, `rmsnorm_q` v2 wide int24 residuals,
+and `Policy::Grouped(128)` on all four block affine inputs including gated
+`down`, plus `final_policy`) require all three before Gate M1 (`E22-04`).
+
+**Replacement text, §1.3 (first two bullets, fourth bullet, and an added bullet):**
+
+> - family 1, version-1 (int16) or RFC-0004 A14 version-2 (wide int24) residual
+>   streams: in a wide model, exactly the five RFC-0004 A14 value classes
+>   (`O` output, `down` output, middle residual `R_mid`, block output residual
+>   `R_l` for `l >= 1`, and final-norm input) are signed int24 in `[-2^23, 2^23 - 1]`;
+>   `R_0`, norm outputs, Q/K/V/gate/up outputs, attention outputs, int8 codes and
+>   logits remain int16/int8 as specified in RFC-0004 A14;
+> - dynamic row policies, non-grouped or RFC-0004 A15 grouped on all four block
+>   affine-input rows (including the gated down-projection row) and the final row;
+> - no GQA, or GQA with `groups` dividing `heads` (`heads / groups` a power of two),
+>   with K/V rows committed once per key/value group and read through `Ref`s in
+>   RoPE and attention;
+> - matmuls whose domain exceeds `MAX_VARS = 30` (including Llama-3.1-8B gate, up,
+>   down and head at `T = 64`) use the plan-fixed row-block split of A6.
+
+**Additions to §5 (rows 4, 6, 10 and 11):**
+
+- **Row 4 (`Projection`):**
+  - *Wide int24 outputs (`output_bits = 24`, wide `O` and `down` only):* `shift` is
+    clamped above at `24` (instead of `16`). `magnitude` (`Width::unsigned(24)`) is
+    disciplined by `Compose` of three ranged byte limbs (`magnitude/0..2: u8`), and
+    enters the rounding chain limb-by-limb (`positions[k/8 + j]` with factor
+    `-2^(k mod 8)` for `shift < 0`, or `positions[j]` for `shift >= 0`). `output`
+    (`Width::signed(24)`) is disciplined by `Compose` of three ranged byte limbs
+    (`output/0: u8`, `output/1: u8`, `output/2: i8`), linked to `magnitude/0..2`,
+    `sign` and `mask` by a 3-limb radix-256 `output` chain (`out_j - factor·mask·mag_j
+    + 2·factor·mask·sign·mag_j`). `Finish` rejects `head.output_bits != 16`.
+  - *Grouped gated inputs (`log_group < log_dimension` and `scale_bound > 259`):*
+    the group scale is split into ranged unsigned bytes `fold_scale/0..n-1` on the
+    group domain `lt + ld - lg` via one linear identity (`scale - sum 256^c s_c = 0`).
+    The folded value `q·s` (up to `127·8454661 > p/2`, where a single field identity
+    would admit RFC-0004 A15's `X - p` modular alias) is decomposed into `n + 1`
+    balanced signed-8 digit rows (`Width::signed(8)`, `[-128, 127]`) proven by a
+    radix-256 `fold` chain (`sum_c 256^c·q·s_c - sum_t 256^t·b_t = 0`), keeping
+    every matmul sum within `Width::signed(30)` up to `inner = 16384`.
+- **Row 6 (`Attention`):** when the power-of-two dynamic scale bound
+  (`loose = bit_length(smax_q · smax_k)`) yields a shifted score magnitude bound
+  `S_max = Q_max · 2^max(e, 0) >= 2^28` evaluated at `W_max = 2^loose - 1` (as on
+  Llama-3.1-8B G7 with `head_width = 128`, `score_multiplier = (46341, -19)`,
+  `fq = fk = F = 7`), `score/scales` tightens `wbits` to
+  `bit_length(scale_bound_q · scale_bound_k)` (e.g. `bit_length(259 · 259) = 17`),
+  which is statically enforced by the ranged byte limbs of `score/scales` (with
+  narrowed top limb, or fewer limbs across a byte boundary) and its wrap-free
+  radix-256 chain (`Relation::validate`), and always satisfied by every honest
+  `RowConversion` (`s <= scale_bound`: `259` for dynamic rows, `s` for static rows).
+  Plans whose loose bound already satisfies `S_max < 2^28` keep the pre-A25 `wbits`
+  unchanged.
+- **Row 10 (`GatedConversion`):** admits `Policy::Grouped(g)` (`g` a power of two,
+  `1 <= g < hidden`, `g | hidden`), declaring group-level columns (`maximum`, `scale`,
+  `slack`, `ceiling_carry`, `zero`) on domain `lt + ld - lg`, broadcasting them over
+  the low `lg` bits, and running `attained/one-hot` with `free = lt + ld - lg` and
+  `summed = lg`.
+- **Row 11 (`Residual`):** in a wide model (`bits = 24`), `left`/`right` have signed
+  width at most 24 (layer-0 `R_0` remains signed 16), the output is signed 24, the
+  stage-2 cap is `k2 <= 6` (`s = max(0, k - 6)` so `2^k2·2^23 <= 2^29 < p/2`), the
+  narrow-copy limit is `25` for `k = 0` and `31` for `k > 0`, `twos` uses `2^24`, and
+  any column wider than 16 bits (`out`, `twos`, `scaled`, `narrow`, `first_high`,
+  `first_low`, `second_high`, `second_low`, `rest`, `gap` when `b > 16`) is
+  disciplined by `Compose` of a ranged `u16` low limb and a ranged signed/unsigned
+  `(b - 16)`-bit high limb.
+- **Byte-identity for version-1 models:** version-1 non-wide models with non-grouped
+  gated rows emit the exact same relation, digest and proof bytes as before A25.
+
+**Soundness.** No new challenge family, transcript label, rounding rule or
+probabilistic error family is introduced. Every added witness column belongs to its
+module's existing commitment group and is disciplined by `Range` (`<= 16` bits) or
+`Compose` of ranged limbs (§3.5a, §3.6). Every identity, compose and matmul passes
+static wrap-free `Relation::validate` (`bound < p`), verified exhaustively across all
+`31^3` wide residual fraction triples, across all Llama-3.1-8B G7 projection shapes
+at `T = 64` (including A6 row blocks on gate, up, down and head), and across
+Llama-3.1-8B G7 attention shapes (`T = 64, 128`, `H = 32`, `G = 8`, `dh = 128`). All
+interactive and PCS rounds use the existing §6 ledger lines (`RLC`, `SC`, `SZ`, `LU`,
+`PCS`, `H`, `FS`), with the following added or shifted rounds for wide, grouped-gated,
+tight-score-scale and GQA models:
+
+- *Grouped gated `Projection`:* adds `n` digit-row matmuls (`sum/1..n`, 3 extra for
+  `GATED_SCALE = 8454661`, split by A6 past 30 bits), each charging `SZ` `(a - k)/|K|`
+  and `SC` `(s + k_b)·δ/|K|`; adds `fold/scale` at `lt + ld - lg` (adding an `SC`
+  `(lt + ld - lg)·δ/|K|` zerocheck if that domain size was absent) and `fold`-chain
+  identities at `lt + ld` (increasing `RLC` `#identities/|K|`); adds `fold_scale`,
+  `digit` and carry ranges to the existing `LU` checks (increasing `N` in A13/A14 `LU`
+  terms).
+- *Wide `Projection` (`output_bits = 24`) and wide `Residual` (`bits = 24`):* added
+  `Compose` and `output`-chain identities increase `RLC` identity counts at `lt + lo`
+  and `lt + ld`; added byte/limb/carry ranges increase `N` in existing `LU` checks.
+- *Row 6 tightened `score/scales` (`Attention`):* on Llama-3.1-8B G7
+  (`wbits: 18 -> 17`), the top limb `score/scales/2` on domain `2t` narrows from
+  `Width::unsigned(2)` to `Width::unsigned(1)`, moving its `Range` member from
+  `range_2` (`t = 4`) to `range_1` (`t = 2`) in the existing A3/A13/A14 `LU` checks,
+  and places `score/quotient`'s top limb, `maximum/hi` and `score/round` carries into
+  narrower `range_b` `LU` checks. When tightening crosses a byte boundary (e.g.
+  `17 -> 16` under mixed static/dynamic policies), `score/scales` drops one byte limb,
+  one chain identity at `2t` and one range member (reducing `RLC`, `LU` and committed
+  cells at `2t`).
+- *Grouped `GatedConversion`:* `attained/one-hot` moves from `(free = lt, summed = ld)`
+  to `(free = lt + ld - lg, summed = lg)`, increasing `SZ` by `(ld - lg)/|K|` and
+  decreasing `SC` by `2·(ld - lg)/|K|`; group-domain identities and the `range/0..=126`
+  lookup move from `lt` to `lt + ld - lg` (`SC`/`RLC` at `lt + ld - lg` and larger `N`
+  in `LU`).
+- *GQA (`groups < heads`):* reduces K/V projection, `rope_k`, `row_k` and `row_v`
+  domains by `log2(heads / groups)` bits, decreasing their `SZ`, `SC` and `LU` terms.
+
+No development proof gains a security-level claim.
+
+**Cells, lookups, bytes.** Unchanged for version-1 models (`one-layer`,
+`one-layer-grouped` and `eight-layer` digests are bit-identical). For wide and
+grouped-gated layers, the added byte-limb columns on `O`/`down` (`magnitude/0..2`,
+`output/0..2`, `fold_scale/0..2`, `digit/0..3` and carries) and wide `mid`/`out`
+residuals (`out/lo`, `out/hi`, plus split limbs when `k > 0`) increase committed cells
+and `range_8`/`range_16` lookup instances proportionally to those columns.
+
+**Controls.** Existing `NC-1300..1310` apply unchanged. Task `E22-03` tests cover
+executor-capture plain-checker agreement on the `wide-residual` and `grouped-rows`
+corpora, exhaustive `31^3` wide residual validation, near-miss rejection (`output ± 1`
+and opposite rounding direction at exact ties) for wide projections, grouped gated
+conversions, wide residuals and tight-score-scale (`wbits = 17`) attention at max
+dynamic scale (`sq = sk = 259`), direct forged-scale rejection (`sq = sk = 511`,
+`W = 261,121`) at `L0/attention/score/scales/2/range`, `Attention::new` rejection when
+even tightened `wbits = 17` reaches `S_max >= 2^28` (`dh = 256`), int24 overflow
+rejection (`+2^23` and `-2^23 - 1`, exercising the RFC-0004 A14 `NC-0128` condition at
+the module level), rejection of RFC-0004 A15's grouped gated `X - p` alias digits, and
+end-to-end byte-5 prove+verify plus next-token tamper rejection on the
+`one-layer-wide-gqa` fixture.
+
+**Affected tasks:** E22-03, E22-04. Promotion to `standard`: not granted (Workflow 10).

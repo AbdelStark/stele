@@ -1163,3 +1163,466 @@ fn matches_executor_capture_fixtures() {
         }
     }
 }
+
+fn int24(v: i64) -> bool {
+    Width::signed(24).contains(v)
+}
+
+/// Declare signed-24 (or signed-16 left for layer-0 R_0) inputs and a wide Residual.
+fn wide_case(
+    x: &[i64],
+    y: &[i64],
+    fractions: (u8, u8, u8),
+    tokens: usize,
+    width: usize,
+    left_int16: bool,
+) -> Case {
+    let mut relation = Relation::default();
+    let n = log2_ceil(tokens) + log2_ceil(width);
+    let group = relation.add_group("L0/projection/test", n);
+    let mut inputs = [ColumnId(0); 2];
+    let mut splits = Vec::new();
+    for (slot, (name, is_narrow)) in inputs.iter_mut().zip([("x", left_int16), ("y", false)]) {
+        if is_narrow {
+            *slot = relation.add_column(name, Kind::Witness(group), Width::signed(16), n);
+            relation.ranges.push(Range {
+                name: name.into(),
+                column: *slot,
+                width: Width::signed(16),
+            });
+        } else {
+            let id = relation.add_column(name, Kind::Witness(group), Width::signed(24), n);
+            let lo = relation.add_column(
+                &format!("{name}/lo"),
+                Kind::Witness(group),
+                Width::unsigned(16),
+                n,
+            );
+            let hi = relation.add_column(
+                &format!("{name}/hi"),
+                Kind::Witness(group),
+                Width::signed(8),
+                n,
+            );
+            relation.ranges.push(Range {
+                name: format!("{name}/lo"),
+                column: lo,
+                width: Width::unsigned(16),
+            });
+            relation.ranges.push(Range {
+                name: format!("{name}/hi"),
+                column: hi,
+                width: Width::signed(8),
+            });
+            relation.composes.push(Compose {
+                name: format!("{name}/compose"),
+                column: id,
+                limbs: vec![(lo, 0), (hi, 16)],
+            });
+            *slot = id;
+            splits.push((id, lo, hi));
+        }
+    }
+    let (fx, fy, fo) = fractions;
+    let mut module = Residual::new_wide(
+        0,
+        "mid",
+        (inputs[0], fx),
+        (inputs[1], fy),
+        fo,
+        tokens,
+        width,
+    )
+    .expect("plan");
+    module.declare(&mut relation);
+    let mut values = Values::new(&relation);
+    let capture = ResidualCapture {
+        left: x.to_vec(),
+        right: y.to_vec(),
+        output: x
+            .iter()
+            .zip(y)
+            .map(|(a, b)| reference(*a, *b, fractions))
+            .collect(),
+    };
+    for (id, input) in inputs.into_iter().zip([x, y]) {
+        let mut padded = vec![0; 1 << n];
+        for (index, v) in padded.iter_mut().enumerate() {
+            if let Some((t, lane)) = module.entry(index) {
+                *v = input[t * width + lane];
+            }
+        }
+        if let Some(&(_, lo, hi)) = splits.iter().find(|&&(col, _, _)| col == id) {
+            values
+                .set(
+                    &relation,
+                    lo,
+                    padded.iter().map(|v| v.rem_euclid(1 << 16)).collect(),
+                )
+                .expect("lo");
+            values
+                .set(
+                    &relation,
+                    hi,
+                    padded.iter().map(|v| v.div_euclid(1 << 16)).collect(),
+                )
+                .expect("hi");
+        }
+        values.set(&relation, id, padded).expect("input");
+    }
+    module
+        .assign(&relation, &capture, &mut values)
+        .expect("assign");
+    Case {
+        relation,
+        values,
+        module,
+        inputs,
+    }
+}
+
+/// Apply `changes` and also synchronize any compose `(lo, hi)` limbs of changed wide columns.
+fn with_wide(case: &Case, changes: &[(ColumnId, usize, i64)]) -> Values {
+    let mut expanded = Vec::with_capacity(changes.len() * 3);
+    for &(id, index, v) in changes {
+        expanded.push((id, index, v));
+        if let Some((lo, hi)) = case.columns().split(id) {
+            expanded.push((lo, index, v.rem_euclid(1 << 16)));
+            expanded.push((hi, index, v.div_euclid(1 << 16)));
+        }
+    }
+    case.with(&expanded)
+}
+
+/// Strongest adversarial re-solve of stage-2 (or exact) columns for a forged wide output.
+fn rejects_wide_output(case: &Case, index: usize, out: i64) {
+    let c = case.columns();
+    let Some(r) = c.rounding else {
+        let mut changes = vec![(c.output, index, out)];
+        if let Some(scaled) = c.auxiliary("scaled") {
+            changes.push((scaled, index, out >> case.module.shape.m));
+        }
+        assert!(
+            check(&case.relation, &with_wide(case, &changes)).is_err(),
+            "wide exact output {out}"
+        );
+        return;
+    };
+    let d = 1i64 << case.module.shape.k2();
+    let get = |id| case.column(id)[index];
+    let sticky = c.auxiliary("sticky").map_or(0, get);
+    let t = (get(c.output) - get(r.half)) * d + get(r.low);
+    for half in 0..2 {
+        for negative in 0..2 {
+            let low = t - (out - half) * d;
+            let values = with_wide(
+                case,
+                &[
+                    (c.output, index, out),
+                    (r.half, index, half),
+                    (r.negative, index, negative),
+                    (r.low, index, low),
+                    (r.twos, index, out - half + (negative << 24)),
+                    (
+                        r.tie,
+                        index,
+                        (2 * half - 1) * (2 * low + sticky - d - negative) - (1 - half),
+                    ),
+                ],
+            );
+            assert!(
+                check(&case.relation, &values).is_err(),
+                "wide rounded output {out} half={half} neg={negative}"
+            );
+        }
+    }
+}
+
+/// Every wide fraction triple in `[0, 30]^3` validates statically (RFC-0026 §3.6, A25).
+#[test]
+fn accepts_static_validity_every_wide_fraction_triple() {
+    for fx in 0..=30 {
+        for fy in 0..=30 {
+            for fo in 0..=30 {
+                let mut relation = Relation::default();
+                let group = relation.add_group("L0/projection/test", 0);
+                let mut inputs = [ColumnId(0); 2];
+                for (slot, name) in inputs.iter_mut().zip(["x", "y"]) {
+                    let id = relation.add_column(name, Kind::Witness(group), Width::signed(24), 0);
+                    let lo = relation.add_column(
+                        &format!("{name}/lo"),
+                        Kind::Witness(group),
+                        Width::unsigned(16),
+                        0,
+                    );
+                    let hi = relation.add_column(
+                        &format!("{name}/hi"),
+                        Kind::Witness(group),
+                        Width::signed(8),
+                        0,
+                    );
+                    relation.ranges.push(Range {
+                        name: format!("{name}/lo"),
+                        column: lo,
+                        width: Width::unsigned(16),
+                    });
+                    relation.ranges.push(Range {
+                        name: format!("{name}/hi"),
+                        column: hi,
+                        width: Width::signed(8),
+                    });
+                    relation.composes.push(Compose {
+                        name: format!("{name}/compose"),
+                        column: id,
+                        limbs: vec![(lo, 0), (hi, 16)],
+                    });
+                    *slot = id;
+                }
+                Residual::new_wide(0, "mid", (inputs[0], fx), (inputs[1], fy), fo, 1, 1)
+                    .expect("plan")
+                    .declare(&mut relation);
+                assert_eq!(relation.validate(), Ok(()), "wide ({fx}, {fy}, {fo})");
+            }
+        }
+    }
+}
+
+#[test]
+fn matches_reference_wide_random_and_extreme() {
+    let mut rng = Rng(0x0e22_0302);
+    let mut wide_input = |len: usize, extreme: bool, narrow: bool| -> Vec<i64> {
+        (0..len)
+            .map(|_| {
+                if narrow {
+                    return match (extreme, rng.next() % 4) {
+                        (true, 0) => i64::from(i16::MIN),
+                        (true, 1) => i64::from(i16::MAX),
+                        _ => i64::from((rng.next() as i16) >> 2),
+                    };
+                }
+                match (extreme, rng.next() % 5) {
+                    (true, 0) => -(1 << 23),
+                    (true, 1) => (1 << 23) - 1,
+                    (true, 2) => -1 - (rng.next() % 4) as i64,
+                    (_, 3) => ((rng.next() as i32) >> 18) as i64,
+                    _ => ((rng.next() as i32) >> 10) as i64,
+                }
+            })
+            .collect()
+    };
+    let wide_fractions = [
+        (7, 10, 10),  // Llama-3.1-8B G7 layer-0 mid
+        (10, 10, 10), // Llama-3.1-8B G7 other adds
+        (8, 8, 12),   // k = 0, m = 4
+        (0, 16, 30),  // k = 0, narrow copy
+        (10, 10, 6),  // k = 4, s = 0
+        (10, 10, 4),  // k = 6, s = 0
+        (10, 10, 0),  // k = 10, s = 4 (stage 1)
+        (0, 24, 0),   // k = 24, s = 18 (split s > 16)
+        (30, 28, 0),  // k = 30, s = 24 (max s, split s > 16)
+        (20, 30, 0),  // swapped, max s
+    ];
+    let (mut accepted, mut overflowed) = (0, 0);
+    for extreme in [false, true] {
+        for &fractions in &wide_fractions {
+            for left_int16 in [false, true] {
+                let (tokens, width) = (3, 6);
+                let x = wide_input(tokens * width, extreme, left_int16);
+                let y = wide_input(tokens * width, extreme, false);
+                let case = wide_case(&x, &y, fractions, tokens, width, left_int16);
+                let expected: Vec<_> = x
+                    .iter()
+                    .zip(&y)
+                    .map(|(a, b)| reference(*a, *b, fractions))
+                    .collect();
+                if !expected.iter().all(|&v| int24(v)) {
+                    assert!(
+                        check(&case.relation, &case.values).is_err(),
+                        "wide overflow {fractions:?}"
+                    );
+                    overflowed += 1;
+                    continue;
+                }
+                assert_eq!(
+                    check(&case.relation, &case.values),
+                    Ok(()),
+                    "wide honest {fractions:?}"
+                );
+                let out = case.column(case.columns().output);
+                for (index, v) in out.iter().enumerate() {
+                    let want = case
+                        .module
+                        .entry(index)
+                        .map_or(0, |(t, lane)| expected[t * width + lane]);
+                    assert_eq!(*v, want);
+                }
+                accepted += 1;
+            }
+        }
+    }
+    assert!(accepted >= 16 && overflowed > 0, "{accepted} {overflowed}");
+
+    // Explicit boundary checks: -2^23 accepted, +2^23 and -2^23 - 1 rejected (RFC-0004 A14).
+    let ok_min = wide_case(&[-(1 << 23)], &[0], (10, 10, 10), 1, 1, false);
+    assert_eq!(check(&ok_min.relation, &ok_min.values), Ok(()));
+    let ok_max = wide_case(&[(1 << 23) - 1], &[0], (10, 10, 10), 1, 1, false);
+    assert_eq!(check(&ok_max.relation, &ok_max.values), Ok(()));
+    let ov_pos = wide_case(&[(1 << 23) - 1], &[1], (10, 10, 10), 1, 1, false);
+    assert!(check(&ov_pos.relation, &ov_pos.values).is_err());
+    let ov_neg = wide_case(&[-(1 << 23)], &[-1], (10, 10, 10), 1, 1, false);
+    assert!(check(&ov_neg.relation, &ov_neg.values).is_err());
+}
+
+#[test]
+fn rejects_wide_output_near_misses_and_other_rounding_direction() {
+    // Cover k = 0 (exact), k = 4 (s = 0), k = 10 (s = 4), and k = 24 (s = 18 > 16),
+    // with exact positive and negative half-ties to verify half-away-from-zero direction.
+    let cases = [
+        // Exact Llama-3.1-8B G7 layer-0 mid: R_0 (int16, f=7) + O (int24, f=10) -> f=10.
+        (
+            vec![1000, -32768],
+            vec![500_000, -100_000],
+            (7, 10, 10),
+            true,
+        ),
+        // Exact scaled (m > 0).
+        (vec![100, -200], vec![300, -400], (8, 8, 10), false),
+        // Stage-2 only (k = 1, s = 0): ties +3/2 -> +2 and -3/2 -> -2, plus boundary -2^23.
+        (
+            vec![3, -3, -(1 << 23), 0],
+            vec![0, 0, -(1 << 23), 5],
+            (10, 10, 9),
+            false,
+        ),
+        // Two-stage (k = 10, s = 4): ties +512/1024 -> +1 and -512/1024 -> -1.
+        (
+            vec![512, -512, 1_000_000, -1_000_000],
+            vec![0, 0, 512, -512],
+            (10, 10, 0),
+            false,
+        ),
+        // Two-stage with split limbs (k = 20, s = 14 -> k = 23, s = 17 > 16): exact ties ±2^22 / 2^23.
+        (
+            vec![1 << 22, -(1 << 22), 1 << 22, -(1 << 22)],
+            vec![0, 0, 1, -1],
+            (23, 23, 0),
+            false,
+        ),
+    ];
+    for (x, y, fractions, left_int16) in cases {
+        let len = x.len();
+        let case = wide_case(&x, &y, fractions, 1, len, left_int16);
+        assert_eq!(check(&case.relation, &case.values), Ok(()), "{fractions:?}");
+        for idx in 0..len {
+            let out = case.column(case.columns().output)[idx];
+            // +1, -1, and opposite rounding direction toward zero at ties.
+            rejects_wide_output(&case, idx, out + 1);
+            rejects_wide_output(&case, idx, out - 1);
+        }
+    }
+}
+
+/// Every accepted wide model fixture in `stele-cqis/tests/fixtures/wide-residual.{bin,json}`:
+/// every residual add matches the executor capture and rejects `output ± 1`.
+#[test]
+fn matches_executor_capture_wide_fixtures() {
+    use stele_cqis::execution::{capture::Block, Executor};
+    use stele_cqis::model::{Model, Preparation, Scales};
+    let json = include_str!("../../../stele-cqis/tests/fixtures/wide-residual.json");
+    const RAW: &[u8] = include_bytes!("../../../stele-cqis/tests/fixtures/wide-residual.bin");
+    let span = |case: &str, key: &str| -> &'static [u8] {
+        let at = &case[case.find(&format!("\"{key}\":{{")).expect("span")..];
+        let offset = number(at, "\"offset\":");
+        &RAW[offset..offset + number(at, "\"length\":")]
+    };
+    let mut checked = 0usize;
+    for item in json.split("{\"model\":").skip(1) {
+        let item = format!("\"model\":{item}");
+        if !item.contains("\"expected\":{\"cuts\"") {
+            continue;
+        }
+        let model = Model::decode(span(&item, "model")).expect("Model");
+        if model.shape().family() != 1 || !model.wide() {
+            continue;
+        }
+        let prep = Preparation::decode(&model, span(&item, "preparation")).expect("Prep");
+        let scales = Scales::decode(&model, span(&item, "scales")).expect("Scales");
+        let at = item.find("\"artifact_id\":\"").expect("id") + 15;
+        let id: [u8; 32] = core::array::from_fn(|i| {
+            u8::from_str_radix(&item[at + 2 * i..at + 2 * i + 2], 16).expect("hex")
+        });
+        let at = item.find("\"tokens\":[").expect("tokens") + 10;
+        let tokens: Vec<u32> = item[at..at + item[at..].find(']').expect("]")]
+            .split(',')
+            .map(|t| t.parse().expect("token"))
+            .collect();
+        let capture = Executor::new(
+            &model,
+            &prep,
+            &scales,
+            span(&item, "artifact"),
+            &id,
+            1 << 30,
+        )
+        .expect("load")
+        .capture(&tokens)
+        .expect("capture");
+        let (t, width) = (tokens.len(), usize::from(model.shape().width()));
+        let cut = |layer: usize| -> Vec<i64> {
+            capture.full().cuts()[layer]
+                .iter()
+                .flatten()
+                .map(|v| i64::from(*v))
+                .collect()
+        };
+        let (mut stream, mut incoming) = (cut(0), model.initial_fraction());
+        for (layer, block) in model.blocks().iter().enumerate() {
+            let rows = &capture.blocks[layer];
+            let flat = |pick: fn(&Block) -> &Vec<i64>| -> Vec<i64> {
+                rows.iter().flat_map(|b| pick(b).iter().copied()).collect()
+            };
+            let f = block.projection_fractions();
+            let adds = [
+                (
+                    flat(|b| &b.output.output.quotient),
+                    f[3],
+                    flat(|b| &b.mid.quotient),
+                    block.mid_fraction(),
+                    layer == 0,
+                ),
+                (
+                    flat(|b| &b.down.output.quotient),
+                    f[f.len() - 1],
+                    flat(|b| &b.residual.quotient),
+                    block.output_fraction(),
+                    false,
+                ),
+            ];
+            for (right, fy, output, fo, left_int16) in adds {
+                let case = wide_case(&stream, &right, (incoming, fy, fo), t, width, left_int16);
+                assert_eq!(
+                    check(&case.relation, &case.values),
+                    Ok(()),
+                    "wide layer {layer}"
+                );
+                let column = case.column(case.columns().output);
+                for (index, v) in column.iter().enumerate() {
+                    let want = case
+                        .module
+                        .entry(index)
+                        .map_or(0, |(row, lane)| output[row * width + lane]);
+                    assert_eq!(*v, want);
+                }
+                for index in [0, column.len() / 2] {
+                    let out = column[index];
+                    rejects_wide_output(&case, index, out + 1);
+                    rejects_wide_output(&case, index, out - 1);
+                }
+                (stream, incoming) = (output, fo);
+                checked += 1;
+            }
+            assert_eq!(stream, cut(layer + 1));
+        }
+    }
+    assert!(checked > 0, "no wide residual executor fixture checked");
+}
