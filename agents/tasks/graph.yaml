@@ -4088,7 +4088,7 @@ tasks:
   skill: protocol-architect
   crate: stele-ir
   lane: P
-  status: ready
+  status: done
   acceptance:
   - RFC-0028 Accepted for the development tier with an ADR; NC-1320..1325 entered in the catalogue as reserved
   - Kind::Virtual with Linear, Pointwise and Contraction; definitions read only smaller ColumnIds; derived magnitudes and the p/2 rule in Relation::validate
@@ -4110,7 +4110,7 @@ tasks:
   acceptance:
   - prover and verifier reduce claims on Linear columns with absorbed operand evaluations and no challenge
   - Compose targets, sign recombinations and equal-scale sums are virtual in every module; near-miss tests and the plain checker keep their outcomes
-  - NC-1320 and NC-1321 run through the actual verifier
+  - NC-1337 and NC-1338 run through the actual verifier
   - L1 ledgers before and after state committed cells and lookup positions per token
 - id: E18-03
   epic: E18
@@ -4144,7 +4144,7 @@ tasks:
   status: ready
   acceptance:
   - rounding remainders and low limbs are virtual in every rounding pattern of RFC-0026 §5; range checks read them through Refs
-  - NC-1322 and NC-1325 run through the actual verifier
+  - NC-1339 and NC-1340 run through the actual verifier
   - each converted module restates its output-uniqueness lemma and keeps its near-miss tests
 - id: E18-05
   epic: E18

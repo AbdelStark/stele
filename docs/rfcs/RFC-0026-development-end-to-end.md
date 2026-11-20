@@ -2710,3 +2710,31 @@ most two consecutive segments' witness commitment data plus the model.
   `RootMismatch`; Policy 2: `GrindMismatch`), both executed through the actual verifier.
 - **Tier:** Development tier (RFC-0027 §2); no security level or profile promotion is
   granted (Workflow 10).
+
+### A28 — Virtual lookup tuple members and RFC-0028 companion binding (development tier)
+
+Status: Accepted (development tier, RFC-0027 §2). Companion of RFC-0028 §1.4.
+Task: E18-01. Decision: ADR-150.
+
+1. **Scope.** Complements A27 (which already scopes lookup checks to one segment and
+   establishes carried residual boundaries for committed columns) by extending A3 to
+   virtual columns declared under RFC-0028 §2.1. Development tier only; no security
+   level or profile promotion is granted (Workflow 10).
+2. **Split values bound for virtual tuple members.** In an A3 lookup check whose tuple
+   reads a virtual column `v`, each member evaluation value sent by the prover for `v`
+   is absorbed into the transcript when sent and filed as a claim on `v`. That claim is
+   discharged in decreasing `ColumnId` order during the segment's virtual-reduction step
+   (RFC-0028 §2.4 step 4), before the preceding segment's stacked source is opened.
+3. **Segment rules for virtual columns.** A virtual column belongs to the highest segment
+   among its operands, or to its explicitly declared segment when all operands are weight
+   or public columns (RFC-0028 §2.3). A virtual column cannot be marked `carried`. Any
+   relation or virtual definition of segment `s` may read witness and virtual columns of
+   segment `s`, carried witness columns of segment `s - 1`, weights, and publics;
+   `Relation::validate` rejects anything else with `Invalid::Segment` (`StatementMismatch`).
+4. **Engine staging.** Until E18-02 implements virtual reductions in `stele-reductions`,
+   `plan` and `plan_segmented` reject relations containing virtual columns with
+   `Unsupported`, while `stele-ir` validates and plain-checks them over the integers.
+5. **Soundness and controls.** Accounted under RFC-0012 A19 and RFC-0008 A9; controls
+   `NC-1337..1340` reserved in `tests/negative-controls/catalog.md` (with `NC-1335..1336`
+   already executed under A27).
+6. **Affected tasks.** E18-01, E18-02..E18-05.

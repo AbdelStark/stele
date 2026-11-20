@@ -4612,3 +4612,32 @@ Recorded Gate M1 completion at the development tier in
   relation engine and verifier in `tests/negative-controls`.
 - No security level, soundness admission, or profile promotion is claimed (development tier
   only, RFC-0026 §1.2, RFC-0027 §2).
+
+## ADR-150 — Accept RFC-0028 (development tier) and companion amendments RFC-0008 A9, RFC-0012 A19, RFC-0026 A28 (E18-01)
+
+To move the development prover from committing every intermediate column to the RFC-0028
+commit rule (commit only advice and carried segment boundaries), the relation IR and plain
+checker must represent, statically validate, and evaluate virtual columns before the
+engine reductions (E18-02..E18-05) land.
+
+Accepted RFC-0028 at the development tier under RFC-0027 §2 together with its three
+companion amendments: RFC-0008 A9 (admitting virtual lookup tuple columns whose dependent
+committed roots precede Unit/Beta/Alpha), RFC-0026 A28 (extending A3's split-values bound
+and segment rules to virtual columns alongside A27), and RFC-0012 A19 (registering §5
+soundness ledger lines with no new transcript label). Key choices:
+- `Kind::Virtual(Def)` with `Def::{Linear, Pointwise, Contraction}`; every referenced
+  operand must have a strictly smaller `ColumnId`, making declaration order an acyclic
+  dependency order.
+- Static derived magnitudes in `Relation::validate` enforce strict `< p / 2`
+  (`2 * mag < MODULUS`, i.e., `mag <= HALF_MODULUS = 2^30 - 1`), and range discipline
+  propagates through virtual columns only once all of their operands are disciplined so
+  no committed column can self-discipline through a virtual wrapper.
+- Plain checker (`check` and `check_segment`) computes virtual columns in `ColumnId` order
+  using exact `i128` arithmetic and ignores any values supplied in `Values` for virtual
+  columns.
+- Reserved `NC-1337..1340` as `todo` in `tests/negative-controls/catalog.md` (draft
+  numbers 1320..1325 collided with earlier RFC-0026 A12/A14/A16 allocations; the two
+  segment controls already execute as `NC-1335..1336` under A27).
+- Until E18-02 implements virtual reductions, `stele-reductions::relation::plan` and
+  `plan_segmented` reject relations containing virtual columns with `Unsupported`.
+  No security level or profile promotion is granted (Workflow 10).

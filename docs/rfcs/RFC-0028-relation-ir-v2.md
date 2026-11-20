@@ -1,10 +1,10 @@
 # RFC-0028 — Relation IR v2: the commit rule, virtual columns and segments
 
-Status: Draft · Version: 0.1.0 · Depends: RFC-0006, RFC-0008, RFC-0012, RFC-0026, RFC-0027
+Status: Accepted (development tier) · Version: 0.1.0 · Depends: RFC-0006, RFC-0008, RFC-0012, RFC-0026, RFC-0027
 
-Scope: the development tier first (RFC-0027 §2). Nothing here is admitted to
+Scope: Accepted for the development tier (RFC-0027 §2, ADR-150). Nothing here is admitted to
 `standard` or `treaty` until Workflow 10 promotes it. Questions: Q31, Q34, Q35, Q43.
-Tasks: E18-01..E18-09. Companion amendments required at acceptance: §1.4.
+Tasks: E18-01..E18-09. Companion amendments accepted: §1.4.
 
 ## 1. Statement
 
@@ -47,21 +47,21 @@ The statement of RFC-0026 §1.1. The integer semantics of every relation (RFC-00
 The plain checker as the oracle. The transcript labels. The module contract
 (`declare`, `assign`), except that a module declares which columns are virtual.
 
-### 1.4 Companion amendments required at acceptance
+### 1.4 Companion amendments accepted with this RFC
 
-This RFC cannot be Accepted alone. It changes what three Accepted texts say:
+This RFC changes what three Accepted texts say; all companion amendments are Accepted
+for the development tier alongside it:
 
-- **A new RFC-0008 amendment.** RFC-0008 A2 item 4 and A6 say virtual tuple columns are not
-  admitted, because nothing established that such a column is fixed before the Unit,
-  Beta and Alpha draws. The amendment admits a tuple column that is virtual under §2.1 here: it
-  is a fixed polynomial function of columns whose roots are absorbed before those
-  draws (§2.4 steps 2.1 and 2.2 precede step 2.3).
-- **A new RFC-0026 amendment.** It scopes a lookup check (A3) to one segment; it restates
-  A3's "split values bound" for a member value on a virtual column (the value is
-  absorbed when sent and then reduced under §2.4 step 4); and it carries the segment
-  rule of §2.3. Task E18-06 may accept the segment part first, for committed columns
-  only.
-- **A new RFC-0012 amendment.** Ledger records for the reductions of §5; no new label.
+- **RFC-0008 A9.** RFC-0008 A2 item 4 and A6 previously excluded virtual tuple columns.
+  A9 admits a tuple column that is virtual under §2.1 here at the development tier: it is
+  a fixed polynomial function of columns whose roots are absorbed before the Unit, Beta,
+  and Alpha draws (§2.4 steps 2.1 and 2.2 precede step 2.3).
+- **RFC-0026 A27 and A28.** A27 (E18-06) scopes a lookup check (A3) to one segment and
+  carries the segment boundary rule of §2.3 for committed columns; A28 (E18-01) restates
+  A3's "split values bound" for a member value on a virtual column (absorbed when sent
+  and reduced under §2.4 step 4) and states the segment rule for virtual columns.
+- **RFC-0012 A19.** Registers the soundness ledger records for the reductions of §5 at
+  the development tier; no new transcript label.
 
 ## 2. Protocol (transcript order)
 
@@ -213,17 +213,20 @@ Integer faithfulness follows from §2.2.
 
 ## 6. Negative controls
 
-Proposed ids, entered in the catalogue when this RFC is Accepted. Each runs through
-the actual verifier.
+Catalogue IDs in `tests/negative-controls/catalog.md` (draft IDs 1320..1325 were
+previously allocated by RFC-0026 A12/A14/A16; the two segment controls are already
+executed as `NC-1335..1336` under RFC-0026 A27, and the four virtual-column controls
+are reserved as `NC-1337..1340` for E18-02..E18-04). Each runs through the actual
+verifier.
 
 | NC | Tamper | Expected |
 |---|---|---|
-| 1320 | +1 on one operand evaluation sent for a `Linear` reduction | the consuming check's mismatch error |
-| 1321 | prove with a virtual column's values that differ from its definition at one index | `RoundSumMismatch` or `FinalEvaluationMismatch` at its reduction |
-| 1322 | commit `y + 1` for one rounding, with `rem` recomputed | the `rem` range lookup rejects (`RootMismatch`) |
-| 1323 | read a non-carried column of segment `s − 1` from segment `s` | `StatementMismatch` (validation) |
-| 1324 | reorder two segment roots | `RootMismatch` |
-| 1325 | declare advice (a rounding output) as `Linear` with the integer that represents a field inverse of `2^k` | `StatementMismatch` (derived magnitude at least `p/2`) |
+| 1337 | +1 on one operand evaluation sent for a `Linear` reduction | the consuming check's mismatch error |
+| 1338 | prove with a virtual column's values that differ from its definition at one index | `RoundSumMismatch` or `FinalEvaluationMismatch` at its reduction |
+| 1339 | commit `y + 1` for one rounding, with `rem` recomputed | the `rem` range lookup rejects (`RootMismatch`) |
+| 1335 | read a non-carried column of segment `s − 1` from segment `s` (done, RFC-0026 A27) | `StatementMismatch` (validation) |
+| 1336 | reorder two segment roots (done, RFC-0026 A27) | Policy 1: `RootMismatch`; Policy 2: `GrindMismatch` |
+| 1340 | declare advice (a rounding output) as `Linear` with the integer that represents a field inverse of `2^k` | `StatementMismatch` (derived magnitude at least `p/2`) |
 
 ## 7. Open questions
 
@@ -237,4 +240,9 @@ the actual verifier.
 
 ## 8. Amendment log
 
-None.
+- **Acceptance (development tier, ADR-150, task E18-01):** Accepted for the development
+  tier (RFC-0027 §2) together with companion amendments RFC-0008 A9, RFC-0026 A27/A28,
+  and RFC-0012 A19. Segment controls `NC-1335..1336` are executed under RFC-0026 A27;
+  virtual-column controls `NC-1337..1340` are entered as `todo` in the catalogue (draft
+  numbers 1320..1325 collided with earlier RFC-0026 A12/A14/A16 allocations). Promotion
+  to `standard` or `treaty` remains a separate Workflow 10 task.

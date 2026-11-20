@@ -157,6 +157,7 @@ pub fn account_relation(relation: &Relation, tokens: u64) -> Result<Accounting, 
             Kind::Public(_) => {
                 public_cells = public_cells.saturating_add(cells);
             }
+            Kind::Virtual(_) => {}
         }
     }
 

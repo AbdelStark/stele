@@ -941,3 +941,27 @@ Addition to the A1 registry, in this order after A17's entries:
 - The labels are used only by RFC-0013 A2's component; no profile uses them.
 - Cost-model terms: none. Affected task: E12-13 (registers the labels in
   `stele-hash` and `docs/security/transcript-labels.json`).
+
+### A19 — Soundness ledger lines for RFC-0028 virtual column reductions (development tier)
+
+Status: Accepted (development tier, RFC-0027 §2). Companion of RFC-0028 §1.4 and §5.
+Task: E18-01. Decision: ADR-150.
+
+No new transcript label and no new error family are added. For the development tier,
+RFC-0028 §2.4 step 4 virtual column reductions are accounted on existing ledger lines:
+
+| Reduction | Line | Formula | Status |
+|---|---|---|---|
+| `Linear` claim reduction | — | exact (operand evaluations absorbed and discharged downstream; no challenge) | proven (linearity of the multilinear extension) |
+| `Pointwise` claim batch | `RLC` + `SC` | RFC-0006 A2 mode 1 | proven |
+| `Pointwise` sumcheck | `SC` | `m · 4 / |K|` | proven |
+| `Contraction` claim batch | `RLC` + `SC` | RFC-0006 A2 mode 1 | proven |
+| `Contraction` sumcheck | `SC` | `(s + k) · δ / |K|` | proven |
+| `Contraction` row-block slice split (RFC-0026 A6) | — | exact (multilinear interpolation along split coordinates; slice evaluations absorbed) | proven (multilinearity) |
+| Carried-column claims across segment boundaries | — | bound by transcript order (segment `s - 1` stack root absorbed before any challenge of segment `s - 1` or `s`) | proven (by order) |
+
+- Scope: development tier only; promotion to `standard` or `treaty` requires Workflow 10
+  and the composition argument of RFC-0028 §5 (Q34).
+- Cost-model terms: moves `c_c` and `c_a` as virtual columns replace committed
+  intermediates (E18-02..E18-05).
+- Affected tasks: E18-01 (IR and acceptance), E18-02..E18-05 (engine reductions).

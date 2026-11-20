@@ -791,3 +791,742 @@ fn rejects_segment_boundary_and_carried_violations() {
     );
     let _ = s1_out;
 }
+
+/// RFC-0028 §2.1–2.2 (E18-01): honest relations for Linear, Pointwise and Contraction
+/// virtual columns pass validation and plain checking without supplying virtual values,
+/// ignore garbage values supplied for virtual columns, and reject one tamper per kind.
+#[test]
+fn accepts_virtual_defs_ignores_supplied_and_rejects_tampers() {
+    // 1. Linear: rounding `acc = 16 * y + rem` where `rem = acc - 16 * y` is virtual and range-checked.
+    let mut lin = Relation::default();
+    let g = Kind::Witness(lin.add_group("G/lin/2", 2));
+    let acc = lin.add_column("acc", g.clone(), Width::signed(8), 2);
+    let y = lin.add_column("y", g, Width::signed(4), 2);
+    range(&mut lin, acc, Width::signed(8));
+    range(&mut lin, y, Width::signed(4));
+    let rem = lin.add_virtual(
+        "rem",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(acc, 2)), (-16, Ref::identity(y, 2))],
+        },
+        2,
+    );
+    range(&mut lin, rem, Width::unsigned(4));
+    let mut vals = Values::new(&lin);
+    // acc = [19, -13, 31, 0], y = [1, -1, 1, 0] => rem = [3, 3, 15, 0] in [0, 16).
+    vals.set(&lin, acc, vec![19, -13, 31, 0]).expect("set");
+    vals.set(&lin, y, vec![1, -1, 1, 0]).expect("set");
+    assert_eq!(check(&lin, &vals), Ok(()));
+    // Supplying garbage values for the virtual column is completely ignored.
+    let mut vals_garbage = vals.clone();
+    vals_garbage
+        .set(&lin, rem, vec![9999, -9999, 1234, 5678])
+        .expect("set");
+    assert_eq!(check(&lin, &vals_garbage), Ok(()));
+    // Tampering `y[1]` by +1 makes true `rem[1] = -13` (out of unsigned(4)), rejected even
+    // if honest `rem` values are supplied in `Values`.
+    let mut vals_bad = vals.clone();
+    vals_bad.set(&lin, y, vec![1, 0, 1, 0]).expect("set");
+    vals_bad.set(&lin, rem, vec![3, 3, 15, 0]).expect("set");
+    assert_eq!(
+        check(&lin, &vals_bad),
+        Err(Violation::Range {
+            relation: "rem".to_string(),
+            index: 1,
+        })
+    );
+
+    // 2. Pointwise: sign-magnitude `mag = (1 - 2 * sigma) * x`, checked by a lookup table on virtual `mag`.
+    let mut pw = Relation::default();
+    let g = Kind::Witness(pw.add_group("G/pw/2", 2));
+    let x = pw.add_column("x", g.clone(), Width::signed(4), 2);
+    let sigma = pw.add_column("sigma", g, Width::unsigned(1), 2);
+    range(&mut pw, x, Width::signed(4));
+    range(&mut pw, sigma, Width::unsigned(1));
+    let mag = pw.add_virtual(
+        "mag",
+        Def::Pointwise {
+            terms: vec![
+                Term {
+                    coeff: 1,
+                    factors: vec![Ref::identity(x, 2)],
+                },
+                Term {
+                    coeff: -2,
+                    factors: vec![Ref::identity(sigma, 2), Ref::identity(x, 2)],
+                },
+            ],
+        },
+        2,
+    );
+    let tbl = pw.add_table(Table {
+        name: "nonneg4".into(),
+        widths: vec![Width::unsigned(4)],
+        rows: (0..=8).map(|v| vec![v]).collect(),
+    });
+    pw.lookups.push(Lookup {
+        name: "mag_nonneg".into(),
+        vars: 2,
+        selector: None,
+        tuple: vec![Ref::identity(mag, 2)],
+        table: tbl,
+    });
+    let mut vals = Values::new(&pw);
+    vals.set(&pw, x, vec![5, -7, 0, -8]).expect("set");
+    vals.set(&pw, sigma, vec![0, 1, 0, 1]).expect("set");
+    assert_eq!(check(&pw, &vals), Ok(()));
+    let mut vals_garbage = vals.clone();
+    vals_garbage
+        .set(&pw, mag, vec![-1, -2, -3, -4])
+        .expect("set");
+    assert_eq!(check(&pw, &vals_garbage), Ok(()));
+    // Tampering `sigma[1]` to 0 gives `mag[1] = -7`, rejected by the lookup on virtual `mag`.
+    let mut vals_bad = vals.clone();
+    vals_bad.set(&pw, sigma, vec![0, 0, 0, 1]).expect("set");
+    vals_bad.set(&pw, mag, vec![5, 7, 0, 8]).expect("set");
+    assert_eq!(
+        check(&pw, &vals_bad),
+        Err(Violation::Lookup {
+            relation: "mag_nonneg".to_string(),
+            point: 1,
+        })
+    );
+
+    // 3. Contraction: 2x2 * 2x2 virtual matmul `c(i, j) = sum_k a(i, k) * b(j, k)` with no committed accumulator,
+    //    checked against a committed `y` via an identity reading virtual `c`.
+    let mut con = Relation::default();
+    let g = Kind::Witness(con.add_group("G/con/2", 2));
+    let a = con.add_column("a", g.clone(), Width::signed(4), 2);
+    let b = con.add_column("b", Kind::Weight, Width::signed(4), 2);
+    let y = con.add_column("y", g, Width::signed(8), 2);
+    range(&mut con, a, Width::signed(4));
+    range(&mut con, b, Width::signed(4));
+    range(&mut con, y, Width::signed(8));
+    // Domain bits: free bit 0 = j, free bit 1 = i, summed bit 2 = k.
+    let c = con.add_virtual(
+        "c",
+        Def::Contraction {
+            free: 2,
+            summed: 1,
+            lhs: Ref {
+                column: a,
+                vars: vec![2, 1],
+            },
+            rhs: Ref {
+                column: b,
+                vars: vec![2, 0],
+            },
+        },
+        2,
+    );
+    con.identities.push(Identity {
+        name: "y_eq_c".into(),
+        vars: 2,
+        terms: vec![
+            Term {
+                coeff: 1,
+                factors: vec![Ref::identity(y, 2)],
+            },
+            Term {
+                coeff: -1,
+                factors: vec![Ref::identity(c, 2)],
+            },
+        ],
+    });
+    // a = [[2, -1], [3, 4]], b = [[1, 2], [-3, 1]]
+    // c[0,0]=2*1+(-1)*2=0, c[0,1]=2*(-3)+(-1)*1=-7, c[1,0]=3*1+4*2=11, c[1,1]=3*(-3)+4*1=-5
+    let mut vals = Values::new(&con);
+    vals.set(&con, a, vec![2, -1, 3, 4]).expect("set");
+    vals.set(&con, b, vec![1, 2, -3, 1]).expect("set");
+    vals.set(&con, y, vec![0, -7, 11, -5]).expect("set");
+    assert_eq!(check(&con, &vals), Ok(()));
+    let mut vals_garbage = vals.clone();
+    vals_garbage
+        .set(&con, c, vec![100, 100, 100, 100])
+        .expect("set");
+    assert_eq!(check(&con, &vals_garbage), Ok(()));
+    // Tampering `y[2]` by +1 rejects at point 2, even with forged `c`.
+    let mut vals_bad = vals.clone();
+    vals_bad.set(&con, y, vec![0, -7, 12, -5]).expect("set");
+    vals_bad.set(&con, c, vec![0, -7, 12, -5]).expect("set");
+    assert_eq!(
+        check(&con, &vals_bad),
+        Err(Violation::Identity {
+            relation: "y_eq_c".to_string(),
+            point: 2,
+        })
+    );
+}
+
+/// RFC-0028 §2.1 (E18-01): virtual column definitions may read only strictly smaller ColumnIds.
+#[test]
+fn rejects_virtual_forward_and_self_references() {
+    // Forward reference in Linear.
+    let mut rel = Relation::default();
+    let g = Kind::Witness(rel.add_group("G/0/1", 1));
+    let _v = rel.add_virtual(
+        "fwd_lin",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(ColumnId(1), 1))],
+        },
+        1,
+    );
+    let x = rel.add_column("x", g, Width::signed(4), 1);
+    range(&mut rel, x, Width::signed(4));
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Ref {
+            relation: "fwd_lin".to_string(),
+        })
+    );
+
+    // Self reference in Pointwise.
+    let mut rel = Relation::default();
+    let _v = rel.add_virtual(
+        "self_pw",
+        Def::Pointwise {
+            terms: vec![Term {
+                coeff: 1,
+                factors: vec![Ref::identity(ColumnId(0), 1)],
+            }],
+        },
+        1,
+    );
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Ref {
+            relation: "self_pw".to_string(),
+        })
+    );
+
+    // Forward reference in Contraction.
+    let mut rel = Relation::default();
+    let g = Kind::Witness(rel.add_group("G/0/1", 1));
+    let a = rel.add_column("a", g.clone(), Width::signed(4), 1);
+    range(&mut rel, a, Width::signed(4));
+    let _v = rel.add_virtual(
+        "fwd_con",
+        Def::Contraction {
+            free: 1,
+            summed: 0,
+            lhs: Ref::identity(a, 1),
+            rhs: Ref::identity(ColumnId(2), 1),
+        },
+        1,
+    );
+    let b = rel.add_column("b", g, Width::signed(4), 1);
+    range(&mut rel, b, Width::signed(4));
+    assert_eq!(
+        rel.validate(),
+        Err(Invalid::Ref {
+            relation: "fwd_con".to_string(),
+        })
+    );
+}
+
+/// RFC-0028 §2.2 (E18-01): derived magnitude must be strictly below `p / 2` (`<= HALF_MODULUS`).
+/// Includes the NC-1340 field-inverse attack and exact boundary checks for all three Def kinds.
+#[test]
+fn rejects_virtual_over_wide_derived_magnitude() {
+    // Exact boundary on Linear: HALF_MODULUS accepted, HALF_MODULUS + 1 rejected.
+    let mut ok = Relation::default();
+    let _c_ok = ok.add_virtual(
+        "exact_half",
+        Def::Linear {
+            constant: HALF_MODULUS as i64,
+            terms: vec![],
+        },
+        0,
+    );
+    assert_eq!(ok.validate(), Ok(()));
+
+    let mut bad = Relation::default();
+    let _c_bad = bad.add_virtual(
+        "over_half",
+        Def::Linear {
+            constant: (HALF_MODULUS + 1) as i64,
+            terms: vec![],
+        },
+        0,
+    );
+    assert_eq!(
+        bad.validate(),
+        Err(Invalid::Bound {
+            relation: "over_half".to_string(),
+            bound: HALF_MODULUS + 1,
+        })
+    );
+
+    // NC-1340 pattern: declaring a rounding output as Linear with the field inverse of 2^1 (`2^30`).
+    let mut inv = Relation::default();
+    let g = Kind::Witness(inv.add_group("G/inv/1", 1));
+    let acc = inv.add_column("acc", g.clone(), Width::signed(8), 1);
+    let rem = inv.add_column("rem", g, Width::unsigned(1), 1);
+    range(&mut inv, acc, Width::signed(8));
+    range(&mut inv, rem, Width::unsigned(1));
+    let inv2: i64 = 1 << 30;
+    let _y = inv.add_virtual(
+        "forged_round",
+        Def::Linear {
+            constant: 0,
+            terms: vec![
+                (inv2, Ref::identity(acc, 1)),
+                (-inv2, Ref::identity(rem, 1)),
+            ],
+        },
+        1,
+    );
+    assert!(matches!(
+        inv.validate(),
+        Err(Invalid::Bound { relation, .. }) if relation == "forged_round"
+    ));
+
+    // Over-wide Pointwise: signed(16) * signed(16) = 2^15 * 2^15 = 2^30 > HALF_MODULUS.
+    let mut pw = Relation::default();
+    let g = Kind::Witness(pw.add_group("G/pw/1", 1));
+    let a = pw.add_column("a", g.clone(), Width::signed(16), 1);
+    let b = pw.add_column("b", g, Width::signed(16), 1);
+    range(&mut pw, a, Width::signed(16));
+    range(&mut pw, b, Width::signed(16));
+    let _p = pw.add_virtual(
+        "wide_pw",
+        Def::Pointwise {
+            terms: vec![Term {
+                coeff: 1,
+                factors: vec![Ref::identity(a, 1), Ref::identity(b, 1)],
+            }],
+        },
+        1,
+    );
+    assert_eq!(
+        pw.validate(),
+        Err(Invalid::Bound {
+            relation: "wide_pw".to_string(),
+            bound: 1u128 << 30,
+        })
+    );
+
+    // Over-wide Contraction: 2^16 * signed(8) * signed(8) = 2^16 * 2^7 * 2^7 = 2^30 > HALF_MODULUS.
+    let mut con = Relation::default();
+    let g = Kind::Witness(con.add_group("G/con/16", 16));
+    let a = con.add_column("a", g.clone(), Width::signed(8), 16);
+    let b = con.add_column("b", g, Width::signed(8), 16);
+    range(&mut con, a, Width::signed(8));
+    range(&mut con, b, Width::signed(8));
+    let _c = con.add_virtual(
+        "wide_con",
+        Def::Contraction {
+            free: 0,
+            summed: 16,
+            lhs: Ref::identity(a, 16),
+            rhs: Ref::identity(b, 16),
+        },
+        0,
+    );
+    assert_eq!(
+        con.validate(),
+        Err(Invalid::Bound {
+            relation: "wide_con".to_string(),
+            bound: 1u128 << 30,
+        })
+    );
+}
+
+/// RFC-0028 §2.2–2.3 (E18-01): committed columns cannot self-discipline through virtual wrappers,
+/// and virtual columns obey segment boundary rules in both `validate` and `check_segment`.
+#[test]
+fn rejects_cyclic_discipline_and_enforces_virtual_segments() {
+    // 1. Undisciplined witness cannot be disciplined via a virtual Linear copy in Compose.
+    let mut cyc = Relation::default();
+    let g = Kind::Witness(cyc.add_group("G/cyc/1", 1));
+    let w = cyc.add_column("w", g, Width::signed(8), 1);
+    let v = cyc.add_virtual(
+        "v_copy",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(w, 1))],
+        },
+        1,
+    );
+    cyc.composes.push(Compose {
+        name: "self_disc".into(),
+        column: w,
+        limbs: vec![(v, 0)],
+    });
+    assert_eq!(cyc.validate(), Err(Invalid::Undisciplined(w)));
+
+    // 2. Segmented virtual columns: segment 1 reads carried seg-0 witness + seg-1 witness,
+    //    passes `check_segment(..., 1, ...)` without non-carried seg-0 columns assigned.
+    let mut rel = Relation::default();
+    let g0 = Kind::Witness(rel.add_group_in("L0/main/2", 2, 0));
+    let g1 = Kind::Witness(rel.add_group_in("L1/main/2", 2, 1));
+    let s0_priv = rel.add_column("s0_priv", g0.clone(), Width::signed(8), 2);
+    let s0_carry = rel.add_column("s0_carry", g0, Width::signed(8), 2);
+    rel.mark_carried(s0_carry);
+    let s1_delta = rel.add_column("s1_delta", g1.clone(), Width::signed(8), 2);
+    let s1_out = rel.add_column("s1_out", g1, Width::signed(9), 2);
+    range(&mut rel, s0_priv, Width::signed(8));
+    range(&mut rel, s0_carry, Width::signed(8));
+    range(&mut rel, s1_delta, Width::signed(8));
+    range(&mut rel, s1_out, Width::signed(9));
+    let v_sum = rel.add_virtual(
+        "v_sum",
+        Def::Linear {
+            constant: 0,
+            terms: vec![
+                (1, Ref::identity(s0_carry, 2)),
+                (1, Ref::identity(s1_delta, 2)),
+            ],
+        },
+        2,
+    );
+    assert_eq!(rel.column_segment(v_sum), Some(1));
+    rel.identities.push(Identity {
+        name: "s1_eq".into(),
+        vars: 2,
+        terms: vec![
+            Term {
+                coeff: 1,
+                factors: vec![Ref::identity(s1_out, 2)],
+            },
+            Term {
+                coeff: -1,
+                factors: vec![Ref::identity(v_sum, 2)],
+            },
+        ],
+    });
+    assert_eq!(rel.validate(), Ok(()));
+    let mut vals_s1 = Values::new(&rel);
+    vals_s1
+        .set(&rel, s0_carry, vec![10, -5, 3, 7])
+        .expect("set");
+    vals_s1.set(&rel, s1_delta, vec![1, 2, -3, 4]).expect("set");
+    vals_s1.set(&rel, s1_out, vec![11, -3, 0, 11]).expect("set");
+    // Notice `s0_priv` is NOT assigned, yet `check_segment` for segment 1 passes.
+    assert_eq!(check_segment(&rel, 1, &vals_s1), Ok(()));
+
+    // 3. Virtual in segment 1 reading non-carried witness of segment 0 rejects with Invalid::Segment.
+    let mut bad_noncarry = rel.clone();
+    bad_noncarry.columns[s0_carry.0 as usize].carried = false;
+    assert_eq!(
+        bad_noncarry.validate(),
+        Err(Invalid::Segment {
+            relation: "v_sum".to_string(),
+        })
+    );
+
+    // 4. Virtual column of segment 0 cannot be read from segment 1 (virtual columns cannot be carried).
+    let mut bad_vcarry = Relation::default();
+    let g0 = Kind::Witness(bad_vcarry.add_group_in("L0/m/2", 2, 0));
+    let g1 = Kind::Witness(bad_vcarry.add_group_in("L1/m/2", 2, 1));
+    let a0 = bad_vcarry.add_column("a0", g0, Width::signed(8), 2);
+    let a1 = bad_vcarry.add_column("a1", g1, Width::signed(8), 2);
+    range(&mut bad_vcarry, a0, Width::signed(8));
+    range(&mut bad_vcarry, a1, Width::signed(8));
+    let v0 = bad_vcarry.add_virtual(
+        "v0",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(a0, 2))],
+        },
+        2,
+    );
+    bad_vcarry.identities.push(Identity {
+        name: "cross_v".into(),
+        vars: 2,
+        terms: vec![
+            Term {
+                coeff: 1,
+                factors: vec![Ref::identity(a1, 2)],
+            },
+            Term {
+                coeff: -1,
+                factors: vec![Ref::identity(v0, 2)],
+            },
+        ],
+    });
+    assert_eq!(
+        bad_vcarry.validate(),
+        Err(Invalid::Segment {
+            relation: "cross_v".to_string(),
+        })
+    );
+
+    // 5. Weight-only virtual with explicit segment assigns weight range to that segment and rejects out-of-range segment.
+    let mut wrel = Relation::default();
+    let _g0 = wrel.add_group_in("L0/w/2", 2, 0);
+    let _g1 = wrel.add_group_in("L1/w/2", 2, 1);
+    let wt = wrel.add_column("wt", Kind::Weight, Width::signed(8), 2);
+    range(&mut wrel, wt, Width::signed(8));
+    let vw = wrel.add_virtual_in(
+        "vw",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(wt, 2))],
+        },
+        2,
+        1,
+    );
+    assert_eq!(wrel.column_segment(vw), Some(1));
+    assert_eq!(wrel.range_segment(&wrel.ranges[0]), 1);
+    assert_eq!(wrel.validate(), Ok(()));
+    wrel.columns[vw.0 as usize].segment = Some(2);
+    assert_eq!(
+        wrel.validate(),
+        Err(Invalid::Segment {
+            relation: "vw".to_string(),
+        })
+    );
+    // Non-zero width or `carried = true` on a virtual column rejects.
+    let mut bad_meta = wrel.clone();
+    bad_meta.columns[vw.0 as usize].segment = Some(1);
+    bad_meta.columns[vw.0 as usize].width = Width::signed(8);
+    assert_eq!(bad_meta.validate(), Err(Invalid::Column(vw)));
+    let mut bad_carry = wrel.clone();
+    bad_carry.columns[vw.0 as usize].segment = Some(1);
+    bad_carry.columns[vw.0 as usize].carried = true;
+    assert_eq!(
+        bad_carry.validate(),
+        Err(Invalid::Segment {
+            relation: "vw".to_string(),
+        })
+    );
+
+    // 6. Explicit segment on an operand-bearing virtual column rejects (RFC-0028 §2.3, F4).
+    let mut bad_explicit = rel.clone();
+    bad_explicit.columns[v_sum.0 as usize].segment = Some(1);
+    assert_eq!(
+        bad_explicit.validate(),
+        Err(Invalid::Segment {
+            relation: "v_sum".to_string(),
+        })
+    );
+}
+
+/// Regression tests for E18-01 soundness audit findings F1, F2, and F5:
+/// - F1: depth-64 diamond virtual DAG validates in O(N + E) without exponential blowup.
+/// - F2: overflowing virtual limb shift in `Compose` under `check_segment` rejects (no wrap).
+/// - F5: `i64::MIN` constant/coeff rejects with `Invalid::Bound` without panic; split
+///   `Def::Contraction` (`free + summed > MAX_VARS`) validates; `check_with(..., summed_table = 0)`
+///   matches the precomputed path on `Def::Contraction`.
+#[test]
+fn rejects_audit_edge_cases_and_validates_diamond_and_split_contraction() {
+    // F1: depth-64 diamond virtual DAG (`v_k = v_{k-1} + v_{k-1}`? keep mag bounded with `+1 - 1` or `1*x` + `0`?
+    // Wait: to keep derived magnitude <= HALF_MODULUS at depth 64, build `v_k = Pointwise(v_{k-1} * v_{k-1})`
+    // over a 1-bit `{0, 1}` witness `x`: `mag(x) = 1`, so `mag(v_k) = 1 * 1 = 1` at every depth 0..64,
+    // while each node reads `v_{k-1}` twice -> 2^64 recursive paths if unmemoized!).
+    let mut diamond = Relation::default();
+    let g = Kind::Witness(diamond.add_group("G/dia/1", 1));
+    let mut prev = diamond.add_column("x", g, Width::unsigned(1), 1);
+    range(&mut diamond, prev, Width::unsigned(1));
+    for depth in 0..64u32 {
+        prev = diamond.add_virtual(
+            &format!("d_{depth}"),
+            Def::Pointwise {
+                terms: vec![Term {
+                    coeff: 1,
+                    factors: vec![Ref::identity(prev, 1), Ref::identity(prev, 1)],
+                }],
+            },
+            1,
+        );
+    }
+    assert_eq!(diamond.validate(), Ok(()));
+    assert_eq!(diamond.column_segment(prev), Some(0));
+    let mut vals = Values::new(&diamond);
+    vals.set(&diamond, ColumnId(0), vec![0, 1]).expect("set");
+    assert_eq!(check(&diamond, &vals), Ok(()));
+
+    // F2: overflowing virtual `i128` limb shifted in `Compose` under `check_segment` must reject.
+    let mut ovf = Relation::default();
+    let g0 = Kind::Witness(ovf.add_group_in("L0/ovf/1", 1, 0));
+    let g1 = Kind::Witness(ovf.add_group_in("L1/ovf/1", 1, 1));
+    let x = ovf.add_column("x", g0, Width::signed(4), 1);
+    ovf.mark_carried(x);
+    let target = ovf.add_column("target", g1, Width::signed(24), 1);
+    range(&mut ovf, x, Width::signed(4));
+    range(&mut ovf, target, Width::signed(16));
+    let v_cube = ovf.add_virtual(
+        "v_cube",
+        Def::Pointwise {
+            terms: vec![Term {
+                coeff: 1,
+                factors: vec![
+                    Ref::identity(x, 1),
+                    Ref::identity(x, 1),
+                    Ref::identity(x, 1),
+                ],
+            }],
+        },
+        1,
+    );
+    // `v_cube` belongs to segment 0 (`x`), so bring it into segment 1 via a seg-1 zero term.
+    let z1 = ovf.add_column("z1", Kind::Witness(GroupId(1)), Width::unsigned(1), 1);
+    range(&mut ovf, z1, Width::unsigned(1));
+    let v_s1 = ovf.add_virtual(
+        "v_s1",
+        Def::Pointwise {
+            terms: vec![
+                Term {
+                    coeff: 1,
+                    factors: vec![
+                        Ref::identity(x, 1),
+                        Ref::identity(x, 1),
+                        Ref::identity(x, 1),
+                    ],
+                },
+                Term {
+                    coeff: 1,
+                    factors: vec![Ref::identity(z1, 1)],
+                },
+            ],
+        },
+        1,
+    );
+    let _ = v_cube;
+    ovf.composes.push(Compose {
+        name: "ovf_comp".into(),
+        column: target,
+        limbs: vec![(v_s1, 8)],
+    });
+    assert_eq!(ovf.validate(), Ok(()));
+    // Supply a tampered carried `x = 1 << 40` (not range-checked in segment 1):
+    // `v_s1 = (1 << 40)^3 = 1i128 << 120`, and `(1i128 << 120) * (1 << 8)` overflows `i128`
+    // (whereas `checked_shl(8)` would have silently wrapped to `0 == target[0]`).
+    let mut vals_ovf = Values::new(&ovf);
+    vals_ovf.set(&ovf, x, vec![1i64 << 40, 0]).expect("set");
+    vals_ovf.set(&ovf, z1, vec![0, 0]).expect("set");
+    vals_ovf.set(&ovf, target, vec![0, 0]).expect("set");
+    assert_eq!(
+        check_segment(&ovf, 1, &vals_ovf),
+        Err(Violation::Compose {
+            relation: "ovf_comp".to_string(),
+            index: 0,
+        })
+    );
+
+    // F5a: `i64::MIN` constant and coeff reject with `Invalid::Bound` without panic.
+    let mut min_lin = Relation::default();
+    let _c = min_lin.add_virtual(
+        "min_const",
+        Def::Linear {
+            constant: i64::MIN,
+            terms: vec![],
+        },
+        0,
+    );
+    assert_eq!(
+        min_lin.validate(),
+        Err(Invalid::Bound {
+            relation: "min_const".to_string(),
+            bound: i64::MIN.unsigned_abs() as u128,
+        })
+    );
+    let mut min_pw = Relation::default();
+    let gp = Kind::Witness(min_pw.add_group("G/min/1", 1));
+    let a = min_pw.add_column("a", gp, Width::unsigned(1), 1);
+    range(&mut min_pw, a, Width::unsigned(1));
+    let _p = min_pw.add_virtual(
+        "min_coeff",
+        Def::Pointwise {
+            terms: vec![Term {
+                coeff: i64::MIN,
+                factors: vec![Ref::identity(a, 1)],
+            }],
+        },
+        1,
+    );
+    assert_eq!(
+        min_pw.validate(),
+        Err(Invalid::Bound {
+            relation: "min_coeff".to_string(),
+            bound: i64::MIN.unsigned_abs() as u128,
+        })
+    );
+
+    // F5b: split `Def::Contraction` (`free = 20, summed = 15`, domain = 35 > MAX_VARS = 30)
+    // validates cleanly when derived magnitude `2^15 * 2^7 * 2^7 = 2^29 <= HALF_MODULUS`.
+    let mut split = Relation::default();
+    let gs = Kind::Witness(split.add_group("G/split/20", 20));
+    let lhs = split.add_column("lhs", gs, Width::signed(8), 20);
+    let rhs = split.add_column("rhs", Kind::Weight, Width::signed(8), 25);
+    range(&mut split, lhs, Width::signed(8));
+    range(&mut split, rhs, Width::signed(8));
+    // free bits 0..20 (say 5 batch bits 0..5 + 15 output-row bits 5..20), summed bits 20..35.
+    let mut lhs_vars: Vec<u8> = (20..35).collect();
+    lhs_vars.extend(0..5);
+    let mut rhs_vars: Vec<u8> = (20..35).collect();
+    rhs_vars.extend(5..15);
+    let _out = split.add_virtual(
+        "split_con",
+        Def::Contraction {
+            free: 20,
+            summed: 15,
+            lhs: Ref {
+                column: lhs,
+                vars: lhs_vars,
+            },
+            rhs: Ref {
+                column: rhs,
+                vars: rhs_vars,
+            },
+        },
+        20,
+    );
+    assert_eq!(split.validate(), Ok(()));
+
+    // F5b: `check_with(..., summed_table = 0)` on a `Def::Contraction` matches the precomputed path.
+    let mut small = Relation::default();
+    let g = Kind::Witness(small.add_group("G/sm/2", 2));
+    let a = small.add_column("a", g.clone(), Width::signed(4), 2);
+    let b = small.add_column("b", Kind::Weight, Width::signed(4), 2);
+    let y = small.add_column("y", g, Width::signed(8), 2);
+    range(&mut small, a, Width::signed(4));
+    range(&mut small, b, Width::signed(4));
+    range(&mut small, y, Width::signed(8));
+    let c = small.add_virtual(
+        "c",
+        Def::Contraction {
+            free: 2,
+            summed: 1,
+            lhs: Ref {
+                column: a,
+                vars: vec![2, 1],
+            },
+            rhs: Ref {
+                column: b,
+                vars: vec![2, 0],
+            },
+        },
+        2,
+    );
+    small.identities.push(Identity {
+        name: "eq".into(),
+        vars: 2,
+        terms: vec![
+            Term {
+                coeff: 1,
+                factors: vec![Ref::identity(y, 2)],
+            },
+            Term {
+                coeff: -1,
+                factors: vec![Ref::identity(c, 2)],
+            },
+        ],
+    });
+    let mut vals = Values::new(&small);
+    vals.set(&small, a, vec![2, -1, 3, 4]).expect("set");
+    vals.set(&small, b, vec![1, 2, -3, 1]).expect("set");
+    vals.set(&small, y, vec![0, -7, 11, -5]).expect("set");
+    assert_eq!(super::check::check_with(&small, &vals, &[], 0), Ok(()));
+    vals.set(&small, y, vec![0, -7, 12, -5]).expect("set");
+    assert_eq!(
+        super::check::check_with(&small, &vals, &[], 0),
+        Err(Violation::Identity {
+            relation: "eq".to_string(),
+            point: 2,
+        })
+    );
+}

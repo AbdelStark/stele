@@ -1,6 +1,6 @@
-//! Plain integer checker of RFC-0026 §3.7: every relation evaluated over Z, no proof.
+//! Plain integer checker of RFC-0026 §3.7 and RFC-0028 §2.1: every relation evaluated over Z, no proof.
 
-use super::{Invalid, Ref, Relation, Values, Violation};
+use super::{ColumnId, Def, Invalid, Kind, Ref, Relation, Values, Violation};
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
@@ -27,14 +27,24 @@ fn first_item<T: Sync>(
 }
 
 /// [`Ref::index`] as one table per byte of the domain point: `index(x)` is the OR of
-/// the four bytes' entries. Exact: each index bit reads one domain bit or a fixed
-/// constant, so it comes from exactly one byte's entry, and the fixed constants are the
-/// same in every entry. Domain points have at most `MAX_VARS = 30` bits.
+/// the byte entries. Exact: each index bit reads one domain bit or a fixed constant, so it
+/// comes from exactly one byte's entry, and the fixed constants are the same in every entry.
+/// Domain points have at most `MAX_VARS = 30` bits for ordinary relations and at most
+/// `2 * MAX_VARS = 60` bits for split virtual contractions (RFC-0028 §2.1).
 struct Gather(Vec<[usize; 256]>);
 impl Gather {
     fn new(r: &Ref) -> Self {
+        let bytes = r
+            .vars
+            .iter()
+            .copied()
+            .filter(|&v| Ref::fixed(v).is_none())
+            .map(|v| (v as usize) / 8 + 1)
+            .max()
+            .unwrap_or(1)
+            .max(4);
         Self(
-            (0..4)
+            (0..bytes)
                 .map(|c| core::array::from_fn(|b| r.index((b as u64) << (8 * c))))
                 .collect(),
         )
@@ -42,10 +52,146 @@ impl Gather {
     #[inline]
     fn index(&self, x: u64) -> usize {
         let t = &self.0;
-        t[0][(x & 0xff) as usize]
+        let mut out = t[0][(x & 0xff) as usize]
             | t[1][((x >> 8) & 0xff) as usize]
             | t[2][((x >> 16) & 0xff) as usize]
-            | t[3][((x >> 24) & 0xff) as usize]
+            | t[3][((x >> 24) & 0xff) as usize];
+        for (c, table) in t.iter().enumerate().skip(4) {
+            out |= table[((x >> (8 * c)) & 0xff) as usize];
+        }
+        out
+    }
+}
+
+/// Resolved values of one column during plain checking.
+///
+/// Committed/public columns borrow directly from `Values`/`Relation`; virtual columns
+/// (RFC-0028 §2.1) are computed from their definitions over `Z` (`None` on `i128` overflow).
+enum ColData<'a> {
+    Borrowed(&'a [i64]),
+    Computed(Vec<Option<i128>>),
+}
+
+impl<'a> ColData<'a> {
+    #[inline]
+    fn len(&self) -> usize {
+        match self {
+            ColData::Borrowed(s) => s.len(),
+            ColData::Computed(v) => v.len(),
+        }
+    }
+
+    #[inline]
+    fn get(&self, idx: usize) -> Option<i128> {
+        match self {
+            ColData::Borrowed(s) => Some(s[idx] as i128),
+            ColData::Computed(v) => v[idx],
+        }
+    }
+}
+
+/// Compute a virtual column's integer values over `{0,1}^log_len` from already-resolved
+/// earlier columns, ignoring any entry in `Values` (RFC-0028 §2.1).
+fn eval_virtual(
+    log_len: u8,
+    def: &Def,
+    resolved: &[Option<ColData<'_>>],
+    summed_table: u8,
+) -> Vec<Option<i128>> {
+    let n = 1usize << log_len;
+    let col = |id: ColumnId| resolved[id.0 as usize].as_ref().expect("operand resolved");
+    match def {
+        Def::Linear { constant, terms } => {
+            let compiled: Vec<(i128, &ColData<'_>, Gather)> = terms
+                .iter()
+                .map(|(c, r)| (*c as i128, col(r.column), Gather::new(r)))
+                .collect();
+            let c0 = *constant as i128;
+            let eval_at = |x: usize| {
+                compiled.iter().try_fold(c0, |acc, (coeff, data, g)| {
+                    let v = data.get(g.index(x as u64))?;
+                    acc.checked_add(coeff.checked_mul(v)?)
+                })
+            };
+            #[cfg(feature = "std")]
+            {
+                (0..n).into_par_iter().map(eval_at).collect()
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                (0..n).map(eval_at).collect()
+            }
+        }
+        Def::Pointwise { terms } => {
+            let compiled: Vec<(i128, Vec<(&ColData<'_>, Gather)>)> = terms
+                .iter()
+                .map(|t| {
+                    let factors = t
+                        .factors
+                        .iter()
+                        .map(|f| (col(f.column), Gather::new(f)))
+                        .collect();
+                    (t.coeff as i128, factors)
+                })
+                .collect();
+            let eval_at = |x: usize| {
+                compiled.iter().try_fold(0i128, |sum, (coeff, factors)| {
+                    let prod = factors.iter().try_fold(*coeff, |p, (data, g)| {
+                        p.checked_mul(data.get(g.index(x as u64))?)
+                    })?;
+                    sum.checked_add(prod)
+                })
+            };
+            #[cfg(feature = "std")]
+            {
+                (0..n).into_par_iter().map(eval_at).collect()
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                (0..n).map(eval_at).collect()
+            }
+        }
+        Def::Contraction {
+            free,
+            summed,
+            lhs,
+            rhs,
+        } => {
+            let (lc, rc) = (col(lhs.column), col(rhs.column));
+            let (lg, rg) = (Gather::new(lhs), Gather::new(rhs));
+            let summed_range = 0..1u64 << *summed;
+            let ys: Vec<(usize, usize)> = if *summed <= summed_table {
+                summed_range
+                    .clone()
+                    .map(|y| (lg.index(y << *free), rg.index(y << *free)))
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            let eval_at = |x: usize| {
+                let (l, r) = (lg.index(x as u64), rg.index(x as u64));
+                let term = |(yl, yr): (usize, usize)| -> Option<i128> {
+                    lc.get(l | yl)?.checked_mul(rc.get(r | yr)?)
+                };
+                if !ys.is_empty() {
+                    ys.iter()
+                        .try_fold(0i128, |sum, y| sum.checked_add(term(*y)?))
+                } else {
+                    summed_range.clone().try_fold(0i128, |sum, y| {
+                        let z = y << *free;
+                        sum.checked_add(term((lg.index(z), rg.index(z)))?)
+                    })
+                }
+            };
+            #[cfg(feature = "std")]
+            {
+                (0..n).into_par_iter().map(eval_at).collect()
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                (0..n).map(eval_at).collect()
+            }
+        }
     }
 }
 
@@ -100,29 +246,30 @@ fn check_inner(
     segment: Option<u32>,
 ) -> Result<(), Violation> {
     relation.validate()?;
+    let col_segs = relation.column_segments();
     let weight_segs = relation.weight_segments();
     let in_segment = |item_seg: u32| segment.is_none_or(|s| s == item_seg);
     let mut required = alloc::vec![segment.is_none(); relation.columns.len()];
     if let Some(seg) = segment {
-        for (i, _) in relation.columns.iter().enumerate() {
-            if relation.column_segment(super::ColumnId(i as u32)) == Some(seg) {
+        for (i, &cseg) in col_segs.iter().enumerate() {
+            if cseg == Some(seg) {
                 required[i] = true;
             }
         }
         for range in &relation.ranges {
-            if relation.range_segment_with(range, &weight_segs) == seg {
+            if relation.range_segment_with_segs(range, &col_segs, &weight_segs) == seg {
                 required[range.column.0 as usize] = true;
             }
         }
         for lookup in &relation.lookups {
-            if relation.lookup_segment(lookup) == seg {
+            if relation.lookup_segment_with(lookup, &col_segs) == seg {
                 for r in lookup.tuple.iter().chain(lookup.selector.iter()) {
                     required[r.column.0 as usize] = true;
                 }
             }
         }
         for compose in &relation.composes {
-            if relation.compose_segment(compose) == seg {
+            if relation.compose_segment_with(compose, &col_segs) == seg {
                 required[compose.column.0 as usize] = true;
                 for &(limb, _) in &compose.limbs {
                     required[limb.0 as usize] = true;
@@ -130,7 +277,7 @@ fn check_inner(
             }
         }
         for identity in &relation.identities {
-            if relation.identity_segment(identity) == seg {
+            if relation.identity_segment_with(identity, &col_segs) == seg {
                 for term in &identity.terms {
                     for f in &term.factors {
                         required[f.column.0 as usize] = true;
@@ -139,52 +286,80 @@ fn check_inner(
             }
         }
         for matmul in &relation.matmuls {
-            if relation.matmul_segment(matmul) == seg {
+            if relation.matmul_segment_with(matmul, &col_segs) == seg {
                 for r in [&matmul.out, &matmul.lhs, &matmul.rhs] {
                     required[r.column.0 as usize] = true;
                 }
             }
         }
-    }
-    let columns: Vec<Option<&[i64]>> = (0..relation.columns.len())
-        .map(|i| {
-            let id = super::ColumnId(i as u32);
+        // Transitive closure over virtual column dependencies in decreasing ColumnId order.
+        for i in (0..relation.columns.len()).rev() {
             if !required[i] {
-                return Ok(None);
+                continue;
             }
-            let slice = values.get(relation, id).ok_or(Violation::Missing(id))?;
-            if slice.len() != 1usize << relation.columns[i].log_len {
-                return Err(Invalid::Column(id).into());
+            if let Kind::Virtual(def) = &relation.columns[i].kind {
+                for op in def.operands() {
+                    required[op.0 as usize] = true;
+                }
             }
-            Ok(Some(slice))
-        })
-        .collect::<Result<_, Violation>>()?;
-    let col_slice = |id: super::ColumnId| columns[id.0 as usize].expect("required column checked");
-    let column = |r: &Ref| col_slice(r.column);
+        }
+    }
+    let mut columns: Vec<Option<ColData<'_>>> = Vec::with_capacity(relation.columns.len());
+    for (i, col_meta) in relation.columns.iter().enumerate() {
+        let id = super::ColumnId(i as u32);
+        if !required[i] {
+            columns.push(None);
+            continue;
+        }
+        match &col_meta.kind {
+            Kind::Virtual(def) => {
+                // RFC-0028 §2.1: compute from definition over earlier columns; ignore any supplied values.
+                let computed = eval_virtual(col_meta.log_len, def, &columns, summed_table);
+                columns.push(Some(ColData::Computed(computed)));
+            }
+            _ => {
+                let slice = values.get(relation, id).ok_or(Violation::Missing(id))?;
+                if slice.len() != 1usize << col_meta.log_len {
+                    return Err(Invalid::Column(id).into());
+                }
+                columns.push(Some(ColData::Borrowed(slice)));
+            }
+        }
+    }
+    let col_data = |id: super::ColumnId| {
+        columns[id.0 as usize]
+            .as_ref()
+            .expect("required column checked")
+    };
+    let column = |r: &Ref| col_data(r.column);
 
     let kept_range = |r: &super::Range| {
-        in_segment(relation.range_segment_with(r, &weight_segs)) && !skip.contains(&r.name.as_str())
+        in_segment(relation.range_segment_with_segs(r, &col_segs, &weight_segs))
+            && !skip.contains(&r.name.as_str())
     };
     let kept_lookup = |l: &super::Lookup| {
-        in_segment(relation.lookup_segment(l)) && !skip.contains(&l.name.as_str())
+        in_segment(relation.lookup_segment_with(l, &col_segs)) && !skip.contains(&l.name.as_str())
     };
     let kept_compose = |c: &super::Compose| {
-        in_segment(relation.compose_segment(c)) && !skip.contains(&c.name.as_str())
+        in_segment(relation.compose_segment_with(c, &col_segs)) && !skip.contains(&c.name.as_str())
     };
     let kept_identity = |i: &super::Identity| {
-        in_segment(relation.identity_segment(i)) && !skip.contains(&i.name.as_str())
+        in_segment(relation.identity_segment_with(i, &col_segs)) && !skip.contains(&i.name.as_str())
     };
     let kept_matmul = |m: &super::Matmul| {
-        in_segment(relation.matmul_segment(m)) && !skip.contains(&m.name.as_str())
+        in_segment(relation.matmul_segment_with(m, &col_segs)) && !skip.contains(&m.name.as_str())
     };
 
     // E16-22: with `std` each category's constraints, and the points of each one, are
     // checked on the pool. `first` keeps constraint order and `first_point` returns
     // the least failing point, so the result is the sequential first failure.
     first_item(&relation.ranges, &kept_range, |range| {
-        let column = col_slice(range.column);
+        let column = col_data(range.column);
+        let (min_v, max_v) = (range.width.min() as i128, range.width.max() as i128);
         first_point(column.len() as u64, |i| {
-            !range.width.contains(column[i as usize])
+            column
+                .get(i as usize)
+                .is_none_or(|v| v < min_v || v > max_v)
         })
         .map(|index| Violation::Range {
             relation: range.name.clone(),
@@ -207,10 +382,19 @@ fn check_inner(
             .map(|r| (column(r), Gather::new(r)))
             .collect();
         first_point(1u64 << lookup.vars, |x| {
-            if selector.as_ref().is_some_and(|(c, g)| c[g.index(x)] == 0) {
+            if selector
+                .as_ref()
+                .is_some_and(|(c, g)| c.get(g.index(x)) == Some(0))
+            {
                 return false;
             }
-            let tuple: Vec<i64> = tuple.iter().map(|(c, g)| c[g.index(x)]).collect();
+            let Some(tuple): Option<Vec<i64>> = tuple
+                .iter()
+                .map(|(c, g)| c.get(g.index(x)).and_then(|v| i64::try_from(v).ok()))
+                .collect()
+            else {
+                return true;
+            };
             !rows.contains(tuple.as_slice())
         })
         .map(|point| Violation::Lookup {
@@ -219,15 +403,16 @@ fn check_inner(
         })
     })?;
     first_item(&relation.composes, &kept_compose, |compose| {
-        let column = col_slice(compose.column);
+        let column = col_data(compose.column);
         first_point(column.len() as u64, |i| {
             let i = i as usize;
-            let sum: i128 = compose
-                .limbs
-                .iter()
-                .map(|&(limb, shift)| (col_slice(limb)[i] as i128) << shift)
-                .sum();
-            sum != column[i] as i128
+            let sum = compose.limbs.iter().try_fold(0i128, |acc, &(limb, shift)| {
+                let v = col_data(limb).get(i)?;
+                // `shift <= MAX_WIDTH_BITS = 30`, so `1i128 << shift` is exact and
+                // `checked_mul` catches any arithmetic overflow that `checked_shl` ignores.
+                acc.checked_add(v.checked_mul(1i128 << shift)?)
+            });
+            sum.is_none() || sum != column.get(i)
         })
         .map(|index| Violation::Compose {
             relation: compose.name.clone(),
@@ -248,7 +433,7 @@ fn check_inner(
         first_point(1u64 << identity.vars, |x| {
             let sum = terms.iter().try_fold(0i128, |sum, (coeff, factors)| {
                 let product = factors.iter().try_fold(*coeff as i128, |p, (c, g)| {
-                    p.checked_mul(c[g.index(x)] as i128)
+                    p.checked_mul(c.get(g.index(x))?)
                 });
                 product.and_then(|p| sum.checked_add(p))
             });
@@ -274,18 +459,19 @@ fn check_inner(
         };
         first_point(1u64 << matmul.free, |x| {
             let (l, r) = (lg.index(x), rg.index(x));
-            // Two i64 factors never overflow i128; the sum stays checked.
-            let term = |(yl, yr): (usize, usize)| lc[l | yl] as i128 * rc[r | yr] as i128;
+            let term = |(yl, yr): (usize, usize)| -> Option<i128> {
+                lc.get(l | yl)?.checked_mul(rc.get(r | yr)?)
+            };
             let sum = match ys.is_empty() {
                 false => ys
                     .iter()
-                    .try_fold(0i128, |sum, y| sum.checked_add(term(*y))),
+                    .try_fold(0i128, |sum, y| sum.checked_add(term(*y)?)),
                 true => summed.clone().try_fold(0i128, |sum, y| {
                     let z = y << matmul.free;
-                    sum.checked_add(term((lg.index(z), rg.index(z))))
+                    sum.checked_add(term((lg.index(z), rg.index(z)))?)
                 }),
             };
-            sum != Some(oc[og.index(x)] as i128)
+            sum.is_none() || sum != oc.get(og.index(x))
         })
         .map(|point| Violation::Matmul {
             relation: matmul.name.clone(),
@@ -301,7 +487,7 @@ mod tests {
     use crate::relation::ColumnId;
 
     /// The byte tables give exactly `Ref::index` for permuted, broadcast and fixed-bit
-    /// refs, over a spread of 30-bit domain points.
+    /// refs, over both 30-bit and 60-bit (split virtual contraction) domain points.
     #[test]
     fn gathers_exactly_the_ref_index() {
         let refs = [
@@ -309,19 +495,20 @@ mod tests {
             alloc::vec![29, 0, 17, 8, 23],
             alloc::vec![Ref::FIXED_1, 9, Ref::FIXED_0, 29, 16, 7],
             (0..30).rev().collect(),
+            alloc::vec![59, 44, 33, 31, Ref::FIXED_1, 12, 0],
             alloc::vec![],
         ];
-        let mask = (1u64 << 30) - 1;
+        let mask = (1u64 << 60) - 1;
         for vars in refs {
             let r = Ref {
                 column: ColumnId(0),
                 vars,
             };
             let g = Gather::new(&r);
-            let mut x = 0x2545_f491u64 & mask;
+            let mut x = 0x2545_f491_9e37_79b9u64 & mask;
             for _ in 0..20_000 {
                 assert_eq!(g.index(x), r.index(x), "{:?} {x:#x}", r.vars);
-                x = (x.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1) >> 17) & mask;
+                x = (x.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1) >> 4) & mask;
             }
             assert_eq!(g.index(mask), r.index(mask));
         }

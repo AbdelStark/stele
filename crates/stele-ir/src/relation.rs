@@ -22,6 +22,8 @@ pub use check::{check, check_except, check_segment};
 
 /// M31 modulus `p = 2^31 - 1` (RFC-0003 §1). Every identity is wrap-free below it.
 pub const MODULUS: u128 = (1 << 31) - 1;
+/// Largest integer magnitude strictly below `p / 2` (`2^30 - 1`, RFC-0028 §2.2).
+pub const HALF_MODULUS: u128 = MODULUS / 2;
 /// Widest declared column, in bits; every value then lies in `(-p/2, p/2)`.
 pub const MAX_WIDTH_BITS: u8 = 30;
 /// Widest single [`Range`]; wider values are split into limbs (RFC-0026 §3.5).
@@ -98,7 +100,43 @@ impl Width {
     }
 }
 
-/// Who supplies a column's values and how it is committed (RFC-0026 §2).
+/// Definition of a virtual column (RFC-0028 §2.1).
+///
+/// Every referenced column must have a strictly smaller [`ColumnId`], so declaration order
+/// is an acyclic dependency order.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Def {
+    /// `v(x) = constant + sum_i coeff_i * ref_i(x)` with integer `coeff_i != 0`.
+    Linear {
+        constant: i64,
+        terms: Vec<(i64, Ref)>,
+    },
+    /// `v(x) = sum_t coeff_t * prod_f ref_f(x)`, at most [`MAX_FACTORS`] factors per term.
+    Pointwise { terms: Vec<Term> },
+    /// `v(x) = sum_y lhs(x, y) * rhs(x, y)`, split into row blocks when `free + summed > MAX_VARS`.
+    Contraction {
+        free: u8,
+        summed: u8,
+        lhs: Ref,
+        rhs: Ref,
+    },
+}
+
+impl Def {
+    /// Column IDs directly read by this definition (in declaration order).
+    pub fn operands(&self) -> Vec<ColumnId> {
+        match self {
+            Def::Linear { terms, .. } => terms.iter().map(|(_, r)| r.column).collect(),
+            Def::Pointwise { terms } => terms
+                .iter()
+                .flat_map(|t| t.factors.iter().map(|f| f.column))
+                .collect(),
+            Def::Contraction { lhs, rhs, .. } => vec![lhs.column, rhs.column],
+        }
+    }
+}
+
+/// Who supplies a column's values and how it is committed (RFC-0026 §2, RFC-0028 §2.1).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Kind {
     /// Per-proof witness column committed in the given group.
@@ -107,6 +145,8 @@ pub enum Kind {
     Weight,
     /// Verifier-known values (statement data, masks, selectors, coefficient vectors).
     Public(Vec<i64>),
+    /// Uncommitted column defined as a fixed polynomial function of earlier columns (RFC-0028 §2.1).
+    Virtual(Def),
 }
 
 /// Column metadata. Its length is `2^log_len`; padding is explicit data, never implied.
@@ -118,6 +158,9 @@ pub struct Column {
     pub log_len: u8,
     /// RFC-0026 A27: witness column readable by segment `s + 1` (always `false` on non-witness columns).
     pub carried: bool,
+    /// RFC-0028 §2.3: explicit segment for a virtual column whose operands are all weight/public
+    /// (always `None` on non-virtual columns).
+    pub segment: Option<u32>,
 }
 
 /// A column read inside a relation domain: column index bit `j` is domain bit `vars[j]`.
@@ -388,9 +431,21 @@ impl Relation {
         }
     }
 
-    /// True if any group sits in a non-zero segment or any column is marked carried.
+    /// True if any group sits in a non-zero segment, any column is marked carried, or any
+    /// virtual column specifies an explicit segment.
     pub fn is_segmented(&self) -> bool {
-        self.groups.iter().any(|g| g.segment != 0) || self.columns.iter().any(|c| c.carried)
+        self.groups.iter().any(|g| g.segment != 0)
+            || self
+                .columns
+                .iter()
+                .any(|c| c.carried || c.segment.is_some())
+    }
+
+    /// True if any column is [`Kind::Virtual`] (RFC-0028 §2.1).
+    pub fn has_virtual(&self) -> bool {
+        self.columns
+            .iter()
+            .any(|c| matches!(c.kind, Kind::Virtual(_)))
     }
 
     /// Number of segments (`>= 1`); for a validated relation, groups span `0..segments()`.
@@ -402,18 +457,47 @@ impl Relation {
             .map_or(1, |m| m.saturating_add(1))
     }
 
-    /// Segment owning `id` if it is a witness column with a valid group; `None` for weights/publics.
+    /// Compute the owning segment of every column in one `O(columns + operands)` forward pass
+    /// (RFC-0026 A27, RFC-0028 §2.3). Non-recursive; ignores forward refs on unvalidated relations.
+    pub fn column_segments(&self) -> Vec<Option<u32>> {
+        let mut segs = Vec::with_capacity(self.columns.len());
+        for (i, col) in self.columns.iter().enumerate() {
+            let seg = match &col.kind {
+                Kind::Witness(group) => self.groups.get(group.0 as usize).map(|g| g.segment),
+                Kind::Weight | Kind::Public(_) => None,
+                Kind::Virtual(def) => {
+                    let mut max_seg: Option<u32> = None;
+                    for op in def.operands() {
+                        if (op.0 as usize) < i {
+                            if let Some(s) = segs[op.0 as usize] {
+                                max_seg = Some(max_seg.map_or(s, |cur| cur.max(s)));
+                            }
+                        }
+                    }
+                    Some(max_seg.unwrap_or_else(|| col.segment.unwrap_or(0)))
+                }
+            };
+            segs.push(seg);
+        }
+        segs
+    }
+
+    /// Segment owning `id` (`Kind::Witness` via its group, or `Kind::Virtual` via the highest
+    /// segment among its operands or its declared segment, RFC-0028 §2.3); `None` for weights/publics.
     pub fn column_segment(&self, id: ColumnId) -> Option<u32> {
-        match self.column(id)?.kind {
+        match &self.column(id)?.kind {
             Kind::Witness(group) => self.groups.get(group.0 as usize).map(|g| g.segment),
             Kind::Weight | Kind::Public(_) => None,
+            Kind::Virtual(_) => self.column_segments().get(id.0 as usize).copied().flatten(),
         }
     }
 
-    /// Owning segment of each column index for weight-only constraints (RFC-0026 A27):
+    /// Owning segment of each column index for weight-only constraints (RFC-0026 A27, RFC-0028 §2.3):
     /// a `Kind::Weight` column's range/lookup runs in the earliest segment that reads it
-    /// alongside a witness column (or `0` when no witness-bearing item reads it).
+    /// alongside a witness or virtual column (or `0` when no such item reads it).
     pub fn weight_segments(&self) -> Vec<u32> {
+        let col_segs = self.column_segments();
+        let seg_of = |id: ColumnId| col_segs.get(id.0 as usize).copied().flatten();
         let mut out = vec![u32::MAX; self.columns.len()];
         let mut note = |cols: &[ColumnId], seg: u32| {
             for &id in cols {
@@ -427,12 +511,20 @@ impl Relation {
                 }
             }
         };
+        for (i, col) in self.columns.iter().enumerate() {
+            if let Kind::Virtual(def) = &col.kind {
+                if let Some(seg) = col_segs[i] {
+                    let ops = def.operands();
+                    note(&ops, seg);
+                }
+            }
+        }
         for identity in &self.identities {
             if let Some(seg) = identity
                 .terms
                 .iter()
                 .flat_map(|t| t.factors.iter())
-                .filter_map(|f| self.column_segment(f.column))
+                .filter_map(|f| seg_of(f.column))
                 .max()
             {
                 let cols: Vec<ColumnId> = identity
@@ -447,7 +539,7 @@ impl Relation {
             let cols: Vec<ColumnId> = core::iter::once(compose.column)
                 .chain(compose.limbs.iter().map(|(l, _)| *l))
                 .collect();
-            if let Some(seg) = cols.iter().filter_map(|&id| self.column_segment(id)).max() {
+            if let Some(seg) = cols.iter().filter_map(|&id| seg_of(id)).max() {
                 note(&cols, seg);
             }
         }
@@ -458,13 +550,13 @@ impl Relation {
                 .chain(lookup.selector.iter())
                 .map(|r| r.column)
                 .collect();
-            if let Some(seg) = cols.iter().filter_map(|&id| self.column_segment(id)).max() {
+            if let Some(seg) = cols.iter().filter_map(|&id| seg_of(id)).max() {
                 note(&cols, seg);
             }
         }
         for matmul in &self.matmuls {
             let cols = [matmul.out.column, matmul.lhs.column, matmul.rhs.column];
-            if let Some(seg) = cols.iter().filter_map(|&id| self.column_segment(id)).max() {
+            if let Some(seg) = cols.iter().filter_map(|&id| seg_of(id)).max() {
                 note(&cols, seg);
             }
         }
@@ -476,73 +568,108 @@ impl Relation {
         out
     }
 
-    /// Owning segment of an identity (valid after [`Self::validate`]).
-    pub fn identity_segment(&self, identity: &Identity) -> u32 {
+    /// Owning segment of an identity using precomputed `col_segs = self.column_segments()`.
+    pub fn identity_segment_with(&self, identity: &Identity, col_segs: &[Option<u32>]) -> u32 {
         identity
             .terms
             .iter()
             .flat_map(|t| t.factors.iter())
-            .filter_map(|f| self.column_segment(f.column))
+            .filter_map(|f| col_segs.get(f.column.0 as usize).copied().flatten())
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// Owning segment of an identity (valid after [`Self::validate`]).
+    pub fn identity_segment(&self, identity: &Identity) -> u32 {
+        self.identity_segment_with(identity, &self.column_segments())
+    }
+
+    /// Owning segment of a composition using precomputed `col_segs = self.column_segments()`.
+    pub fn compose_segment_with(&self, compose: &Compose, col_segs: &[Option<u32>]) -> u32 {
+        core::iter::once(compose.column)
+            .chain(compose.limbs.iter().map(|(l, _)| *l))
+            .filter_map(|id| col_segs.get(id.0 as usize).copied().flatten())
             .max()
             .unwrap_or(0)
     }
 
     /// Owning segment of a composition (valid after [`Self::validate`]).
     pub fn compose_segment(&self, compose: &Compose) -> u32 {
-        core::iter::once(compose.column)
-            .chain(compose.limbs.iter().map(|(l, _)| *l))
-            .filter_map(|id| self.column_segment(id))
+        self.compose_segment_with(compose, &self.column_segments())
+    }
+
+    /// Owning segment of a lookup using precomputed `col_segs = self.column_segments()`.
+    pub fn lookup_segment_with(&self, lookup: &Lookup, col_segs: &[Option<u32>]) -> u32 {
+        lookup
+            .tuple
+            .iter()
+            .chain(lookup.selector.iter())
+            .filter_map(|r| col_segs.get(r.column.0 as usize).copied().flatten())
             .max()
             .unwrap_or(0)
     }
 
     /// Owning segment of a lookup (valid after [`Self::validate`]).
     pub fn lookup_segment(&self, lookup: &Lookup) -> u32 {
-        lookup
-            .tuple
-            .iter()
-            .chain(lookup.selector.iter())
-            .filter_map(|r| self.column_segment(r.column))
-            .max()
-            .unwrap_or(0)
+        self.lookup_segment_with(lookup, &self.column_segments())
+    }
+
+    /// Owning segment of a range using precomputed `col_segs` and `weight_segs`.
+    pub fn range_segment_with_segs(
+        &self,
+        range: &Range,
+        col_segs: &[Option<u32>],
+        weight_segs: &[u32],
+    ) -> u32 {
+        col_segs
+            .get(range.column.0 as usize)
+            .copied()
+            .flatten()
+            .unwrap_or_else(|| {
+                weight_segs
+                    .get(range.column.0 as usize)
+                    .copied()
+                    .unwrap_or(0)
+            })
     }
 
     /// Owning segment of a range, using `weight_segs = relation.weight_segments()` for
     /// weight columns so each weight is range-checked in the segment that uses it.
     pub fn range_segment_with(&self, range: &Range, weight_segs: &[u32]) -> u32 {
-        self.column_segment(range.column).unwrap_or_else(|| {
-            weight_segs
-                .get(range.column.0 as usize)
-                .copied()
-                .unwrap_or(0)
-        })
+        self.range_segment_with_segs(range, &self.column_segments(), weight_segs)
     }
 
     /// Owning segment of a range (valid after [`Self::validate`]).
     pub fn range_segment(&self, range: &Range) -> u32 {
-        self.column_segment(range.column)
-            .unwrap_or_else(|| self.weight_segments()[range.column.0 as usize])
+        self.range_segment_with_segs(range, &self.column_segments(), &self.weight_segments())
+    }
+
+    /// Owning segment of a matmul using precomputed `col_segs = self.column_segments()`.
+    pub fn matmul_segment_with(&self, matmul: &Matmul, col_segs: &[Option<u32>]) -> u32 {
+        [matmul.out.column, matmul.lhs.column, matmul.rhs.column]
+            .into_iter()
+            .filter_map(|id| col_segs.get(id.0 as usize).copied().flatten())
+            .max()
+            .unwrap_or(0)
     }
 
     /// Owning segment of a matmul (valid after [`Self::validate`]).
     pub fn matmul_segment(&self, matmul: &Matmul) -> u32 {
-        [matmul.out.column, matmul.lhs.column, matmul.rhs.column]
-            .into_iter()
-            .filter_map(|id| self.column_segment(id))
-            .max()
-            .unwrap_or(0)
+        self.matmul_segment_with(matmul, &self.column_segments())
     }
 
     fn validate_item_segment(
         &self,
         cols: impl Iterator<Item = ColumnId> + Clone,
+        col_segs: &[Option<u32>],
         relation: &str,
     ) -> Result<u32, Invalid> {
-        let Some(max_seg) = cols.clone().filter_map(|id| self.column_segment(id)).max() else {
+        let seg_of = |id: ColumnId| col_segs.get(id.0 as usize).copied().flatten();
+        let Some(max_seg) = cols.clone().filter_map(seg_of).max() else {
             return Ok(0);
         };
         for id in cols {
-            if let Some(seg) = self.column_segment(id) {
+            if let Some(seg) = seg_of(id) {
                 let col = &self.columns[id.0 as usize];
                 let ok = seg == max_seg || (seg.checked_add(1) == Some(max_seg) && col.carried);
                 if !ok {
@@ -562,6 +689,33 @@ impl Relation {
             width,
             log_len,
             carried: false,
+            segment: None,
+        });
+        ColumnId((self.columns.len() - 1) as u32)
+    }
+
+    /// Register a virtual column whose segment derives from its operands (RFC-0028 §2.1, §2.3).
+    pub fn add_virtual(&mut self, name: &str, def: Def, log_len: u8) -> ColumnId {
+        self.columns.push(Column {
+            name: name.into(),
+            kind: Kind::Virtual(def),
+            width: Width::unsigned(0),
+            log_len,
+            carried: false,
+            segment: None,
+        });
+        ColumnId((self.columns.len() - 1) as u32)
+    }
+
+    /// Register a virtual column in an explicit segment (RFC-0028 §2.3, for weight/public-only defs).
+    pub fn add_virtual_in(&mut self, name: &str, def: Def, log_len: u8, segment: u32) -> ColumnId {
+        self.columns.push(Column {
+            name: name.into(),
+            kind: Kind::Virtual(def),
+            width: Width::unsigned(0),
+            log_len,
+            carried: false,
+            segment: Some(segment),
         });
         ColumnId((self.columns.len() - 1) as u32)
     }
@@ -631,23 +785,16 @@ impl Relation {
         self.columns[r.column.0 as usize].width
     }
 
-    /// Static check of RFC-0026 §3.6: shapes, wrap-free bounds and range discipline.
-    pub fn validate(&self) -> Result<(), Invalid> {
+    /// Derive the static integer magnitude bound of every column (RFC-0026 §3.6, RFC-0028 §2.2).
+    ///
+    /// For committed/public columns this is `column.width.magnitude()`. For `Kind::Virtual`
+    /// columns this checks dependency order (`operand < column`), `Def` shape, and the strict
+    /// `< p / 2` bound (`mag <= HALF_MODULUS`).
+    pub fn derived_magnitudes(&self) -> Result<Vec<u128>, Invalid> {
+        let mut mags = Vec::with_capacity(self.columns.len());
         for (i, column) in self.columns.iter().enumerate() {
             let id = ColumnId(i as u32);
-            let width_ok = column.width.bits >= 1 && column.width.bits <= MAX_WIDTH_BITS;
-            let public_ok = match &column.kind {
-                Kind::Public(values) => {
-                    values.len() == 1usize << column.log_len
-                        && values.iter().all(|&v| column.width.contains(v))
-                }
-                Kind::Witness(group) => self
-                    .groups
-                    .get(group.0 as usize)
-                    .is_some_and(|g| g.log_len == column.log_len),
-                Kind::Weight => true,
-            };
-            if !width_ok || column.log_len > MAX_VARS || !public_ok {
+            if column.log_len > MAX_VARS {
                 return Err(Invalid::Column(id));
             }
             if column.carried && !matches!(column.kind, Kind::Witness(_)) {
@@ -655,7 +802,150 @@ impl Relation {
                     relation: column.name.clone(),
                 });
             }
+            if column.segment.is_some() && !matches!(column.kind, Kind::Virtual(_)) {
+                return Err(Invalid::Segment {
+                    relation: column.name.clone(),
+                });
+            }
+            let mag = match &column.kind {
+                Kind::Public(values) => {
+                    let width_ok = column.width.bits >= 1 && column.width.bits <= MAX_WIDTH_BITS;
+                    let public_ok = values.len() == 1usize << column.log_len
+                        && values.iter().all(|&v| column.width.contains(v));
+                    if !width_ok || !public_ok {
+                        return Err(Invalid::Column(id));
+                    }
+                    column.width.magnitude()
+                }
+                Kind::Witness(group) => {
+                    let width_ok = column.width.bits >= 1 && column.width.bits <= MAX_WIDTH_BITS;
+                    let group_ok = self
+                        .groups
+                        .get(group.0 as usize)
+                        .is_some_and(|g| g.log_len == column.log_len);
+                    if !width_ok || !group_ok {
+                        return Err(Invalid::Column(id));
+                    }
+                    column.width.magnitude()
+                }
+                Kind::Weight => {
+                    let width_ok = column.width.bits >= 1 && column.width.bits <= MAX_WIDTH_BITS;
+                    if !width_ok {
+                        return Err(Invalid::Column(id));
+                    }
+                    column.width.magnitude()
+                }
+                Kind::Virtual(def) => {
+                    if column.width != Width::unsigned(0) {
+                        return Err(Invalid::Column(id));
+                    }
+                    self.validate_virtual_def(id, column, def, &mags)?
+                }
+            };
+            mags.push(mag);
         }
+        Ok(mags)
+    }
+
+    /// Static integer magnitude bound of one column after validation, or `None` if invalid.
+    pub fn column_magnitude(&self, id: ColumnId) -> Option<u128> {
+        self.derived_magnitudes()
+            .ok()
+            .and_then(|m| m.get(id.0 as usize).copied())
+    }
+
+    fn validate_virtual_def(
+        &self,
+        id: ColumnId,
+        column: &Column,
+        def: &Def,
+        mags: &[u128],
+    ) -> Result<u128, Invalid> {
+        let name = &column.name;
+        let check_earlier = |r: &Ref| {
+            if r.column.0 >= id.0 {
+                return Err(Invalid::Ref {
+                    relation: name.clone(),
+                });
+            }
+            Ok(())
+        };
+        let mag = match def {
+            Def::Linear { constant, terms } => {
+                let mut acc = constant.unsigned_abs() as u128;
+                for (coeff, r) in terms {
+                    if *coeff == 0 {
+                        return Err(Invalid::Shape {
+                            relation: name.clone(),
+                        });
+                    }
+                    check_earlier(r)?;
+                    self.validate_ref(r, column.log_len, name)?;
+                    acc = acc.saturating_add(
+                        (coeff.unsigned_abs() as u128).saturating_mul(mags[r.column.0 as usize]),
+                    );
+                }
+                acc
+            }
+            Def::Pointwise { terms } => {
+                if terms.is_empty() {
+                    return Err(Invalid::Shape {
+                        relation: name.clone(),
+                    });
+                }
+                let mut acc = 0u128;
+                for term in terms {
+                    if term.factors.len() > MAX_FACTORS || term.coeff == 0 {
+                        return Err(Invalid::Shape {
+                            relation: name.clone(),
+                        });
+                    }
+                    let mut prod = term.coeff.unsigned_abs() as u128;
+                    for factor in &term.factors {
+                        check_earlier(factor)?;
+                        self.validate_ref(factor, column.log_len, name)?;
+                        prod = prod.saturating_mul(mags[factor.column.0 as usize]);
+                    }
+                    acc = acc.saturating_add(prod);
+                }
+                acc
+            }
+            Def::Contraction {
+                free,
+                summed,
+                lhs,
+                rhs,
+            } => {
+                if *free != column.log_len || *summed > MAX_VARS {
+                    return Err(Invalid::Shape {
+                        relation: name.clone(),
+                    });
+                }
+                // `free <= MAX_VARS` and `summed <= MAX_VARS`, so `domain <= 60 < Ref::FIXED_0`.
+                let domain = *free + *summed;
+                check_earlier(lhs)?;
+                check_earlier(rhs)?;
+                self.validate_ref_fixed(lhs, domain, name, true)?;
+                self.validate_ref_fixed(rhs, domain, name, true)?;
+                (1u128 << *summed)
+                    .saturating_mul(mags[lhs.column.0 as usize])
+                    .saturating_mul(mags[rhs.column.0 as usize])
+            }
+        };
+        // RFC-0028 §2.2: reject a derived magnitude of `p / 2` or more (`mag > HALF_MODULUS`).
+        if mag > HALF_MODULUS {
+            return Err(Invalid::Bound {
+                relation: name.clone(),
+                bound: mag,
+            });
+        }
+        Ok(mag)
+    }
+
+    /// Static check of RFC-0026 §3.6 and RFC-0028 §2.2–2.3: shapes, wrap-free bounds,
+    /// virtual column acyclicity/magnitudes, segment boundaries and range discipline.
+    pub fn validate(&self) -> Result<(), Invalid> {
+        let mags = self.derived_magnitudes()?;
         let mut prev_segment: Option<u32> = None;
         for (i, group) in self.groups.iter().enumerate() {
             if self.groups[..i].iter().any(|g| g.name == group.name) {
@@ -673,6 +963,38 @@ impl Relation {
                 });
             }
             prev_segment = Some(group.segment);
+        }
+        let total_segments = self.segments();
+        let col_segs = self.column_segments();
+        for column in &self.columns {
+            if let Kind::Virtual(def) = &column.kind {
+                let ops = def.operands();
+                let op_max = ops
+                    .iter()
+                    .filter_map(|&id| col_segs.get(id.0 as usize).copied().flatten())
+                    .max();
+                match op_max {
+                    Some(_) => {
+                        // RFC-0028 §2.3 / RFC-0026 A28: explicit `segment` is only for
+                        // virtual columns whose operands are all weight/public.
+                        if column.segment.is_some() {
+                            return Err(Invalid::Segment {
+                                relation: column.name.clone(),
+                            });
+                        }
+                        self.validate_item_segment(ops.into_iter(), &col_segs, &column.name)?;
+                    }
+                    None => {
+                        if let Some(explicit) = column.segment {
+                            if explicit >= total_segments {
+                                return Err(Invalid::Segment {
+                                    relation: column.name.clone(),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
         }
         for table in &self.tables {
             let ok = !table.widths.is_empty()
@@ -692,10 +1014,10 @@ impl Relation {
             }
         }
         for identity in &self.identities {
-            self.validate_identity(identity)?;
+            self.validate_identity(identity, &mags, &col_segs)?;
         }
         for lookup in &self.lookups {
-            self.validate_lookup(lookup)?;
+            self.validate_lookup(lookup, &col_segs)?;
         }
         for range in &self.ranges {
             let column = self.column(range.column).ok_or_else(|| Invalid::Ref {
@@ -711,12 +1033,12 @@ impl Relation {
             }
         }
         for matmul in &self.matmuls {
-            self.validate_matmul(matmul)?;
+            self.validate_matmul(matmul, &mags, &col_segs)?;
         }
         for compose in &self.composes {
-            self.validate_compose(compose)?;
+            self.validate_compose(compose, &mags, &col_segs)?;
         }
-        self.validate_discipline()
+        self.validate_discipline(&mags)
     }
 
     fn validate_ref(&self, r: &Ref, domain: u8, relation: &str) -> Result<(), Invalid> {
@@ -750,7 +1072,12 @@ impl Relation {
         Ok(())
     }
 
-    fn validate_identity(&self, identity: &Identity) -> Result<(), Invalid> {
+    fn validate_identity(
+        &self,
+        identity: &Identity,
+        mags: &[u128],
+        col_segs: &[Option<u32>],
+    ) -> Result<(), Invalid> {
         let name = &identity.name;
         if identity.vars > MAX_VARS || identity.terms.is_empty() {
             return Err(Invalid::Shape {
@@ -767,7 +1094,7 @@ impl Relation {
             let mut magnitude = term.coeff.unsigned_abs() as u128;
             for factor in &term.factors {
                 self.validate_ref(factor, identity.vars, name)?;
-                magnitude = magnitude.saturating_mul(self.width(factor).magnitude());
+                magnitude = magnitude.saturating_mul(mags[factor.column.0 as usize]);
             }
             bound = bound.saturating_add(magnitude);
         }
@@ -782,12 +1109,13 @@ impl Relation {
                 .terms
                 .iter()
                 .flat_map(|t| t.factors.iter().map(|f| f.column)),
+            col_segs,
             name,
         )?;
         Ok(())
     }
 
-    fn validate_lookup(&self, lookup: &Lookup) -> Result<(), Invalid> {
+    fn validate_lookup(&self, lookup: &Lookup, col_segs: &[Option<u32>]) -> Result<(), Invalid> {
         let name = &lookup.name;
         let table = self
             .tables
@@ -824,12 +1152,18 @@ impl Relation {
                 .iter()
                 .chain(lookup.selector.iter())
                 .map(|r| r.column),
+            col_segs,
             name,
         )?;
         Ok(())
     }
 
-    fn validate_matmul(&self, matmul: &Matmul) -> Result<(), Invalid> {
+    fn validate_matmul(
+        &self,
+        matmul: &Matmul,
+        mags: &[u128],
+        col_segs: &[Option<u32>],
+    ) -> Result<(), Invalid> {
         let name = &matmul.name;
         let domain = matmul
             .free
@@ -842,9 +1176,9 @@ impl Relation {
         self.validate_ref_fixed(&matmul.lhs, domain, name, true)?;
         self.validate_ref_fixed(&matmul.rhs, domain, name, true)?;
         let products = (1u128 << matmul.summed)
-            .saturating_mul(self.width(&matmul.lhs).magnitude())
-            .saturating_mul(self.width(&matmul.rhs).magnitude());
-        let bound = products.saturating_add(self.width(&matmul.out).magnitude());
+            .saturating_mul(mags[matmul.lhs.column.0 as usize])
+            .saturating_mul(mags[matmul.rhs.column.0 as usize]);
+        let bound = products.saturating_add(mags[matmul.out.column.0 as usize]);
         if bound >= MODULUS {
             return Err(Invalid::Bound {
                 relation: name.clone(),
@@ -853,12 +1187,18 @@ impl Relation {
         }
         self.validate_item_segment(
             [matmul.out.column, matmul.lhs.column, matmul.rhs.column].into_iter(),
+            col_segs,
             name,
         )?;
         Ok(())
     }
 
-    fn validate_compose(&self, compose: &Compose) -> Result<(), Invalid> {
+    fn validate_compose(
+        &self,
+        compose: &Compose,
+        mags: &[u128],
+        col_segs: &[Option<u32>],
+    ) -> Result<(), Invalid> {
         let shape = || Invalid::Shape {
             relation: compose.name.clone(),
         };
@@ -866,13 +1206,13 @@ impl Relation {
         if compose.limbs.is_empty() {
             return Err(shape());
         }
-        let mut bound = column.width.magnitude();
+        let mut bound = mags[compose.column.0 as usize];
         for &(limb, shift) in &compose.limbs {
-            let limb = self.column(limb).ok_or_else(shape)?;
-            if limb.log_len != column.log_len || shift > MAX_WIDTH_BITS {
+            let limb_col = self.column(limb).ok_or_else(shape)?;
+            if limb_col.log_len != column.log_len || shift > MAX_WIDTH_BITS {
                 return Err(shape());
             }
-            bound = bound.saturating_add(limb.width.magnitude() << shift);
+            bound = bound.saturating_add(mags[limb.0 as usize] << shift);
         }
         if bound >= MODULUS {
             return Err(Invalid::Bound {
@@ -882,28 +1222,29 @@ impl Relation {
         }
         self.validate_item_segment(
             core::iter::once(compose.column).chain(compose.limbs.iter().map(|(l, _)| *l)),
+            col_segs,
             &compose.name,
         )?;
         Ok(())
     }
 
-    /// RFC-0026 §3.6 range discipline: every witness and weight column's declared
-    /// width is enforced on all of its entries by a range, an unselected lookup, or
-    /// a composition of enforced limbs whose composed range lies within it.
-    fn validate_discipline(&self) -> Result<(), Invalid> {
+    /// RFC-0026 §3.6 & RFC-0028 §2.2 range discipline: every witness and weight column's
+    /// declared width is enforced on all of its entries by a range, an unselected lookup, or
+    /// a composition/matmul over disciplined columns. Virtual columns are disciplined by
+    /// induction once every operand of their definition is disciplined (no cyclic self-discipline).
+    fn validate_discipline(&self, mags: &[u128]) -> Result<(), Invalid> {
         let mut enforced = BTreeSet::new();
         for range in &self.ranges {
-            if range.width.within(self.width(&Ref {
-                column: range.column,
-                vars: Vec::new(),
-            })) {
+            let col = &self.columns[range.column.0 as usize];
+            if !matches!(col.kind, Kind::Virtual(_)) && range.width.within(col.width) {
                 enforced.insert(range.column);
             }
         }
         for lookup in self.lookups.iter().filter(|l| l.selector.is_none()) {
             let table = &self.tables[lookup.table.0 as usize];
             for (r, width) in lookup.tuple.iter().zip(&table.widths) {
-                if width.within(self.width(r)) {
+                let col = &self.columns[r.column.0 as usize];
+                if !matches!(col.kind, Kind::Virtual(_)) && width.within(col.width) {
                     enforced.insert(r.column);
                 }
             }
@@ -913,22 +1254,42 @@ impl Relation {
                 enforced.insert(ColumnId(i as u32));
             }
         }
-        // Compositions may chain, so iterate to a fixed point.
+        // Virtual columns, compositions and matmuls may chain, so iterate to a fixed point.
         loop {
             let before = enforced.len();
+            for (i, column) in self.columns.iter().enumerate() {
+                let id = ColumnId(i as u32);
+                if enforced.contains(&id) {
+                    continue;
+                }
+                if let Kind::Virtual(def) = &column.kind {
+                    if def.operands().iter().all(|op| enforced.contains(op)) {
+                        enforced.insert(id);
+                    }
+                }
+            }
             for compose in &self.composes {
-                if enforced.contains(&compose.column)
+                let target = &self.columns[compose.column.0 as usize];
+                if matches!(target.kind, Kind::Virtual(_))
+                    || enforced.contains(&compose.column)
                     || !compose.limbs.iter().all(|(l, _)| enforced.contains(l))
                 {
                     continue;
                 }
                 let (mut low, mut high) = (0i128, 0i128);
                 for &(limb, shift) in &compose.limbs {
-                    let width = self.columns[limb.0 as usize].width;
-                    low += (width.min() as i128) << shift;
-                    high += (width.max() as i128) << shift;
+                    let limb_col = &self.columns[limb.0 as usize];
+                    let (min_v, max_v) = match limb_col.kind {
+                        Kind::Virtual(_) => {
+                            let m = mags[limb.0 as usize] as i128;
+                            (-m, m)
+                        }
+                        _ => (limb_col.width.min() as i128, limb_col.width.max() as i128),
+                    };
+                    low += min_v << shift;
+                    high += max_v << shift;
                 }
-                let width = self.columns[compose.column.0 as usize].width;
+                let width = target.width;
                 if width.min() as i128 <= low && high <= width.max() as i128 {
                     enforced.insert(compose.column);
                 }
@@ -939,15 +1300,18 @@ impl Relation {
             // column discipline it once together they cover every entry (A6).
             let mut slices: BTreeMap<ColumnId, Vec<&Ref>> = BTreeMap::new();
             for matmul in &self.matmuls {
-                if enforced.contains(&matmul.out.column)
+                if matches!(
+                    self.columns[matmul.out.column.0 as usize].kind,
+                    Kind::Virtual(_)
+                ) || enforced.contains(&matmul.out.column)
                     || !enforced.contains(&matmul.lhs.column)
                     || !enforced.contains(&matmul.rhs.column)
                 {
                     continue;
                 }
                 let worst = (1u128 << matmul.summed)
-                    .saturating_mul(self.width(&matmul.lhs).magnitude())
-                    .saturating_mul(self.width(&matmul.rhs).magnitude());
+                    .saturating_mul(mags[matmul.lhs.column.0 as usize])
+                    .saturating_mul(mags[matmul.rhs.column.0 as usize]);
                 let out = self.width(&matmul.out);
                 if worst <= out.max() as u128 && worst <= out.min().unsigned_abs() as u128 {
                     slices
@@ -967,7 +1331,7 @@ impl Relation {
         }
         for (i, column) in self.columns.iter().enumerate() {
             let id = ColumnId(i as u32);
-            if !matches!(column.kind, Kind::Public(_)) && !enforced.contains(&id) {
+            if matches!(column.kind, Kind::Witness(_) | Kind::Weight) && !enforced.contains(&id) {
                 return Err(Invalid::Undisciplined(id));
             }
         }

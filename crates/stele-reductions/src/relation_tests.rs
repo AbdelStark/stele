@@ -1403,3 +1403,84 @@ fn accepts_three_segment_relation_and_rejects_root_reorder_and_non_carried() {
         Err(Error::StatementMismatch(Invalid::Segment { .. }))
     ));
 }
+
+/// RFC-0026 A28 item 4 / RFC-0028 (E18-01): before E18-02 implements virtual reductions,
+/// both unsegmented and segmented engine plans reject relations containing virtual columns
+/// with `Error::Unsupported`, while `relation_codec::encode` distinguishes virtual defs.
+#[test]
+fn rejects_virtual_columns_until_e18_02_and_encodes_distinctly() {
+    use stele_ir::relation::Def;
+
+    let mut rel = Relation::default();
+    let g = Kind::Witness(rel.add_group("G/v/1", 1));
+    let x = rel.add_column("x", g, Width::signed(8), 1);
+    rel.ranges.push(Range {
+        name: "rx".into(),
+        column: x,
+        width: Width::signed(8),
+    });
+    let _v = rel.add_virtual(
+        "v",
+        Def::Linear {
+            constant: 1,
+            terms: vec![(2, Ref::identity(x, 1))],
+        },
+        1,
+    );
+    assert_eq!(rel.validate(), Ok(()));
+
+    let mut vals = Values::new(&rel);
+    vals.set(&rel, x, vec![3, -4]).expect("set");
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        prove(&mut t, &rel, &vals, &[], Sources::Expander).err(),
+        Some(Error::Unsupported)
+    );
+    let mut ts = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        prove_segmented(&mut ts, &rel, |_| Ok(vals.clone()), &[], Sources::Expander).err(),
+        Some(Error::Unsupported)
+    );
+    let mut tv = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify(&mut tv, &rel, &[], &Proof::default(), Sources::Expander).err(),
+        Some(Error::Unsupported)
+    );
+    let mut tvs = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify_segmented(&mut tvs, &rel, &[], &ProofV2::default(), Sources::Expander).err(),
+        Some(Error::Unsupported)
+    );
+    // F3: dev-zk layout also rejects virtual relations cleanly without panicking.
+    assert_eq!(
+        crate::zk::relation::layout(&rel).err(),
+        Some(crate::zk::Error::Statement)
+    );
+
+    let enc1 = super::codec::encode(&rel);
+    let mut rel2 = rel.clone();
+    rel2.columns[1].kind = Kind::Virtual(Def::Linear {
+        constant: 2,
+        terms: vec![(2, Ref::identity(x, 1))],
+    });
+    let enc2 = super::codec::encode(&rel2);
+    assert_ne!(enc1, enc2);
+    assert!(enc1.starts_with(b"stele/v0.1/relation/encoding/v2"));
+
+    // Unsegmented non-virtual relations retain the v1 magic prefix.
+    let mut plain = Relation::default();
+    let gp = Kind::Witness(plain.add_group("G/p/1", 1));
+    let px = plain.add_column("x", gp, Width::signed(8), 1);
+    plain.ranges.push(Range {
+        name: "rx".into(),
+        column: px,
+        width: Width::signed(8),
+    });
+    assert!(super::codec::encode(&plain).starts_with(b"stele/v0.1/relation/encoding/v1"));
+    plain.mark_carried(px);
+    assert!(super::codec::encode(&plain).starts_with(b"stele/v0.1/relation/encoding/v2"));
+    assert_eq!(
+        crate::zk::relation::layout(&plain).err(),
+        Some(crate::zk::Error::Statement)
+    );
+}
