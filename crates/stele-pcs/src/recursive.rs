@@ -422,7 +422,7 @@ impl RecursivePlan {
             for &b in blowups {
                 for ell in 1..n_bits {
                     let m = n_bits - ell;
-                    if m < 1 || m + b > MAX_DOMAIN_BITS {
+                    if ell > MAX_DOMAIN_BITS || m < 1 || m + b > MAX_DOMAIN_BITS {
                         continue;
                     }
                     let Some((q, e)) = qe_table[usize::from(m)][usize::from(b)] else {
@@ -450,18 +450,23 @@ impl RecursivePlan {
                     } else {
                         0u64
                     };
-                    let rows = match 1u64.checked_shl(u32::from(ell)) {
-                        Some(r) => r,
-                        None => continue,
+                    let Some(rows) = 1u64.checked_shl(u32::from(ell)) else {
+                        continue;
                     };
-                    let col_bytes = u64::from(q).checked_mul(
-                        elem.checked_mul(rows)?
-                            .checked_add(32u64 * u64::from(m + b))?,
-                    )?;
-                    let total = root_bytes
-                        .checked_add(sc_bytes)?
-                        .checked_add(col_bytes)?
-                        .checked_add(sub_bytes)?;
+                    let Some(col_bytes) = elem
+                        .checked_mul(rows)
+                        .and_then(|v| v.checked_add(32u64 * u64::from(m + b)))
+                        .and_then(|v| u64::from(q).checked_mul(v))
+                    else {
+                        continue;
+                    };
+                    let Some(total) = root_bytes
+                        .checked_add(sc_bytes)
+                        .and_then(|v| v.checked_add(col_bytes))
+                        .and_then(|v| v.checked_add(sub_bytes))
+                    else {
+                        continue;
+                    };
                     let better = match &best {
                         None => true,
                         Some((best_total, _)) => total < *best_total,
@@ -1306,7 +1311,13 @@ impl<K: Field> WeightTerm<K> {
 }
 
 /// Verify a fresh-mode recursive opening at a caller-derived fresh point `point` (`len == ell_0 + m_0`)
-/// and claimed value `value` (RFC-0029 §§2, 4, 5).
+/// and claimed value `value` (RFC-0029 §§1.3, 2, 4, 5).
+///
+/// # Security Invariant
+/// Fresh-mode proximity soundness (`RFC-0029 §1.3`, `formal/tensor-opening.md`) requires that
+/// `source.root()` was already absorbed into `t` **before** `point` was derived from the
+/// transcript (e.g. via RFC-0006 A2 mode-1 batching). Callers without an already-derived fresh
+/// transcript point MUST use [`verify_fresh_claims`].
 pub fn verify_fresh_at_point<K: ChallengeField>(
     t: &mut Transcript<K>,
     source: &RecursiveSource<K>,
@@ -1729,7 +1740,9 @@ fn absorb_opening_statement<K: ChallengeField>(
 ) -> Result<(), RecursiveError> {
     let src_bytes = source.bytes()?;
     let elem = 4 * K::DEGREE;
-    let mut frame = reserve_vec(8 + src_bytes.len() + (point.len() + 1) * elem)?;
+    let pv_len = mul_usize(add_usize(point.len(), 1)?, elem)?;
+    let total = add_usize(add_usize(8, src_bytes.len())?, pv_len)?;
+    let mut frame = reserve_vec(total)?;
     frame.extend_from_slice(&opening_id.to_le_bytes());
     frame.extend_from_slice(&src_bytes);
     for p in point {
@@ -1745,12 +1758,14 @@ fn absorb_claims_header<K: ChallengeField>(
     opening_id: u64,
     claims: &[(&[K], K)],
 ) -> Result<(), RecursiveError> {
+    let count = u32::try_from(claims.len()).map_err(|_| RecursiveError::Capacity)?;
     let elem = 4 * K::DEGREE;
     let vars = claims[0].0.len();
-    let per_claim = (vars + 1) * elem;
-    let mut frame = reserve_vec(12 + claims.len() * per_claim)?;
+    let per_claim = mul_usize(add_usize(vars, 1)?, elem)?;
+    let total = add_usize(12, mul_usize(claims.len(), per_claim)?)?;
+    let mut frame = reserve_vec(total)?;
     frame.extend_from_slice(&opening_id.to_le_bytes());
-    frame.extend_from_slice(&(claims.len() as u32).to_le_bytes());
+    frame.extend_from_slice(&count.to_le_bytes());
     for &(point, val) in claims {
         for p in point {
             frame.extend_from_slice(p.to_le_bytes().as_ref());

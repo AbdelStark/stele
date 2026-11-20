@@ -2,7 +2,7 @@
 //! recursive opening verifiers (`verify_fresh_at_point` and `verify_fresh_claims`).
 #![forbid(unsafe_code)]
 
-use stele_field::{Field, Serialize, M31, QM31};
+use stele_field::{Field, Inverse, Serialize, M31, QM31};
 use stele_hash::{merkle, AbsorbLabel, ChallengeLabel, HashUsage, Transcript};
 use stele_pcs::recursive::{
     level_descriptor, verify_fresh_at_point, verify_fresh_claims, LevelSpec, PreparedRecursive,
@@ -187,6 +187,13 @@ fn nc_0630() -> Result<(), String> {
     }
 
     // 2. L = 2: honest passes, corrupted committed u_1' rejects with ColumnMismatch at final check.
+    // 2. L = 2: genuine residual-propagating malicious prover parameterized by u_1_cand.
+    //    - With uncorrupted u_1 (delta_0 == 0): verifies Ok (proves non-vacuity).
+    //    - With single-entry tamper u_1'[3] += 1:
+    //        * scalar-forged u_2 (matching ⟨w_2, u_2⟩ == running): rejects with ColumnMismatch.
+    //        * honest u_2 = eq(r_1)^T u_1' (passing all column checks): rejects with ValueMismatch.
+    //    - With PcsLevelBeta-only tamper u_1'' satisfying ⟨eq(r_col0), u_1''⟩ == value2:
+    //        * rejects with ColumnMismatch / ValueMismatch purely via PcsLevelBeta column terms.
     let plan2 = RecursivePlan::new(
         vec![LevelSpec::new(2, 4, 2), LevelSpec::new(2, 2, 2)],
         4,
@@ -200,99 +207,216 @@ fn nc_0630() -> Result<(), String> {
     let point2 = seeded_point(6, b"nc-0630-l2")?;
     let value2 = prepared2.evaluate(&point2).map_err(dbg_err)?;
 
-    let mut th2 = Transcript::<QM31>::new(b"nc-0630-h2").map_err(dbg_err)?;
-    let honest2 = prepared2
-        .open_fresh_at_point(&mut th2, 2, &point2, value2)
-        .map_err(dbg_err)?;
-    let mut tvh2 = Transcript::<QM31>::new(b"nc-0630-h2").map_err(dbg_err)?;
-    verify_fresh_at_point(&mut tvh2, &source2, 2, &point2, value2, &honest2)
-        .map_err(|e| format!("honest L=2 failed: {e:?}"))?;
-
     let (col0_2, tree0_2, desc0_2) = commit_m31_raw(6302, plan2.levels()[0], &msg2)?;
     let eq_row0 = stele_poly::eq_table(&point2[..2]).map_err(dbg_err)?;
-    let mut u1_2 = vec![QM31::from_i64(0); 16];
+    let eq_col0 = stele_poly::eq_table(&point2[2..]).map_err(dbg_err)?;
+    let code0_2 = CircleCoeff::new(4, 2).map_err(dbg_err)?;
+    let mut u1_honest = vec![QM31::from_i64(0); 16];
     for (row, &a) in msg2.chunks_exact(16).zip(&eq_row0) {
-        for (dst, &v) in u1_2.iter_mut().zip(row) {
+        for (dst, &v) in u1_honest.iter_mut().zip(row) {
             *dst = *dst + a.mul_m31(v);
         }
     }
-    u1_2[3] = u1_2[3] + QM31::from_i64(1);
-    let (col1_2, tree1_2, desc1_2) = commit_ext_raw(6302, 1, plan2.levels()[1], &u1_2)?;
-    let mut tp2 = Transcript::<QM31>::new(b"nc-0630-f2").map_err(dbg_err)?;
-    absorb_open_stmt(&mut tp2, 2, &source2, &point2, value2)?;
-    let mut forged2 = Vec::new();
-    write_plan_header(&plan2, &mut forged2);
-    let root1 = tree1_2.root();
-    forged2.extend_from_slice(&root1);
-    tp2.absorb(AbsorbLabel::PcsLevelRoot, &root1)
-        .map_err(dbg_err)?;
-    let r0_start = forged2.len();
-    let mut ys0 = Vec::new();
-    for _ in 0..plan2.queries()[0] {
-        let idx = tp2.opening_column(desc0_2.count).map_err(dbg_err)?;
-        let width = desc0_2.width as usize;
-        let pay = &col0_2[idx as usize * width..(idx as usize + 1) * width];
-        let mut y = QM31::from_i64(0);
-        for (&w, ch) in eq_row0.iter().zip(pay.chunks_exact(4)) {
-            let arr: [u8; 4] = ch.try_into().map_err(dbg_err)?;
-            let m = M31::from_le_bytes(arr).ok_or_else(|| "noncanonical M31".to_owned())?;
-            y = y + w.mul_m31(m);
+
+    let build_l2 =
+        |u1_cand: &[QM31], forge_u2_scalar: bool, tag: &[u8]| -> Result<Vec<u8>, String> {
+            let (col1, tree1, desc1) = commit_ext_raw(6302, 1, plan2.levels()[1], u1_cand)?;
+            let mut tp = Transcript::<QM31>::new(tag).map_err(dbg_err)?;
+            absorb_open_stmt(&mut tp, 2, &source2, &point2, value2)?;
+            let mut out = Vec::new();
+            write_plan_header(&plan2, &mut out);
+            let root1 = tree1.root();
+            out.extend_from_slice(&root1);
+            tp.absorb(AbsorbLabel::PcsLevelRoot, &root1)
+                .map_err(dbg_err)?;
+
+            let r0_start = out.len();
+            let mut queried0 = Vec::new();
+            let mut ys0 = Vec::new();
+            for _ in 0..plan2.queries()[0] {
+                let idx = tp.opening_column(desc0_2.count).map_err(dbg_err)?;
+                let width = desc0_2.width as usize;
+                let pay = &col0_2[idx as usize * width..(idx as usize + 1) * width];
+                let mut y = QM31::from_i64(0);
+                for (&w, ch) in eq_row0.iter().zip(pay.chunks_exact(4)) {
+                    let arr: [u8; 4] = ch.try_into().map_err(dbg_err)?;
+                    let m = M31::from_le_bytes(arr).ok_or_else(|| "noncanonical M31".to_owned())?;
+                    y = y + w.mul_m31(m);
+                }
+                queried0.push(idx);
+                ys0.push(y);
+                append_col(&col0_2, &tree0_2, width, idx, &mut out)?;
+            }
+            tp.absorb(AbsorbLabel::OpeningColumns, &out[r0_start..])
+                .map_err(dbg_err)?;
+
+            let beta0 = tp
+                .challenge(ChallengeLabel::PcsLevelBeta)
+                .map_err(dbg_err)?;
+            let mut w1 = eq_col0.clone();
+            let mut v1 = value2;
+            let mut bp = beta0;
+            for (&idx, &y) in queried0.iter().zip(&ys0) {
+                v1 = v1 + bp * y;
+                let mut factors = code0_2.basis_factors(idx as usize).map_err(dbg_err)?;
+                factors.reverse();
+                let mut btbl = vec![M31::ZERO; 16];
+                btbl[0] = M31::ONE;
+                let mut width = 1usize;
+                for f in factors {
+                    for i in (0..width).rev() {
+                        let parent = btbl[i];
+                        btbl[2 * i] = parent;
+                        btbl[2 * i + 1] = parent * f;
+                    }
+                    width *= 2;
+                }
+                for (dst, &bv) in w1.iter_mut().zip(&btbl) {
+                    *dst = *dst + bp.mul_m31(bv);
+                }
+                bp = bp * beta0;
+            }
+
+            // Exact residual `delta = v1 - ⟨w1, u1_cand⟩`; identically 0 when u1_cand == u1_honest.
+            let mut actual_dot = QM31::from_i64(0);
+            for (&w, &u) in w1.iter().zip(u1_cand) {
+                actual_dot = actual_dot + w * u;
+            }
+            let mut delta = v1 - actual_dot;
+
+            let mut inst = Vec::new();
+            inst.extend_from_slice(&2u64.to_le_bytes());
+            inst.push(1);
+            inst.push(2);
+            inst.push(2);
+            inst.extend_from_slice(&v1.to_le_bytes());
+            tp.absorb(AbsorbLabel::Instance, &inst).map_err(dbg_err)?;
+
+            let one = QM31::from_i64(1);
+            let two = QM31::from_i64(2);
+            let inv2 = M31::from_i64(1 << 30);
+            let mut cur_w = w1;
+            let mut cur_m = u1_cand.to_vec();
+            let mut rows = 4usize;
+            let cols = 4usize;
+            for rnd in 0..2u32 {
+                let half = rows / 2;
+                let stride = half * cols;
+                let (w_lo, w_hi) = cur_w.split_at(stride);
+                let (m_lo, m_hi) = cur_m.split_at(stride);
+                let (mut y0, mut y1, mut y2) =
+                    (QM31::from_i64(0), QM31::from_i64(0), QM31::from_i64(0));
+                for i in 0..stride {
+                    let (w0, w1_v, m0, m1) = (w_lo[i], w_hi[i], m_lo[i], m_hi[i]);
+                    y0 = y0 + w0 * m0;
+                    y1 = y1 + w1_v * m1;
+                    y2 = y2 + (w1_v + w1_v - w0) * (m1 + m1 - m0);
+                }
+                // Propagate residual through L_0(r) so `y0' + y1 == running` holds in every round.
+                let vals = [y0 + delta, y1, y2];
+                for v in vals {
+                    out.extend_from_slice(&v.to_le_bytes());
+                }
+                let mut rb = Vec::new();
+                rb.extend_from_slice(&2u64.to_le_bytes());
+                rb.extend_from_slice(&rnd.to_le_bytes());
+                for v in vals {
+                    rb.extend_from_slice(&v.to_le_bytes());
+                }
+                tp.absorb(AbsorbLabel::Round, &rb).map_err(dbg_err)?;
+                let r = tp.challenge(ChallengeLabel::Sumcheck).map_err(dbg_err)?;
+                let _ = interp2(vals, r);
+                delta = delta * (((r - one) * (r - two)).mul_m31(inv2));
+                let mut nw = Vec::with_capacity(stride);
+                let mut nm = Vec::with_capacity(stride);
+                for i in 0..stride {
+                    nw.push(w_lo[i] + r * (w_hi[i] - w_lo[i]));
+                    nm.push(m_lo[i] + r * (m_hi[i] - m_lo[i]));
+                }
+                cur_w = nw;
+                cur_m = nm;
+                rows = half;
+            }
+
+            // cur_m is exact `u_2_honest = eq(r_1)^T u1_cand`; cur_w is exact `w_2`.
+            let mut u2 = cur_m;
+            if forge_u2_scalar && delta != QM31::from_i64(0) {
+                let (k, wk) = cur_w
+                    .iter()
+                    .enumerate()
+                    .find(|&(_, &w)| w != QM31::from_i64(0))
+                    .ok_or_else(|| "all-zero w_2".to_owned())?;
+                let inv_wk = wk
+                    .inverse()
+                    .ok_or_else(|| "non-invertible w_2".to_owned())?;
+                u2[k] = u2[k] + delta * inv_wk;
+            }
+
+            let u2_start = out.len();
+            for v in &u2 {
+                out.extend_from_slice(&v.to_le_bytes());
+            }
+            tp.absorb(AbsorbLabel::PcsLevelRoot, &out[u2_start..])
+                .map_err(dbg_err)?;
+            let r1_start = out.len();
+            for _ in 0..plan2.queries()[1] {
+                let idx = tp.opening_column(desc1.count).map_err(dbg_err)?;
+                append_col(&col1, &tree1, desc1.width as usize, idx, &mut out)?;
+            }
+            tp.absorb(AbsorbLabel::OpeningColumns, &out[r1_start..])
+                .map_err(dbg_err)?;
+            Ok(out)
+        };
+
+    // (a) Non-vacuity check: exact same builder with uncorrupted u_1 MUST be accepted!
+    let honest_built = build_l2(&u1_honest, true, b"nc-0630-l2-honest")?;
+    let mut tv_ok = Transcript::<QM31>::new(b"nc-0630-l2-honest").map_err(dbg_err)?;
+    verify_fresh_at_point(&mut tv_ok, &source2, 2, &point2, value2, &honest_built)
+        .map_err(|e| format!("non-vacuity L=2 check failed: {e:?}"))?;
+
+    // (b) Single-entry tamper u_1'[3] += 1:
+    let mut u1_single = u1_honest.clone();
+    u1_single[3] = u1_single[3] + QM31::from_i64(1);
+    let forged_col = build_l2(&u1_single, true, b"nc-0630-l2-single-col")?;
+    let mut tv_col = Transcript::<QM31>::new(b"nc-0630-l2-single-col").map_err(dbg_err)?;
+    match verify_fresh_at_point(&mut tv_col, &source2, 2, &point2, value2, &forged_col) {
+        Err(RecursiveError::ColumnMismatch) => {}
+        other => {
+            return Err(format!(
+                "L=2 single-entry expected ColumnMismatch, got {other:?}"
+            ))
         }
-        ys0.push(y);
-        append_col(&col0_2, &tree0_2, width, idx, &mut forged2)?;
     }
-    tp2.absorb(AbsorbLabel::OpeningColumns, &forged2[r0_start..])
-        .map_err(dbg_err)?;
-    let beta0 = tp2
-        .challenge(ChallengeLabel::PcsLevelBeta)
-        .map_err(dbg_err)?;
-    let mut v1 = value2;
-    let mut bp = beta0;
-    for y in ys0 {
-        v1 = v1 + bp * y;
-        bp = bp * beta0;
-    }
-    let mut inst = Vec::new();
-    inst.extend_from_slice(&2u64.to_le_bytes());
-    inst.push(1);
-    inst.push(2);
-    inst.push(2);
-    inst.extend_from_slice(&v1.to_le_bytes());
-    tp2.absorb(AbsorbLabel::Instance, &inst).map_err(dbg_err)?;
-    let mut running = v1;
-    for rnd in 0..2u32 {
-        let vals = [QM31::from_i64(0), running, running];
-        for v in vals {
-            forged2.extend_from_slice(&v.to_le_bytes());
+    let forged_val = build_l2(&u1_single, false, b"nc-0630-l2-single-val")?;
+    let mut tv_val = Transcript::<QM31>::new(b"nc-0630-l2-single-val").map_err(dbg_err)?;
+    match verify_fresh_at_point(&mut tv_val, &source2, 2, &point2, value2, &forged_val) {
+        Err(RecursiveError::ValueMismatch) => {}
+        other => {
+            return Err(format!(
+                "L=2 single-entry honest-u2 expected ValueMismatch, got {other:?}"
+            ))
         }
-        let mut rb = Vec::new();
-        rb.extend_from_slice(&2u64.to_le_bytes());
-        rb.extend_from_slice(&rnd.to_le_bytes());
-        for v in vals {
-            rb.extend_from_slice(&v.to_le_bytes());
-        }
-        tp2.absorb(AbsorbLabel::Round, &rb).map_err(dbg_err)?;
-        let r = tp2.challenge(ChallengeLabel::Sumcheck).map_err(dbg_err)?;
-        running = interp2(vals, r);
     }
-    let u2 = vec![QM31::from_i64(0); 4];
-    let u2_start = forged2.len();
-    for v in &u2 {
-        forged2.extend_from_slice(&v.to_le_bytes());
+
+    // (c) PcsLevelBeta-only tamper: ⟨eq(r_col0), u_1''⟩ == value2 holds identically, so ONLY
+    //     PcsLevelBeta's β_0^j column consistency terms detect the corruption!
+    let mut u1_beta = u1_honest;
+    u1_beta[0] = u1_beta[0] + eq_col0[1];
+    u1_beta[1] = u1_beta[1] - eq_col0[0];
+    let mut check_v0 = QM31::from_i64(0);
+    for (&e, &u) in eq_col0.iter().zip(&u1_beta) {
+        check_v0 = check_v0 + e * u;
     }
-    tp2.absorb(AbsorbLabel::PcsLevelRoot, &forged2[u2_start..])
-        .map_err(dbg_err)?;
-    let r1_start = forged2.len();
-    for _ in 0..plan2.queries()[1] {
-        let idx = tp2.opening_column(desc1_2.count).map_err(dbg_err)?;
-        append_col(&col1_2, &tree1_2, desc1_2.width as usize, idx, &mut forged2)?;
+    if check_v0 != value2 {
+        return Err("PcsLevelBeta-only tamper failed to preserve v_0".to_owned());
     }
-    tp2.absorb(AbsorbLabel::OpeningColumns, &forged2[r1_start..])
-        .map_err(dbg_err)?;
-    let mut tv2 = Transcript::<QM31>::new(b"nc-0630-f2").map_err(dbg_err)?;
-    match verify_fresh_at_point(&mut tv2, &source2, 2, &point2, value2, &forged2) {
+    let forged_beta = build_l2(&u1_beta, true, b"nc-0630-l2-beta")?;
+    let mut tv_beta = Transcript::<QM31>::new(b"nc-0630-l2-beta").map_err(dbg_err)?;
+    match verify_fresh_at_point(&mut tv_beta, &source2, 2, &point2, value2, &forged_beta) {
         Err(RecursiveError::ColumnMismatch) => Ok(()),
-        other => Err(format!("L=2 expected ColumnMismatch, got {other:?}")),
+        other => Err(format!(
+            "L=2 PcsLevelBeta-only expected ColumnMismatch, got {other:?}"
+        )),
     }
 }
 

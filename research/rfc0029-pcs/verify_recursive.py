@@ -348,13 +348,26 @@ def parse_source(raw: bytes) -> dict:
     root0 = raw[79:111]
     (target_bits,) = struct.unpack_from("<H", raw, 111)
     level_count = raw[113]
-    if level_count == 0 or len(raw) != 114 + 7 * level_count:
+    if (
+        target_bits == 0
+        or target_bits > 256
+        or level_count == 0
+        or level_count > 30
+        or len(raw) != 114 + 7 * level_count
+    ):
         raise VerifyError("UnsupportedSource")
     levels = []
     queries = []
     for i in range(level_count):
         ell, m, b, rand_c, mask_r = struct.unpack_from("<BBBHH", raw, 114 + 7 * i)
-        if ell == 0 or b not in (1, 2, 3, 4) or m + b > MAX_DOMAIN_BITS or rand_c != 0 or mask_r != 0:
+        if (
+            ell == 0
+            or ell > MAX_DOMAIN_BITS
+            or b not in (1, 2, 3, 4)
+            or m + b > MAX_DOMAIN_BITS
+            or rand_c != 0
+            or mask_r != 0
+        ):
             raise VerifyError("UnsupportedSource")
         if i + 1 < level_count and m == 0:
             raise VerifyError("UnsupportedSource")
