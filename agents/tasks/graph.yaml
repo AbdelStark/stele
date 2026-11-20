@@ -4269,7 +4269,8 @@ tasks:
   skill: pcs-engineer
   crate: stele-reductions+stele-pcs
   lane: C
-  status: ready
+  status: done
+  branch: task/E19-02-circle-sources-closure
   acceptance:
   - RFC-0026 A7 Accepted; the stacked source and model sources are version-1 sources at blow-up exponent 2 with the byte-minimising row split
   - NC-1303, NC-1304 and NC-1306 run unchanged; the pinned L0 and L1 hashes are re-recorded with the amendment

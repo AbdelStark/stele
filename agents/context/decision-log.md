@@ -4723,6 +4723,33 @@ Consequences:
 - **Promotion:** Admission to `standard` or `treaty` is not granted here (requires RFC-0030
   and Workflow 10).
 
+## ADR-153 — Supersede Draft RFC-0026 A7 (`E19-02`) by Accepted A11/A12 and RFC-0029 coefficient-form sources (task E19-02)
+
+- **Status:** Accepted (development tier, RFC-0027 §2)
+- **Task / Lane:** `E19-02` · Lane C
+- **Governing RFCs:** `RFC-0026 A7, A11, A12`, `RFC-0010 A9, A17`, `RFC-0029`
+- **Decision:** Withdraw Draft `RFC-0026 A7` as superseded by Accepted `RFC-0026 A11` (task
+  `E16-30`, byte-minimising blow-up-2 Circle rate-1/4 stacked and model sources under Policy 2,
+  with L1 and L2a before/after ledgers `bench/ledger/e16-30-dev-*.json`) and Accepted
+  `RFC-0026 A12` (task `E16-31`, Circle rate-1/4 multiplicity sources,
+  `bench/ledger/e16-31-dev-*.json`), and transition directly to Accepted `RFC-0029` /
+  `RFC-0010 A17` coefficient-form version-4 sources (`E19-03`..`E19-06`).
+- **Rationale:**
+  - `RFC-0026 A11` already implemented A7's exact Circle rate-1/4 (`blow-up = 2`) geometry
+    and byte-minimising row split for both the stacked witness source and all model sources,
+    kept `NC-1303`, `NC-1304`, and `NC-1306` green, re-recorded the pinned L0/L1 hashes, and
+    published paired L1/L2a before/after ledgers.
+  - `RFC-0026 A11` explicitly noted under "Affected tasks": *"E19-02: Draft A7's geometry is
+    A11's; if A11 is accepted, A7 and E19-02's acceptance should be rebased on Policy 2 or
+    withdrawn. E19-03 changes the row map again (coefficient-form rows)."*
+  - Re-implementing an intermediate Policy-1 version-1 evaluation-form mode would add dead
+    protocol surface immediately superseded by `E19-03` (`CircleCoeff`, version 4, Policy 3).
+- **Consequences:**
+  - `RFC-0026 A7` is marked `Superseded by Accepted A11/A12 and RFC-0029 (ADR-153)` in
+    `docs/rfcs/RFC-0026-development-end-to-end.md` and `docs/rfcs/RFC-0000-index-and-process.md`.
+  - Task `E19-02` is closed as `done`; `E19-03` proceeds directly on `RFC-0029` / `RFC-0010 A17`.
+  - No protocol bytes, controls, or profile promotions change in this ADR.
+
 ## ADR-155 — Accept RFC-0026 A8, the plan-fixed split of lookup checks, at the development tier (task E20-02)
 
 Context: RFC-0026 A3 rejects a lookup check whose concatenated domain exceeds `2^30`

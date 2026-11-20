@@ -918,7 +918,7 @@ Cost model: none. Affected tasks: E16-10 (statement codec and public-input file)
 
 ### A7 — Circle sources for the stacked and model commitments
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task: E19-02.
+Status: Superseded by Accepted A11, A12 and RFC-0029 (ADR-153). Task: E19-02.
 Motivation: the stacked source (A4) and the model sources (A5) are RFC-0010 v2
 expander sources. Under Policy 1 they need up to 13,472 certificate and 6,714 opening
 responses, against 314 and 130 for the circle code at rate 1/4 (RFC-0010 A3 items 4
