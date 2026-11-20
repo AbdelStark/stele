@@ -4689,3 +4689,39 @@ Consequences:
   and carried boundaries are committed), cutting L3b committed cells by `84.44B` (`3.38x`)
   and lookup positions by `42.05B` (`1.54x`).
 - No security level or profile promotion is granted (development tier only, RFC-0027 §2).
+
+## ADR-155 — Accept RFC-0026 A8, the plan-fixed split of lookup checks, at the development tier (task E20-02)
+
+Context: RFC-0026 A3 rejects a lookup check whose concatenated domain exceeds `2^30`
+positions. Llama-3.1-8B at `T = 1024` reaches that limit. ADR-096 recorded A8 as Draft
+and left its acceptance, with its control id, to task `E20-02`. The task implements the
+split, and an independent review (`agents/reviews/e20-01-e20-02-engine-fast-paths.md`,
+APPROVE) found no accepted false statement and asked for this record (its F1).
+
+Decision:
+- **Accept A8 at the development tier** (RFC-0027 §2). The plan fixes an instance bound
+  `B = 30`; a check is an ordered list of instances; a member above `2^B` is cut along
+  its leading domain bits; each instance is one RFC-0008 A5 statement with its own
+  multiplicity source and draws.
+- **Scope.** The split is in the two plain relation plans (`relation::plan`,
+  `relation::plan_segmented`). The dev-zk plan (A9, `zk_relation`) is unchanged. A9's
+  sentence "Under the Draft A8 every lookup instance is masked on its own" is Accepted
+  text and stays as written; it binds the day a dev-zk plan adopts the split.
+- **Control NC-1341, with A10's exception.** At `B = 30` no test-sized check splits. The
+  control runs a minimal relation under `B = 2` through the segmented relation-engine
+  prover and verifier, not the E16-10 window verifier. It moves one in-range value across
+  the boundary and keeps the receiving instance's old multiplicities: one changed vector,
+  rejected by that instance's A5 root equation (`RootMismatch`).
+- **The bound is not an input.** Only the `controls` feature and the engine's own tests
+  pass a bound; every other entry point fixes `B = 30` (review F5).
+
+Consequences:
+- Proof bytes of every plan with at most `2^30` positions per check are unchanged; the
+  six pinned L0 and L1 digests reproduce.
+- Each instance carries its own tree proofs, so proof bytes grow with the instance
+  count. That is acceptable at `B = 30` and not at the `standard` cap of RFC-0030
+  (Draft). Task `E20-09` owns the data-parallel form and the proof-byte record at
+  `B = 30` and `B = 23`.
+- The review's tests of the split through `verify_segmented` (three-segment fixture,
+  virtual and selected members, block binding, cross-bound rejection) are in
+  `crates/stele-reductions/src/relation_tests.rs`.

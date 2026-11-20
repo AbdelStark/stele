@@ -187,6 +187,13 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "StatementMismatch",
         run: || development::run_virtual_rounding(1340),
     },
+    #[cfg(feature = "controls")]
+    catalog::RegisteredControl {
+        id: 1341,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: development::run_split,
+    },
     catalog::RegisteredControl {
         id: 316,
         kind: catalog::ControlKind::Proof,

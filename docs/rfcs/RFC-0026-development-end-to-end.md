@@ -980,8 +980,16 @@ proofs. That is acceptable at `B = 30`, where instances are few. It is not at th
 `standard` cap of RFC-0030 (Draft), where a large proof has thousands of instances;
 the data-parallel form of RFC-0030 Q49 is needed before any `standard` proof-size
 gate. Affected tasks: E20-02, E20-09, E22-04.
-Control: a member value moved across an instance boundary without its multiplicity
-is rejected by the receiving instance's root equation (`RootMismatch`).
+Control: NC-1341. A member value moved across an instance boundary without its
+multiplicity is rejected by the receiving instance's root equation (`RootMismatch`).
+- **Where it runs.** At `B = 30` only a check above `2^30` positions splits, and no
+  test builds one. NC-1341 therefore runs a minimal relation under `B = 2`, through the
+  segmented relation-engine prover and verifier, which every proof with virtual columns
+  uses. §9's "through the actual E16-10 verifier" does not apply to NC-1341, as for
+  NC-1310 (A10). The bound is an argument only under the `controls` feature and in the
+  engine's own tests; every other entry point fixes `B = 30`.
+- **Scope.** The split is implemented in the two plain relation plans (`plan`,
+  `plan_segmented`). The dev-zk plan (A9) is unchanged (ADR-155).
 
 - **A9 — dev-zk relation forms (companion of RFC-0013 A5, task E12-17).**
   Accepted at conditional scope with ADR-098. It applies only to proofs whose

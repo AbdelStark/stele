@@ -327,9 +327,23 @@ struct BaseLeafSummand<'a, K: ChallengeField + Eq> {
     point: &'a mut Vec<K>,
 }
 
+/// Whether `i` is [`layer`]'s polynomial `left·p0·q1·eq + right·p1·q0·eq + γ·q0·q1·eq`: a
+/// hand-written summand hard-codes this factor layout and reads only the coefficients.
+fn is_layer_instance<K: ChallengeField>(i: &Instance<K>) -> bool {
+    let layout: [&[u32]; 3] = [&[0, 3, 4], &[2, 1, 4], &[1, 3, 4]];
+    i.inputs.len() == 5 && i.terms.iter().map(|t| t.factors.as_slice()).eq(layout)
+}
 impl<K: ChallengeField + Eq> Summand<K> for BaseLeafSummand<'_, K> {
     fn shape(&self) -> (u32, usize) {
         (self.remaining, 5)
+    }
+    fn validate_instance(&self, instance: &Instance<K>) -> Result<(), stele_sumcheck::Error> {
+        if self.shape() != (instance.num_vars, instance.inputs.len())
+            || !is_layer_instance(instance)
+        {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        Ok(())
     }
     fn round(&self, instance: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
         if let Some(dense) = &self.folded {

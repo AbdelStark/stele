@@ -242,7 +242,7 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
             for column in range {
                 for ((value, step), table) in values.iter_mut().zip(&mut steps).zip(&self.tables) {
                     let DenseTable::Ext(table) = table else {
-                        unreachable!()
+                        return Err(Error::PublicShape);
                     };
                     *value = table[column];
                     *step = table[column + half] - table[column];

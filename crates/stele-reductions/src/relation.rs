@@ -611,10 +611,10 @@ pub(crate) struct Check {
     /// Test-only malicious-prover seam: added to the committed count of row 0.
     #[cfg(test)]
     skew: i64,
-    /// Test-only malicious-prover seam (RFC-0026 A8 control): override this instance's
-    /// committed multiplicities without moving the member value's multiplicity across
-    /// the instance boundary.
-    #[cfg(test)]
+    /// Malicious-prover seam (tests and the `controls` feature; RFC-0026 A8 control
+    /// NC-1341): override this instance's committed multiplicities, so a member value can
+    /// move across an instance boundary without its multiplicity.
+    #[cfg(any(test, feature = "controls"))]
     count_override: Option<Vec<i64>>,
     /// Test-only malicious-prover seam: member evaluations taken from these values.
     #[cfg(test)]
@@ -796,7 +796,7 @@ fn check(
         grind,
         #[cfg(test)]
         skew: 0,
-        #[cfg(test)]
+        #[cfg(any(test, feature = "controls"))]
         count_override: None,
         #[cfg(test)]
         split: None,
@@ -1047,6 +1047,8 @@ enum VirtualBuf {
 }
 
 impl VirtualBuf {
+    /// Storage only: the narrowest type that holds every value exactly. No strategy is
+    /// chosen from this scan (RFC-0006 A5 eligibility comes from the declared widths).
     fn from_i64(values: Vec<i64>) -> Self {
         let max_abs = values.iter().fold(0u64, |m, &v| m.max(v.unsigned_abs()));
         if max_abs <= i16::MAX as u64 {
@@ -2114,7 +2116,8 @@ pub fn prove_measured(
 }
 
 /// [`prove`] with an explicit plan-fixed RFC-0026 A8 lookup instance bound `B` (`1 <= B <= 30`).
-pub fn prove_with_instance_bound(
+#[cfg(test)]
+pub(crate) fn prove_with_instance_bound(
     t: &mut Transcript<K>,
     relation: &Relation,
     values: &Values,
@@ -2127,7 +2130,7 @@ pub fn prove_with_instance_bound(
 }
 
 /// [`prove_measured`] with an explicit plan-fixed RFC-0026 A8 lookup instance bound `B`.
-pub fn prove_measured_with_instance_bound(
+pub(crate) fn prove_measured_with_instance_bound(
     t: &mut Transcript<K>,
     relation: &Relation,
     values: &Values,
@@ -2369,12 +2372,12 @@ fn prove_plan_measured(
     };
     let resolved = ResolvedColumns::borrowed(relation, values);
     let mu_messages = |i: usize| {
-        #[cfg(test)]
+        #[cfg(any(test, feature = "controls"))]
         let counts = match &plan.checks[i].count_override {
             Some(overridden) => overridden.clone(),
             None => lookup::counts(&plan.checks[i], relation, &resolved)?,
         };
-        #[cfg(not(test))]
+        #[cfg(not(any(test, feature = "controls")))]
         let counts = lookup::counts(&plan.checks[i], relation, &resolved)?;
         let message = lookup::multiplicities(&plan.checks[i], &counts)?;
         Ok::<_, Error>((counts, message))
@@ -2692,6 +2695,17 @@ impl stele_sumcheck::Summand<K> for MatmulSummand<'_> {
             self.rem.trailing_zeros(),
             2 + usize::from(self.eq.is_some()),
         )
+    }
+    /// The rounds hard-code one product of every input with coefficient one.
+    fn validate_instance(&self, instance: &Instance<K>) -> Result<(), stele_sumcheck::Error> {
+        let (num_vars, inputs) = self.shape();
+        let product = matches!(instance.terms.as_slice(), [term]
+            if term.coefficient == K::from_i64(1)
+                && term.factors.iter().copied().eq(0..inputs as u32));
+        if num_vars != instance.num_vars || inputs != instance.inputs.len() || !product {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        Ok(())
     }
     fn round(&self, _instance: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
         if self.rem < 2 {
@@ -3082,7 +3096,7 @@ pub fn verify(
 }
 
 /// [`verify`] with an explicit plan-fixed RFC-0026 A8 lookup instance bound `B` (`1 <= B <= 30`).
-pub fn verify_with_instance_bound(
+pub(crate) fn verify_with_instance_bound(
     t: &mut Transcript<K>,
     relation: &Relation,
     model: &[&VerifiedCertificate<K>],
@@ -3576,7 +3590,8 @@ where
 }
 
 /// [`prove_segmented_measured`] with an explicit RFC-0026 A8 lookup instance bound `B`.
-pub fn prove_segmented_measured_with_instance_bound<F>(
+#[cfg(test)]
+pub(crate) fn prove_segmented_measured_with_instance_bound<F>(
     t: &mut Transcript<K>,
     relation: &Relation,
     segment_values: F,
@@ -3943,11 +3958,13 @@ where
     }
     let mut col_reads = vec![0u64; plan.weights.len()];
     let member_selected = |member: &Member| -> u64 {
+        // A8: a block reads its selector at `(block index ‖ local)`.
+        let block_base = (member.block_index as u64) << member.m;
         match &member.selector {
             None => 1u64 << member.m,
             Some(sel) => match &relation.columns[sel.column.0 as usize].kind {
                 Kind::Public(v) => (0..(1u64 << member.m))
-                    .filter(|&x| v[sel.index(x)] != 0)
+                    .filter(|&local| v[sel.index(block_base | local)] != 0)
                     .count() as u64,
                 _ => 0,
             },
@@ -4042,6 +4059,12 @@ where
             (res, timer.elapsed_ns())
         };
         let mu_messages_fn = |i: usize| {
+            #[cfg(any(test, feature = "controls"))]
+            let counts = match &seg.checks[i].count_override {
+                Some(overridden) => overridden.clone(),
+                None => lookup::counts(&seg.checks[i], relation, &resolved)?,
+            };
+            #[cfg(not(any(test, feature = "controls")))]
             let counts = lookup::counts(&seg.checks[i], relation, &resolved)?;
             let message = lookup::multiplicities(&seg.checks[i], &counts)?;
             Ok::<_, Error>((counts, message))
@@ -4614,6 +4637,47 @@ where
     Ok((proof, metrics))
 }
 
+/// RFC-0026 A8 control (NC-1341): [`prove_segmented`] under the instance bound `bound`,
+/// with the committed multiplicities of lookup instance `forge.0` of the first segment
+/// replaced by `forge.1`. A development plan fixes `B = 30`, where no test-sized check
+/// splits, so the control and its verifier take the bound (controls only).
+#[cfg(feature = "controls")]
+pub fn prove_segmented_forged_multiplicities<F>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    segment_values: F,
+    sources: Sources,
+    bound: u8,
+    forge: Option<(usize, Vec<i64>)>,
+) -> Result<ProofV2, Error>
+where
+    F: FnMut(u32) -> Result<Values, Error>,
+{
+    let mut plan = plan_segmented_with_bound(relation, sources, bound)?;
+    if let Some((instance, counts)) = forge {
+        plan.segments
+            .first_mut()
+            .and_then(|s| s.checks.get_mut(instance))
+            .ok_or(Error::Unsupported)?
+            .count_override = Some(counts);
+    }
+    prove_segmented_with_plan(t, relation, &plan, 0, segment_values, &[], None, None)
+        .map(|(proof, _)| proof)
+}
+
+/// [`verify_segmented`] under the instance bound of
+/// [`prove_segmented_forged_multiplicities`] (controls only).
+#[cfg(feature = "controls")]
+pub fn verify_segmented_under_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    proof: &ProofV2,
+    sources: Sources,
+    bound: u8,
+) -> Result<Ledger, Error> {
+    verify_segmented_with_instance_bound(t, relation, &[], proof, sources, bound)
+}
+
 /// Verify a segmented development proof (`stele-dev-e2e-v2`, RFC-0026 A27) and return its ledger.
 pub fn verify_segmented(
     t: &mut Transcript<K>,
@@ -4626,7 +4690,7 @@ pub fn verify_segmented(
 }
 
 /// [`verify_segmented`] with an explicit RFC-0026 A8 lookup instance bound `B`.
-pub fn verify_segmented_with_instance_bound(
+pub(crate) fn verify_segmented_with_instance_bound(
     t: &mut Transcript<K>,
     relation: &Relation,
     model: &[&VerifiedCertificate<K>],

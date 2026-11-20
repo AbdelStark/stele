@@ -4385,9 +4385,11 @@ tasks:
   skill: performance-engineer
   crate: stele-ir+stele-reductions+stele-sumcheck
   lane: E
-  status: ready
+  status: done
+  agent: claude
+  branch: task/E20-01-typed-columns-base-rounds
   acceptance:
-  - Values stores each column at its declared width; no dense extension-field table exists before the first sumcheck fold of a zerocheck, claim batch or contraction
+  - Values stores each column at its declared width; no dense extension-field witness table exists before the first sumcheck fold of a zerocheck, claim batch or contraction (the eq and coefficient tables, and an operand with a non-shared free bit, are still extension tables before round 0 - E20-24)
   - pinned L0 and L1 proof hashes unchanged
   - peak RSS and prove time on L1 and L2a before and after in ledgers
 - id: E20-02
@@ -4402,12 +4404,31 @@ tasks:
   skill: sumcheck-prover-engineer
   crate: stele-lookup+stele-sumcheck+stele-reductions
   lane: E
+  status: done
+  agent: claude
+  branch: task/E20-02-lookup-fast-path
+  acceptance:
+  - the trees of a lookup instance and the operand tables of a matmul sumcheck are built concurrently, and their rounds run on the work pool of E16-17 (ADR-090); instances and matmuls stay in transcript order, one after another; the per-round spawning that pool replaced does not return
+  - leaf layers stay in the base field; the first tree layers of small-domain tables are read from precomputed tables
+  - RFC-0026 A8 Accepted (ADR-155); its control NC-1341 runs through the segmented relation-engine verifier under B = 2 (the A10 exception - no test-sized check splits at B = 30); proof bytes of unsplit plans are unchanged
+  - c_lu and parallel efficiency at 1, 4 and 24 threads recorded on L1 and L2a
+- id: E20-24
+  epic: E20
+  title: Extension tables that remain before the first fold - eq, coefficients, non-shared operand bits
+  depends:
+  - E20-01
+  rfc:
+  - RFC-0006 A1
+  - RFC-0006 A2
+  - RFC-0006 A5
+  skill: performance-engineer
+  crate: stele-sumcheck+stele-reductions
+  lane: E
   status: ready
   acceptance:
-  - lookup instances and matmul sumchecks run in parallel on the work pool of E16-17 (ADR-090) with a fixed transcript order; the per-round spawning that pool replaced does not return
-  - leaf layers stay in the base field; the first tree layers of small-domain tables are read from precomputed tables
-  - RFC-0026 A8 Accepted; its control runs through the actual verifier; proof bytes of unsplit plans are unchanged
-  - c_lu and parallel efficiency at 1, 4 and 24 threads recorded on L1 and L2a; lookup-proof bytes recorded against the instance count at B = 30 and B = 23
+  - a zerocheck and a claim batch keep eq(point, .) factored through the first round, so neither builds a dense extension table of the full domain before its first fold
+  - a matmul operand with a non-shared free bit is read from base storage in round 0
+  - pinned L0 and L1 proof hashes unchanged; peak RSS and prove time on L2a before and after in ledgers
 - id: E20-03
   epic: E20
   title: Backend trait with CPU reference and SIMD
@@ -4526,6 +4547,7 @@ tasks:
   lane: E
   status: ready
   acceptance:
+  - lookup-proof bytes recorded against the instance count at B = 30 and B = 23 on L1 and L2a (moved from E20-02; the development profile fixes B = 30, so a B = 23 run needs this task's plan)
   - a development-tier amendment specifies one tree reduction over all instances of a check with shared challenges, one root pair and one multiplicity vector per instance, and states the pair round's error with its argument
   - prover and verifier; a control with one false instance among many is rejected at that instance's root equation
   - on L2b at B = 23 the lookup-proof bytes are at most twice those of the unsplit proof
