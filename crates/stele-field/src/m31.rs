@@ -103,6 +103,10 @@ impl Field for M31 {
     fn mul_m31(self, x: M31) -> Self {
         self * x
     }
+
+    fn m31_slice_mut(values: &mut [Self]) -> Option<&mut [M31]> {
+        Some(values)
+    }
 }
 
 impl Add for M31 {

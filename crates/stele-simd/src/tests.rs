@@ -236,3 +236,49 @@ fn matches_reference_qm31_layer_round_on_seeded_and_edge_tables() {
         }
     }
 }
+
+#[test]
+fn matches_reference_m31_butterflies_on_seeded_and_edge_rows() {
+    use stele_field::M31;
+    let backends = backends();
+    let mut seed = 0x5354_454c_4500_0022;
+    const EDGES: [u32; 4] = [0, 1, P - 1, P - 2];
+    // 1000 seeded levels: every length across a vector boundary, edge limbs in a quarter.
+    for case in 0..1000usize {
+        let n = case % 67;
+        let mut limbs = |edge: bool| -> Vec<M31> {
+            (0..n)
+                .map(|_| {
+                    let raw = next(&mut seed);
+                    let limb = if edge {
+                        EDGES[(raw & 3) as usize]
+                    } else {
+                        raw % P
+                    };
+                    M31::from_canonical(limb).expect("canonical")
+                })
+                .collect()
+        };
+        let (low, high, twiddles) = (
+            limbs(case % 4 == 0),
+            limbs(case % 4 == 0),
+            limbs(case % 8 == 0),
+        );
+        let (mut expected_low, mut expected_high) = (low.clone(), high.clone());
+        crate::butterflies_reference(&mut expected_low, &mut expected_high, &twiddles);
+        for backend in &backends {
+            let (mut l, mut h) = (low.clone(), high.clone());
+            backend
+                .butterflies(&mut l, &mut h, &twiddles)
+                .expect("available");
+            assert_eq!(
+                (l, h),
+                (expected_low.clone(), expected_high.clone()),
+                "{backend:?} case {case}"
+            );
+        }
+        let (mut l, mut h) = (low.clone(), high.clone());
+        crate::butterflies(&mut l, &mut h, &twiddles);
+        assert_eq!((l, h), (expected_low, expected_high));
+    }
+}

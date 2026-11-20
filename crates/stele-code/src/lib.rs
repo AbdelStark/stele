@@ -426,17 +426,28 @@ pub struct Twiddles(Vec<Vec<M31>>);
 
 /// The butterfly levels of a forward transform over bit-reversed input.
 fn forward_butterflies<K: Field>(values: &mut [K], levels: &[Vec<M31>]) {
+    // One block of a level: `(low[j], high[j]) <- (low[j] + t, low[j] − t)` for
+    // `t = high[j]·twiddle[j]`, then the upper half reversed. Base-field rows take the
+    // host's kernel, which writes the limbs of the loop (stele-simd).
+    let pairs = |low: &mut [K], high: &mut [K], twiddles: &[M31]| {
+        if let Some(low) = K::m31_slice_mut(low) {
+            if let Some(high) = K::m31_slice_mut(high) {
+                stele_simd::butterflies(low, high, twiddles);
+                return;
+            }
+        }
+        for ((a, b), twiddle) in low.iter_mut().zip(high.iter_mut()).zip(twiddles) {
+            let (x, y) = (*a, b.mul_m31(*twiddle));
+            *a = x + y;
+            *b = x - y;
+        }
+    };
     for level in levels.iter().rev() {
         let width = 2 * level.len();
         let butterflies = |block: &mut [K]| {
-            block[level.len()..].reverse();
-            for (j, twiddle) in level.iter().enumerate() {
-                let opposite = width - 1 - j;
-                let a = block[j];
-                let b = block[opposite].mul_m31(*twiddle);
-                block[j] = a + b;
-                block[opposite] = a - b;
-            }
+            let (low, high) = block.split_at_mut(level.len());
+            pairs(low, high, level);
+            high.reverse();
         };
         // Blocks, and the pairs of one block, are independent: any split gives the
         // same values as the loop.
@@ -450,15 +461,10 @@ fn forward_butterflies<K: Field>(values: &mut [K], levels: &[Vec<M31>]) {
             } else {
                 for block in values.chunks_exact_mut(width) {
                     let (low, high) = block.split_at_mut(level.len());
-                    low.par_iter_mut()
-                        .zip(high.par_iter_mut())
-                        .zip(level.par_iter())
-                        .with_min_len(PARALLEL_GRAIN)
-                        .for_each(|((a, b), twiddle)| {
-                            let (x, y) = (*a, b.mul_m31(*twiddle));
-                            *a = x + y;
-                            *b = x - y;
-                        });
+                    low.par_chunks_mut(PARALLEL_GRAIN)
+                        .zip(high.par_chunks_mut(PARALLEL_GRAIN))
+                        .zip(level.par_chunks(PARALLEL_GRAIN))
+                        .for_each(|((a, b), twiddles)| pairs(a, b, twiddles));
                     high.reverse();
                 }
             }

@@ -1,8 +1,10 @@
 //! Kernels over slices of QM31 elements (RFC-0003 §§2,6; RFC-0014 §2 `sumcheck_round`
 //! fold). Each has a scalar reference, and every backend writes that reference's limbs.
 use crate::{Backend, UnsupportedBackend};
-use stele_field::QM31;
+use stele_field::{M31, QM31};
 
+// `M31` is `repr(transparent)` over its canonical `u32` limb.
+const _: () = assert!(core::mem::size_of::<M31>() == 4 && core::mem::align_of::<M31>() == 4);
 // `QM31` is `repr(C)` over `repr(transparent)` limbs: four `u32` in basis order.
 const _: () = assert!(core::mem::size_of::<QM31>() == 16 && core::mem::align_of::<QM31>() == 4);
 
@@ -169,5 +171,61 @@ pub fn layer_round(
     match Backend::detect().layer_round(tables, e, gamma, range.clone()) {
         Ok(sums) => sums,
         Err(_) => layer_round_reference(tables, e, gamma, range),
+    }
+}
+
+/// The reference butterflies of one transform level (RFC-0029 §1.2): over the first
+/// `min` of the three lengths, `(low[j], high[j]) <- (low[j] + t, low[j] − t)` for
+/// `t = high[j]·twiddles[j]`.
+pub fn butterflies_reference(low: &mut [M31], high: &mut [M31], twiddles: &[M31]) {
+    for ((a, b), twiddle) in low.iter_mut().zip(high.iter_mut()).zip(twiddles) {
+        let (x, t) = (*a, *b * *twiddle);
+        *a = x + t;
+        *b = x - t;
+    }
+}
+
+impl Backend {
+    /// [`butterflies_reference`] on this backend.
+    pub fn butterflies(
+        self,
+        low: &mut [M31],
+        high: &mut [M31],
+        twiddles: &[M31],
+    ) -> Result<(), UnsupportedBackend> {
+        if !self.available() {
+            return Err(UnsupportedBackend);
+        }
+        let n = low.len().min(high.len()).min(twiddles.len());
+        let (low, high, twiddles) = (&mut low[..n], &mut high[..n], &twiddles[..n]);
+        // SAFETY: RFC-0003 §6. The feature was checked above. The three slices have `n`
+        // limbs (layout asserted above) and `low`, `high` are distinct `&mut` slices.
+        // Every stored limb is canonical, which is `M31`'s invariant.
+        let done = unsafe {
+            let (l, h, t) = (
+                low.as_mut_ptr().cast::<u32>(),
+                high.as_mut_ptr().cast::<u32>(),
+                twiddles.as_ptr().cast::<u32>(),
+            );
+            match self {
+                Self::Scalar => 0,
+                #[cfg(target_arch = "aarch64")]
+                Self::Neon => crate::neon::butterflies(l, h, t, n),
+                #[cfg(target_arch = "x86_64")]
+                Self::Avx2 => crate::x86::avx2::butterflies(l, h, t, n),
+                #[cfg(target_arch = "x86_64")]
+                Self::Avx512 => crate::x86::avx512::butterflies(l, h, t, n),
+                _ => 0,
+            }
+        };
+        butterflies_reference(&mut low[done..], &mut high[done..], &twiddles[done..]);
+        Ok(())
+    }
+}
+
+/// [`butterflies_reference`] on the widest backend of this host.
+pub fn butterflies(low: &mut [M31], high: &mut [M31], twiddles: &[M31]) {
+    if Backend::detect().butterflies(low, high, twiddles).is_err() {
+        butterflies_reference(low, high, twiddles);
     }
 }
