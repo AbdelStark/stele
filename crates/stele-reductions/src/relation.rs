@@ -425,6 +425,12 @@ pub struct Metrics {
     /// model source; the unoptimised development `Opening::prove` reads both `values` and
     /// `prepared.message()` to support controls before opening).
     pub weight_elements_read: u64,
+    /// Number of claimed `Def::Contraction` virtual columns reduced in Step 2.4 (RFC-0028 §2.4).
+    pub contractions_reduced: u64,
+    /// Number of operand partial evaluations (`MatmulShape::table`) executed across all
+    /// `Def::Contraction` reductions; equals `2 * contractions_reduced` (one per operand per
+    /// contraction regardless of claim count, task E18-03).
+    pub contraction_partial_evals: u64,
 }
 impl Proof {
     /// All sections concatenated, for size accounting; not a verifier input.
@@ -450,6 +456,8 @@ const ZEROCHECK: u64 = 1 << 62;
 const MATMUL: u64 = (1 << 62) | (1 << 48);
 const BATCH: u64 = (1 << 62) | (2 << 48);
 const TUPLE: u64 = (1 << 62) | (3 << 48);
+const VIRTUAL_BATCH: u64 = (1 << 62) | (4 << 48);
+const VIRTUAL_CONTRACTION: u64 = (1 << 62) | (5 << 48);
 /// Source id of model source `k` is `MODEL + k` (RFC-0026 A5).
 const MODEL: u64 = 1 << 32;
 /// Largest model source: 2^30 entries, the per-source cap of RFC-0010 v2.
@@ -938,12 +946,16 @@ impl<'a> ResolvedColumns<'a> {
         }
     }
 
-    /// Materialize every `Def::Linear` virtual column owned by `segment` in strictly
+    /// Materialize every supported virtual column owned by `segment` in strictly
     /// increasing `ColumnId` order (ignoring any untrusted entries in `Values`).
+    /// When `forge_entry` targets a column in this segment, +1 is applied immediately after
+    /// materialization so downstream virtual columns in the same segment see the forged table
+    /// (RFC-0028 §6 NC-1338).
     fn for_segment(
         relation: &'a Relation,
         values: &'a Values,
         virtuals_desc: &[ColumnId],
+        forge_entry: Option<(ColumnId, usize)>,
     ) -> Result<Self, Error> {
         if virtuals_desc.is_empty() {
             return Ok(Self::borrowed(relation, values));
@@ -955,53 +967,116 @@ impl<'a> ResolvedColumns<'a> {
         };
         for &id in virtuals_desc.iter().rev() {
             let col = &relation.columns[id.0 as usize];
-            let Kind::Virtual(Def::Linear { constant, terms }) = &col.kind else {
-                return Err(Error::Unsupported);
-            };
-            let n = 1usize << col.log_len;
-            let ops: Vec<(i128, &[i64], &Ref)> = terms
-                .iter()
-                .map(|(c, r)| Ok::<_, Error>((i128::from(*c), this.get(r.column)?, r)))
-                .collect::<Result<_, _>>()?;
-            let c0 = i128::from(*constant);
-            let mut out = vec![0i64; n];
-            stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
-                let mut local_overflow = false;
-                for (j, slot) in chunk.iter_mut().enumerate() {
-                    let x = (start + j) as u64;
-                    let mut acc = Some(c0);
-                    for &(coeff, data, r) in &ops {
-                        acc = acc.and_then(|a| {
-                            coeff
-                                .checked_mul(i128::from(data[r.index(x)]))
-                                .and_then(|p| a.checked_add(p))
+            match &col.kind {
+                Kind::Virtual(Def::Linear { constant, terms }) => {
+                    let n = 1usize << col.log_len;
+                    let ops: Vec<(i128, &[i64], &Ref)> = terms
+                        .iter()
+                        .map(|(c, r)| Ok::<_, Error>((i128::from(*c), this.get(r.column)?, r)))
+                        .collect::<Result<_, _>>()?;
+                    let c0 = i128::from(*constant);
+                    let mut out = vec![0i64; n];
+                    stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+                        let mut local_overflow = false;
+                        for (j, slot) in chunk.iter_mut().enumerate() {
+                            let x = (start + j) as u64;
+                            let mut acc = Some(c0);
+                            for &(coeff, data, r) in &ops {
+                                acc = acc.and_then(|a| {
+                                    coeff
+                                        .checked_mul(i128::from(data[r.index(x)]))
+                                        .and_then(|p| a.checked_add(p))
+                                });
+                            }
+                            match acc.and_then(|a| i64::try_from(a).ok()) {
+                                Some(v) => *slot = v,
+                                None => local_overflow = true,
+                            }
+                        }
+                        if local_overflow {
+                            // Use deterministic sequential fallback below when any chunk overflows.
+                            chunk[0] = i64::MIN;
+                        }
+                    });
+                    // Re-check deterministically only if the sentinel appeared (never on honest inputs
+                    // where |acc| <= HALF_MODULUS < 2^30).
+                    if out.contains(&i64::MIN) {
+                        for (x, slot) in out.iter_mut().enumerate() {
+                            let mut acc = c0;
+                            for &(coeff, data, r) in &ops {
+                                let prod = coeff
+                                    .checked_mul(i128::from(data[r.index(x as u64)]))
+                                    .ok_or(Error::Capacity)?;
+                                acc = acc.checked_add(prod).ok_or(Error::Capacity)?;
+                            }
+                            *slot = i64::try_from(acc).map_err(|_| Error::Capacity)?;
+                        }
+                    }
+                    this.computed[id.0 as usize] = Some(out);
+                }
+                Kind::Virtual(Def::Contraction {
+                    free,
+                    summed,
+                    lhs,
+                    rhs,
+                }) => {
+                    let lhs_data = this.get(lhs.column)?;
+                    let rhs_data = this.get(rhs.column)?;
+                    let n_out = 1usize
+                        .checked_shl(u32::from(*free))
+                        .ok_or(Error::Capacity)?;
+                    let n_sum = 1usize
+                        .checked_shl(u32::from(*summed))
+                        .ok_or(Error::Capacity)?;
+                    let free_u32 = u32::from(*free);
+                    let max_abs = |slice: &[i64]| -> u128 {
+                        slice
+                            .iter()
+                            .fold(0u128, |m, &v| m.max(v.unsigned_abs() as u128))
+                    };
+                    let safe_i64 = max_abs(lhs_data)
+                        .checked_mul(max_abs(rhs_data))
+                        .and_then(|p| p.checked_mul(n_sum as u128))
+                        .is_some_and(|b| b <= i64::MAX as u128);
+                    let mut out = vec![0i64; n_out];
+                    if safe_i64 {
+                        stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+                            for (j, slot) in chunk.iter_mut().enumerate() {
+                                let x = (start + j) as u64;
+                                let mut acc = 0i64;
+                                for y in 0..n_sum as u64 {
+                                    let xy = x | (y << free_u32);
+                                    acc += lhs_data[lhs.index(xy)] * rhs_data[rhs.index(xy)];
+                                }
+                                *slot = acc;
+                            }
                         });
+                    } else {
+                        for (x, slot) in out.iter_mut().enumerate() {
+                            let mut acc = 0i128;
+                            for y in 0..n_sum as u64 {
+                                let xy = (x as u64) | (y << free_u32);
+                                let prod = i128::from(lhs_data[lhs.index(xy)])
+                                    .checked_mul(i128::from(rhs_data[rhs.index(xy)]))
+                                    .ok_or(Error::Capacity)?;
+                                acc = acc.checked_add(prod).ok_or(Error::Capacity)?;
+                            }
+                            *slot = i64::try_from(acc).map_err(|_| Error::Capacity)?;
+                        }
                     }
-                    match acc.and_then(|a| i64::try_from(a).ok()) {
-                        Some(v) => *slot = v,
-                        None => local_overflow = true,
-                    }
+                    this.computed[id.0 as usize] = Some(out);
                 }
-                if local_overflow {
-                    // Use deterministic sequential fallback below when any chunk overflows.
-                    chunk[0] = i64::MIN;
-                }
-            });
-            // Re-check deterministically only if the sentinel appeared (never on honest inputs
-            // where |acc| <= HALF_MODULUS < 2^30).
-            if out.contains(&i64::MIN) {
-                for (x, slot) in out.iter_mut().enumerate() {
-                    let mut acc = c0;
-                    for &(coeff, data, r) in &ops {
-                        let prod = coeff
-                            .checked_mul(i128::from(data[r.index(x as u64)]))
-                            .ok_or(Error::Capacity)?;
-                        acc = acc.checked_add(prod).ok_or(Error::Capacity)?;
-                    }
-                    *slot = i64::try_from(acc).map_err(|_| Error::Capacity)?;
+                _ => return Err(Error::Unsupported),
+            }
+            if let Some((forged_col, idx)) = forge_entry {
+                if forged_col == id {
+                    let col_vals = this.computed[id.0 as usize]
+                        .as_mut()
+                        .ok_or(Error::Unsupported)?;
+                    let entry = col_vals.get_mut(idx).ok_or(Error::Unsupported)?;
+                    *entry = entry.checked_add(1).ok_or(Error::Unsupported)?;
                 }
             }
-            this.computed[id.0 as usize] = Some(out);
         }
         Ok(this)
     }
@@ -1244,20 +1319,19 @@ struct MatmulShape {
     shared: Vec<u8>,
 }
 impl MatmulShape {
+    fn from_point(rho: Vec<K>, free: u8, summed: u8, lhs: &Ref, rhs: &Ref) -> Self {
+        let shared: Vec<u8> = (0..free)
+            .filter(|d| lhs.vars.contains(d) && rhs.vars.contains(d))
+            .collect();
+        let mut vars: Vec<u8> = shared.iter().copied().chain(free..free + summed).collect();
+        vars.sort_unstable_by(|a, b| b.cmp(a));
+        Self { rho, vars, shared }
+    }
     fn new(t: &mut Transcript<K>, mm: &stele_ir::relation::Matmul) -> Result<Self, Error> {
         let rho = (0..mm.free)
             .map(|_| Ok(t.challenge(ChallengeLabel::RelationPoint)?))
             .collect::<Result<Vec<K>, Error>>()?;
-        let shared: Vec<u8> = (0..mm.free)
-            .filter(|d| mm.lhs.vars.contains(d) && mm.rhs.vars.contains(d))
-            .collect();
-        let mut vars: Vec<u8> = shared
-            .iter()
-            .copied()
-            .chain(mm.free..mm.free + mm.summed)
-            .collect();
-        vars.sort_unstable_by(|a, b| b.cmp(a));
-        Ok(Self { rho, vars, shared })
+        Ok(Self::from_point(rho, mm.free, mm.summed, &mm.lhs, &mm.rhs))
     }
     fn rho_at(&self, d: u8) -> K {
         self.rho[self.rho.len() - 1 - d as usize]
@@ -1364,6 +1438,21 @@ impl MatmulShape {
             })
             .collect()
     }
+    /// Operand claims at (ρ, r); `finals` lead with eq when k > 0.
+    fn route_operands(
+        &self,
+        lhs: &Ref,
+        rhs: &Ref,
+        free: u8,
+        sc: &[K],
+        finals: &[K],
+        claims: &mut Claims,
+    ) {
+        let finals = &finals[usize::from(!self.shared.is_empty())..];
+        for (r, value) in [(lhs, finals[0]), (rhs, finals[1])] {
+            claims.0[r.column.0 as usize].push((self.point(r, free, sc), value));
+        }
+    }
     /// Out claim at ρ and operand claims at (ρ, r); `finals` lead with eq when k > 0.
     fn route(
         &self,
@@ -1373,11 +1462,8 @@ impl MatmulShape {
         out: K,
         claims: &mut Claims,
     ) {
-        let finals = &finals[usize::from(!self.shared.is_empty())..];
         claims.push(&mm.out, &self.rho, out);
-        for (r, value) in [(&mm.lhs, finals[0]), (&mm.rhs, finals[1])] {
-            claims.0[r.column.0 as usize].push((self.point(r, mm.free, sc), value));
-        }
+        self.route_operands(&mm.lhs, &mm.rhs, mm.free, sc, finals, claims);
     }
     fn eq_at(&self, sc: &[K]) -> K {
         self.shared.iter().fold(K::from_i64(1), |acc, d| {
@@ -2589,14 +2675,25 @@ struct SegmentedPlan {
 
 fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan, Error> {
     relation.validate().map_err(Error::StatementMismatch)?;
-    // E18-02 admits `Def::Linear`; `Def::Pointwise` and `Def::Contraction` land in E18-03/E18-04.
-    if relation.columns.iter().any(|c| {
-        matches!(
-            c.kind,
-            Kind::Virtual(Def::Pointwise { .. } | Def::Contraction { .. })
-        )
-    }) {
-        return Err(Error::Unsupported);
+    // E18-02 admits `Def::Linear`, E18-03 admits `Def::Contraction`; `Def::Pointwise` lands in E18-04.
+    for col in &relation.columns {
+        match &col.kind {
+            Kind::Virtual(Def::Pointwise { .. }) => return Err(Error::Unsupported),
+            Kind::Virtual(Def::Contraction {
+                free,
+                summed,
+                lhs,
+                rhs,
+            }) => {
+                let shared = (0..*free)
+                    .filter(|d| lhs.vars.contains(d) && rhs.vars.contains(d))
+                    .count();
+                if shared + usize::from(*summed) > usize::from(stele_ir::relation::MAX_VARS) {
+                    return Err(Error::Unsupported);
+                }
+            }
+            _ => {}
+        }
     }
     let seg_count = relation.segments();
     if seg_count > u32::from(u16::MAX) {
@@ -2848,6 +2945,76 @@ where
     .map(|(p, _)| p)
 }
 
+/// Malicious-prover helper for RFC-0028 §6 NC-1338 on sumcheck-backed virtual reductions:
+/// emits a sumcheck proof matching the RFC-0006 A1 transcript order against a forged
+/// `instance.claimed_sum` without honest-prover self-abort. When `force_rounds` is `false`,
+/// round 0's honest polynomial disagrees with `claimed_sum` (`RoundSumMismatch`); when
+/// `force_rounds` is `true`, each round's `values[0]` is shifted to satisfy the round-sum
+/// equation so the verifier rejects at `FinalEvaluationMismatch`.
+#[cfg(any(test, feature = "controls"))]
+fn prove_sumcheck_forged(
+    instance: &Instance<K>,
+    mut dense: Dense<K>,
+    t: &mut Transcript<K>,
+    force_rounds: bool,
+) -> Result<(stele_sumcheck::Proof<K>, Vec<K>), Error> {
+    use stele_field::Inverse;
+    use stele_sumcheck::Summand;
+
+    let degree = instance
+        .terms
+        .iter()
+        .map(|t| t.factors.len())
+        .max()
+        .unwrap_or(0);
+    let payload = instance.encode()?;
+    t.absorb(AbsorbLabel::Instance, &payload)?;
+    let mut running = instance.claimed_sum;
+    let mut rounds = Vec::with_capacity(instance.num_vars as usize);
+    let mut point = Vec::with_capacity(instance.num_vars as usize);
+    for index in 0..instance.num_vars {
+        let mut values = dense.round(instance)?;
+        if values.len() != degree + 1 {
+            return Err(Error::ProofShape);
+        }
+        if force_rounds {
+            let cur = values[0] + values[if values.len() == 1 { 0 } else { 1 }];
+            values[0] = values[0] + (running - cur);
+        }
+        let msg = stele_sumcheck::message_bytes(instance.id, index, &values)?;
+        t.absorb(AbsorbLabel::Round, &msg)?;
+        let challenge = t.challenge(ChallengeLabel::Sumcheck)?;
+        let mut next = K::from_i64(0);
+        for (i, &v) in values.iter().enumerate() {
+            let mut num = K::from_i64(1);
+            let mut den = K::from_i64(1);
+            for j in 0..values.len() {
+                if i != j {
+                    num = num * (challenge - K::from_i64(j as i64));
+                    den = den * K::from_i64(i as i64 - j as i64);
+                }
+            }
+            let inv = den.inverse().ok_or(Error::Unsupported)?;
+            next = next + v * num * inv;
+        }
+        dense.fold(challenge)?;
+        point.push(challenge);
+        running = next;
+        rounds.push(values);
+    }
+    let final_values = dense.final_values()?;
+    let msg =
+        stele_sumcheck::message_bytes(instance.id, instance.inputs.len() as u32, &final_values)?;
+    t.absorb(AbsorbLabel::Final, &msg)?;
+    Ok((
+        stele_sumcheck::Proof {
+            rounds,
+            final_values,
+        },
+        point,
+    ))
+}
+
 fn prove_segmented_impl<F>(
     t: &mut Transcript<K>,
     relation: &Relation,
@@ -2867,11 +3034,21 @@ where
             .columns
             .get(col_id.0 as usize)
             .ok_or(Error::Unsupported)?;
-        let Kind::Virtual(Def::Linear { terms, .. }) = &col.kind else {
+        if idx >= (1usize << col.log_len) {
             return Err(Error::Unsupported);
-        };
-        if idx >= (1usize << col.log_len) || comp.is_some_and(|i| i >= terms.len()) {
-            return Err(Error::Unsupported);
+        }
+        match &col.kind {
+            Kind::Virtual(Def::Linear { terms, .. }) => {
+                if comp.is_some_and(|i| i >= terms.len()) {
+                    return Err(Error::Unsupported);
+                }
+            }
+            Kind::Virtual(Def::Contraction { .. }) => {
+                if comp.is_some_and(|m| m > 0) {
+                    return Err(Error::Unsupported);
+                }
+            }
+            _ => return Err(Error::Unsupported),
         }
     }
     let certificates: Vec<&VerifiedCertificate<K>> = model.iter().map(|(_, c)| *c).collect();
@@ -2944,25 +3121,35 @@ where
 
     for (s, seg) in plan.segments.iter().enumerate() {
         let values = segment_values(seg.segment)?;
-        #[allow(unused_mut)]
-        let mut resolved = ResolvedColumns::for_segment(relation, &values, &seg.virtuals)?;
+        let resolved = ResolvedColumns::for_segment(
+            relation,
+            &values,
+            &seg.virtuals,
+            forge_virtual.map(|(col_id, idx, _)| (col_id, idx)),
+        )?;
         // Account for `ResolvedColumns::for_segment` reading every `Kind::Weight` operand of
-        // this segment's `Def::Linear` virtual columns (INV-7).
+        // this segment's virtual columns (INV-7).
         for &vid in &seg.virtuals {
-            if let Kind::Virtual(Def::Linear { terms, .. }) = &relation.columns[vid.0 as usize].kind
-            {
-                let v_len = 1u64 << relation.columns[vid.0 as usize].log_len;
-                for (_, r) in terms {
-                    if let Some(w_idx) = weight_index[r.column.0 as usize] {
-                        col_reads[w_idx] = col_reads[w_idx].saturating_add(v_len);
+            match &relation.columns[vid.0 as usize].kind {
+                Kind::Virtual(Def::Linear { terms, .. }) => {
+                    let v_len = 1u64 << relation.columns[vid.0 as usize].log_len;
+                    for (_, r) in terms {
+                        if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                            col_reads[w_idx] = col_reads[w_idx].saturating_add(v_len);
+                        }
                     }
                 }
-            }
-        }
-        if let Some((col_id, idx, _)) = forge_virtual {
-            if let Some(Some(col_vals)) = resolved.computed.get_mut(col_id.0 as usize) {
-                let entry = col_vals.get_mut(idx).ok_or(Error::Unsupported)?;
-                *entry = entry.checked_add(1).ok_or(Error::Unsupported)?;
+                Kind::Virtual(Def::Contraction { lhs, rhs, .. }) => {
+                    for r in [lhs, rhs] {
+                        if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                            let fixed_bits =
+                                r.vars.iter().filter(|d| Ref::fixed(**d).is_some()).count() as u32;
+                            let elems = (1u64 << plan.weights[w_idx].n) >> fixed_bits;
+                            col_reads[w_idx] = col_reads[w_idx].saturating_add(elems);
+                        }
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -3184,58 +3371,147 @@ where
             if col_claims.is_empty() {
                 continue;
             }
-            let Kind::Virtual(Def::Linear { constant, terms }) =
-                &relation.columns[col_id.0 as usize].kind
-            else {
-                return Err(Error::Unsupported);
-            };
-            let mut out = Vec::with_capacity(col_claims.len() * terms.len() * 16);
-            for (claim_idx, (z, claimed_val)) in col_claims.iter().enumerate() {
-                let mut eq_z: Option<Vec<K>> = None;
-                let mut evals = Vec::with_capacity(terms.len());
-                let mut op_points = Vec::with_capacity(terms.len());
-                for (_, r) in terms {
-                    if let Some(w_idx) = weight_index[r.column.0 as usize] {
-                        col_reads[w_idx] =
-                            col_reads[w_idx].saturating_add(1u64 << plan.weights[w_idx].n);
+            let col = &relation.columns[col_id.0 as usize];
+            match &col.kind {
+                Kind::Virtual(Def::Linear { constant, terms }) => {
+                    let mut out = Vec::with_capacity(col_claims.len() * terms.len() * 16);
+                    for (claim_idx, (z, claimed_val)) in col_claims.iter().enumerate() {
+                        let mut eq_z: Option<Vec<K>> = None;
+                        let mut evals = Vec::with_capacity(terms.len());
+                        let mut op_points = Vec::with_capacity(terms.len());
+                        for (_, r) in terms {
+                            if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                                col_reads[w_idx] =
+                                    col_reads[w_idx].saturating_add(1u64 << plan.weights[w_idx].n);
+                            }
+                            let op_data = resolved.get(r.column)?;
+                            let op_point = restrict(r, z);
+                            let eval = if op_point == *z {
+                                let eq = match &eq_z {
+                                    Some(table) => table,
+                                    None => eq_z.insert(stele_sumcheck::parallel::eq_table(z)?),
+                                };
+                                mle_dot(op_data, eq)?
+                            } else {
+                                mle_parallel(op_data, &op_point)?
+                            };
+                            evals.push(eval);
+                            op_points.push(op_point);
+                        }
+                        if let Some((forged_col, _, Some(term_idx))) = forge_virtual {
+                            if forged_col == col_id {
+                                use stele_field::Inverse;
+                                let honest_sum = terms
+                                    .iter()
+                                    .zip(&evals)
+                                    .fold(K::from_i64(*constant), |acc, ((c, _), v)| {
+                                        acc + K::from_i64(*c) * *v
+                                    });
+                                let delta = *claimed_val - honest_sum;
+                                let inv_c = K::from_i64(terms[term_idx].0)
+                                    .inverse()
+                                    .ok_or(Error::Unsupported)?;
+                                evals[term_idx] = evals[term_idx] + delta * inv_c;
+                            }
+                        }
+                        put(&mut out, &evals);
+                        absorb_linear_evals(t, col_id, claim_idx, &evals)?;
+                        for (((_, r), op_point), eval) in terms.iter().zip(op_points).zip(evals) {
+                            claims.0[r.column.0 as usize].push((op_point, eval));
+                        }
                     }
-                    let op_data = resolved.get(r.column)?;
-                    let op_point = restrict(r, z);
-                    let eval = if op_point == *z {
-                        let eq = match &eq_z {
-                            Some(table) => table,
-                            None => eq_z.insert(stele_sumcheck::parallel::eq_table(z)?),
+                    proof.segments[s].reductions.push(out);
+                }
+                Kind::Virtual(Def::Contraction {
+                    free,
+                    summed,
+                    lhs,
+                    rhs,
+                }) => {
+                    let mut out = Vec::new();
+                    let (z, claimed_val) = if col_claims.len() > 1 {
+                        let batch = claim_batch::Batch {
+                            id: VIRTUAL_BATCH | u64::from(col_id.0),
+                            tensor: u64::from(col_id.0),
+                            num_vars: u32::from(col.log_len),
+                            claims: &col_claims,
                         };
-                        mle_dot(op_data, eq)?
-                    } else {
-                        mle_parallel(op_data, &op_point)?
-                    };
-                    evals.push(eval);
-                    op_points.push(op_point);
-                }
-                if let Some((forged_col, _, Some(term_idx))) = forge_virtual {
-                    if forged_col == col_id {
-                        use stele_field::Inverse;
-                        let honest_sum = terms
+                        let table: Vec<K> = resolved
+                            .get(col_id)?
                             .iter()
-                            .zip(&evals)
-                            .fold(K::from_i64(*constant), |acc, ((c, _), v)| {
-                                acc + K::from_i64(*c) * *v
-                            });
-                        let delta = *claimed_val - honest_sum;
-                        let inv_c = K::from_i64(terms[term_idx].0)
-                            .inverse()
-                            .ok_or(Error::Unsupported)?;
-                        evals[term_idx] = evals[term_idx] + delta * inv_c;
+                            .map(|&v| K::from_i64(v))
+                            .collect();
+                        let (bp, point) = batch.prove_with_point(table, t)?;
+                        for row in &bp.rounds {
+                            put(&mut out, row);
+                        }
+                        put(&mut out, &bp.final_values);
+                        (point, bp.final_values[0])
+                    } else {
+                        col_claims.into_iter().next().ok_or(Error::ProofShape)?
+                    };
+                    for r in [lhs, rhs] {
+                        if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                            let fixed_bits =
+                                r.vars.iter().filter(|d| Ref::fixed(**d).is_some()).count() as u32;
+                            let elems = (1u64 << plan.weights[w_idx].n) >> fixed_bits;
+                            col_reads[w_idx] = col_reads[w_idx].saturating_add(elems);
+                        }
                     }
+                    let shape = MatmulShape::from_point(z, *free, *summed, lhs, rhs);
+                    let instance =
+                        shape.instance(VIRTUAL_CONTRACTION | u64::from(col_id.0), claimed_val);
+                    let mut tables = Vec::with_capacity(2 + usize::from(!shape.shared.is_empty()));
+                    if !shape.shared.is_empty() {
+                        tables.push(shape.eq_table());
+                    }
+                    tables.push(shape.table(lhs, resolved.get(lhs.column)?)?);
+                    tables.push(shape.table(rhs, resolved.get(rhs.column)?)?);
+                    metrics.contractions_reduced = metrics.contractions_reduced.saturating_add(1);
+                    metrics.contraction_partial_evals =
+                        metrics.contraction_partial_evals.saturating_add(2);
+                    let dense = Dense::new(&instance, tables)?;
+                    #[cfg(any(test, feature = "controls"))]
+                    let (sp, sc) = if let Some((forged_col, _, comp)) = forge_virtual {
+                        if forged_col == col_id {
+                            prove_sumcheck_forged(&instance, dense, t, comp.is_some())?
+                        } else {
+                            let mut sc = Vec::new();
+                            let capture = Capture {
+                                dense,
+                                point: &mut sc,
+                            };
+                            let sp = stele_sumcheck::prove(&instance, capture, t)?;
+                            (sp, sc)
+                        }
+                    } else {
+                        let mut sc = Vec::new();
+                        let capture = Capture {
+                            dense,
+                            point: &mut sc,
+                        };
+                        let sp = stele_sumcheck::prove(&instance, capture, t)?;
+                        (sp, sc)
+                    };
+                    #[cfg(not(any(test, feature = "controls")))]
+                    let (sp, sc) = {
+                        let mut sc = Vec::new();
+                        let capture = Capture {
+                            dense,
+                            point: &mut sc,
+                        };
+                        let sp = stele_sumcheck::prove(&instance, capture, t)?;
+                        (sp, sc)
+                    };
+                    for row in &sp.rounds {
+                        put(&mut out, row);
+                    }
+                    put(&mut out, &sp.final_values);
+                    shape.route_operands(lhs, rhs, *free, &sc, &sp.final_values, &mut claims);
+                    proof.segments[s].reductions.push(out);
                 }
-                put(&mut out, &evals);
-                absorb_linear_evals(t, col_id, claim_idx, &evals)?;
-                for (((_, r), op_point), eval) in terms.iter().zip(op_points).zip(evals) {
-                    claims.0[r.column.0 as usize].push((op_point, eval));
-                }
+                _ => return Err(Error::Unsupported),
             }
-            proof.segments[s].reductions.push(out);
         }
         metrics.reductions_ns = metrics.reductions_ns.saturating_add(v_timer.elapsed_ns());
         drop(resolved);
@@ -3515,28 +3791,102 @@ pub fn verify_segmented(
                 continue;
             }
             let mut reader = red_sections.next()?;
-            let Kind::Virtual(Def::Linear { constant, terms }) =
-                &relation.columns[col_id.0 as usize].kind
-            else {
-                return Err(Error::Unsupported);
-            };
-            for (claim_idx, (z, claimed_val)) in col_claims.iter().enumerate() {
-                let evals = reader.ks(terms.len())?;
-                absorb_linear_evals(t, col_id, claim_idx, &evals)?;
-                let sum = terms
-                    .iter()
-                    .zip(&evals)
-                    .fold(K::from_i64(*constant), |acc, ((c, _), v)| {
-                        acc + K::from_i64(*c) * *v
-                    });
-                if sum != *claimed_val {
-                    return Err(Error::LinearMismatch(col_id));
+            let col = &relation.columns[col_id.0 as usize];
+            match &col.kind {
+                Kind::Virtual(Def::Linear { constant, terms }) => {
+                    for (claim_idx, (z, claimed_val)) in col_claims.iter().enumerate() {
+                        let evals = reader.ks(terms.len())?;
+                        absorb_linear_evals(t, col_id, claim_idx, &evals)?;
+                        let sum = terms
+                            .iter()
+                            .zip(&evals)
+                            .fold(K::from_i64(*constant), |acc, ((c, _), v)| {
+                                acc + K::from_i64(*c) * *v
+                            });
+                        if sum != *claimed_val {
+                            return Err(Error::LinearMismatch(col_id));
+                        }
+                        for ((_, r), &eval) in terms.iter().zip(&evals) {
+                            claims.push(r, z, eval);
+                        }
+                    }
+                    reader.end()?;
                 }
-                for ((_, r), &eval) in terms.iter().zip(&evals) {
-                    claims.push(r, z, eval);
+                Kind::Virtual(Def::Contraction {
+                    free,
+                    summed,
+                    lhs,
+                    rhs,
+                }) => {
+                    let (z, claimed_val) = if col_claims.len() > 1 {
+                        let batch = claim_batch::Batch {
+                            id: VIRTUAL_BATCH | u64::from(col_id.0),
+                            tensor: u64::from(col_id.0),
+                            num_vars: u32::from(col.log_len),
+                            claims: &col_claims,
+                        };
+                        let mut rounds = Vec::with_capacity(usize::from(col.log_len));
+                        for _ in 0..col.log_len {
+                            rounds.push(reader.ks(3)?);
+                        }
+                        let bp = stele_sumcheck::Proof {
+                            rounds,
+                            final_values: reader.ks(1)?,
+                        };
+                        let reduction = batch.verify(&bp, t)?;
+                        ledger.add(
+                            Line::Rlc,
+                            &col.name,
+                            reduction.rlc.numerator,
+                            reduction.rlc.numerator,
+                        );
+                        ledger.add(
+                            Line::Sc,
+                            &col.name,
+                            reduction.sc.numerator,
+                            u64::from(reduction.sc.degree),
+                        );
+                        let claim = &reduction.claims[0];
+                        (claim.point.clone(), claim.value)
+                    } else {
+                        col_claims.into_iter().next().ok_or(Error::ProofShape)?
+                    };
+                    let shape = MatmulShape::from_point(z, *free, *summed, lhs, rhs);
+                    let instance =
+                        shape.instance(VIRTUAL_CONTRACTION | u64::from(col_id.0), claimed_val);
+                    let width = if shape.shared.is_empty() { 3 } else { 4 };
+                    let mut rounds = Vec::with_capacity(shape.vars.len());
+                    for _ in 0..shape.vars.len() {
+                        rounds.push(reader.ks(width)?);
+                    }
+                    let sp = stele_sumcheck::Proof {
+                        rounds,
+                        final_values: reader.ks(instance.inputs.len())?,
+                    };
+                    reader.end()?;
+                    let reduction = stele_sumcheck::verify(&instance, &sp, t)?;
+                    if !shape.shared.is_empty()
+                        && sp.final_values[0] != shape.eq_at(&reduction.point)
+                    {
+                        return Err(Error::EqMismatch);
+                    }
+                    shape.route_operands(
+                        lhs,
+                        rhs,
+                        *free,
+                        &reduction.point,
+                        &sp.final_values,
+                        &mut claims,
+                    );
+                    ledger.add(
+                        Line::Sc,
+                        &col.name,
+                        reduction.sc.numerator,
+                        u64::from(reduction.sc.degree),
+                    );
                 }
+                _ => return Err(Error::Unsupported),
             }
-            reader.end()?;
         }
         red_sections.end()?;
 

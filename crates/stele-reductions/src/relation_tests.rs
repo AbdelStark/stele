@@ -1483,27 +1483,6 @@ fn rejects_unsupported_virtual_kinds_and_encodes_distinctly() {
         Some(Error::Unsupported)
     );
 
-    let mut rel_ct = rel.clone();
-    rel_ct.columns[1].kind = Kind::Virtual(Def::Contraction {
-        free: 1,
-        summed: 0,
-        lhs: Ref::identity(x, 1),
-        rhs: Ref::identity(x, 1),
-    });
-    assert_eq!(rel_ct.validate(), Ok(()));
-    let mut ts = Transcript::new(PUBLIC).expect("transcript");
-    assert_eq!(
-        prove_segmented(
-            &mut ts,
-            &rel_ct,
-            |_| Ok(vals.clone()),
-            &[],
-            Sources::CircleAll
-        )
-        .err(),
-        Some(Error::Unsupported)
-    );
-
     let enc1 = super::codec::encode(&rel);
     let mut rel2 = rel.clone();
     rel2.columns[1].kind = Kind::Virtual(Def::Linear {
@@ -2093,8 +2072,8 @@ fn accepts_linear_edge_cases_and_rejects_overflow_or_bad_forge_target() {
     assert_eq!(p1.segments[0].identities, p2.segments[0].identities);
 
     // ResolvedColumns::get must refuse to fall back to `Values` for an uncomputed virtual column.
-    let empty_resolved =
-        super::ResolvedColumns::for_segment(&rel, &vals_with_bogus, &[]).expect("empty virtuals");
+    let empty_resolved = super::ResolvedColumns::for_segment(&rel, &vals_with_bogus, &[], None)
+        .expect("empty virtuals");
     assert_eq!(
         empty_resolved.get(v_bcast).err(),
         Some(Error::Missing(v_bcast))
@@ -2147,7 +2126,698 @@ fn accepts_linear_edge_cases_and_rejects_overflow_or_bad_forge_target() {
     let mut ovf_vals = Values::new(&r_ovf);
     ovf_vals.set(&r_ovf, ox, vec![2, 0]).expect("ox");
     assert_eq!(
-        super::ResolvedColumns::for_segment(&r_ovf, &ovf_vals, &[ov]).err(),
+        super::ResolvedColumns::for_segment(&r_ovf, &ovf_vals, &[ov], None).err(),
         Some(Error::Capacity)
     );
+}
+
+/// RFC-0028 §2.4 & RFC-0012 A19 (task E18-03): virtual `Def::Contraction` columns with
+/// single-claim (no batching) and multi-claim (RFC-0006 A2 mode 1 batching), exact partial
+/// evaluation counters (`contraction_partial_evals == 2 * contractions_reduced`), shared free
+/// bits (`eq` check + `EqMismatch`), self-operand & row-blocked `Ref::FIXED_0/1` contractions,
+/// chained `Linear -> Contraction -> Linear` across segments, `free == 0`/`summed == 0` and
+/// unclaimed edge cases, overflow (`Error::Capacity`), NC-1307, and direct/adaptive NC-1338.
+#[test]
+fn accepts_contraction_virtual_columns_and_rejects_nc_1307_and_nc_1338() {
+    use stele_ir::relation::Def;
+
+    // --- Part 1: Single-claim vs multi-claim standard matmul C[t, o] = sum_i A[t, i] * W[o, i]
+    // Domain: t in 0..2 (bit 0), o in 0..2 (bit 1), i in 0..4 (bits 2..4); free = 2, summed = 2.
+    let build_matmul_rel = |multi_claim: bool| {
+        let mut rel = Relation::default();
+        let g = rel.add_group_in("mm/w", 3, 0);
+        let g_out = rel.add_group_in("mm/out", 2, 0);
+        // A[t, i]: log_len = 3 (bit 0 = t, bits 1..3 = i)
+        let a = rel.add_column("mm/A", Kind::Witness(g), Width::signed(8), 3);
+        // W[o, i]: log_len = 3 (bit 0 = o, bits 1..3 = i)
+        let w = rel.add_column("mm/W", Kind::Weight, Width::signed(8), 3);
+        // Committed witness `y` checked against virtual contraction `c`.
+        let y = rel.add_column("mm/y", Kind::Witness(g_out), Width::signed(16), 2);
+        for (name, col, width) in [
+            ("r_a", a, Width::signed(8)),
+            ("r_w", w, Width::signed(8)),
+            ("r_y", y, Width::signed(16)),
+        ] {
+            rel.ranges.push(Range {
+                name: name.into(),
+                column: col,
+                width,
+            });
+        }
+        let c = rel.add_virtual(
+            "mm/C",
+            Def::Contraction {
+                free: 2,
+                summed: 2,
+                lhs: Ref {
+                    column: a,
+                    vars: vec![0, 2, 3],
+                },
+                rhs: Ref {
+                    column: w,
+                    vars: vec![1, 2, 3],
+                },
+            },
+            2,
+        );
+        // Unclaimed Contraction: must emit 0 reduction sections and 0 partial evals.
+        let _unclaimed = rel.add_virtual(
+            "mm/unclaimed",
+            Def::Contraction {
+                free: 2,
+                summed: 2,
+                lhs: Ref {
+                    column: a,
+                    vars: vec![0, 2, 3],
+                },
+                rhs: Ref {
+                    column: w,
+                    vars: vec![1, 2, 3],
+                },
+            },
+            2,
+        );
+        // Claim 1: identity y - C = 0.
+        rel.identities.push(Identity {
+            name: "mm/eq".into(),
+            vars: 2,
+            terms: vec![
+                IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(y, 2)],
+                },
+                IdentityTerm {
+                    coeff: -1,
+                    factors: vec![Ref::identity(c, 2)],
+                },
+            ],
+        });
+        if multi_claim {
+            // Claim 2: range check directly on virtual contraction C.
+            rel.ranges.push(Range {
+                name: "mm/r_c".into(),
+                column: c,
+                width: Width::signed(16),
+            });
+            // Claim 3: Linear virtual column reading C, read by a second identity.
+            let c_plus = rel.add_virtual(
+                "mm/C_plus1",
+                Def::Linear {
+                    constant: 1,
+                    terms: vec![(1, Ref::identity(c, 2))],
+                },
+                2,
+            );
+            let y2 = rel.add_column("mm/y2", Kind::Witness(g_out), Width::signed(16), 2);
+            rel.ranges.push(Range {
+                name: "r_y2".into(),
+                column: y2,
+                width: Width::signed(16),
+            });
+            rel.identities.push(Identity {
+                name: "mm/eq2".into(),
+                vars: 2,
+                terms: vec![
+                    IdentityTerm {
+                        coeff: 1,
+                        factors: vec![Ref::identity(y2, 2)],
+                    },
+                    IdentityTerm {
+                        coeff: -1,
+                        factors: vec![Ref::identity(c_plus, 2)],
+                    },
+                ],
+            });
+            (rel, a, w, y, Some(y2), c)
+        } else {
+            (rel, a, w, y, None, c)
+        }
+    };
+
+    let a_vals = vec![1i64, -2, 3, 4, -1, 2, 5, -3];
+    let w_vals = vec![2i64, 1, -3, 2, 4, -1, 1, 3];
+    // Compute exact C[t + 2*o] = sum_{i=0..4} A[t + 2*i] * W[o + 2*i].
+    let c_vals: Vec<i64> = (0..4)
+        .map(|x| {
+            let t = x & 1;
+            let o = (x >> 1) & 1;
+            (0..4)
+                .map(|i| a_vals[t | (i << 1)] * w_vals[o | (i << 1)])
+                .sum()
+        })
+        .collect();
+
+    let sources = Sources::CircleAll;
+    let prepare_models = |rel: &Relation, vals: &Values| {
+        let msgs = model_messages(rel, vals).expect("model msgs");
+        let layouts = model_layout(rel, sources).expect("model layouts");
+        layouts
+            .iter()
+            .zip(msgs)
+            .map(|(l, m)| {
+                let p = sources
+                    .prepare_owned(l.id, l.ell, &l.code, m)
+                    .expect("prepare");
+                let (cert, _) = p.certificate().expect("cert");
+                let (handle, _) = verify_certificate(*p.source(), &cert).expect("verify cert");
+                (p, handle)
+            })
+            .collect::<Vec<_>>()
+    };
+
+    // Single-claim check: 0 RLC lines, 1 SC line, 1 contraction reduced, 2 partial evals.
+    {
+        let (rel, a, w, y, _, c) = build_matmul_rel(false);
+        assert_eq!(rel.validate(), Ok(()));
+        let mut vals = Values::new(&rel);
+        vals.set(&rel, a, a_vals.clone()).expect("a");
+        vals.set(&rel, w, w_vals.clone()).expect("w");
+        vals.set(&rel, y, c_vals.clone()).expect("y");
+        assert_eq!(stele_ir::relation::check(&rel, &vals), Ok(()));
+        let prepared = prepare_models(&rel, &vals);
+        let mp: Vec<_> = prepared.iter().map(|(p, h)| (p, h)).collect();
+        let mv: Vec<_> = prepared.iter().map(|(_, h)| h).collect();
+
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let (proof, metrics) =
+            prove_segmented_measured(&mut tp, &rel, |_| Ok(vals.clone()), &mp, sources)
+                .expect("prove single");
+        // Only `c` is claimed; `_unclaimed` emits 0 reduction sections.
+        assert_eq!(proof.segments[0].reductions.len(), 1);
+        assert_eq!(metrics.contractions_reduced, 1);
+        assert_eq!(metrics.contraction_partial_evals, 2);
+        // Committed cells: A (8) + y (4) = 12 (never C or _unclaimed).
+        assert_eq!(metrics.committed_cells, 12);
+
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        let ledger = verify_segmented(&mut tv, &rel, &mv, &proof, sources).expect("verify single");
+        let c_lines: Vec<_> = ledger.entries.iter().filter(|e| e.name == "mm/C").collect();
+        assert_eq!(c_lines.len(), 1);
+        assert_eq!(c_lines[0].line, Line::Sc);
+        assert_eq!(c_lines[0].numerator, 2 * 2); // summed = 2, degree = 2
+
+        // Poisoning `Values` slot for virtual contraction `c` must be ignored (bit-identical proof).
+        let mut vals_bogus = vals.clone();
+        vals_bogus
+            .set(&rel, c, vec![999, 999, 999, 999])
+            .expect("bogus");
+        let mut tp2 = Transcript::new(PUBLIC).expect("t");
+        let (proof2, _) =
+            prove_segmented_measured(&mut tp2, &rel, |_| Ok(vals_bogus.clone()), &mp, sources)
+                .expect("prove bogus");
+        assert_eq!(proof.segments[0].reductions, proof2.segments[0].reductions);
+
+        // NC-1307 on virtual contraction: +1 on round 0 polynomial -> RoundSumMismatch.
+        let mut bad_1307 = proof.clone();
+        let sec = &mut bad_1307.segments[0].reductions[0];
+        let orig = K::from_le_bytes(sec[..16].try_into().expect("16")).expect("k");
+        sec[..16].copy_from_slice(&(orig + K::from_i64(1)).to_le_bytes());
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &mv, &bad_1307, sources).err(),
+            Some(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch))
+        );
+
+        // Noncanonical QM31 limb in contraction reduction -> NoncanonicalField.
+        let mut bad_nc = proof.clone();
+        bad_nc.segments[0].reductions[0][..4].copy_from_slice(&((1u32 << 31) - 1).to_le_bytes());
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &mv, &bad_nc, sources).err(),
+            Some(Error::NoncanonicalField)
+        );
+
+        // Truncated reduction section -> ProofShape.
+        let mut short = proof.clone();
+        short.segments[0].reductions[0].pop();
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &mv, &short, sources).err(),
+            Some(Error::ProofShape)
+        );
+
+        // Direct NC-1338 on virtual contraction: forged C'[0] = C[0] + 1, honest sumcheck rounds
+        // disagree with forged claim -> RoundSumMismatch.
+        let mut forged_vals = vals.clone();
+        let mut y_forged = c_vals.clone();
+        y_forged[0] += 1;
+        forged_vals.set(&rel, y, y_forged).expect("y_forged");
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let forged_direct = prove_segmented_forged_virtual(
+            &mut tp,
+            &rel,
+            |_| Ok(forged_vals.clone()),
+            &mp,
+            sources,
+            c,
+            0,
+            None,
+        )
+        .expect("forged direct");
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &mv, &forged_direct, sources).err(),
+            Some(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch))
+        );
+
+        // Adaptive NC-1338 on virtual contraction: force all round sums to pass -> rejects at
+        // FinalEvaluationMismatch.
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let forged_adapt = prove_segmented_forged_virtual(
+            &mut tp,
+            &rel,
+            |_| Ok(forged_vals.clone()),
+            &mp,
+            sources,
+            c,
+            0,
+            Some(0),
+        )
+        .expect("forged adapt");
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &mv, &forged_adapt, sources).err(),
+            Some(Error::Sumcheck(
+                stele_sumcheck::Error::FinalEvaluationMismatch
+            ))
+        );
+    }
+
+    // Multi-claim check: 3 claims on C -> RFC-0006 A2 mode 1 batching (RLC + SC) + 1 contraction
+    // sumcheck (SC), STILL exactly 1 contraction reduced and 2 partial evals!
+    {
+        let (rel, a, w, y, y2, c) = build_matmul_rel(true);
+        let y2 = y2.expect("y2");
+        assert_eq!(rel.validate(), Ok(()));
+        let mut vals = Values::new(&rel);
+        vals.set(&rel, a, a_vals.clone()).expect("a");
+        vals.set(&rel, w, w_vals.clone()).expect("w");
+        vals.set(&rel, y, c_vals.clone()).expect("y");
+        let y2_vals: Vec<i64> = c_vals.iter().map(|v| v + 1).collect();
+        vals.set(&rel, y2, y2_vals.clone()).expect("y2");
+        assert_eq!(stele_ir::relation::check(&rel, &vals), Ok(()));
+        let prepared = prepare_models(&rel, &vals);
+        let mp: Vec<_> = prepared.iter().map(|(p, h)| (p, h)).collect();
+        let mv: Vec<_> = prepared.iter().map(|(_, h)| h).collect();
+
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let (proof, metrics) =
+            prove_segmented_measured(&mut tp, &rel, |_| Ok(vals.clone()), &mp, sources)
+                .expect("prove multi");
+        // Reductions: `c_plus` (Linear) then `c` (Contraction).
+        assert_eq!(proof.segments[0].reductions.len(), 2);
+        assert_eq!(metrics.contractions_reduced, 1);
+        assert_eq!(metrics.contraction_partial_evals, 2);
+
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        let ledger = verify_segmented(&mut tv, &rel, &mv, &proof, sources).expect("verify multi");
+        let c_lines: Vec<_> = ledger.entries.iter().filter(|e| e.name == "mm/C").collect();
+        assert_eq!(c_lines.len(), 3);
+        assert_eq!(c_lines[0].line, Line::Rlc);
+        assert_eq!(c_lines[1].line, Line::Sc);
+        assert_eq!(c_lines[2].line, Line::Sc);
+
+        // Tamper round 0 of the multi-claim `claim_batch` prefix inside `c`'s reduction section
+        // (index 1 in decreasing ColumnId order: `c_plus` is 0, `c` is 1) -> `RoundSumMismatch`.
+        let mut bad_batch = proof.clone();
+        let sec = &mut bad_batch.segments[0].reductions[1];
+        let orig = K::from_le_bytes(sec[..16].try_into().expect("16")).expect("k");
+        sec[..16].copy_from_slice(&(orig + K::from_i64(1)).to_le_bytes());
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &mv, &bad_batch, sources).err(),
+            Some(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch))
+        );
+
+        // Multi-claim NC-1338: forged C'[0] = C[0] + 1 passes claim batching over the forged
+        // table and rejects at the contraction sumcheck (`RoundSumMismatch` / `FinalEvaluationMismatch`).
+        let mut forged_vals = vals.clone();
+        let mut y_f = c_vals.clone();
+        y_f[0] += 1;
+        let mut y2_f = y2_vals;
+        y2_f[0] += 1;
+        forged_vals.set(&rel, y, y_f).expect("yf");
+        forged_vals.set(&rel, y2, y2_f).expect("y2f");
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let forged_m = prove_segmented_forged_virtual(
+            &mut tp,
+            &rel,
+            |_| Ok(forged_vals.clone()),
+            &mp,
+            sources,
+            c,
+            0,
+            Some(0),
+        )
+        .expect("forged multi");
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &mv, &forged_m, sources).err(),
+            Some(Error::Sumcheck(
+                stele_sumcheck::Error::FinalEvaluationMismatch
+            ))
+        );
+    }
+
+    // --- Part 2: Shared free bits (batched attention-like contraction), self-operand contraction,
+    // row-blocked Ref::FIXED_0/1 contraction, and 0-var (`free=0, summed=0`) contraction.
+    {
+        let mut rel = Relation::default();
+        let g3 = rel.add_group_in("sh/w3", 3, 0);
+        let g2 = rel.add_group_in("sh/w2", 2, 0);
+        let g0 = rel.add_group_in("sh/w0", 0, 0);
+        // Q[h, t, i] and K[h, o, i]: 3 bits (bit 0 = h, bit 1 = t/o, bit 2 = i)
+        let q = rel.add_column("sh/Q", Kind::Witness(g3), Width::signed(6), 3);
+        let k = rel.add_column("sh/K", Kind::Witness(g3), Width::signed(6), 3);
+        // Output out_sh[h, t, o]: free = 3 (bit 0 = h [shared], bit 1 = t, bit 2 = o), summed = 1 (bit 3 = i).
+        let out_sh = rel.add_column("sh/out", Kind::Witness(g3), Width::signed(14), 3);
+        // Self-operand row-blocked contraction: block0[t, o] = sum_i Q[h=0, t, i] * Q[h=0, o, i].
+        let out_blk = rel.add_column("sh/blk", Kind::Witness(g2), Width::signed(14), 2);
+        // Scalar 0-var contraction: s_out = s_a * s_b (`free = 0, summed = 0`).
+        let s_a = rel.add_column("sh/sa", Kind::Witness(g0), Width::signed(6), 0);
+        let s_out = rel.add_column("sh/sout", Kind::Witness(g0), Width::signed(12), 0);
+        for (name, col, width) in [
+            ("rq", q, Width::signed(6)),
+            ("rk", k, Width::signed(6)),
+            ("ro", out_sh, Width::signed(14)),
+            ("rb", out_blk, Width::signed(14)),
+            ("rsa", s_a, Width::signed(6)),
+            ("rso", s_out, Width::signed(12)),
+        ] {
+            rel.ranges.push(Range {
+                name: name.into(),
+                column: col,
+                width,
+            });
+        }
+        let v_sh = rel.add_virtual(
+            "sh/v_sh",
+            Def::Contraction {
+                free: 3,
+                summed: 1,
+                lhs: Ref {
+                    column: q,
+                    vars: vec![0, 1, 3],
+                },
+                rhs: Ref {
+                    column: k,
+                    vars: vec![0, 2, 3],
+                },
+            },
+            3,
+        );
+        let v_blk = rel.add_virtual(
+            "sh/v_blk",
+            Def::Contraction {
+                free: 2,
+                summed: 1,
+                lhs: Ref {
+                    column: q,
+                    vars: vec![Ref::FIXED_0, 0, 2],
+                },
+                rhs: Ref {
+                    column: q,
+                    vars: vec![Ref::FIXED_0, 1, 2],
+                },
+            },
+            2,
+        );
+        let v_s0 = rel.add_virtual(
+            "sh/v_s0",
+            Def::Contraction {
+                free: 0,
+                summed: 0,
+                lhs: Ref {
+                    column: s_a,
+                    vars: vec![],
+                },
+                rhs: Ref {
+                    column: s_a,
+                    vars: vec![],
+                },
+            },
+            0,
+        );
+        rel.identities.push(Identity {
+            name: "sh/eq_sh".into(),
+            vars: 3,
+            terms: vec![
+                IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(out_sh, 3)],
+                },
+                IdentityTerm {
+                    coeff: -1,
+                    factors: vec![Ref::identity(v_sh, 3)],
+                },
+            ],
+        });
+        rel.identities.push(Identity {
+            name: "sh/eq_blk".into(),
+            vars: 2,
+            terms: vec![
+                IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(out_blk, 2)],
+                },
+                IdentityTerm {
+                    coeff: -1,
+                    factors: vec![Ref::identity(v_blk, 2)],
+                },
+            ],
+        });
+        rel.identities.push(Identity {
+            name: "sh/eq_s0".into(),
+            vars: 0,
+            terms: vec![
+                IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(s_out, 0)],
+                },
+                IdentityTerm {
+                    coeff: -1,
+                    factors: vec![Ref::identity(v_s0, 0)],
+                },
+            ],
+        });
+        assert_eq!(rel.validate(), Ok(()));
+
+        let q_vals = vec![1i64, -2, 3, 1, 2, -1, -3, 4];
+        let k_vals = vec![2i64, 3, -1, 2, 1, -2, 4, -1];
+        let sh_vals: Vec<i64> = (0..8)
+            .map(|x| {
+                let (h, t, o) = (x & 1, (x >> 1) & 1, (x >> 2) & 1);
+                (0..2)
+                    .map(|i| q_vals[h | (t << 1) | (i << 2)] * k_vals[h | (o << 1) | (i << 2)])
+                    .sum()
+            })
+            .collect();
+        let blk_vals: Vec<i64> = (0..4)
+            .map(|x| {
+                let (t, o) = (x & 1, (x >> 1) & 1);
+                (0..2)
+                    .map(|i| q_vals[(t << 1) | (i << 2)] * q_vals[(o << 1) | (i << 2)])
+                    .sum()
+            })
+            .collect();
+        let mut vals = Values::new(&rel);
+        vals.set(&rel, q, q_vals).expect("q");
+        vals.set(&rel, k, k_vals).expect("k");
+        vals.set(&rel, out_sh, sh_vals).expect("sh");
+        vals.set(&rel, out_blk, blk_vals).expect("blk");
+        vals.set(&rel, s_a, vec![-5]).expect("sa");
+        vals.set(&rel, s_out, vec![25]).expect("sout");
+        assert_eq!(stele_ir::relation::check(&rel, &vals), Ok(()));
+
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let (proof, metrics) =
+            prove_segmented_measured(&mut tp, &rel, |_| Ok(vals.clone()), &[], sources)
+                .expect("prove shared");
+        assert_eq!(metrics.contractions_reduced, 3);
+        assert_eq!(metrics.contraction_partial_evals, 6);
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        verify_segmented(&mut tv, &rel, &[], &proof, sources).expect("verify shared");
+
+        // Tamper `eq` final value on `v_sh` (last section in decreasing ColumnId order is index 2):
+        // `v_sh` has 2 sumcheck rounds of width 4 (`2 * 4 * 16 = 128` bytes), then 3 final values
+        // `[eq, lhs, rhs]`. Changing `eq` while keeping `eq * lhs * rhs` fails at FinalEvaluationMismatch
+        // or EqMismatch; scaling `eq` by 2 and `lhs` by 1/2 preserves `eq * lhs * rhs` and must hit `EqMismatch`!
+        let mut bad_eq = proof.clone();
+        let sec = &mut bad_eq.segments[0].reductions[2];
+        let eq_off = 2 * 4 * 16;
+        let eq_v = K::from_le_bytes(sec[eq_off..eq_off + 16].try_into().expect("16")).expect("k");
+        let lhs_v =
+            K::from_le_bytes(sec[eq_off + 16..eq_off + 32].try_into().expect("16")).expect("k");
+        let two = K::from_i64(2);
+        let inv_two = stele_field::Inverse::inverse(two).expect("inv2");
+        sec[eq_off..eq_off + 16].copy_from_slice(&(eq_v * two).to_le_bytes());
+        sec[eq_off + 16..eq_off + 32].copy_from_slice(&(lhs_v * inv_two).to_le_bytes());
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &[], &bad_eq, sources).err(),
+            Some(Error::EqMismatch)
+        );
+    }
+
+    // --- Part 3: Overflow during `Def::Contraction` materialization -> Error::Capacity.
+    {
+        let mut r_ovf = Relation::default();
+        let g = r_ovf.add_group_in("ovf/c", 1, 0);
+        let x = r_ovf.add_column("ovf/x", Kind::Witness(g), Width::signed(8), 1);
+        let c = r_ovf.add_virtual(
+            "ovf/c",
+            Def::Contraction {
+                free: 0,
+                summed: 1,
+                lhs: Ref::identity(x, 1),
+                rhs: Ref::identity(x, 1),
+            },
+            0,
+        );
+        let mut vals = Values::new(&r_ovf);
+        vals.set(&r_ovf, x, vec![i64::MAX, i64::MAX]).expect("x");
+        assert_eq!(
+            super::ResolvedColumns::for_segment(&r_ovf, &vals, &[c], None).err(),
+            Some(Error::Capacity)
+        );
+    }
+
+    // --- Part 4: Two-segment carried `Linear -> Contraction -> Linear` chain (Step 2.4 -> Step 2.5
+    // previous-segment witness opening) and `shared + summed > MAX_VARS` rejection.
+    {
+        let mut rel = Relation::default();
+        let g0 = rel.add_group_in("seg0/w", 2, 0);
+        let g1 = rel.add_group_in("seg1/w", 2, 1);
+        let carried_a = rel.add_column("seg0/a", Kind::Witness(g0), Width::signed(6), 2);
+        rel.mark_carried(carried_a);
+        let b1 = rel.add_column("seg1/b", Kind::Witness(g1), Width::signed(6), 2);
+        let y1 = rel.add_column("seg1/y", Kind::Witness(g1), Width::signed(14), 2);
+        for (name, col, width) in [
+            ("ra", carried_a, Width::signed(6)),
+            ("rb", b1, Width::signed(6)),
+            ("ry", y1, Width::signed(14)),
+        ] {
+            rel.ranges.push(Range {
+                name: name.into(),
+                column: col,
+                width,
+            });
+        }
+        // Segment 1: Linear `v_in = carried_a + b1 + 1` (owns seg 1 by reading `b1` and carried
+        // seg-0 `carried_a`) -> Contraction `v_mm = sum_i v_in[t, i] * carried_a[o, i]`
+        // -> Linear `v_out = 2 * v_mm - 3`, equated to `y1`.
+        let v_in = rel.add_virtual(
+            "seg1/v_in",
+            Def::Linear {
+                constant: 1,
+                terms: vec![(1, Ref::identity(carried_a, 2)), (1, Ref::identity(b1, 2))],
+            },
+            2,
+        );
+        let v_mm = rel.add_virtual(
+            "seg1/v_mm",
+            Def::Contraction {
+                free: 2,
+                summed: 1,
+                lhs: Ref {
+                    column: v_in,
+                    vars: vec![0, 2],
+                },
+                rhs: Ref {
+                    column: carried_a,
+                    vars: vec![1, 2],
+                },
+            },
+            2,
+        );
+        let v_out = rel.add_virtual(
+            "seg1/v_out",
+            Def::Linear {
+                constant: -3,
+                terms: vec![(2, Ref::identity(v_mm, 2))],
+            },
+            2,
+        );
+        rel.identities.push(Identity {
+            name: "seg1/eq".into(),
+            vars: 2,
+            terms: vec![
+                IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(y1, 2)],
+                },
+                IdentityTerm {
+                    coeff: -1,
+                    factors: vec![Ref::identity(v_out, 2)],
+                },
+            ],
+        });
+        assert_eq!(rel.validate(), Ok(()));
+
+        let a_v = vec![1i64, -2, 3, 2];
+        let b_v = vec![2i64, 1, -1, 3];
+        let y_v: Vec<i64> = (0..4)
+            .map(|x| {
+                let (t, o) = (x & 1, (x >> 1) & 1);
+                let mm: i64 = (0..2)
+                    .map(|i| {
+                        let idx = t | (i << 1);
+                        (a_v[idx] + b_v[idx] + 1) * a_v[o | (i << 1)]
+                    })
+                    .sum();
+                2 * mm - 3
+            })
+            .collect();
+        let mut vals = Values::new(&rel);
+        vals.set(&rel, carried_a, a_v).expect("a");
+        vals.set(&rel, b1, b_v).expect("b");
+        vals.set(&rel, y1, y_v).expect("y");
+        assert_eq!(stele_ir::relation::check(&rel, &vals), Ok(()));
+
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let (proof, metrics) =
+            prove_segmented_measured(&mut tp, &rel, |_| Ok(vals.clone()), &[], sources)
+                .expect("prove 2seg chain");
+        assert_eq!(proof.segments.len(), 2);
+        assert_eq!(proof.segments[0].reductions.len(), 0);
+        assert_eq!(proof.segments[1].reductions.len(), 3);
+        assert_eq!(metrics.contractions_reduced, 1);
+        assert_eq!(metrics.contraction_partial_evals, 2);
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        verify_segmented(&mut tv, &rel, &[], &proof, sources).expect("verify 2seg chain");
+
+        // `plan_segmented` rejects `shared + summed > MAX_VARS` with `Error::Unsupported`.
+        let mut r_big = Relation::default();
+        let gb = r_big.add_group_in("big/w", 20, 0);
+        let bx = r_big.add_column("big/x", Kind::Witness(gb), Width::unsigned(1), 20);
+        r_big.ranges.push(Range {
+            name: "r_bx".into(),
+            column: bx,
+            width: Width::unsigned(1),
+        });
+        // `free = 20, summed = 15`: bits 0..16 are shared (`shared = 16`), so `shared + summed = 31 > 30`,
+        // while derived magnitude `2^15 * 1 * 1 = 32768 <= HALF_MODULUS` passes `Relation::validate`.
+        let _big_c = r_big.add_virtual(
+            "big/c",
+            Def::Contraction {
+                free: 20,
+                summed: 15,
+                lhs: Ref {
+                    column: bx,
+                    vars: (0..16).chain(20..24).collect(),
+                },
+                rhs: Ref {
+                    column: bx,
+                    vars: (0..16).chain(24..28).collect(),
+                },
+            },
+            20,
+        );
+        assert_eq!(r_big.validate(), Ok(()));
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &r_big, &[], &ProofV2::default(), sources).err(),
+            Some(Error::Unsupported)
+        );
+    }
 }

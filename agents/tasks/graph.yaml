@@ -4124,7 +4124,8 @@ tasks:
   skill: protocol-architect
   crate: stele-reductions
   lane: P
-  status: ready
+  status: in_progress
+  branch: task/E18-03-contraction-virtual-columns
   acceptance:
   - claims on a contraction output are reduced to one point, then one sumcheck; each operand has one partial evaluation per contraction (counter)
   - every matmul output in the embedding, projection, RoPE, attention and head modules is virtual; its limb and range columns are removed
