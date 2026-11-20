@@ -253,6 +253,14 @@ pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
     {
         let (low, high) = table.split_at_mut(half);
         let apply = |low: &mut [K], high: &[K]| {
+            // QM31 tables take the host's kernel: the limbs of this loop (stele-simd).
+            #[cfg(feature = "std")]
+            if let (Some(c), Some(high)) = (challenge.qm31(), K::qm31_slice(high)) {
+                if let Some(low) = K::qm31_slice_mut(low) {
+                    stele_simd::fold(low, high, c);
+                    return;
+                }
+            }
             for (a, b) in low.iter_mut().zip(high) {
                 *a = *a + challenge * (*b - *a);
             }
