@@ -194,6 +194,15 @@ fn eval_virtual(
             rhs,
         } => {
             let (lc, rc) = (col(lhs.column), col(rhs.column));
+            // Typed operands: one exact dot product per entry (`contract`); sums that may
+            // leave `i64`, and computed operands, keep the checked loop below.
+            if let (ColData::Borrowed(l), ColData::Borrowed(r)) = (lc, rc) {
+                if let Some(out) = super::contract(*free, *summed, (lhs, *l), (rhs, *r)) {
+                    if out.len() == n {
+                        return out.into_iter().map(|v| Some(i128::from(v))).collect();
+                    }
+                }
+            }
             let total_work =
                 n.saturating_mul(1usize.checked_shl(u32::from(*summed)).unwrap_or(usize::MAX));
             let (lg, rg) = (Indexer::new(lhs, total_work), Indexer::new(rhs, total_work));
