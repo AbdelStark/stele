@@ -4344,7 +4344,7 @@ tasks:
   skill: pcs-engineer
   crate: stele-pcs
   lane: C
-  status: in_progress
+  status: done
   agent: claude
   branch: task/E19-06-zk-reservation
   acceptance:
