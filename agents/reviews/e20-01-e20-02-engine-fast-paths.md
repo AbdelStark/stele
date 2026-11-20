@@ -346,3 +346,34 @@ The two acceptance sentences the review read as stricter than the code are rewor
   are built concurrently and that instances stay in transcript order.
 - The proof-byte record at `B = 30` and `B = 23` moved to `E20-09`: the development
   profile fixes `B = 30`.
+
+## Ledgers
+
+Recorded after the review, each a singleton run on the reference class (Xeon Platinum
+8480CL, 24 allocated CPUs, which are 12 physical cores; `bench/ledger/<name>.json`).
+The proof bytes are the same in every run of a rung. `c_lu` here is the lookup stage's
+wall time per lookup position.
+
+| Rung | Ledger | Threads | Prove s | Lookups s | `c_lu` ns | Peak RSS GB | Verify s |
+|---|---|---|---|---|---|---|---|
+| L1 | `e18-05-dev-synthetic-8layer-24t` (before) | 24 | 14.30 | 5.63 | 449 | 1.55 | 1.47 |
+| L1 | `e20-01-dev-synthetic-8layer-24t` | 24 | 16.78 | 7.24 | 577 | 1.46 | 2.03 |
+| L1 | `e20-02-dev-synthetic-8layer-24t` | 24 | 13.54 | 4.76 | 380 | 1.22 | 1.67 |
+| L1 | `e20-02-dev-synthetic-8layer-4t` | 4 | 18.08 | 7.56 | 603 | 1.10 | 1.30 |
+| L1 | `e20-02-dev-synthetic-8layer-1t` | 1 | 30.31 | 14.69 | 1,172 | 0.93 | 1.47 |
+| L2a | `e18-05-dev-stories42m-24t` (before) | 24 | 135.58 | 60.18 | 296 | 27.69 | 12.36 |
+| L2a | `e20-01-dev-stories42m-24t` | 24 | 129.15 | 58.42 | 287 | 26.39 | 12.10 |
+| L2a | `e20-02-dev-stories42m-24t` | 24 | 107.43 | 37.36 | 184 | 13.64 | 9.88 |
+| L2a | `e20-02-dev-stories42m-4t` | 4 | 342.95 | 119.13 | 585 | 13.44 | 15.57 |
+| L2a | `e20-02-dev-stories42m-1t` | 1 | 676.67 | 243.77 | 1,198 | 13.39 | 19.65 |
+
+What they show:
+
+- **E20-01 alone is slower on L1** (14.30 s to 16.78 s) and 5% faster on L2a. Its gain
+  is memory on L2a (27.7 GB to 26.4 GB); the time comes with E20-02.
+- **E20-02 halves the L2a peak RSS** (26.4 GB to 13.6 GB) and takes the lookup stage
+  from 58.4 s to 37.4 s.
+- **Parallel efficiency is low.** `T_1 / (n · T_n)` of the whole prove on L2a is 49% at 4
+  threads and 26% at 24 (52% per physical core); of the lookup stage 51% and 27%. On L1
+  it is 42% and 9%. Serial stages outside the engine (witness, model commitment) are
+  part of it; they are not this task's.
