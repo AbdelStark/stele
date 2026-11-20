@@ -240,6 +240,17 @@ verifier.
 
 ## 8. Amendment log
 
+- **E18-03 implementation note (`Contraction` reductions, unsplit `shared + summed <= MAX_VARS`):**
+  Every claimed `Def::Contraction` column is reduced individually in strictly decreasing
+  `ColumnId` order, emitting one reduction section `[optional RFC-0006 A2 mode-1 claim batch] ||
+  [contraction sumcheck]` under disjoint instance IDs `VIRTUAL_BATCH | col_id`
+  (`(1 << 62) | (4 << 48) | col_id`) and `VIRTUAL_CONTRACTION | col_id`
+  (`(1 << 62) | (5 << 48) | col_id`). Whenever `free <= MAX_VARS`, `summed <= MAX_VARS`, and
+  `shared + summed <= MAX_VARS` (even when `free + summed > MAX_VARS`), the contraction runs
+  directly as one unsplit sumcheck over the `shared + summed` variables without emitting slice
+  evaluations; `shared + summed > MAX_VARS` rejects with `Error::Unsupported`. Pre-split
+  row-block contractions declared with `Ref::FIXED_0`/`Ref::FIXED_1` reduce each block column
+  directly.
 - **E18-02 implementation note (`Linear` reductions, `NC-1337..1338`):** For a
   `Def::Linear` virtual column (which has no sumcheck of its own), `NC-1337` (+1 on one
   sent operand evaluation) and direct `NC-1338` (forged virtual column values with honest
