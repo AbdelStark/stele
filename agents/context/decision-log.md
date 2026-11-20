@@ -4700,19 +4700,26 @@ Consequences:
   development tier, verified by the exact-integer checker `research/rfc0029-pcs/check_policy3.py`
   (`research/rfc0029-pcs/REPORT.md`).
 - **Key choices:**
-  - Allocate **source version `u8(4)`** and code family **`CircleCoeff` (`u8(2)`)** in
-    `RFC-0010 A17` (resolving Q48 without colliding with `RFC-0010 A15`'s version `u8(3)`
-    hiding Circle sources), and reserve Policy 3 (`policy = u8(3)`, `e = floor((D - 1) / 3)`,
-    `q = 241` at rate 1/4, `202` at rate 1/8, `185` at rate 1/16 for `T = 100`).
+  - Allocate **source version `u8(4)`** and canonical ASCII `code_id`
+    `stele/circle-coeff-m31/v1 || u8(m) || u8(b)` (`m >= 0`, `b in {1, 2, 3, 4}`, `m + b <= 30`)
+    in `RFC-0010 A17` (resolving Q48 without colliding with `RFC-0010 A15`'s version `u8(3)`
+    hiding Circle sources), and reserve Policy 3 (`policy = u8(3)`, restricted to version-4
+    sources so `NC-0613` is preserved; `e = floor((D - 1) / 3)`, `q = 381` at rate 1/2, `241`
+    at rate 1/4, `202` at rate 1/8, `185` at rate 1/16 for `T = 100`).
   - Reserve transcript labels `stele/v0.1/pcs/level-root`, `stele/v0.1/pcs/level-beta`, and
     `stele/v0.1/pcs/level-gamma` in `RFC-0012 A20` (registered in `stele-hash` and
-    `docs/security/transcript-labels.json` in `E19-03`).
+    `docs/security/transcript-labels.json` in `E19-03`), with explicit strong-FS absorb order
+    for `u_L` and queried columns.
   - Reserve `NC-0630..0635` as `todo` in `tests/negative-controls/catalog.md` for `E19-03`/`E19-05`.
-  - **Bet B3 (`docs/plan.md §2`) check:** Exact-integer DP proves `2^32` M31 entries at
-    `T = 100` under RFC-0030 §3 caps takes `8,388,288 B < 8 MiB` under strict `2·ell·(e+1)`
-    QM31, `1,646,816 B` (`1.571 MiB`) under per-round QM31, `996,696 B` (`0.951 MiB`) under
-    Ext6 Q50, and `1,085,280 B` (`1.035 MiB`) under OM31 Q50 (with certified `2^33` model
-    sources opening in `714,768 B` / `0.682 MiB` at `q_open = 55`). Bet B3 stays active.
+  - **Bet B3 (`docs/plan.md §2`) check:** Exact-integer DP (enforcing `m + b <= 30` and
+    unconditional single-round `2·ell·(e_c + 1) <= cap` on certified model sources) proves
+    that at `2^32` M31 entries and `T = 100` under RFC-0030 §3 caps: strict `2·ell·(e + 1)`
+    QM31 takes `8,388,256 B` (`8.000 MiB`, slightly above `8.00 MB` decimal) for `b >= 2`,
+    drops to `3,810,608 B` (`3.634 MiB < 8 MB`) when admitting `b = 1` (rate 1/2, RFC-0010 A2),
+    and under Q50 takes `1,646,784 B` (`1.570 MiB`) per-round QM31, `996,664 B` (`0.950 MiB`)
+    Ext6, and `1,085,248 B` (`1.035 MiB`) OM31; certified `2^33` model sources open in
+    `722,000 B` (`0.689 MiB`, `q_open = 51`, `q_cert = 17,710`, strict `2·ell·(e_c+1) <= cap`).
+    Bet B3 stays active.
 - **Promotion:** Admission to `standard` or `treaty` is not granted here (requires RFC-0030
   and Workflow 10).
 

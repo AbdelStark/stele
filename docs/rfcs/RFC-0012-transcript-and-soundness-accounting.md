@@ -981,7 +981,17 @@ task E18-01):
 | challenge | `stele/v0.1/pcs/level-beta` | RLC |
 | challenge | `stele/v0.1/pcs/level-gamma` | RLC |
 
-Per-level ledger lines (RFC-0029 §5, `D_i = N_i - C_i` for `C_i >= 2`, `e_i < D_i / 3`):
+Existing A1/A10 labels reused at each recursion level: `stele/v0.1/sumcheck/*` (row-round
+sumcheck at levels `i >= 1`), `stele/v0.1/pcs/opening-column` (level-`i` query index
+sampler), and `stele/v0.1/pcs/opening-columns` (queried column payloads). Strong
+Fiat–Shamir order (RFC-0012 §2, RFC-0030 §1.2): at every level `i`, either the committed
+`u_{i+1}` root or (at the final transition `i = L - 1`) the clear vector `u_L` is absorbed
+under `stele/v0.1/pcs/level-root` **before** drawing the `q_i` column indices under
+`stele/v0.1/pcs/opening-column`, and the queried column payloads are absorbed under
+`stele/v0.1/pcs/opening-columns` **before** drawing `stele/v0.1/pcs/level-beta`.
+
+Per-level ledger lines (RFC-0029 §5, `D_i = N_i - C_i` for `C_i >= 2` and `D_i = N_i` for
+`C_i = 1`, `e_i < D_i / 3`):
 
 | Source | Line | Formula | Status |
 |---|---|---|---|

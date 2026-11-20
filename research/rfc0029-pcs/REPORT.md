@@ -1,78 +1,115 @@
-# RFC-0029 Policy 3 Parameter Checker & Recursive Size Model (`E19-01`)
+# RFC-0029 Policy 3 Parameter & Recursive Proof-Size Study (Task E19-01)
 
-Governing specs: [RFC-0029](../../docs/rfcs/RFC-0029-succinct-interleaved-commitments.md) §§1–5,
-[RFC-0010](../../docs/rfcs/RFC-0010-pcs.md) A2/A3/A17,
-[RFC-0012](../../docs/rfcs/RFC-0012-transcript-and-soundness-accounting.md) A20,
-[RFC-0030](../../docs/rfcs/RFC-0030-security-accounting.md) §3.
+Governing specifications: [RFC-0029](../../docs/rfcs/RFC-0029-succinct-interleaved-commitments.md)
+§§1–5, [RFC-0010](../../docs/rfcs/RFC-0010-pcs.md) A2/A3/A17,
+[RFC-0012](../../docs/rfcs/RFC-0012-transcript-and-soundness-accounting.md) A10/A20,
+[RFC-0030](../../docs/rfcs/RFC-0030-soundness-floor.md) §3.
+Exact-integer script: [check_policy3.py](check_policy3.py) (`python3 research/rfc0029-pcs/check_policy3.py --check`).
+Every query count, proximity cap, and byte total below is derived by exact Python integer and
+`Fraction` arithmetic enforcing the M31 circle coset and column-sampler domain ceiling
+`m + b <= 30` (`N = 2^(m+b) <= 2^30 < p`, RFC-0010 A2 & RFC-0012 A10).
 
-Reproduced by exact integer arithmetic (`int` / `Fraction`):
+## 1. Policy 3 exact query counts (`e = floor((D - 1) / 3)`)
 
-```sh
-python3 research/rfc0029-pcs/check_policy3.py --check
-python3 research/rfc0029-pcs/check_policy3.py
-```
+For coefficient-form Circle RS of row length `C = 2^m`, blow-up `2^b` (`b in {1, 2, 3, 4}`,
+`m + b <= 30`), codeword length `N = 2^(m+b)`, and distance `D = N - C` (`D = N` when `C = 1`),
+Policy 3 sets `e = floor((D - 1) / 3) < D / 3`. In fresh mode and at every recursion level
+`i >= 1`, `q` is the exact least positive integer with `2^T * (N - e - 1)^q <= N^q` (verified
+failing at `q - 1`), which also covers the near case because `N - D + e <= N - e - 1`:
 
-## 1. Policy 3 Fresh Query Counts (`RFC-0029 §5`)
-
-For coefficient-form Circle RS with `C = 2^m`, `N = 2^(m+b)`, distance `D = N - C` (`C >= 2`) or `D = N` (`C = 1`),
-and proven proximity radius `e = floor((D - 1) / 3)` (`e < D/3`), Policy 3 chooses the exact least positive integer `q`
-such that `2^T · (N - e - 1)^q <= N^q`, verifying failure at `q - 1` (`2^T · (N - e - 1)^(q - 1) > N^(q - 1)`).
-Because `e < D/3`, the near-case base `(N - D + e) / N` is strictly at most `(N - e - 1) / N`, so `q` covers both cases.
-
-| Rate | Blow-up `b` | `m = 16` `D` | `e = floor((D-1)/3)` | `q (T = 100)` | `q (T = 130)` |
+| Rate | Blow-up `b` | `m = 16` distance `D` | `e = floor((D-1)/3)` | `q (T = 100)` | `q (T = 130)` |
 |---|---:|---:|---:|---:|---:|
+| 1/2 | 1 | 65,536 | 21,845 | 381 | 495 |
 | 1/4 | 2 | 196,608 | 65,535 | 241 | 314 |
 | 1/8 | 3 | 458,752 | 152,917 | 202 | 262 |
 | 1/16 | 4 | 983,040 | 327,679 | 185 | 241 |
 
-## 2. Recursive Opening Proof Bytes (`2^20` to `2^34` M31 entries, `T = 100`)
+At `C = 1` (`m = 0, b = 2`), `D = N = 4`, `e = 1`, and `q = 100` (`(2/4)^100 = 2^-100`).
 
-Exact DP minimisation of RFC-0029 §3 proof bytes over per-level `(ell_i, m_i, b_i)` (with level-0 M31 elements at 4 bytes,
-levels `>= 1` at `4 · deg` bytes, 32-byte Merkle paths and level roots, degree-2 row-round sumchecks at levels `>= 1`,
-and final vector `u_L` sent in the clear). Exact QM31 cap at 100 bits: `floor(p^4 / 2^100) = 2^24 - 1`.
+## 2. Recursive opening proof sizes (`2^20` to `2^34` M31 entries, `T = 100`, `m + b <= 30`)
 
-| Entries | QM31 uncapped | QM31 capped (`2·ell·(e+1)`) | QM31 capped per-round (`2·(e+1)`) | QM31 `b = 2` capped | Ext6 Q50 capped | OM31 Q50 capped |
+Exact DP over `(ell_i, m_i, b_i)` minimising RFC-0029 §3 wire bytes:
+`sum_i (root_i + sc_i + q_i * (elem_i * 2^ell_i + 32 * k_i * (m_i + b_i))) + elem_ext * 2^m_L`,
+where `root_i = 32 B` for committed transitions (`0 B` when `u_L` is sent in the clear),
+`sc_i = 3 * ell_i * elem_ext` for levels `i >= 1` (`0` at level 0), `elem_0 = 4 B` (M31),
+and `elem_{i>=1} = 4 * deg(K)` bytes. Under RFC-0030 §3, every level enforces
+`2 * ell_i * (e_i + 1) <= floor(|K| / 2^T)` (exact QM31 cap at `T = 100`: `2^24 - 1 = 16,777,215`),
+`q_i <= cap`, `(k_i - 1) <= cap`, and `m_i + b_i <= 30`.
+
+| Entries | QM31 uncapped (`b>=2`) | QM31 capped (`b>=2`) | QM31 capped (`b>=1`) | QM31 per-round (`b>=2`) | Ext6 Q50 (`b>=2`) | OM31 Q50 (`b>=2`) |
 |---|---:|---:|---:|---:|---:|---:|
-| `2^20` | 299,376 (0.286 MiB) | 299,376 (0.286 MiB) | 299,376 (0.286 MiB) | 349,168 (0.333 MiB) | 327,672 (0.312 MiB) | 355,968 (0.339 MiB) |
-| `2^21` | 329,024 (0.314 MiB) | 329,024 (0.314 MiB) | 329,024 (0.314 MiB) | 387,776 (0.370 MiB) | 369,184 (0.352 MiB) | 403,328 (0.385 MiB) |
-| `2^22` | 373,632 (0.356 MiB) | 373,632 (0.356 MiB) | 373,632 (0.356 MiB) | 435,968 (0.416 MiB) | 416,544 (0.397 MiB) | 456,704 (0.436 MiB) |
-| `2^23` | 420,992 (0.401 MiB) | 420,992 (0.401 MiB) | 420,992 (0.401 MiB) | 497,664 (0.475 MiB) | 477,536 (0.455 MiB) | 524,800 (0.500 MiB) |
-| `2^24` | 474,320 (0.452 MiB) | 474,320 (0.452 MiB) | 474,320 (0.452 MiB) | 565,328 (0.539 MiB) | 529,272 (0.505 MiB) | 575,328 (0.549 MiB) |
-| `2^25` | 512,768 (0.489 MiB) | 523,168 (0.499 MiB) | 512,768 (0.489 MiB) | 611,648 (0.583 MiB) | 576,632 (0.550 MiB) | 628,704 (0.600 MiB) |
-| `2^26` | 560,128 (0.534 MiB) | 605,216 (0.577 MiB) | 560,128 (0.534 MiB) | 667,552 (0.637 MiB) | 624,064 (0.595 MiB) | 688,000 (0.656 MiB) |
-| `2^27` | 610,656 (0.582 MiB) | 666,912 (0.636 MiB) | 610,656 (0.582 MiB) | 729,248 (0.695 MiB) | 690,976 (0.659 MiB) | 762,016 (0.727 MiB) |
-| `2^28` | 663,984 (0.633 MiB) | 984,768 (0.939 MiB) | 679,824 (0.648 MiB) | 1,043,520 (0.995 MiB) | 753,656 (0.719 MiB) | 818,464 (0.781 MiB) |
-| `2^29` | 720,192 (0.687 MiB) | 1,478,336 (1.410 MiB) | 783,072 (0.747 MiB) | 1,537,088 (1.466 MiB) | 801,912 (0.765 MiB) | 877,760 (0.837 MiB) |
-| `2^30` | 767,552 (0.732 MiB) | 2,465,472 (2.351 MiB) | 906,464 (0.864 MiB) | 2,524,224 (2.407 MiB) | 855,264 (0.816 MiB) | 942,976 (0.899 MiB) |
-| `2^31` | 820,880 (0.783 MiB) | 4,439,744 (4.234 MiB) | 1,153,248 (1.100 MiB) | 4,498,496 (4.290 MiB) | 928,096 (0.885 MiB) | 1,022,912 (0.976 MiB) |
-| `2^32` | 877,328 (0.837 MiB) | 8,388,288 (8.000 MiB) | 1,646,816 (1.571 MiB) | 8,447,040 (8.056 MiB) | 996,696 (0.951 MiB) | 1,085,280 (1.035 MiB) |
-| `2^33` | 936,576 (0.893 MiB) | 16,285,376 (15.531 MiB) | 2,633,952 (2.512 MiB) | 16,344,128 (15.587 MiB) | 1,050,872 (1.002 MiB) | 1,150,496 (1.097 MiB) |
-| `2^34` | 998,656 (0.952 MiB) | 32,079,552 (30.593 MiB) | 4,608,224 (4.395 MiB) | 32,138,304 (30.649 MiB) | 1,110,144 (1.059 MiB) | 1,221,632 (1.165 MiB) |
+| `2^20` | 299,344 (0.285 MiB) | 299,344 (0.285 MiB) | 299,344 (0.285 MiB) | 299,344 (0.285 MiB) | 327,640 (0.312 MiB) | 355,936 (0.339 MiB) |
+| `2^21` | 328,992 (0.314 MiB) | 328,992 (0.314 MiB) | 328,992 (0.314 MiB) | 328,992 (0.314 MiB) | 369,152 (0.352 MiB) | 403,296 (0.385 MiB) |
+| `2^22` | 373,600 (0.356 MiB) | 373,600 (0.356 MiB) | 373,600 (0.356 MiB) | 373,600 (0.356 MiB) | 416,512 (0.397 MiB) | 456,672 (0.436 MiB) |
+| `2^23` | 420,960 (0.401 MiB) | 420,960 (0.401 MiB) | 420,960 (0.401 MiB) | 420,960 (0.401 MiB) | 477,504 (0.455 MiB) | 524,768 (0.500 MiB) |
+| `2^24` | 474,288 (0.452 MiB) | 474,288 (0.452 MiB) | 474,288 (0.452 MiB) | 474,288 (0.452 MiB) | 529,240 (0.505 MiB) | 575,296 (0.549 MiB) |
+| `2^25` | 512,736 (0.489 MiB) | 523,136 (0.499 MiB) | 523,136 (0.499 MiB) | 512,736 (0.489 MiB) | 576,600 (0.550 MiB) | 628,672 (0.600 MiB) |
+| `2^26` | 560,096 (0.534 MiB) | 605,184 (0.577 MiB) | 605,184 (0.577 MiB) | 560,096 (0.534 MiB) | 624,032 (0.595 MiB) | 687,968 (0.656 MiB) |
+| `2^27` | 610,624 (0.582 MiB) | 666,880 (0.636 MiB) | 666,880 (0.636 MiB) | 610,624 (0.582 MiB) | 690,944 (0.659 MiB) | 761,984 (0.727 MiB) |
+| `2^28` | 663,952 (0.633 MiB) | 984,736 (0.939 MiB) | 884,528 (0.844 MiB) | 679,792 (0.648 MiB) | 753,624 (0.719 MiB) | 818,432 (0.781 MiB) |
+| `2^29` | 720,160 (0.687 MiB) | 1,478,304 (1.410 MiB) | 1,079,600 (1.030 MiB) | 783,040 (0.747 MiB) | 801,880 (0.765 MiB) | 877,728 (0.837 MiB) |
+| `2^30` | 767,520 (0.732 MiB) | 2,465,440 (2.351 MiB) | 1,469,744 (1.402 MiB) | 906,432 (0.864 MiB) | 855,232 (0.816 MiB) | 942,944 (0.899 MiB) |
+| `2^31` | 820,848 (0.783 MiB) | 4,439,712 (4.234 MiB) | 2,250,032 (2.146 MiB) | 1,153,216 (1.100 MiB) | 928,064 (0.885 MiB) | 1,022,880 (0.975 MiB) |
+| `2^32` | 877,296 (0.837 MiB) | 8,388,256 (8.000 MiB) | 3,810,608 (3.634 MiB) | 1,646,784 (1.570 MiB) | 996,664 (0.950 MiB) | 1,085,248 (1.035 MiB) |
+| `2^33` | 936,544 (0.893 MiB) | 16,285,344 (15.531 MiB) | 13,114,464 (12.507 MiB) | 2,633,920 (2.512 MiB) | 1,050,840 (1.002 MiB) | 1,150,464 (1.097 MiB) |
+| `2^34` | 1,017,728 (0.971 MiB) | 32,079,520 (30.593 MiB) | 25,599,072 (24.413 MiB) | 4,608,192 (4.395 MiB) | 1,129,216 (1.077 MiB) | 1,240,704 (1.183 MiB) |
 
-## 3. Q50 Wider-Field Pricing (`2^32` to `2^34`, `T = 100` and OM31 `T = 128`)
+## 3. Q50 wider-field pricing (`2^32`..`2^34`, `T = 100`, plus OM31 treaty `T = 128`, `m + b <= 30`)
 
-Under the `ℓ`-fold QM31 cap (`2·ell·(e+1) <= 2^24 - 1`), row length `C` at level 0 is capped at `2^19` (`b = 2`), so
-a `2^32` witness needs `2^13` rows and reaches `8,388,288 B` (`7.9997 MiB`, just under 8 MiB); at `2^33`..`2^34`
-level-0 columns double with every bit. Moving commitment challenges to a wider extension (`Ext6` = `p^6`, ~186 bits,
-24 B/elem; or `OM31` = `p^8`, ~248 bits, 32 B/elem) lifts the proximity cap completely, keeping `2^32`..`2^34` openings
-around `0.95–1.17 MiB` at `T = 100` (`1.31–1.47 MiB` on OM31 at `T = 128` treaty). If the per-round proximity bound
-`2·(e+1) <= 2^24 - 1` holds on QM31, QM31 alone achieves `1.571 MiB` at `2^32` and `4.395 MiB` at `2^34`.
+| Entries | QM31 capped (`b>=2`) | QM31 capped (`b>=1`) | QM31 per-round | Ext6 (`p^6`, 24 B) | OM31 (`p^8`, 32 B) | OM31 treaty (`T = 128`) |
+|---|---:|---:|---:|---:|---:|---:|
+| `2^32` | 8.000 MiB | 3.634 MiB | 1.570 MiB | 0.950 MiB | 1.035 MiB | 1.308 MiB |
+| `2^33` | 15.531 MiB | 12.507 MiB | 2.512 MiB | 1.002 MiB | 1.097 MiB | 1.388 MiB |
+| `2^34` | 30.593 MiB | 24.413 MiB | 4.395 MiB | 1.077 MiB | 1.183 MiB | 1.497 MiB |
 
-## 4. Certified Model Sources & Multi-Segment Batching
+## 4. Certified model sources and faithful multi-segment level-1 joining (`T = 100`)
 
-- **Certified model sources (`RFC-0029 §§1.3, 5`, rate 1/4 at level 0, `T = 100`, per-round cap):**
-  Choosing `e_c = floor(e_max / 8)` trades `q_cert = 2,184` one-time registration queries for `q_open = 55` per-proof
-  opening queries, yielding **`518,064 B` (0.494 MiB)** for `2^29` weights up to **`714,768 B` (0.682 MiB)** for
-  `2^33` weights (full 8B model scale).
-- **Multi-segment level-0 batching (`k = 32` segments joined at level 1):**
-  `2^30` witness = `7.139 MiB` (`2·ell·(e+1)` QM31) / `5.415 MiB` (per-round QM31) / `5.365 MiB` (Ext6 Q50).
-  Merkle paths scale linearly with `k` (Q44), so coarser segments (e.g. `k = 4..8`) save 4–8× on level-0 Merkle bytes.
+### Certified model sources (rate 1/4 at level 0)
 
-## 5. Build-Program Bet B3 Assessment (`docs/plan.md §2`)
+Under RFC-0029 §1.3 and RFC-0010 A9, a registration certificate runs no sumcheck (all `ell`
+coordinates are drawn together), so level 0 unconditionally enforces the strict single-round
+cap `2 * ell * (e_c + 1) <= 2^24 - 1 = 16,777,215` (never `per_round`):
 
-Bet B3's kill criterion asks whether `E19-01` can show 100-bit proven parameters under **8 MiB (`8,388,608 B`)** for a
-`2^32`-cell witness under RFC-0030 §3 caps with Q50 priced:
-- **Cleared:** Even under strict `2·ell·(e+1) <= 2^24 - 1` on QM31, `2^32` requires `8,388,288 B < 8,388,608 B` (`7.9997 MiB`).
-- With Q50 per-round QM31 (`1.571 MiB`), Q50 Ext6 (`0.951 MiB`), or Q50 OM31 (`1.035 MiB`), `2^32` leaves `6–7 MiB` of
-  headroom for Q49 data-parallel lookup tree proofs and sumcheck rounds inside the 8 MiB M3 / 4 MiB M6 proof budgets.
-- Bet B3 stays active; no fallback is triggered.
+| Model entries | `(ell, m, b)` | `e_c` / `e_max` | `2*ell*(e_c+1)` | `q_cert` (one-time) | `q_open` (per-proof) | Opening bytes |
+|---|---|---|---:|---:|---:|---:|
+| `2^29` | `(8, 21, 2)` | 32,767 / 2,097,151 | 524,288 | 17,710 | 51 | 510,992 (0.487 MiB) |
+| `2^30` | `(9, 21, 2)` | 32,767 / 2,097,151 | 589,824 | 17,710 | 51 | 563,216 (0.537 MiB) |
+| `2^31` | `(8, 23, 2)` | 131,071 / 8,388,607 | 2,097,152 | 17,710 | 51 | 616,384 (0.588 MiB) |
+| `2^32` | `(9, 23, 2)` | 131,071 / 8,388,607 | 2,359,296 | 17,710 | 51 | 668,608 (0.638 MiB) |
+| `2^33` | `(9, 24, 2)` | 262,143 / 16,777,215 | 4,718,592 | 17,710 | 51 | 722,000 (0.689 MiB) |
+
+### Multi-segment joining at level 1 (RFC-0029 §2 "Segments", Q44 evidence)
+
+Each of `k` equal segments closes independently at level 0 (freeing its matrix), and all `k`
+pending `u_1^(s)` sources join as `k` row blocks of the logical level-1 source (`k` Merkle paths
+per level-1 query, one shared recursion from level 1 onward):
+
+| Total witness | Segments `k` | QM31 capped (`b>=2`) | QM31 capped (`b>=1`) | QM31 per-round | Ext6 Q50 |
+|---|---:|---:|---:|---:|---:|
+| `2^26` | 8 | 2.367 MiB | 2.367 MiB | 2.367 MiB | 2.466 MiB |
+| `2^28` | 32 | 8.871 MiB | 8.871 MiB | 8.871 MiB | 9.064 MiB |
+| `2^30` | 32 | 10.318 MiB | 10.318 MiB | 9.682 MiB | 9.861 MiB |
+| `2^32` | 32 | 13.705 MiB | 13.705 MiB | 11.144 MiB | 10.696 MiB |
+
+Q44 engineering finding: `k = 32` independent level-0 Merkle trees incur ~9–13 MiB of Merkle
+paths even on Ext6; keeping segment count modest (e.g. `k <= 8` segments of 4+ layers each once
+RFC-0028 shrinks per-layer witness cells by `>= 10x`) keeps segmented openings at ~2.4 MiB.
+
+## 5. Bet B3 verdict (`docs/plan.md §2`)
+
+Bet B3's kill criterion is a recursive opening above `8 MB` (`8,000,000 B`) at `2^32` M31
+entries and 100-bit security under RFC-0030 §3 caps:
+
+- On **QM31 with `b in {2, 3, 4}`** and the conservative `2 * ell * (e + 1)` union bound, a
+  `2^32` opening is `8,388,256 B` (`8.000 MiB`), which sits `388 KB` above `8,000,000 B` decimal
+  with no headroom for Q49 lookups/sumchecks.
+- **Admitting `b = 1` (rate 1/2, already defined in RFC-0010 A2)** drops strict `2 * ell * (e + 1)`
+  QM31 at `2^32` to **`3,810,608 B` (`3.634 MiB`)** — more than `4 MB` below the `8 MB` threshold
+  with zero Q50 assumption.
+- **Q50** clears the `8 MB` budget with `6–7 MB` of headroom even at `b >= 2`: **`1.570 MiB`**
+  (QM31 per-round proximity), **`0.950 MiB`** (Ext6 commitment challenges), and **`1.035 MiB`**
+  (OM31 commitment challenges), scaling to **`1.077–1.183 MiB`** at `2^34` and **`1.497 MiB`**
+  for `T = 128` treaty security on OM31.
+
+Bet B3 is **not killed**; it remains active, with `b = 1` already clearing `8 MB` strictly on
+QM31 and Q50 providing sub-MiB headroom at `2^32..2^34`.

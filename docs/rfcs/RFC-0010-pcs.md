@@ -1187,22 +1187,34 @@ point via RFC-0006 A2 mode 1) and the recursive opening of RFC-0029 §2 at the d
 tier, replacing for those two cases the last sentence of A3 item 1 and the cost sentence of
 A3 item 10:
 
-1. **Source version and code identity (Q48).** Because A15 already uses source version `u8(3)`
-   for hiding Circle sources, coefficient-form interleaved Circle RS sources use **source
-   version `u8(4)`** and code family **`CircleCoeff` (`u8(2)`)**. Each row of `C = 2^m`
-   coefficients in the RFC-0010 A2 tensor basis is zero-padded to `N = 2^(m+b)` and evaluated
-   on `D_(m+b)` (one forward transform per row; identical codeword set and distance
-   `D = N - C` for `C >= 2`, `D = N` for `C = 1`). Level 0 stores M31 elements (4 bytes);
-   recursion levels `i >= 1` store `K` elements encoded limb by limb (`4 * deg(K)` bytes).
-   Zero-knowledge randomiser and mask-row counts are reserved in the source context (both 0
-   until RFC-0013 A3; task E19-06).
-2. **Policy 3 (`policy = u8(3)`).** Proximity radius `e_i = floor((D_i - 1) / 3)` (`e_i < D_i / 3`).
-   In fresh mode and at every recursion level `i >= 1`, `q_i` is the exact least positive
-   integer satisfying `2^T * (N_i - e_i - 1)^q_i <= N_i^q_i` (`T = 100` default; e.g. `q = 241`
-   at `b = 2`, `202` at `b = 3`, `185` at `b = 4`, verified by `research/rfc0029-pcs/check_policy3.py --check`),
-   which also covers the near case `(N_i - D_i + e_i) / N_i`. In certified mode for a plan-stated
-   radius `0 < e_c <= e_max`, `q_cert` satisfies `2^T * (N - e_c - 1)^q_cert <= N^q_cert` and
-   level-0 `q_open` satisfies `2^T * (N - D + e_c)^q_open <= N^q_open`.
+1. **Source version, code identity and valid domain (Q48).** Because A15 already uses
+   source version `u8(3)` for hiding Circle sources, coefficient-form interleaved Circle RS
+   sources use **source version `u8(4)`** and canonical ASCII-prefixed `code_id` bytes
+   `stele/circle-coeff-m31/v1 || u8(m) || u8(b)` (parallel to A2/A9's
+   `stele/circle-m31/v1 || u8(m) || u8(b)`). Valid parameters are `m >= 0`,
+   `b in {1, 2, 3, 4}`, and `m + b <= 30` (enforcing the M31 coset domain `D_h` ceiling of
+   A2 and the `N <= 2^30` column-sampler ceiling of RFC-0012 A10; any `m + b > 30` or
+   unadmitted `b` rejects with `UnsupportedSource`). Each row of `C = 2^m` coefficients in
+   the RFC-0010 A2 tensor basis is zero-padded to `N = 2^(m+b)` and evaluated on `D_(m+b)`
+   (one forward transform per row; identical codeword set and distance `D = N - C` for
+   `C >= 2`, `D = N` for `C = 1`). Level 0 stores M31 elements (4 bytes); recursion levels
+   `i >= 1` store `K` elements encoded limb by limb (`4 * deg(K)` bytes). The version-4
+   source context wire bytes mirror A9's context with version `u8(4)`, `code_id`, and
+   RFC-0029 §7's reserved per-level `u16` randomiser-coefficient count and `u16` mask-row
+   count (both fixed to `0` until RFC-0013 A3 / task E19-06; nonzero rejects with
+   `UnsupportedSource`).
+2. **Policy 3 (`policy = u8(3)`).** Admitted **only** for version-4 coefficient-form Circle
+   RS sources; for source versions 1, 2 (v2 expander), and 3 (A15 hiding), `policy = u8(3)`
+   continues to reject with `UnsupportedSource`, preserving A14 item 7 and `NC-0613`.
+   Proximity radius `e_i = floor((D_i - 1) / 3)` (`e_i < D_i / 3`). In fresh mode and at
+   every recursion level `i >= 1`, `q_i` is the exact least positive integer satisfying
+   `2^T * (N_i - e_i - 1)^q_i <= N_i^q_i` (`T = 100` default; e.g. `q = 381` at `b = 1`,
+   `241` at `b = 2`, `202` at `b = 3`, `185` at `b = 4`, verified by
+   `research/rfc0029-pcs/check_policy3.py --check`), which also covers the near case
+   `(N_i - D_i + e_i) / N_i`. In certified mode for a plan-stated radius `0 < e_c <= e_max`,
+   the single-round level-0 registration certificate unconditionally pays
+   `2 * ell * (e_c + 1) / |K|`, `q_cert` satisfies `2^T * (N - e_c - 1)^q_cert <= N^q_cert`,
+   and level-0 `q_open` satisfies `2^T * (N - D + e_c)^q_open <= N^q_open`.
 3. **Scope & unchanged consumers.** Version-1 A9 sources (including RFC-0008 A5 multiplicity
    sources) and version-3 A15 hiding sources are unchanged. Controls `NC-0630..0635` are
    reserved in `tests/negative-controls/catalog.md` and executed in E19-03/E19-05.
