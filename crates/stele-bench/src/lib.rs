@@ -1,5 +1,6 @@
-//! RFC-0018 §1, A1, A2 — benchmark ledger validation and scoreboard generation (task E17-02).
+//! RFC-0018 §1, A1, A2 — benchmark ledger validation, scoreboard generation and static accounting (tasks E17-02, E22-01).
 #![forbid(unsafe_code)]
+pub mod accounting;
 mod json;
 mod legacy_rungs;
 pub mod scoreboard;

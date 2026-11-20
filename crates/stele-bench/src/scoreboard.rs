@@ -103,8 +103,8 @@ fn format_threads(model_config: &serde_json::Map<String, Value>) -> String {
     }
 }
 
-/// Render `bench/scoreboard.md` from all `*.json` inference ledgers in `ledger_dir`.
-/// Every ledger is validated before entering the table.
+/// Render `bench/scoreboard.md` from all `*.json` inference ledgers and E22-01
+/// static-accounting micro ledgers in `ledger_dir`. Every ledger is validated first.
 pub fn render_scoreboard(ledger_dir: &Path) -> Result<String, String> {
     let entries =
         std::fs::read_dir(ledger_dir).map_err(|e| format!("read {}: {e}", ledger_dir.display()))?;
@@ -119,6 +119,7 @@ pub fn render_scoreboard(ledger_dir: &Path) -> Result<String, String> {
     paths.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
     let mut rows: Vec<(usize, String, String, Vec<String>)> = Vec::new();
+    let mut static_rows: Vec<(usize, String, String, Vec<String>)> = Vec::new();
     for path in paths {
         let filename = path
             .file_name()
@@ -140,10 +141,74 @@ pub fn render_scoreboard(ledger_dir: &Path) -> Result<String, String> {
         validate_ledger(&bytes).map_err(|e| format!("invalid ledger {}: {e}", path.display()))?;
         let IntegerJson(r) =
             serde_json::from_slice(&bytes).map_err(|e| format!("parse {}: {e}", path.display()))?;
-        if r["kind"].as_str() != Some("inference") {
+        let kind = r["kind"].as_str().ok_or("missing kind")?;
+        let workload = r["workload"].as_str().ok_or("missing workload")?;
+        if kind == "micro" && workload.starts_with("micro/static-accounting-") {
+            let mc = r["model_config"]
+                .as_object()
+                .ok_or("missing model_config")?;
+            let kc = r["kernel_counters"]
+                .as_object()
+                .ok_or("missing kernel_counters")?;
+            let target_rung = mc
+                .get("target_rung")
+                .and_then(Value::as_str)
+                .ok_or("missing model_config.target_rung")?
+                .to_string();
+            let model_name = mc
+                .get("model_name")
+                .and_then(Value::as_str)
+                .unwrap_or(workload)
+                .to_string();
+            let tokens = counter_u64(kc, "tokens").ok_or("missing tokens counter")?;
+            if tokens == 0 {
+                return Err("zero tokens in static accounting ledger".into());
+            }
+            let cells =
+                counter_u64(kc, "committed_cells").ok_or("missing committed_cells counter")?;
+            let lookups =
+                counter_u64(kc, "lookup_positions").ok_or("missing lookup_positions counter")?;
+            let fmt_top = |key: &str, count_key: &str| -> String {
+                match mc.get(key).and_then(Value::as_object) {
+                    Some(obj) => {
+                        let m = obj.get("module").and_then(Value::as_str).unwrap_or("—");
+                        let c = obj.get(count_key).and_then(Value::as_u64).unwrap_or(0);
+                        format!("{m} ({})", fmt_commas(c))
+                    }
+                    None => "—".into(),
+                }
+            };
+            let top_cells = fmt_top("top_module_cells", "cells_per_token");
+            let top_lookups = fmt_top("top_module_lookups", "lookups_per_token");
+            let commit = r["commit"].as_str().ok_or("missing commit")?;
+            let short_commit = &commit[..7.min(commit.len())];
+            let ledger_link = format!("[{stem}](ledger/{filename}) @ `{short_commit}`");
+            let order = RUNGS
+                .iter()
+                .position(|&candidate| candidate == target_rung)
+                .unwrap_or(RUNGS.len());
+            static_rows.push((
+                order,
+                target_rung.clone(),
+                filename,
+                vec![
+                    target_rung,
+                    model_name,
+                    tokens.to_string(),
+                    fmt_commas(cells),
+                    fmt_commas(cells / tokens),
+                    fmt_commas(lookups),
+                    fmt_commas(lookups / tokens),
+                    top_cells,
+                    top_lookups,
+                    ledger_link,
+                ],
+            ));
             continue;
         }
-        let workload = r["workload"].as_str().ok_or("missing workload")?;
+        if kind != "inference" {
+            continue;
+        }
         let mc = r["model_config"]
             .as_object()
             .ok_or("missing model_config")?;
@@ -314,6 +379,29 @@ pub fn render_scoreboard(ledger_dir: &Path) -> Result<String, String> {
     lines.push(
         "- Rows on different devices or thread counts are not a comparison (Workflow 04).".into(),
     );
+    if !static_rows.is_empty() {
+        static_rows.sort_by(|a, b| (&a.0, &a.1, &a.2).cmp(&(&b.0, &b.1, &b.2)));
+        let shead = [
+            "Target rung",
+            "Model / Window",
+            "T",
+            "Committed cells",
+            "Cells/token",
+            "Lookup positions",
+            "Lookups/token",
+            "Top module (cells/tok)",
+            "Top module (lookups/tok)",
+            "Ledger",
+        ];
+        lines.push(String::new());
+        lines.push("## Static Accounting Baselines (RFC-0027 §3, E22-01)".into());
+        lines.push(String::new());
+        lines.push(format!("| {} |", shead.join(" | ")));
+        lines.push(format!("|{}", "---|".repeat(shead.len())));
+        for (_, _, _, cols) in static_rows {
+            lines.push(format!("| {} |", cols.join(" | ")));
+        }
+    }
     lines.push(String::new());
     Ok(lines.join("\n"))
 }
