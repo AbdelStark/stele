@@ -35,6 +35,50 @@ fn zero_entries(d: &Descriptor) -> Result<Vec<i32>, Error> {
     Ok(values)
 }
 
+/// Rows per scoped thread below which a split costs more than it saves.
+#[cfg(feature = "std")]
+const ROWS_PER_WORKER: usize = 512;
+
+/// `fill(state, i, row)` for row `i` of the first `rows` two-cell rows of `entries`, in
+/// row order. With `std` the rows run in blocks on scoped threads, each block with its
+/// own `state()`: a row depends only on its index (the state is a cache), so the table
+/// is the loop's and the error is the first failing row's.
+fn fill_rows<S>(
+    entries: &mut [i32],
+    rows: usize,
+    state: impl Fn() -> S + Sync,
+    fill: impl Fn(&mut S, usize, &mut [i32]) -> Result<(), Error> + Sync,
+) -> Result<(), Error> {
+    let cells = entries.get_mut(..2 * rows).ok_or(Error::Capacity)?;
+    let run = |first: usize, block: &mut [i32]| -> Result<(), Error> {
+        let mut state = state();
+        for (j, row) in block.chunks_exact_mut(2).enumerate() {
+            fill(&mut state, first + j, row)?;
+        }
+        Ok(())
+    };
+    #[cfg(feature = "std")]
+    {
+        let workers = std::thread::available_parallelism()
+            .map_or(1, |n| n.get())
+            .min(rows / ROWS_PER_WORKER);
+        if workers > 1 {
+            let per = rows.div_ceil(workers);
+            let run = &run;
+            return std::thread::scope(|scope| {
+                let mut handles = reserved(workers)?;
+                for (b, block) in cells.chunks_mut(2 * per).enumerate() {
+                    handles.push(scope.spawn(move || run(b * per, block)));
+                }
+                handles
+                    .into_iter()
+                    .try_for_each(|handle| handle.join().map_err(|_| Error::Capacity)?)
+            });
+        }
+    }
+    run(0, cells)
+}
+
 pub(super) fn rsqrt(m: u32) -> Result<i32, Error> {
     if !(16384..65536).contains(&m) {
         return Err(Error::Parameters);
@@ -100,8 +144,8 @@ impl Table {
             return Err(Error::Parameters);
         }
         let mut entries = zero_entries(&descriptor)?;
-        let mut gaussian = Gaussian::new();
-        for (i, row) in entries.chunks_exact_mut(2).enumerate() {
+        let rows = entries.len() / 2;
+        fill_rows(&mut entries, rows, Gaussian::new, |gaussian, i, row| {
             let t = i32::try_from(i)
                 .map_err(|_| Error::Capacity)?
                 .checked_sub(32768)
@@ -112,7 +156,8 @@ impl Table {
             } else {
                 activation::certify(&descriptor, t)?
             };
-        }
+            Ok(())
+        })?;
         Ok(Self {
             descriptor,
             entries,
@@ -141,37 +186,43 @@ impl Table {
         };
         let mut entries = zero_entries(&descriptor)?;
         let rows = usize::try_from(descriptor.shape().rows()).map_err(|_| Error::Capacity)?;
-        for (i, row) in entries.chunks_exact_mut(2).take(rows).enumerate() {
-            let i = u64::try_from(i).map_err(|_| Error::Capacity)?;
-            let n = match kind {
-                Kind::High => i.checked_shl(u32::from(p[3])).ok_or(Error::Parameters)?,
-                Kind::Low => i,
-                _ => (1u64 << p[0]).checked_sub(i).ok_or(Error::Parameters)?,
-            };
-            row[0] = if matches!(kind, Kind::Direct | Kind::Correction) {
-                i32::try_from(n)
-                    .map_err(|_| Error::Parameters)?
-                    .checked_neg()
-                    .ok_or(Error::Parameters)?
-            } else {
-                i32::try_from(i).map_err(|_| Error::Parameters)?
-            };
-            let direct = exp::certify(n, p[1], p[2])?;
-            row[1] = if let Some((high, low)) = &base {
-                let a = i64::from(high.output(n >> p[3])?);
-                let b = i64::from(low.output(n % (1u64 << p[3]))?);
-                let product = a.checked_mul(b).ok_or(Error::Interval)? / (1i64 << p[2]);
-                let correction = i64::from(direct)
-                    .checked_sub(product)
-                    .ok_or(Error::Interval)?;
-                if !(-1..=2).contains(&correction) {
-                    return Err(Error::Interval);
-                }
-                i32::try_from(correction).map_err(|_| Error::Interval)?
-            } else {
-                direct
-            };
-        }
+        fill_rows(
+            &mut entries,
+            rows,
+            || (),
+            |(), i, row| {
+                let i = u64::try_from(i).map_err(|_| Error::Capacity)?;
+                let n = match kind {
+                    Kind::High => i.checked_shl(u32::from(p[3])).ok_or(Error::Parameters)?,
+                    Kind::Low => i,
+                    _ => (1u64 << p[0]).checked_sub(i).ok_or(Error::Parameters)?,
+                };
+                row[0] = if matches!(kind, Kind::Direct | Kind::Correction) {
+                    i32::try_from(n)
+                        .map_err(|_| Error::Parameters)?
+                        .checked_neg()
+                        .ok_or(Error::Parameters)?
+                } else {
+                    i32::try_from(i).map_err(|_| Error::Parameters)?
+                };
+                let direct = exp::certify(n, p[1], p[2])?;
+                row[1] = if let Some((high, low)) = &base {
+                    let a = i64::from(high.output(n >> p[3])?);
+                    let b = i64::from(low.output(n % (1u64 << p[3]))?);
+                    let product = a.checked_mul(b).ok_or(Error::Interval)? / (1i64 << p[2]);
+                    let correction = i64::from(direct)
+                        .checked_sub(product)
+                        .ok_or(Error::Interval)?;
+                    if !(-1..=2).contains(&correction) {
+                        return Err(Error::Interval);
+                    }
+                    i32::try_from(correction).map_err(|_| Error::Interval)?
+                } else {
+                    direct
+                };
+                Ok(())
+            },
+        )?;
         Ok(Self {
             descriptor,
             entries,
