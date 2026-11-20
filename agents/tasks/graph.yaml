@@ -4287,7 +4287,9 @@ tasks:
   skill: pcs-engineer
   crate: stele-pcs
   lane: C
-  status: ready
+  status: done
+  agent: claude
+  branch: task/E19-06-zk-reservation
   acceptance:
   - the coefficient-form circle code with its own code identity and source version; a test shows its codeword for a coefficient row equals the RFC-0010 A2 codeword of that row's evaluations on D_m
   - levels, row combinations, queries, consistency batch and final check as RFC-0029 §2; every count from the plan
@@ -4323,7 +4325,9 @@ tasks:
   skill: pcs-engineer
   crate: stele-pcs
   lane: C
-  status: ready
+  status: done
+  agent: claude
+  branch: task/E19-06-zk-reservation
   acceptance:
   - a registration certificate at the plan-stated radius; openings with any verifier-computable row and column functional
   - queried columns are recomputed from the weights; the full codeword is never resident (memory test)
@@ -4338,7 +4342,9 @@ tasks:
   skill: pcs-engineer
   crate: stele-pcs
   lane: C
-  status: ready
+  status: in_progress
+  agent: claude
+  branch: task/E19-06-zk-reservation
   acceptance:
   - randomiser and mask-row counts are fields of the source context, zero by default
   - proof bytes with zero counts equal the bytes before this task (pinned)
