@@ -4106,7 +4106,8 @@ tasks:
   skill: protocol-architect
   crate: stele-reductions
   lane: P
-  status: ready
+  status: in_progress
+  branch: task/E18-02-linear-virtual-columns
   acceptance:
   - prover and verifier reduce claims on Linear columns with absorbed operand evaluations and no challenge
   - Compose targets, sign recombinations and equal-scale sums are virtual in every module; near-miss tests and the plain checker keep their outcomes

@@ -20,7 +20,7 @@ use core::fmt;
 use stele_field::{Field, Serialize, M31, QM31};
 use stele_hash::{AbsorbLabel, ChallengeLabel, HashUsage, Transcript};
 use stele_ir::relation::{
-    ColumnId, Identity, Invalid, Kind, Ref, Relation, Term as IdentityTerm, Values,
+    ColumnId, Def, Identity, Invalid, Kind, Ref, Relation, Term as IdentityTerm, Values,
 };
 use stele_pcs::{
     verify_certificate, verify_point, PreparedSource, ProofKind, Source, VerifiedCertificate,
@@ -65,6 +65,8 @@ pub enum Error {
     EqMismatch,
     /// A public column claim disagrees with the public values.
     PublicMismatch(ColumnId),
+    /// A Linear virtual column reduction's operand evaluations disagree with its claimed value (RFC-0028 §2.4).
+    LinearMismatch(ColumnId),
     /// Allocation or size overflow.
     Capacity,
     /// Transcript failure.
@@ -918,6 +920,107 @@ fn column<'a>(
     values.get(relation, id).ok_or(Error::Missing(id))
 }
 
+/// Column values available within one segment: committed/weight/public columns borrowed from
+/// `Values`/`Relation`, plus materialized integer values of the segment's virtual columns
+/// computed from their definitions (RFC-0028 §2.1).
+pub(crate) struct ResolvedColumns<'a> {
+    relation: &'a Relation,
+    values: &'a Values,
+    computed: Vec<Option<Vec<i64>>>,
+}
+
+impl<'a> ResolvedColumns<'a> {
+    pub(crate) fn borrowed(relation: &'a Relation, values: &'a Values) -> Self {
+        Self {
+            relation,
+            values,
+            computed: Vec::new(),
+        }
+    }
+
+    /// Materialize every `Def::Linear` virtual column owned by `segment` in strictly
+    /// increasing `ColumnId` order (ignoring any untrusted entries in `Values`).
+    fn for_segment(
+        relation: &'a Relation,
+        values: &'a Values,
+        virtuals_desc: &[ColumnId],
+    ) -> Result<Self, Error> {
+        if virtuals_desc.is_empty() {
+            return Ok(Self::borrowed(relation, values));
+        }
+        let mut this = Self {
+            relation,
+            values,
+            computed: vec![None; relation.columns.len()],
+        };
+        for &id in virtuals_desc.iter().rev() {
+            let col = &relation.columns[id.0 as usize];
+            let Kind::Virtual(Def::Linear { constant, terms }) = &col.kind else {
+                return Err(Error::Unsupported);
+            };
+            let n = 1usize << col.log_len;
+            let ops: Vec<(i128, &[i64], &Ref)> = terms
+                .iter()
+                .map(|(c, r)| Ok::<_, Error>((i128::from(*c), this.get(r.column)?, r)))
+                .collect::<Result<_, _>>()?;
+            let c0 = i128::from(*constant);
+            let mut out = vec![0i64; n];
+            stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+                let mut local_overflow = false;
+                for (j, slot) in chunk.iter_mut().enumerate() {
+                    let x = (start + j) as u64;
+                    let mut acc = Some(c0);
+                    for &(coeff, data, r) in &ops {
+                        acc = acc.and_then(|a| {
+                            coeff
+                                .checked_mul(i128::from(data[r.index(x)]))
+                                .and_then(|p| a.checked_add(p))
+                        });
+                    }
+                    match acc.and_then(|a| i64::try_from(a).ok()) {
+                        Some(v) => *slot = v,
+                        None => local_overflow = true,
+                    }
+                }
+                if local_overflow {
+                    // Use deterministic sequential fallback below when any chunk overflows.
+                    chunk[0] = i64::MIN;
+                }
+            });
+            // Re-check deterministically only if the sentinel appeared (never on honest inputs
+            // where |acc| <= HALF_MODULUS < 2^30).
+            if out.contains(&i64::MIN) {
+                for (x, slot) in out.iter_mut().enumerate() {
+                    let mut acc = c0;
+                    for &(coeff, data, r) in &ops {
+                        let prod = coeff
+                            .checked_mul(i128::from(data[r.index(x as u64)]))
+                            .ok_or(Error::Capacity)?;
+                        acc = acc.checked_add(prod).ok_or(Error::Capacity)?;
+                    }
+                    *slot = i64::try_from(acc).map_err(|_| Error::Capacity)?;
+                }
+            }
+            this.computed[id.0 as usize] = Some(out);
+        }
+        Ok(this)
+    }
+
+    pub(crate) fn get(&self, id: ColumnId) -> Result<&[i64], Error> {
+        if matches!(
+            self.relation.columns.get(id.0 as usize).map(|c| &c.kind),
+            Some(Kind::Virtual(_))
+        ) {
+            return self
+                .computed
+                .get(id.0 as usize)
+                .and_then(|v| v.as_deref())
+                .ok_or(Error::Missing(id));
+        }
+        column(self.relation, self.values, id)
+    }
+}
+
 /// Column point of a `Ref` read at an MSB-first domain point.
 fn restrict(r: &Ref, domain: &[K]) -> Vec<K> {
     let (n, m) = (r.vars.len(), domain.len());
@@ -938,6 +1041,38 @@ fn mle(values: &[i64], point: &[K]) -> Result<K, Error> {
         .iter()
         .zip(eq)
         .fold(K::from_i64(0), |s, (v, w)| s + K::from_i64(*v) * w))
+}
+
+fn mle_dot(values: &[i64], eq: &[K]) -> Result<K, Error> {
+    let mut acc = [K::from_i64(0)];
+    stele_sumcheck::parallel::sum_ranges(values.len(), &mut acc, |range, out| {
+        for i in range {
+            out[0] = out[0] + K::from_i64(values[i]) * eq[i];
+        }
+        Ok(())
+    })?;
+    Ok(acc[0])
+}
+
+fn mle_parallel(values: &[i64], point: &[K]) -> Result<K, Error> {
+    let eq = stele_sumcheck::parallel::eq_table(point)?;
+    mle_dot(values, &eq)
+}
+
+/// Absorb the operand evaluations of one `Linear` virtual-column claim (RFC-0028 §2.4, §1.4:
+/// reuses `AbsorbLabel::Final` with no new transcript label and no challenge drawn).
+fn absorb_linear_evals(
+    t: &mut Transcript<K>,
+    col_id: ColumnId,
+    claim_idx: usize,
+    evals: &[K],
+) -> Result<(), Error> {
+    let mut payload = Vec::with_capacity(8 + 16 * evals.len());
+    payload.extend_from_slice(&col_id.0.to_le_bytes());
+    payload.extend_from_slice(&(claim_idx as u32).to_le_bytes());
+    put(&mut payload, evals);
+    t.absorb(AbsorbLabel::Final, &payload)?;
+    Ok(())
 }
 
 /// Column claims `(column point, value)`, routed to sources in step 7.
@@ -1003,15 +1138,26 @@ fn put(out: &mut Vec<u8>, values: &[K]) {
 /// Identities of domain size `m` in relation order, then each `Compose` over its
 /// column's domain as the identity `column - Σ 2^shift·limb = 0` (RFC-0026 §3.5a).
 fn identities_for(relation: &Relation, segment: Option<u32>, m: u8) -> Vec<Identity> {
+    let col_segs = segment.map(|_| relation.column_segments());
     let mut out: Vec<Identity> = relation
         .identities
         .iter()
-        .filter(|i| i.vars == m && segment.is_none_or(|s| relation.identity_segment(i) == s))
+        .filter(|i| {
+            i.vars == m
+                && match (segment, &col_segs) {
+                    (Some(s), Some(segs)) => relation.identity_segment_with(i, segs) == s,
+                    _ => true,
+                }
+        })
         .cloned()
         .collect();
     for compose in &relation.composes {
         let log_len = relation.columns[compose.column.0 as usize].log_len;
-        if log_len != m || segment.is_some_and(|s| relation.compose_segment(compose) != s) {
+        let same_seg = match (segment, &col_segs) {
+            (Some(s), Some(segs)) => relation.compose_segment_with(compose, segs) == s,
+            _ => true,
+        };
+        if log_len != m || !same_seg {
             continue;
         }
         let read = |id| vec![Ref::identity(id, log_len)];
@@ -1434,10 +1580,25 @@ pub fn stack_model(layouts: &[ModelLayout], weights: &[&[M31]]) -> Result<Vec<Ve
 
 /// The model messages (signed embedding; each weight at its block offset).
 pub fn model_messages(relation: &Relation, values: &Values) -> Result<Vec<Vec<M31>>, Error> {
+    relation.validate().map_err(Error::StatementMismatch)?;
     // Messages depend on the bits only, which no source set changes.
-    let plan = plan(relation, Sources::Expander)?;
-    (0..plan.model.len())
-        .map(|k| weights_message(relation, &plan, k, values))
+    let layouts = model_layout(relation, Sources::Expander)?;
+    let weight_cols: Vec<ColumnId> = (0..relation.columns.len() as u32)
+        .map(ColumnId)
+        .filter(|id| relation.columns[id.0 as usize].kind == Kind::Weight)
+        .collect();
+    layouts
+        .iter()
+        .map(|layout| {
+            let mut message = vec![M31::from_i64(0); 1 << layout.bits];
+            for &(w, offset) in &layout.blocks {
+                let col = column(relation, values, weight_cols[w])?;
+                for (out, v) in message[offset..].iter_mut().zip(col) {
+                    *out = M31::from_i64(*v);
+                }
+            }
+            Ok(message)
+        })
         .collect()
 }
 
@@ -1781,8 +1942,9 @@ fn prove_plan_measured(
             .transpose();
         (res, timer.elapsed_ns())
     };
+    let resolved = ResolvedColumns::borrowed(relation, values);
     let mu_messages = |i: usize| {
-        let counts = lookup::counts(&plan.checks[i], relation, values)?;
+        let counts = lookup::counts(&plan.checks[i], relation, &resolved)?;
         let message = lookup::multiplicities(&plan.checks[i], &counts)?;
         Ok::<_, Error>((counts, message))
     };
@@ -1903,7 +2065,7 @@ fn prove_plan_measured(
             t,
             check,
             relation,
-            values,
+            &resolved,
             counts,
             (p, handle),
             &mut out,
@@ -2404,7 +2566,7 @@ pub fn verify(
     Ok(ledger)
 }
 
-/// Per-segment plan derived from a validated [`Relation`] (RFC-0026 A27).
+/// Per-segment plan derived from a validated [`Relation`] (RFC-0026 A27, RFC-0028 §2.3).
 struct SegmentPlan {
     segment: u32,
     groups: Vec<Group>,
@@ -2412,9 +2574,11 @@ struct SegmentPlan {
     checks: Vec<Check>,
     sizes: Vec<u8>,
     matmuls: Vec<usize>,
+    /// Virtual columns owned by this segment in strictly decreasing `ColumnId` order (RFC-0028 §2.4).
+    virtuals: Vec<ColumnId>,
 }
 
-/// Complete segmented plan (RFC-0026 A27).
+/// Complete segmented plan (RFC-0026 A27, RFC-0028 §2.3).
 struct SegmentedPlan {
     digest: [u8; 32],
     segments: Vec<SegmentPlan>,
@@ -2425,13 +2589,20 @@ struct SegmentedPlan {
 
 fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan, Error> {
     relation.validate().map_err(Error::StatementMismatch)?;
-    if relation.has_virtual() {
+    // E18-02 admits `Def::Linear`; `Def::Pointwise` and `Def::Contraction` land in E18-03/E18-04.
+    if relation.columns.iter().any(|c| {
+        matches!(
+            c.kind,
+            Kind::Virtual(Def::Pointwise { .. } | Def::Contraction { .. })
+        )
+    }) {
         return Err(Error::Unsupported);
     }
     let seg_count = relation.segments();
     if seg_count > u32::from(u16::MAX) {
         return Err(Error::Unsupported);
     }
+    let col_segs = relation.column_segments();
     let weight_segs = relation.weight_segments();
     let mut segments = Vec::with_capacity(seg_count as usize);
     for seg in 0..seg_count {
@@ -2485,7 +2656,7 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
                 None => targets.push((target, vec![member])),
             };
         for lookup in &relation.lookups {
-            if relation.lookup_segment(lookup) != seg {
+            if relation.lookup_segment_with(lookup, &col_segs) != seg {
                 continue;
             }
             add(
@@ -2499,7 +2670,7 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
             );
         }
         for range in &relation.ranges {
-            if relation.range_segment_with(range, &weight_segs) != seg {
+            if relation.range_segment_with_segs(range, &col_segs, &weight_segs) != seg {
                 continue;
             }
             let log_len = relation.columns[range.column.0 as usize].log_len;
@@ -2536,14 +2707,14 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
         let mut sizes: Vec<u8> = relation
             .identities
             .iter()
-            .filter(|i| relation.identity_segment(i) == seg)
+            .filter(|i| relation.identity_segment_with(i, &col_segs) == seg)
             .map(|i| i.vars)
             .collect();
         sizes.extend(
             relation
                 .composes
                 .iter()
-                .filter(|c| relation.compose_segment(c) == seg)
+                .filter(|c| relation.compose_segment_with(c, &col_segs) == seg)
                 .map(|c| relation.columns[c.column.0 as usize].log_len),
         );
         sizes.sort_unstable();
@@ -2552,8 +2723,15 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
             .matmuls
             .iter()
             .enumerate()
-            .filter(|(_, mm)| relation.matmul_segment(mm) == seg)
+            .filter(|(_, mm)| relation.matmul_segment_with(mm, &col_segs) == seg)
             .map(|(idx, _)| idx)
+            .collect();
+        let virtuals: Vec<ColumnId> = (0..relation.columns.len())
+            .rev()
+            .filter(|&idx| {
+                matches!(relation.columns[idx].kind, Kind::Virtual(_)) && col_segs[idx] == Some(seg)
+            })
+            .map(|idx| ColumnId(idx as u32))
             .collect();
         segments.push(SegmentPlan {
             segment: seg,
@@ -2562,6 +2740,7 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
             checks,
             sizes,
             matmuls,
+            virtuals,
         });
     }
     let lengths: Vec<u8> = (0..relation.columns.len())
@@ -2624,13 +2803,58 @@ where
     prove_segmented_measured(t, relation, segment_values, model, sources).map(|(p, _)| p)
 }
 
-/// [`prove_segmented`] together with stage timings and deterministic counters (RFC-0018 A2, RFC-0026 A27).
+/// [`prove_segmented`] together with stage timings and deterministic counters (RFC-0018 A2, RFC-0026 A27, RFC-0028 §2.4).
 pub fn prove_segmented_measured<F>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    segment_values: F,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+) -> Result<(ProofV2, Metrics), Error>
+where
+    F: FnMut(u32) -> Result<Values, Error>,
+{
+    prove_segmented_impl(t, relation, segment_values, model, sources, None)
+}
+
+/// Malicious-prover seam for RFC-0028 §6 NC-1338: prove with one virtual column's
+/// materialized value perturbed by +1 at `index` so downstream checks see the forged
+/// virtual table and the verifier rejects at the virtual column's Step 2.4 reduction.
+/// When `compensate_operand` is `Some(term_idx)`, the prover also shifts `evals[term_idx]`
+/// in Step 2.4 so the `Linear` equation passes and tests downstream operand-claim discharge.
+#[cfg(any(test, feature = "controls"))]
+#[allow(clippy::too_many_arguments)]
+pub fn prove_segmented_forged_virtual<F>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    segment_values: F,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+    column: ColumnId,
+    index: usize,
+    compensate_operand: Option<usize>,
+) -> Result<ProofV2, Error>
+where
+    F: FnMut(u32) -> Result<Values, Error>,
+{
+    prove_segmented_impl(
+        t,
+        relation,
+        segment_values,
+        model,
+        sources,
+        Some((column, index, compensate_operand)),
+    )
+    .map(|(p, _)| p)
+}
+
+fn prove_segmented_impl<F>(
     t: &mut Transcript<K>,
     relation: &Relation,
     mut segment_values: F,
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
     sources: Sources,
+    forge_virtual: Option<(ColumnId, usize, Option<usize>)>,
 ) -> Result<(ProofV2, Metrics), Error>
 where
     F: FnMut(u32) -> Result<Values, Error>,
@@ -2638,6 +2862,18 @@ where
     let plan_timer = Stopwatch::start();
     let plan = plan_segmented(relation, sources)?;
     let plan_ns = plan_timer.elapsed_ns();
+    if let Some((col_id, idx, comp)) = forge_virtual {
+        let col = relation
+            .columns
+            .get(col_id.0 as usize)
+            .ok_or(Error::Unsupported)?;
+        let Kind::Virtual(Def::Linear { terms, .. }) = &col.kind else {
+            return Err(Error::Unsupported);
+        };
+        if idx >= (1usize << col.log_len) || comp.is_some_and(|i| i >= terms.len()) {
+            return Err(Error::Unsupported);
+        }
+    }
     let certificates: Vec<&VerifiedCertificate<K>> = model.iter().map(|(_, c)| *c).collect();
     model_check_stacks(&plan.model, &certificates)?;
     if model
@@ -2708,6 +2944,27 @@ where
 
     for (s, seg) in plan.segments.iter().enumerate() {
         let values = segment_values(seg.segment)?;
+        #[allow(unused_mut)]
+        let mut resolved = ResolvedColumns::for_segment(relation, &values, &seg.virtuals)?;
+        // Account for `ResolvedColumns::for_segment` reading every `Kind::Weight` operand of
+        // this segment's `Def::Linear` virtual columns (INV-7).
+        for &vid in &seg.virtuals {
+            if let Kind::Virtual(Def::Linear { terms, .. }) = &relation.columns[vid.0 as usize].kind
+            {
+                let v_len = 1u64 << relation.columns[vid.0 as usize].log_len;
+                for (_, r) in terms {
+                    if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                        col_reads[w_idx] = col_reads[w_idx].saturating_add(v_len);
+                    }
+                }
+            }
+        }
+        if let Some((col_id, idx, _)) = forge_virtual {
+            if let Some(Some(col_vals)) = resolved.computed.get_mut(col_id.0 as usize) {
+                let entry = col_vals.get_mut(idx).ok_or(Error::Unsupported)?;
+                *entry = entry.checked_add(1).ok_or(Error::Unsupported)?;
+            }
+        }
 
         // Step 2.1 + 2.2: commit segment `s`'s witness stack (owned) alongside multiplicity counts.
         let commit_msg_timer = Stopwatch::start();
@@ -2740,7 +2997,7 @@ where
             (res, timer.elapsed_ns())
         };
         let mu_messages_fn = |i: usize| {
-            let counts = lookup::counts(&seg.checks[i], relation, &values)?;
+            let counts = lookup::counts(&seg.checks[i], relation, &resolved)?;
             let message = lookup::multiplicities(&seg.checks[i], &counts)?;
             Ok::<_, Error>((counts, message))
         };
@@ -2819,7 +3076,7 @@ where
             }
             let mut tables = Vec::with_capacity(inputs.len());
             for r in &inputs {
-                let col = column(relation, &values, r.column)?;
+                let col = resolved.get(r.column)?;
                 let mut table = vec![K::from_i64(0); 1 << m];
                 stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
                     for (j, out) in chunk.iter_mut().enumerate() {
@@ -2862,7 +3119,7 @@ where
                 t,
                 check,
                 relation,
-                &values,
+                &resolved,
                 counts,
                 (p, handle),
                 &mut out,
@@ -2891,15 +3148,15 @@ where
                 }
             }
             let shape = MatmulShape::new(t, mm)?;
-            let out = column(relation, &values, mm.out.column)?;
+            let out = resolved.get(mm.out.column)?;
             let out_value = mle(out, &restrict(&mm.out, &shape.rho))?;
             let instance = shape.instance(MATMUL | mm_idx as u64, out_value);
             let mut tables = Vec::new();
             if !shape.shared.is_empty() {
                 tables.push(shape.eq_table());
             }
-            tables.push(shape.table(&mm.lhs, column(relation, &values, mm.lhs.column)?)?);
-            tables.push(shape.table(&mm.rhs, column(relation, &values, mm.rhs.column)?)?);
+            tables.push(shape.table(&mm.lhs, resolved.get(mm.lhs.column)?)?);
+            tables.push(shape.table(&mm.rhs, resolved.get(mm.rhs.column)?)?);
             let mut sc = Vec::new();
             let capture = Capture {
                 dense: Dense::new(&instance, tables)?,
@@ -2919,7 +3176,69 @@ where
             .reductions_ns
             .saturating_add(matmul_timer.elapsed_ns());
 
-        // Step 2.4: drop segment `s` witness/weight `Values` before opening `prev`.
+        // Step 2.4: reduce virtual columns of segment `s` in strictly decreasing `ColumnId`
+        // order (RFC-0028 §2.4), then drop segment `s` witness/virtual storage before Step 2.5.
+        let v_timer = Stopwatch::start();
+        for &col_id in &seg.virtuals {
+            let col_claims = core::mem::take(&mut claims.0[col_id.0 as usize]);
+            if col_claims.is_empty() {
+                continue;
+            }
+            let Kind::Virtual(Def::Linear { constant, terms }) =
+                &relation.columns[col_id.0 as usize].kind
+            else {
+                return Err(Error::Unsupported);
+            };
+            let mut out = Vec::with_capacity(col_claims.len() * terms.len() * 16);
+            for (claim_idx, (z, claimed_val)) in col_claims.iter().enumerate() {
+                let mut eq_z: Option<Vec<K>> = None;
+                let mut evals = Vec::with_capacity(terms.len());
+                let mut op_points = Vec::with_capacity(terms.len());
+                for (_, r) in terms {
+                    if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                        col_reads[w_idx] =
+                            col_reads[w_idx].saturating_add(1u64 << plan.weights[w_idx].n);
+                    }
+                    let op_data = resolved.get(r.column)?;
+                    let op_point = restrict(r, z);
+                    let eval = if op_point == *z {
+                        let eq = match &eq_z {
+                            Some(table) => table,
+                            None => eq_z.insert(stele_sumcheck::parallel::eq_table(z)?),
+                        };
+                        mle_dot(op_data, eq)?
+                    } else {
+                        mle_parallel(op_data, &op_point)?
+                    };
+                    evals.push(eval);
+                    op_points.push(op_point);
+                }
+                if let Some((forged_col, _, Some(term_idx))) = forge_virtual {
+                    if forged_col == col_id {
+                        use stele_field::Inverse;
+                        let honest_sum = terms
+                            .iter()
+                            .zip(&evals)
+                            .fold(K::from_i64(*constant), |acc, ((c, _), v)| {
+                                acc + K::from_i64(*c) * *v
+                            });
+                        let delta = *claimed_val - honest_sum;
+                        let inv_c = K::from_i64(terms[term_idx].0)
+                            .inverse()
+                            .ok_or(Error::Unsupported)?;
+                        evals[term_idx] = evals[term_idx] + delta * inv_c;
+                    }
+                }
+                put(&mut out, &evals);
+                absorb_linear_evals(t, col_id, claim_idx, &evals)?;
+                for (((_, r), op_point), eval) in terms.iter().zip(op_points).zip(evals) {
+                    claims.0[r.column.0 as usize].push((op_point, eval));
+                }
+            }
+            proof.segments[s].reductions.push(out);
+        }
+        metrics.reductions_ns = metrics.reductions_ns.saturating_add(v_timer.elapsed_ns());
+        drop(resolved);
         drop(values);
 
         // Step 2.5: all claims on segment `s - 1` are now complete; batch, open, and drop it.
@@ -3187,10 +3506,39 @@ pub fn verify_segmented(
         }
         sections.end()?;
 
-        // RFC-0026 A27 has no virtual columns, so `reductions` must be empty.
-        if !seg_proof.reductions.is_empty() {
-            return Err(Error::ProofShape);
+        // Step 2.4: verify virtual-column reductions of segment `s` in strictly decreasing
+        // `ColumnId` order (RFC-0028 §2.4).
+        let mut red_sections = Sections(seg_proof.reductions.iter());
+        for &col_id in &seg.virtuals {
+            let col_claims = core::mem::take(&mut claims.0[col_id.0 as usize]);
+            if col_claims.is_empty() {
+                continue;
+            }
+            let mut reader = red_sections.next()?;
+            let Kind::Virtual(Def::Linear { constant, terms }) =
+                &relation.columns[col_id.0 as usize].kind
+            else {
+                return Err(Error::Unsupported);
+            };
+            for (claim_idx, (z, claimed_val)) in col_claims.iter().enumerate() {
+                let evals = reader.ks(terms.len())?;
+                absorb_linear_evals(t, col_id, claim_idx, &evals)?;
+                let sum = terms
+                    .iter()
+                    .zip(&evals)
+                    .fold(K::from_i64(*constant), |acc, ((c, _), v)| {
+                        acc + K::from_i64(*c) * *v
+                    });
+                if sum != *claimed_val {
+                    return Err(Error::LinearMismatch(col_id));
+                }
+                for ((_, r), &eval) in terms.iter().zip(&evals) {
+                    claims.push(r, z, eval);
+                }
+            }
+            reader.end()?;
         }
+        red_sections.end()?;
 
         // Step 2.5: open segment `s - 1`'s witness stack (all claims on it are complete).
         if let Some((prev_s, prev_handle)) = prev.take() {
@@ -3273,6 +3621,12 @@ pub fn verify_segmented(
     }
     sections.end()?;
 
+    // Every virtual-column claim must have been discharged during its owning segment's Step 2.4.
+    for (i, column) in relation.columns.iter().enumerate() {
+        if matches!(column.kind, Kind::Virtual(_)) && !claims.0[i].is_empty() {
+            return Err(Error::ProofShape);
+        }
+    }
     // Public-column claims, evaluated by the verifier.
     for (i, column) in relation.columns.iter().enumerate() {
         if let Kind::Public(values) = &column.kind {

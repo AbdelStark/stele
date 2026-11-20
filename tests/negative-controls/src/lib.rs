@@ -163,6 +163,19 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || development::run_segments(1336),
     },
     catalog::RegisteredControl {
+        id: 1337,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "LinearMismatch",
+        run: || development::run_virtual_linear(1337),
+    },
+    #[cfg(feature = "controls")]
+    catalog::RegisteredControl {
+        id: 1338,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "LinearMismatch",
+        run: || development::run_virtual_linear(1338),
+    },
+    catalog::RegisteredControl {
         id: 316,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",

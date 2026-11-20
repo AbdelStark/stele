@@ -219,8 +219,8 @@
 | NC-1334 | registry template | 0026 A16 | change one static declaration coefficient; include a rebuilt proof accepted by A15 replay | `RegistryTemplateMismatch` | done |
 | NC-1335 | development segment boundary | 0026 A27 | read a non-carried witness column of segment `s - 1` from segment `s` (both by clearing `carried` on the boundary column and by redirecting a segment-1 read to a non-carried segment-0 column) | `StatementMismatch` | done |
 | NC-1336 | development segment root order | 0026 A27 | swap only the 32-byte witness stack roots of two segments in a `stele-dev-e2e-v2` proof, retaining every other byte under declared Policy 1 (`Expander`) and Policy 2 (`CircleAll`) runs | Policy 1: RootMismatch; Policy 2: GrindMismatch | done |
-| NC-1337 | development virtual linear operand | 0028 §6 | +1 on one operand evaluation sent for a `Linear` virtual column reduction | consuming check mismatch error | todo |
-| NC-1338 | development virtual definition mismatch | 0028 §6 | prove with a virtual column's values differing from its definition at one index | `RoundSumMismatch` or `FinalEvaluationMismatch` | todo |
+| NC-1337 | development virtual linear operand | 0028 §6 | +1 on one operand evaluation sent for a `Linear` virtual column reduction | `LinearMismatch` | done |
+| NC-1338 | development virtual definition mismatch | 0028 §6 | prove with a virtual column's values differing from its definition at one index | `LinearMismatch` | done |
 | NC-1339 | development virtual rounding remainder | 0028 §6, 0008 A9 | commit `y + 1` for one rounding, with virtual `rem` recomputed | `RootMismatch` | todo |
 | NC-1340 | development virtual advice inverse | 0028 §2.2, §6 | declare advice (a rounding output) as `Linear` with the integer representing a field inverse of `2^k` | `StatementMismatch` | todo |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
@@ -440,8 +440,11 @@ Control NC-1336 swaps only the 32-byte witness stack roots of two segments under
 Policy 1 (`Expander`) and Policy 2 (`CircleAll`) runs through `development::verify`,
 retaining the Policy 1 `RootMismatch` / Policy 2 `GrindMismatch` distinction of A17.
 
-RFC-0028 (Accepted for the development tier, task E18-01, ADR-150) reserves NC-1337..1340
-as `todo` for virtual-column controls in E18-02..E18-04 (draft IDs 1320..1325 collided
-with earlier RFC-0026 A12/A14/A16 allocations; the two segment controls already execute
-as NC-1335 and NC-1336 under A27). These reservations add no coverage until executed
-through the actual verifier.
+RFC-0028 (Accepted for the development tier, task E18-01, ADR-150) allocated NC-1337..1340
+for virtual-column controls (draft IDs 1320..1325 collided with earlier RFC-0026
+A12/A14/A16 allocations; the two segment controls already execute as NC-1335 and NC-1336
+under A27). Task E18-02 executes Control NC-1337 (+1 on one operand evaluation in a
+`Linear` virtual column reduction) and Control NC-1338 (proving with a `Linear` virtual
+column's materialized values perturbed by +1 at one index) through
+`relation::verify_segmented`, asserting `LinearMismatch`. Reservations NC-1339 and NC-1340
+remain `todo` for E18-04 and add no coverage until executed through the actual verifier.

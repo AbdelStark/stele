@@ -1404,11 +1404,11 @@ fn accepts_three_segment_relation_and_rejects_root_reorder_and_non_carried() {
     ));
 }
 
-/// RFC-0026 A28 item 4 / RFC-0028 (E18-01): before E18-02 implements virtual reductions,
-/// both unsegmented and segmented engine plans reject relations containing virtual columns
-/// with `Error::Unsupported`, while `relation_codec::encode` distinguishes virtual defs.
+/// RFC-0026 A28 / RFC-0028 (E18-02): v1 `prove`/`verify` rejects virtual relations with
+/// `Unsupported`, `prove_segmented`/`verify_segmented` rejects `Pointwise`/`Contraction`
+/// until E18-03/E18-04, and `relation_codec::encode` distinguishes virtual defs cleanly.
 #[test]
-fn rejects_virtual_columns_until_e18_02_and_encodes_distinctly() {
+fn rejects_unsupported_virtual_kinds_and_encodes_distinctly() {
     use stele_ir::relation::Def;
 
     let mut rel = Relation::default();
@@ -1431,14 +1431,10 @@ fn rejects_virtual_columns_until_e18_02_and_encodes_distinctly() {
 
     let mut vals = Values::new(&rel);
     vals.set(&rel, x, vec![3, -4]).expect("set");
+    // Unsegmented v1 engine still rejects virtual relations (RFC-0028 §2.5 uses ProofV2).
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
         prove(&mut t, &rel, &vals, &[], Sources::Expander).err(),
-        Some(Error::Unsupported)
-    );
-    let mut ts = Transcript::new(PUBLIC).expect("transcript");
-    assert_eq!(
-        prove_segmented(&mut ts, &rel, |_| Ok(vals.clone()), &[], Sources::Expander).err(),
         Some(Error::Unsupported)
     );
     let mut tv = Transcript::new(PUBLIC).expect("transcript");
@@ -1446,15 +1442,66 @@ fn rejects_virtual_columns_until_e18_02_and_encodes_distinctly() {
         verify(&mut tv, &rel, &[], &Proof::default(), Sources::Expander).err(),
         Some(Error::Unsupported)
     );
-    let mut tvs = Transcript::new(PUBLIC).expect("transcript");
-    assert_eq!(
-        verify_segmented(&mut tvs, &rel, &[], &ProofV2::default(), Sources::Expander).err(),
-        Some(Error::Unsupported)
-    );
-    // F3: dev-zk layout also rejects virtual relations cleanly without panicking.
+    // dev-zk layout also rejects virtual relations cleanly without panicking.
     assert_eq!(
         crate::zk::relation::layout(&rel).err(),
         Some(crate::zk::Error::Statement)
+    );
+
+    // Pointwise and Contraction stay `Error::Unsupported` in `prove_segmented`/`verify_segmented`
+    // until E18-03/E18-04.
+    let mut rel_pw = rel.clone();
+    rel_pw.columns[1].kind = Kind::Virtual(Def::Pointwise {
+        terms: vec![IdentityTerm {
+            coeff: 1,
+            factors: vec![Ref::identity(x, 1), Ref::identity(x, 1)],
+        }],
+    });
+    assert_eq!(rel_pw.validate(), Ok(()));
+    let mut ts = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        prove_segmented(
+            &mut ts,
+            &rel_pw,
+            |_| Ok(vals.clone()),
+            &[],
+            Sources::CircleAll
+        )
+        .err(),
+        Some(Error::Unsupported)
+    );
+    let mut tvs = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify_segmented(
+            &mut tvs,
+            &rel_pw,
+            &[],
+            &ProofV2::default(),
+            Sources::CircleAll
+        )
+        .err(),
+        Some(Error::Unsupported)
+    );
+
+    let mut rel_ct = rel.clone();
+    rel_ct.columns[1].kind = Kind::Virtual(Def::Contraction {
+        free: 1,
+        summed: 0,
+        lhs: Ref::identity(x, 1),
+        rhs: Ref::identity(x, 1),
+    });
+    assert_eq!(rel_ct.validate(), Ok(()));
+    let mut ts = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        prove_segmented(
+            &mut ts,
+            &rel_ct,
+            |_| Ok(vals.clone()),
+            &[],
+            Sources::CircleAll
+        )
+        .err(),
+        Some(Error::Unsupported)
     );
 
     let enc1 = super::codec::encode(&rel);
@@ -1482,5 +1529,625 @@ fn rejects_virtual_columns_until_e18_02_and_encodes_distinctly() {
     assert_eq!(
         crate::zk::relation::layout(&plain).err(),
         Some(crate::zk::Error::Statement)
+    );
+}
+
+/// RFC-0028 §2.4 & RFC-0026 A28 (task E18-02): honest segmented proofs with chained `Linear`
+/// virtual columns, lookups and ranges reading virtual columns, carried cross-segment
+/// operands, weight/public operands, and unclaimed virtual columns, plus NC-1337 and NC-1338.
+#[test]
+fn accepts_linear_virtual_columns_and_rejects_nc_1337_and_nc_1338() {
+    use stele_ir::relation::Def;
+
+    let mut rel = Relation::default();
+    let g0 = rel.add_group_in("s0/w", 2, 0);
+    let g1 = rel.add_group_in("s1/w", 2, 1);
+
+    // Segment 0: witness limbs lo (u8), hi (u4), carried witness c0 (s16), public bias p0.
+    let lo = rel.add_column("s0/lo", Kind::Witness(g0), Width::unsigned(8), 2);
+    let hi = rel.add_column("s0/hi", Kind::Witness(g0), Width::unsigned(4), 2);
+    let c0 = rel.add_column("s0/c0", Kind::Witness(g0), Width::signed(16), 2);
+    rel.mark_carried(c0);
+    let p0 = rel.add_column(
+        "s0/bias",
+        Kind::Public(vec![1, 2, 3, 4]),
+        Width::unsigned(4),
+        2,
+    );
+    let w = rel.add_column("w", Kind::Weight, Width::signed(8), 2);
+    for (name, col, width) in [
+        ("r_lo", lo, Width::unsigned(8)),
+        ("r_hi", hi, Width::unsigned(4)),
+        ("r_c0", c0, Width::signed(16)),
+        ("r_w", w, Width::signed(8)),
+    ] {
+        rel.ranges.push(Range {
+            name: name.into(),
+            column: col,
+            width,
+        });
+    }
+    // Chained Linear virtual columns in segment 0:
+    // v1 = lo + 256 * hi (virtual Compose target)
+    let v1 = rel.add_virtual(
+        "s0/v1",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(lo, 2)), (256, Ref::identity(hi, 2))],
+        },
+        2,
+    );
+    // v2 = 5 + v1 - p0 (chained Linear reading virtual v1 + public p0, read by identity + range)
+    let v2 = rel.add_virtual(
+        "s0/v2",
+        Def::Linear {
+            constant: 5,
+            terms: vec![(1, Ref::identity(v1, 2)), (-1, Ref::identity(p0, 2))],
+        },
+        2,
+    );
+    // Unclaimed Linear virtual column in segment 0 (must emit 0 reduction sections).
+    let _unused = rel.add_virtual(
+        "s0/unused",
+        Def::Linear {
+            constant: 3,
+            terms: vec![(2, Ref::identity(lo, 2))],
+        },
+        2,
+    );
+    // Identity in segment 0 equating carried c0 to v2: c0 - v2 = 0.
+    rel.identities.push(Identity {
+        name: "s0/carry_eq".into(),
+        vars: 2,
+        terms: vec![
+            IdentityTerm {
+                coeff: 1,
+                factors: vec![Ref::identity(c0, 2)],
+            },
+            IdentityTerm {
+                coeff: -1,
+                factors: vec![Ref::identity(v2, 2)],
+            },
+        ],
+    });
+    // Range check directly on virtual column v2 (RFC-0026 A28).
+    rel.ranges.push(Range {
+        name: "s0/r_v2".into(),
+        column: v2,
+        width: Width::unsigned(13),
+    });
+
+    // Segment 1: witness y1 (s16), Linear v3 reading carried c0 + weight w + reversed y1.
+    let y1 = rel.add_column("s1/y1", Kind::Witness(g1), Width::signed(16), 2);
+    rel.ranges.push(Range {
+        name: "s1/r_y1".into(),
+        column: y1,
+        width: Width::signed(16),
+    });
+    let v3 = rel.add_virtual(
+        "s1/v3",
+        Def::Linear {
+            constant: -2,
+            terms: vec![
+                (1, Ref::identity(c0, 2)),
+                (3, Ref::identity(w, 2)),
+                (
+                    1,
+                    Ref {
+                        column: y1,
+                        vars: vec![1, 0],
+                    },
+                ),
+            ],
+        },
+        2,
+    );
+    // Table lookup directly on virtual column v3 (RFC-0008 A9, RFC-0026 A28).
+    let lo_vals = vec![10i64, 20, 30, 40];
+    let hi_vals = vec![1i64, 2, 0, 3];
+    let p0_vals = [1i64, 2, 3, 4];
+    let v2_vals: Vec<i64> = (0..4)
+        .map(|i| 5 + lo_vals[i] + 256 * hi_vals[i] - p0_vals[i])
+        .collect();
+    let w_vals = vec![2i64, -1, 4, 0];
+    let y1_vals = vec![10i64, 20, 30, 40];
+    let v3_vals: Vec<i64> = (0..4)
+        .map(|i| {
+            let rev = ((i & 1) << 1) | ((i >> 1) & 1);
+            -2 + v2_vals[i] + 3 * w_vals[i] + y1_vals[rev]
+        })
+        .collect();
+    let mut table_rows: Vec<Vec<i64>> = v3_vals.iter().map(|&v| vec![v]).collect();
+    table_rows.sort_unstable();
+    table_rows.dedup();
+    let tbl = rel.add_table(Table {
+        name: "v3_tbl".into(),
+        widths: vec![Width::signed(16)],
+        rows: table_rows,
+    });
+    rel.lookups.push(Lookup {
+        name: "s1/v3_lu".into(),
+        vars: 2,
+        selector: None,
+        tuple: vec![Ref::identity(v3, 2)],
+        table: tbl,
+    });
+    assert_eq!(rel.validate(), Ok(()));
+
+    let mut all_vals = Values::new(&rel);
+    all_vals.set(&rel, lo, lo_vals).expect("lo");
+    all_vals.set(&rel, hi, hi_vals).expect("hi");
+    all_vals.set(&rel, c0, v2_vals).expect("c0");
+    all_vals.set(&rel, w, w_vals).expect("w");
+    all_vals.set(&rel, y1, y1_vals).expect("y1");
+    assert_eq!(stele_ir::relation::check(&rel, &all_vals), Ok(()));
+
+    let sources = Sources::CircleAll;
+    let model_msgs = model_messages(&rel, &all_vals).expect("model msgs");
+    let model_layouts = model_layout(&rel, sources).expect("model layouts");
+    let prepared_models: Vec<_> = model_layouts
+        .iter()
+        .zip(&model_msgs)
+        .map(|(l, m)| {
+            let p = sources.prepare(l.id, l.ell, &l.code, m).expect("prepare");
+            let (cert, _) = p.certificate().expect("cert");
+            let (handle, _) = verify_certificate(*p.source(), &cert).expect("verify cert");
+            (p, handle)
+        })
+        .collect();
+    let model_prove: Vec<_> = prepared_models.iter().map(|(p, h)| (p, h)).collect();
+    let model_verify: Vec<_> = prepared_models.iter().map(|(_, h)| h).collect();
+
+    let mut tp = Transcript::new(PUBLIC).expect("transcript");
+    let (proof, metrics) = prove_segmented_measured(
+        &mut tp,
+        &rel,
+        |_| Ok(all_vals.clone()),
+        &model_prove,
+        sources,
+    )
+    .expect("prove");
+    // Unclaimed `_unused` emits no reduction section: seg 0 has 2 (v2, v1), seg 1 has 1 (v3).
+    assert_eq!(proof.segments[0].reductions.len(), 2);
+    assert_eq!(proof.segments[1].reductions.len(), 1);
+    // Committed cells include only witness columns (lo, hi, c0, y1 = 4 * 4 = 16), never virtuals.
+    assert_eq!(metrics.committed_cells, 16);
+
+    let mut tv = Transcript::new(PUBLIC).expect("transcript");
+    let _ledger = verify_segmented(&mut tv, &rel, &model_verify, &proof, sources).expect("verify");
+
+    // --- NC-1337: +1 on one operand evaluation in a Linear reduction rejects with LinearMismatch.
+    let mut bad_nc1337 = proof.clone();
+    let sec = &mut bad_nc1337.segments[0].reductions[0];
+    let orig = K::from_le_bytes(sec[..16].try_into().expect("16")).expect("k");
+    sec[..16].copy_from_slice(&(orig + K::from_i64(1)).to_le_bytes());
+    let mut tv = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify_segmented(&mut tv, &rel, &model_verify, &bad_nc1337, sources).err(),
+        Some(Error::LinearMismatch(v2))
+    );
+
+    // ProofShape checks on reductions section: truncated, dropped section.
+    let mut short = proof.clone();
+    short.segments[0].reductions[0].pop();
+    let mut tv = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify_segmented(&mut tv, &rel, &model_verify, &short, sources).err(),
+        Some(Error::ProofShape)
+    );
+    let mut dropped = proof.clone();
+    dropped.segments[1].reductions.clear();
+    let mut tv = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify_segmented(&mut tv, &rel, &model_verify, &dropped, sources).err(),
+        Some(Error::ProofShape)
+    );
+
+    // --- NC-1338: malicious prover commits `out[0] = v[0] + 1` and proves with a forged
+    // virtual table `v'[0] = v[0] + 1` so the consuming identity `out - v = 0` succeeds.
+    // Direct variant sends honest operand evals -> verifier rejects with `LinearMismatch(v)`.
+    // Adaptive variant lies on operand 0 to pass `Linear` -> verifier rejects at opening.
+    let mut r_nc = Relation::default();
+    let g_nc = r_nc.add_group_in("nc/w", 2, 0);
+    let nc_lo = r_nc.add_column("nc/lo", Kind::Witness(g_nc), Width::unsigned(8), 2);
+    let nc_hi = r_nc.add_column("nc/hi", Kind::Witness(g_nc), Width::unsigned(4), 2);
+    let nc_out = r_nc.add_column("nc/out", Kind::Witness(g_nc), Width::unsigned(13), 2);
+    for (n, col, w) in [
+        ("r_lo", nc_lo, Width::unsigned(8)),
+        ("r_hi", nc_hi, Width::unsigned(4)),
+        ("r_out", nc_out, Width::unsigned(13)),
+    ] {
+        r_nc.ranges.push(Range {
+            name: n.into(),
+            column: col,
+            width: w,
+        });
+    }
+    let nc_v = r_nc.add_virtual(
+        "nc/v",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(nc_lo, 2)), (256, Ref::identity(nc_hi, 2))],
+        },
+        2,
+    );
+    r_nc.identities.push(Identity {
+        name: "nc/eq".into(),
+        vars: 2,
+        terms: vec![
+            IdentityTerm {
+                coeff: 1,
+                factors: vec![Ref::identity(nc_out, 2)],
+            },
+            IdentityTerm {
+                coeff: -1,
+                factors: vec![Ref::identity(nc_v, 2)],
+            },
+        ],
+    });
+    assert_eq!(r_nc.validate(), Ok(()));
+    let mut forged_vals = Values::new(&r_nc);
+    forged_vals
+        .set(&r_nc, nc_lo, vec![10, 20, 30, 40])
+        .expect("lo");
+    forged_vals.set(&r_nc, nc_hi, vec![1, 2, 0, 3]).expect("hi");
+    // Forged `nc_out[0] = 267` (honest is 266), matching forged `nc_v'[0] = 267`.
+    forged_vals
+        .set(&r_nc, nc_out, vec![267, 532, 30, 808])
+        .expect("forged out");
+
+    let mut tp = Transcript::new(PUBLIC).expect("transcript");
+    let forged_direct = prove_segmented_forged_virtual(
+        &mut tp,
+        &r_nc,
+        |_| Ok(forged_vals.clone()),
+        &[],
+        sources,
+        nc_v,
+        0,
+        None,
+    )
+    .expect("forged direct");
+    let mut tv = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify_segmented(&mut tv, &r_nc, &[], &forged_direct, sources).err(),
+        Some(Error::LinearMismatch(nc_v))
+    );
+
+    // Adaptive NC-1338 compensating witness operand `nc_lo` passes Step 2.4 Linear check
+    // and pushes the forged claim onto `nc_lo`, where the honest PCS opening prover itself
+    // refuses to open a false claim (`Sumcheck(RoundSumMismatch)`).
+    let mut tp = Transcript::new(PUBLIC).expect("transcript");
+    assert!(matches!(
+        prove_segmented_forged_virtual(
+            &mut tp,
+            &r_nc,
+            |_| Ok(forged_vals.clone()),
+            &[],
+            sources,
+            nc_v,
+            0,
+            Some(0),
+        ),
+        Err(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch))
+    ));
+
+    // Adaptive NC-1338 compensating a Public operand passes Step 2.4 Linear check and
+    // rejects at `PublicMismatch(pub_col)`, directly exercising downstream claim dispatch.
+    let mut r_pub = Relation::default();
+    let g_pub = r_pub.add_group_in("pub/w", 2, 0);
+    let p_lo = r_pub.add_column("pub/lo", Kind::Witness(g_pub), Width::unsigned(8), 2);
+    let p_pub = r_pub.add_column(
+        "pub/c",
+        Kind::Public(vec![1, 2, 3, 4]),
+        Width::unsigned(4),
+        2,
+    );
+    let p_out = r_pub.add_column("pub/out", Kind::Witness(g_pub), Width::unsigned(10), 2);
+    for (n, col, w) in [
+        ("r_lo", p_lo, Width::unsigned(8)),
+        ("r_out", p_out, Width::unsigned(10)),
+    ] {
+        r_pub.ranges.push(Range {
+            name: n.into(),
+            column: col,
+            width: w,
+        });
+    }
+    let p_v = r_pub.add_virtual(
+        "pub/v",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(p_lo, 2)), (1, Ref::identity(p_pub, 2))],
+        },
+        2,
+    );
+    r_pub.identities.push(Identity {
+        name: "pub/eq".into(),
+        vars: 2,
+        terms: vec![
+            IdentityTerm {
+                coeff: 1,
+                factors: vec![Ref::identity(p_out, 2)],
+            },
+            IdentityTerm {
+                coeff: -1,
+                factors: vec![Ref::identity(p_v, 2)],
+            },
+        ],
+    });
+    assert_eq!(r_pub.validate(), Ok(()));
+    let mut p_vals = Values::new(&r_pub);
+    p_vals.set(&r_pub, p_lo, vec![10, 20, 30, 40]).expect("lo");
+    // Forged `p_out[0] = 12` (honest is 11 = 10 + 1).
+    p_vals
+        .set(&r_pub, p_out, vec![12, 22, 33, 44])
+        .expect("out");
+    let mut tp = Transcript::new(PUBLIC).expect("transcript");
+    let forged_pub = prove_segmented_forged_virtual(
+        &mut tp,
+        &r_pub,
+        |_| Ok(p_vals.clone()),
+        &[],
+        sources,
+        p_v,
+        0,
+        Some(1),
+    )
+    .expect("forged pub");
+    let mut tv = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify_segmented(&mut tv, &r_pub, &[], &forged_pub, sources).err(),
+        Some(Error::PublicMismatch(p_pub))
+    );
+
+    // Noncanonical QM31 limb (p = 2^31 - 1) in a Linear reduction section -> NoncanonicalField.
+    let mut noncanon = proof.clone();
+    noncanon.segments[0].reductions[0][..4].copy_from_slice(&((1u32 << 31) - 1).to_le_bytes());
+    let mut tv = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify_segmented(&mut tv, &rel, &model_verify, &noncanon, sources).err(),
+        Some(Error::NoncanonicalField)
+    );
+}
+
+/// RFC-0026 A28 & RFC-0028 §2.4 (E18-02): white-box transcript binding of `absorb_linear_evals`
+/// and `absorb_virtual_members` (no-op when no virtual member is present; shifts challenge
+/// whenever a virtual member or sent operand evaluation changes).
+#[test]
+fn accepts_linear_transcript_binding_and_nonvirtual_parity() {
+    use stele_hash::ChallengeLabel;
+
+    let mut rel = Relation::default();
+    let g = rel.add_group_in("g", 1, 0);
+    let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(4), 1);
+    let v = rel.add_virtual(
+        "v",
+        stele_ir::relation::Def::Linear {
+            constant: 1,
+            terms: vec![(2, Ref::identity(x, 1))],
+        },
+        1,
+    );
+    rel.ranges.push(Range {
+        name: "rx".into(),
+        column: x,
+        width: Width::unsigned(4),
+    });
+    rel.ranges.push(Range {
+        name: "rv".into(),
+        column: v,
+        width: Width::unsigned(5),
+    });
+    let plan = super::plan_segmented(&rel, Sources::CircleAll).expect("plan");
+    let checks = &plan.segments[0].checks;
+    let nonvirt_check = checks
+        .iter()
+        .find(|c| c.members.iter().all(|m| m.tuple[0].0.column == x))
+        .expect("nonvirt check");
+    let virt_check = checks
+        .iter()
+        .find(|c| c.members.iter().any(|m| m.tuple[0].0.column == v))
+        .expect("virt check");
+
+    // Non-virtual member list must leave the transcript bit-identical (RFC-0026 A28).
+    let mut t_base = Transcript::<K>::new(PUBLIC).expect("t");
+    let mut t_nonvirt = Transcript::<K>::new(PUBLIC).expect("t");
+    super::lookup::absorb_virtual_members(&mut t_nonvirt, nonvirt_check, &rel, &[K::from_i64(7)])
+        .expect("absorb");
+    let c_base = t_base.challenge(ChallengeLabel::LookupBeta).expect("c");
+    let c_nonvirt = t_nonvirt.challenge(ChallengeLabel::LookupBeta).expect("c");
+    assert_eq!(c_base, c_nonvirt);
+
+    // Virtual member list must bind the transcript and shift when the member value changes.
+    let mut t_v1 = Transcript::<K>::new(PUBLIC).expect("t");
+    let mut t_v2 = Transcript::<K>::new(PUBLIC).expect("t");
+    super::lookup::absorb_virtual_members(&mut t_v1, virt_check, &rel, &[K::from_i64(7)])
+        .expect("absorb");
+    super::lookup::absorb_virtual_members(&mut t_v2, virt_check, &rel, &[K::from_i64(8)])
+        .expect("absorb");
+    let c_v1 = t_v1.challenge(ChallengeLabel::LookupBeta).expect("c");
+    let c_v2 = t_v2.challenge(ChallengeLabel::LookupBeta).expect("c");
+    assert_ne!(c_base, c_v1);
+    assert_ne!(c_v1, c_v2);
+
+    // `absorb_linear_evals` must bind every operand evaluation.
+    let mut t_e1 = Transcript::<K>::new(PUBLIC).expect("t");
+    let mut t_e2 = Transcript::<K>::new(PUBLIC).expect("t");
+    super::absorb_linear_evals(&mut t_e1, v, 0, &[K::from_i64(7), K::from_i64(11)]).expect("e1");
+    super::absorb_linear_evals(&mut t_e2, v, 0, &[K::from_i64(7), K::from_i64(12)]).expect("e2");
+    assert_ne!(
+        t_e1.challenge(ChallengeLabel::LookupBeta).expect("c1"),
+        t_e2.challenge(ChallengeLabel::LookupBeta).expect("c2")
+    );
+}
+
+/// RFC-0028 §2.4 (E18-02): edge cases — broadcast `Ref`, constant-only `Def::Linear` on
+/// `log_len == 0`, bogus `Values` entries on virtual columns ignored, overflow rejected with
+/// `Error::Capacity`, and `prove_segmented_forged_virtual` rejecting invalid targets.
+#[test]
+fn accepts_linear_edge_cases_and_rejects_overflow_or_bad_forge_target() {
+    use stele_ir::relation::Def;
+
+    let mut rel = Relation::default();
+    let g1 = rel.add_group_in("edge/w1", 1, 0);
+    let g2 = rel.add_group_in("edge/w2", 2, 0);
+    let g0 = rel.add_group_in("edge/w0", 0, 0);
+    // 1-var witness column broadcast into a 2-var virtual column (`vars: vec![0]`).
+    let a = rel.add_column("edge/a", Kind::Witness(g1), Width::unsigned(4), 1);
+    let b = rel.add_column("edge/b", Kind::Witness(g2), Width::unsigned(8), 2);
+    let s = rel.add_column("edge/s", Kind::Witness(g0), Width::unsigned(4), 0);
+    for (n, col, w) in [
+        ("ra", a, Width::unsigned(4)),
+        ("rb", b, Width::unsigned(8)),
+        ("rs", s, Width::unsigned(4)),
+    ] {
+        rel.ranges.push(Range {
+            name: n.into(),
+            column: col,
+            width: w,
+        });
+    }
+    let v_bcast = rel.add_virtual(
+        "edge/v_bcast",
+        Def::Linear {
+            constant: 3,
+            terms: vec![(
+                2,
+                Ref {
+                    column: a,
+                    vars: vec![0],
+                },
+            )],
+        },
+        2,
+    );
+    let v_const0 = rel.add_virtual(
+        "edge/v_const0",
+        Def::Linear {
+            constant: 7,
+            terms: vec![],
+        },
+        0,
+    );
+    rel.identities.push(Identity {
+        name: "edge/eq_bcast".into(),
+        vars: 2,
+        terms: vec![
+            IdentityTerm {
+                coeff: 1,
+                factors: vec![Ref::identity(b, 2)],
+            },
+            IdentityTerm {
+                coeff: -1,
+                factors: vec![Ref::identity(v_bcast, 2)],
+            },
+        ],
+    });
+    rel.identities.push(Identity {
+        name: "edge/eq_const0".into(),
+        vars: 0,
+        terms: vec![
+            IdentityTerm {
+                coeff: 1,
+                factors: vec![Ref::identity(s, 0)],
+            },
+            IdentityTerm {
+                coeff: -1,
+                factors: vec![Ref::identity(v_const0, 0)],
+            },
+        ],
+    });
+    assert_eq!(rel.validate(), Ok(()));
+
+    let mut vals = Values::new(&rel);
+    vals.set(&rel, a, vec![2, 5]).expect("a");
+    // Ref { column: a, vars: [0] } maps x in 0..4 to bit 0 of x: [a[0], a[1], a[0], a[1]].
+    vals.set(&rel, b, vec![7, 13, 7, 13]).expect("b");
+    vals.set(&rel, s, vec![7]).expect("s");
+    assert_eq!(stele_ir::relation::check(&rel, &vals), Ok(()));
+
+    let sources = Sources::CircleAll;
+    let mut tp = Transcript::new(PUBLIC).expect("t");
+    let p1 = prove_segmented(&mut tp, &rel, |_| Ok(vals.clone()), &[], sources).expect("prove");
+    let mut tv = Transcript::new(PUBLIC).expect("t");
+    verify_segmented(&mut tv, &rel, &[], &p1, sources).expect("verify");
+
+    // Populate a bogus Values slot for virtual column `v_bcast`: ResolvedColumns must ignore it
+    // and produce a bit-identical proof.
+    let mut vals_with_bogus = vals.clone();
+    vals_with_bogus
+        .set(&rel, v_bcast, vec![99, 99, 99, 99])
+        .expect("set bogus");
+    let mut tp2 = Transcript::new(PUBLIC).expect("t");
+    let p2 = prove_segmented(
+        &mut tp2,
+        &rel,
+        |_| Ok(vals_with_bogus.clone()),
+        &[],
+        sources,
+    )
+    .expect("prove2");
+    assert_eq!(p1.segments.len(), p2.segments.len());
+    assert_eq!(p1.segments[0].reductions, p2.segments[0].reductions);
+    assert_eq!(p1.segments[0].identities, p2.segments[0].identities);
+
+    // ResolvedColumns::get must refuse to fall back to `Values` for an uncomputed virtual column.
+    let empty_resolved =
+        super::ResolvedColumns::for_segment(&rel, &vals_with_bogus, &[]).expect("empty virtuals");
+    assert_eq!(
+        empty_resolved.get(v_bcast).err(),
+        Some(Error::Missing(v_bcast))
+    );
+
+    // `prove_segmented_forged_virtual` rejects non-virtual target and invalid term index.
+    let mut tp_bad = Transcript::new(PUBLIC).expect("t");
+    assert_eq!(
+        prove_segmented_forged_virtual(
+            &mut tp_bad,
+            &rel,
+            |_| Ok(vals.clone()),
+            &[],
+            sources,
+            b,
+            0,
+            None,
+        )
+        .err(),
+        Some(Error::Unsupported)
+    );
+    let mut tp_bad2 = Transcript::new(PUBLIC).expect("t");
+    assert_eq!(
+        prove_segmented_forged_virtual(
+            &mut tp_bad2,
+            &rel,
+            |_| Ok(vals.clone()),
+            &[],
+            sources,
+            v_bcast,
+            0,
+            Some(9),
+        )
+        .err(),
+        Some(Error::Unsupported)
+    );
+
+    // Overflow during materialization must return `Error::Capacity`, not silently truncate.
+    let mut r_ovf = Relation::default();
+    let g_ovf = r_ovf.add_group_in("ovf/w", 1, 0);
+    let ox = r_ovf.add_column("ovf/x", Kind::Witness(g_ovf), Width::signed(8), 1);
+    let ov = r_ovf.add_virtual(
+        "ovf/v",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(i64::MAX, Ref::identity(ox, 1))],
+        },
+        1,
+    );
+    let mut ovf_vals = Values::new(&r_ovf);
+    ovf_vals.set(&r_ovf, ox, vec![2, 0]).expect("ox");
+    assert_eq!(
+        super::ResolvedColumns::for_segment(&r_ovf, &ovf_vals, &[ov]).err(),
+        Some(Error::Capacity)
     );
 }
