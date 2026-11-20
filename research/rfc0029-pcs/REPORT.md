@@ -113,3 +113,24 @@ entries and 100-bit security under RFC-0030 §3 caps:
 
 Bet B3 is **not killed**; it remains active, with `b = 1` already clearing `8 MB` strictly on
 QM31 and Q50 providing sub-MiB headroom at `2^32..2^34`.
+
+## 6. Actual recursive opening bytes (`2^20`..`2^28` QM31, task E19-03)
+
+Measured by running `stele_pcs::recursive::{PreparedRecursive::commit, open_fresh_at_point, verify_fresh_at_point}`
+(`cargo run --release --features std -p stele-pcs --example recursive_oracle -- --measure 20 28`)
+under RFC-0030 §3 capped Policy 3 plans (`b in {2, 3, 4}`, `T = 100`, QM31). Every proof verified
+cleanly, and the body byte count matches the E19-01 model in Section 2 to the single byte (plus
+the fixed `2 + 3 * L` byte verifier-checked plan header for `NC-0633`):
+
+| Entries | Plan levels `(ell, m, b)` | E19-01 model (B) | Measured body (B) | Header (B) | Total proof (B) |
+|---|---|---:|---:|---:|---:|
+| `2^20` | `(6,14,4) -> (3,11,4)` | 299,344 | 299,344 | 8 | 299,352 |
+| `2^22` | `(6,16,4) -> (4,12,4)` | 373,600 | 373,600 | 8 | 373,608 |
+| `2^24` | `(7,17,4) -> (5,12,4)` | 474,288 | 474,288 | 8 | 474,296 |
+| `2^26` | `(6,20,2) -> (4,16,4) -> (4,12,4)` | 605,184 | 605,184 | 11 | 605,195 |
+| `2^28` | `(9,19,2) -> (4,15,4) -> (4,11,4)` | 984,736 | 984,736 | 11 | 984,747 |
+
+Independent Python parity is verified by
+`uv run --offline --script research/rfc0029-pcs/verify_recursive.py` (10 seeded QM31 vectors:
+5 honest acceptances across `L = 1, 2, 3` and 1-/2-claim fresh batching with bit-exact transcript
+continuation, plus exact rejection parity on `NC-0630..0634`).

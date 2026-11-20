@@ -1,6 +1,7 @@
 """RFC-0029 Policy 3 exact-integer checker and recursive size model tests (task E19-01)."""
 import importlib.util
 from pathlib import Path
+import subprocess
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -70,6 +71,16 @@ class Rfc0029Policy3Tests(unittest.TestCase):
         self.assertEqual(seg_plan[1][6], 32)  # blocks == 32 at level 1
         self.assertGreater(seg_bytes, 9 * 1024 * 1024)
         MOD._assert_plan_domains_valid(seg_plan)
+
+    def test_matches_reference_python_recursive_verifier(self):
+        proc = subprocess.run(
+            ["uv", "run", "--locked", "--offline", "--script", "research/rfc0029-pcs/verify_recursive.py"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc.returncode, 0, f"{proc.stdout}\n{proc.stderr}")
+        self.assertIn("rfc0029 verify_recursive: OK (10 vectors verified", proc.stdout)
 
 
 if __name__ == "__main__":

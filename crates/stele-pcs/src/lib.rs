@@ -14,6 +14,8 @@ mod material;
 mod opening;
 mod preparation;
 mod producer;
+/// RFC-0029 & RFC-0010 A17 coefficient-form interleaved Circle RS recursive openings (Policy 3).
+pub mod recursive;
 mod source;
 mod work;
 pub use certificate::{
@@ -31,5 +33,5 @@ pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};
 pub use producer::CertificateFailure;
 pub use source::{Error, Parameters, Policy, ProofKind, Response, Source, SourceBytes, Wire};
 // A1 registry validator: stele-code is reachable only through this crate (deny.toml).
-pub use stele_code::{registry, CodeField};
+pub use stele_code::{registry, CircleCoeff, CodeField};
 pub use work::{ProverWork, VerifierWork};

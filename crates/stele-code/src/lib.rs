@@ -502,7 +502,7 @@ mod tests {
                     // Reconstruct g_j[idx] = Π_{k: bit k of idx == 1} factors[k].
                     let mut dot = M31::ZERO;
                     let mut mle_direct = QM31::from_i64(0);
-                    for idx in 0..len {
+                    for (idx, &coeff) in coeffs.iter().enumerate() {
                         let mut g = M31::ONE;
                         let mut eq = one;
                         for k in 0..m as usize {
@@ -514,7 +514,7 @@ mod tests {
                                 eq = eq * (one - r);
                             }
                         }
-                        dot = dot + coeffs[idx] * g;
+                        dot = dot + coeff * g;
                         mle_direct = mle_direct + eq.mul_m31(g);
                     }
                     assert_eq!(dot, cw[j], "m={m} b={b} col={j}");
