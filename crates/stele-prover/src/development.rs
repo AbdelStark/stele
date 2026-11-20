@@ -748,6 +748,37 @@ fn prove_inner_captured(
     if let Some(hook) = hook {
         hook(&mut layout.relation, &mut values);
     }
+    if layout.relation.has_virtual() {
+        let mut plain_check_ns = 0u64;
+        if checked {
+            let check_timer = relation::Stopwatch::start();
+            check(&layout.relation, &values).map_err(Error::Check)?;
+            plain_check_ns = check_timer.elapsed_ns();
+        }
+        let mut single = Some(values);
+        let (proof, engine) = relation::prove_segmented_measured(
+            &mut t,
+            &layout.relation,
+            |seg| {
+                if seg == 0 {
+                    single.take().ok_or(relation::Error::Unsupported)
+                } else {
+                    Err(relation::Error::Unsupported)
+                }
+            },
+            &model,
+            public.sources,
+        )
+        .map_err(Error::Engine)?;
+        let digest = statement_digest(&input, &relation::digest(&layout.relation));
+        let report = Report {
+            model_commitment_ns: 0,
+            witness_ns,
+            plain_check_ns,
+            engine,
+        };
+        return Ok((sections_v2(proof, d.cqis_id, digest).encode(), report));
+    }
     // The plain checker runs beside the engine and decides: a false witness fails
     // with `Check` even if the engine errs or panics on it (E16-23).
     let mut plain_check_ns = 0u64;
@@ -820,15 +851,15 @@ const MODEL_TAG: &[u8] = b"stele/v0.1/dev-e2e/model";
 /// Verify one window (RFC-0026 §8, A26, A27) and return its ledger.
 pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Ledger, Error> {
     let decoded = container::decode_any(proof).map_err(Error::Container)?;
-    let expected_v2 = public.segment_layers > 0;
-    if expected_v2 != matches!(decoded, container::Decoded::V2(_)) {
-        return Err(Error::StatementMismatch);
-    }
     let d = decode(public)?;
     if decoded.cqis_id() != d.cqis_id {
         return Err(Error::StatementMismatch);
     }
     let layout = layout(&d, public, statement)?;
+    let expected_v2 = public.segment_layers > 0 || layout.relation.has_virtual();
+    if expected_v2 != matches!(decoded, container::Decoded::V2(_)) {
+        return Err(Error::StatementMismatch);
+    }
     layout
         .relation
         .validate()

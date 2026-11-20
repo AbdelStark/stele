@@ -102,6 +102,16 @@ value too wide for that is restructured, never wrapped. Advice wider than 16 bit
 committed as limbs and is itself linear in them, so its width never rests on a check
 that presumes it.
 
+**A1 — Range-tightened downstream magnitude.** Once a virtual column `id`'s raw derived
+magnitude from its definition satisfies `raw <= (p - 1)/2` (so its defining equation is
+statically wrap-free over `F_p`, and its unique integer value equals its centered field
+residue), every valid `Range { column: id, width }` (`1 <= width.bits <= 16`) proved by
+LogUp confines that integer value to `width` (whose interval lies strictly inside
+`(-(p-1)/2, (p-1)/2)`). Therefore `derived_magnitudes` tightens `id`'s downstream
+magnitude bound to `min(raw, min_{Range on id} width.magnitude())`. An over-wide virtual
+definition (`raw > (p - 1)/2`) is still rejected with `Invalid::Bound` before any range
+check is considered (`NC-1340` / INV-5 unchanged).
+
 ### 2.3 Segments
 
 Every commitment group belongs to a **segment**, numbered in plan order. A virtual
@@ -157,11 +167,46 @@ needs to be carried.
 For a relation with one segment and no virtual column, every engine message equals
 its RFC-0026 message; only the container framing of §2.5 differs.
 
-### 2.5 Proof container
+### 2.5 Proof container and canonical wire framing
 
-`stele-dev-e2e-v2`: the v1 sections grouped per segment, plus a `reductions` section
-per segment holding, per virtual column in reduction order, its operand evaluations
-or its sumcheck messages. The verifier derives every count and length.
+- **Relation encoding (`stele/v0.1/relation/encoding/v2`).** Unsegmented relations without
+  virtual columns keep `stele/v0.1/relation/encoding/v1` unchanged (RFC-0026 A15 §5).
+  Segmented or virtual relations use 31-byte magic `stele/v0.1/relation/encoding/v2`:
+  - each group appends `segment: u32le` after `log_len: u8` (RFC-0026 A27 §2);
+  - each column appends `carried: u8` (`0 | 1`) after `log_len: u8`, and admits kind tag
+    `3` (`Virtual`, rejected in `v1`): `def_tag: u8 || def_body || seg_opt`, where
+    `def_tag = 0` (`Linear`) encodes `constant: i64le || list (coeff: i64le || Ref)`,
+    `def_tag = 1` (`Pointwise`) encodes `list (coeff: i64le || u8 factor_count || [Ref])`,
+    `def_tag = 2` (`Contraction`) encodes `free: u8 || summed: u8 || lhs: Ref || rhs: Ref`,
+    and `seg_opt` is `0u8` (`None`) or `1u8 || seg: u32le` (`Some(seg)`). A virtual column's
+    encoded `width` is `(signed = 0, bits = 0)`.
+- **Container (`stele-dev-e2e-v2`, RFC-0026 A26 §1).** The v1 sections grouped per segment
+  (`groups`, `multiplicities`, `identities`, `lookups`, `matmuls`, `reductions`, `openings`),
+  plus top-level `model_openings`. In each lookup check (RFC-0026 A28 item 2), after
+  verifying the A3 member split, if any member tuple slot reads a `Kind::Virtual` column,
+  the verifier absorbs under `AbsorbLabel::Final` the payload
+  `check_id: u64le || [(member_index: u32le || slot: u8 || member_val: 16B K)]` in
+  `(member_index, slot)` order (no-op when no member reads a virtual column). Inside segment
+  `s`, `reductions` holds one section per virtual column owned by segment `s` that has at
+  least one claim, in strictly decreasing `ColumnId` order:
+  - `Linear`: for each claim `claim_idx = 0..claims.len()` at `(z, c)`, `terms.len()` canonical
+    `K` values `evals`, absorbed under `AbsorbLabel::Final` as
+    `col_id: u32le || claim_idx: u32le || evals`, checked against
+    `c == constant + Σ c_i · evals[i]` (else `LinearMismatch`), then routed as `(z|r_i, evals[i])`.
+  - `Contraction`: if `claims.len() > 1`, an RFC-0006 A2 mode-1 `ClaimBatch`
+    (`id = (1 << 62) | (4 << 48) | col_id`, `tensor = col_id`, `num_vars = log_len`,
+    `log_len` rounds of `3 K` plus `1 K` final); then an RFC-0006 A1 sumcheck
+    (`id = (1 << 62) | (5 << 48) | col_id`) over descending `vars` (`shared` free bits and
+    `summed` bits), width `3` (or `4` when `shared` is nonempty) and `2` (or `3`) finals,
+    checking `finals[0] == Π_{d ∈ shared} eq(z_d, r_d)` (`EqMismatch`) before routing `lhs`
+    and `rhs`.
+  - `Pointwise`: if `claims.len() > 1`, the same `ClaimBatch`
+    (`id = (1 << 62) | (4 << 48) | col_id`); then an RFC-0006 A1 sumcheck
+    (`id = (1 << 62) | (6 << 48) | col_id`, `num_vars = log_len`, inputs `[0 = eq(z, ·),
+    1..=distinct_refs]` in first-appearance order, each term prefixed by factor `0`) with
+    width `1 + max(1 + term.factors.len())`, checking `finals[0] == eq(z, r)` (`EqMismatch`)
+    before routing each distinct `Ref` at `r` with `finals[1 + idx]`.
+  The verifier derives every count and exact section length before reading a proof byte.
 
 ## 3. Prover algorithm and cost
 
@@ -240,6 +285,27 @@ verifier.
 
 ## 8. Amendment log
 
+- **A1 & §2.5 wire specification (development tier, tasks E18-05a / E18-05):**
+  1. Range-tightened downstream derived magnitude for statically wrap-free virtual columns
+     (`§2.2`): after checking `raw <= (p - 1)/2` on a virtual column's definition, any valid
+     whole-column `Range` on that virtual column tightens its downstream magnitude bound to
+     `min(raw, range.width.magnitude())`, allowing ranged virtual low limbs, codes, and
+     outputs to feed downstream multiplications and contractions without committing a
+     redundant copy. Over-wide definitions (`raw > (p - 1)/2`) still reject with
+     `Invalid::Bound` before range tightening (`NC-1340` / INV-5 unchanged).
+  2. Canonical byte layout for `stele/v0.1/relation/encoding/v2` virtual definitions and
+     `stele-dev-e2e-v2` `reductions` sections (§2.5) pinned for independent Lane-V replay
+     (`stele-verifier`, ADR-128) and A16 registry vector normalization.
+- **E18-04 implementation note (`Pointwise` reductions, `NC-1339..1340`):** Every claimed
+  `Def::Pointwise` column is reduced individually in strictly decreasing `ColumnId` order,
+  emitting one reduction section `[optional RFC-0006 A2 mode-1 claim batch] ||
+  [eq-weighted RFC-0006 A1 sumcheck]` under disjoint instance IDs `VIRTUAL_BATCH | col_id`
+  (`(1 << 62) | (4 << 48) | col_id`) and `VIRTUAL_POINTWISE | col_id`
+  (`(1 << 62) | (6 << 48) | col_id`), checking `final_values[0] == eq(z, r)` (`Error::EqMismatch`)
+  and routing each deduplicated operand `Ref` claim downstream. Controls `NC-1339` (committed
+  `y + 1` with virtual `rem` range lookup rejecting with `RootMismatch`) and `NC-1340`
+  (advice declared as `Linear` with field inverse of `2^k` rejecting with `StatementMismatch`)
+  execute through `verify_segmented`.
 - **E18-03 implementation note (`Contraction` reductions, unsplit `shared + summed <= MAX_VARS`):**
   Every claimed `Def::Contraction` column is reduced individually in strictly decreasing
   `ColumnId` order, emitting one reduction section `[optional RFC-0006 A2 mode-1 claim batch] ||

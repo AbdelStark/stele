@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "bench"))
 from hiding_source_counts import proof_inventory, check_source_work
 from lookup_tree_counts import FIELDS as LOOKUP_FIELDS, check_lookup_work
 
-REFERENCE_SHA256 = "8ba50f05e567ceb8fb2652cf9ba22d9e0e7096a2b6471796d94fee2837b35bbd"
+REFERENCE_SHA256 = "357505bd55ce0ffe1c152cf36634ab6e7bb322ae00394b7c1cd9ef5ef467b23a"
 
 
 def run(args, **kwargs):

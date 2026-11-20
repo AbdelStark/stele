@@ -383,26 +383,21 @@ fn rejects_code_near_misses() {
     for policy in [Policy::Dynamic, Policy::Static(5), Policy::Grouped(2)] {
         let case = row_case(policy, &row_inputs_for(policy));
         for x in (0..case.honest.codes.len()).filter(|&x| case.conversion.real(x)) {
-            let q = case.honest.quotient[x];
-            // Output +-1, with q (and so c) completed consistently.
-            for wrong in [q - 1, q + 1].into_iter().filter(|v| (0..=127).contains(v)) {
+            let q0 = case.honest.quotient[x];
+            // Committed quotient +-1 (covers both off-by-one code and the other rounding direction).
+            for wrong in [q0 - 1, q0 + 1]
+                .into_iter()
+                .filter(|v| (0..=127).contains(v))
+            {
                 let forged = case.forge(RStep::Quotient, x, wrong);
                 assert!(
                     check(&case.relation, &forged).is_err(),
-                    "{policy:?} lane {x} q {wrong}"
+                    "{policy:?} lane {x} quotient {wrong}"
                 );
             }
-            // The other rounding direction: flip beta, q follows.
-            let beta = case.honest.half[x];
-            let forged = case.forge(RStep::Half, x, 1 - beta);
-            assert!(
-                check(&case.relation, &forged).is_err(),
-                "{policy:?} lane {x} beta"
-            );
-            // The code itself +-1.
-            for delta in [-1, 1] {
-                let c = case.honest.codes[x] + delta;
-                let forged = case.forge(RStep::Code, x, c);
+            // Flip sign when nonzero (flips virtual code sign).
+            if case.honest.codes[x] != 0 {
+                let forged = case.forge(RStep::Sign, x, 1 - case.honest.sign[x]);
                 assert!(check(&case.relation, &forged).is_err());
             }
         }
@@ -454,9 +449,11 @@ fn rejects_zero_row_branch_near_misses() {
     // Nonzero row claiming the zero branch: z*M = 0 rejects.
     let forged = case.forge(RStep::Zero, 0, 1);
     assert!(check(&case.relation, &forged).is_err());
-    // Zero row with a nonzero code: rejected through the division and the half bit.
+    // Zero row with a nonzero code via committed floor=1 or half=1: rejected.
     let lane = 1 << 3; // row 1, lane 0
-    let forged = case.forge(RStep::Quotient, lane, 1);
+    let forged = case.forge(RStep::Floor, lane, 1);
+    assert!(check(&case.relation, &forged).is_err());
+    let forged = case.forge(RStep::Half, lane, 1);
     assert!(check(&case.relation, &forged).is_err());
 }
 
@@ -535,12 +532,10 @@ fn projection_case_within(
     let mut projection = Projection::new("L0/q", input, None, plan).expect("plan");
     projection.limit = t + lo + ld - splits;
     projection.declare(&mut relation);
-    let blocks = relation
-        .matmuls
-        .iter()
-        .filter(|mm| mm.name.starts_with("L0/q/sum/0"))
-        .count();
-    assert_eq!(blocks, 1 << splits);
+    assert!(
+        relation.matmuls.is_empty(),
+        "projection sums are virtual contractions (RFC-0028 §1.2)"
+    );
     let mut values = Values::new(&relation);
     values
         .set(&relation, codes, padded(&rows.codes, t, ld))
@@ -661,15 +656,33 @@ fn rejects_projection_output_near_misses() {
         let case = projection_case(policy, &inputs, &weights, &m, shift);
         for x in (0..case.honest.output.len()).filter(|&x| case.projection.real(x)) {
             for delta in [-1i64, 1] {
-                // |Y| +-1 with the remainder limbs and Y completed (the other rounding
-                // direction is one of these).
-                let (forged, _) = case.forge(PStep::Magnitude, |l| l[0][x] += delta, None);
-                assert!(
-                    check(&case.relation, &forged).is_err(),
-                    "{policy:?} Y[{x}] {delta:+}"
-                );
-                let (forged, _) = case.forge(PStep::Output, |l| l[0][x] += delta, None);
-                assert!(check(&case.relation, &forged).is_err());
+                if case
+                    .projection
+                    .columns
+                    .as_ref()
+                    .expect("declared")
+                    .mixed
+                    .is_some()
+                {
+                    // Mixed-radix fast path: shifting top rounding carry by +-1 shifts virtual Y by +-1.
+                    let mut w = case.honest.clone();
+                    w.mixed_rcs.last_mut().expect("rc_last")[x] += delta;
+                    let mut forged = case.values.clone();
+                    case.projection
+                        .write(&case.relation, &w, &mut forged, None)
+                        .expect("write");
+                    assert!(
+                        check(&case.relation, &forged).is_err(),
+                        "{policy:?} mixed rc_last[{x}] {delta:+}"
+                    );
+                } else {
+                    // |Y| +-1 with virtual remainder limbs and virtual Y following.
+                    let (forged, _) = case.forge(PStep::Magnitude, |l| l[0][x] += delta, None);
+                    assert!(
+                        check(&case.relation, &forged).is_err(),
+                        "{policy:?} Y[{x}] {delta:+}"
+                    );
+                }
             }
         }
     }
@@ -692,17 +705,32 @@ fn rejects_projection_output_near_misses() {
 fn rejects_nonzero_padding() {
     let s = random(3, 24, 6, Policy::Dynamic, 8, 40);
     let output = s.projection.output().expect("declared");
-    let mut values = s.values.clone();
-    let mut y = values.get(&s.relation, output).expect("Y").to_vec();
+    let y = stele_ir::relation::eval_column(&s.relation, &s.values, output).expect("Y");
     let padded = y.len() - 1;
-    y[padded] = 1;
-    values.set(&s.relation, output, y).expect("Y");
+    assert_eq!(y[padded], 0);
+    // Tampering a committed column on the padded cell is rejected.
+    let mut values = s.values.clone();
+    let cols = s.projection.columns.as_ref().expect("declared");
+    let target = cols
+        .mixed
+        .as_ref()
+        .map_or(cols.magnitude, |m| *m.rcs.last().expect("rc_last"));
+    let mut col = values.get(&s.relation, target).expect("col").to_vec();
+    col[padded] += 1;
+    values.set(&s.relation, target, col).expect("col");
     assert!(check(&s.relation, &values).is_err());
     let codes = s.conversion.output().expect("declared").codes;
+    let c = stele_ir::relation::eval_column(&s.relation, &s.values, codes).expect("codes");
+    assert_eq!(c[30], 0); // row 0, padded lane 30 >= 24 is pinned to 0 by virtual definition
+                          // Tampering committed quotient on the padded lane is rejected.
+    let quotient = s.conversion.columns.expect("declared").quotient;
     let mut values = s.values.clone();
-    let mut c = values.get(&s.relation, codes).expect("codes").to_vec();
-    c[30] = 1; // row 0, padded lane 30 >= 24
-    values.set(&s.relation, codes, c).expect("codes");
+    let mut f = values
+        .get(&s.relation, quotient)
+        .expect("quotient")
+        .to_vec();
+    f[30] = 1;
+    values.set(&s.relation, quotient, f).expect("quotient");
     assert!(check(&s.relation, &values).is_err());
     // A padded input lane is ignored: the honest witness still passes.
     let mut values = s.values.clone();
@@ -757,7 +785,7 @@ struct Candidate {
 /// Survivors whose deletion changes no output over Z, with the reason. Each reason
 /// names the constraints that imply it; none hides an output change.
 fn explanation(name: &str) -> Option<&'static str> {
-    let rules: [(&str, &str); 14] = [
+    let rules: [(&str, &str); 23] = [
         (
             "L0/q/magnitude/range",
             "implied: the rounding chain gives Ymag = floor((P + 2^(K-1))/2^K) >= 0 (or \
@@ -824,6 +852,44 @@ fn explanation(name: &str) -> Option<&'static str> {
             "scale byte range: s = sum 256^c s_c is fixed by the scale identity; only the \
              byte representation moves, never the product sum",
         ),
+        (
+            "L0/q/fold_scale/",
+            "scale byte range: s = sum 256^c s_c is fixed by the fold scale decomposition; \
+             only the byte representation moves, never the product sum",
+        ),
+        (
+            "L0/q/v0/range",
+            "output-neutral: v0 + 2^r0 v1 = V identically; w0 + 2^r0 w1 + 2^K w2 = V*s \
+             depends only on V; the range bounds v0*s for the bound rule mod p",
+        ),
+        (
+            "L0/q/v1/range",
+            "implied over Z by v0 = V - 2^r0 v1 in [0, 2^r0); width feeds the bound rule mod p",
+        ),
+        (
+            "L0/q/c0/range",
+            "implied over Z by w0 = v0*s - 2^r0 c0 in [0, 2^r0); width feeds the bound rule mod p",
+        ),
+        (
+            "L0/q/q0/range",
+            "implied over Z by w0 = C0 + 256*b0 - 2^r0 q0 in [0, 2^r0); width feeds the bound rule mod p",
+        ),
+        (
+            "L0/q/b1/range",
+            "implied over Z by b0 = C1 - 2^r0 b1 in [0, 2^r0); width feeds the bound rule mod p",
+        ),
+        (
+            "L0/q/w2/range",
+            "implied over Z by w1 = v1*s + c0 - 2^r1 w2 in [0, 2^r1); width feeds the bound rule mod p",
+        ),
+        (
+            "L0/q/rc0/range",
+            "implied over Z by rho0 = 2^r0 rc0 - w0*m - 1 + tau in [0, 2^r0); width feeds the bound rule mod p",
+        ),
+        (
+            "L0/q/rc1/range",
+            "implied over Z by rho1 = 2^r1 rc1 + 2^(r1-1) - w1*m - rc0 in [0, 2^r1); width feeds the bound rule mod p",
+        ),
     ];
     rules
         .iter()
@@ -871,9 +937,8 @@ fn accepts_widened(relation: &Relation, values: &Values, name: &str) -> bool {
         return false;
     };
     check_except(relation, values, &[name]).is_ok()
-        && values
-            .get(relation, column)
-            .is_some_and(|v| v.iter().all(|x| (low..=high).contains(x)))
+        && stele_ir::relation::eval_column(relation, values, column)
+            .is_ok_and(|v| v.iter().all(|x| (low..=high).contains(x)))
 }
 
 fn survey_mode<F>(
@@ -888,7 +953,11 @@ where
     F: Fn(Option<(&str, usize)>, usize) -> Vec<Candidate>,
 {
     let truth = outputs(honest);
-    let plain = forged(None, 0);
+    let filter_bad = |mut list: Vec<Candidate>| {
+        list.retain(|c| check(relation, &c.values).is_err());
+        list
+    };
+    let plain = filter_bad(forged(None, 0));
     let frozen = core::cell::OnceCell::new();
     let names: Vec<String> = match mode {
         Mode::Delete => constraints(relation, prefix),
@@ -917,9 +986,9 @@ where
                 let fresh;
                 let candidates = match (position, phase) {
                     (None, 0) => &plain,
-                    (None, _) => frozen.get_or_init(|| forged(None, 1)),
+                    (None, _) => frozen.get_or_init(|| filter_bad(forged(None, 1))),
                     (skip, phase) => {
-                        fresh = forged(skip, phase);
+                        fresh = filter_bad(forged(skip, phase));
                         &fresh
                     }
                 };
@@ -928,7 +997,7 @@ where
                         Mode::Delete => check_except(relation, &c.values, &skip).is_ok(),
                         Mode::Widen => accepts_widened(relation, &c.values, &name),
                     };
-                    if check(relation, &c.values).is_ok() || !mutated_accepts {
+                    if !mutated_accepts {
                         continue;
                     }
                     if c.rejected || outputs(&c.values) != truth {
@@ -1003,7 +1072,7 @@ fn row_survey(policy: Policy, mode: Mode) -> Vec<(String, Outcome)> {
     let case = row_case(policy, &row_inputs_for(policy));
     let c = case.conversion.columns.expect("declared");
     let outputs = |v: &Values| {
-        let mut o = v.get(&case.relation, c.codes).expect("codes").to_vec();
+        let mut o = stele_ir::relation::eval_column(&case.relation, v, c.codes).expect("codes");
         o.extend_from_slice(v.get(&case.relation, c.scale).expect("scale"));
         o
     };
@@ -1103,7 +1172,8 @@ fn projection_survey_within(
     std::println!("projection, {policy:?}, l = {shift}, {splits} row-block splits");
     let case = projection_case_within(policy, inputs, weights, m, shift, splits);
     let output = case.projection.output().expect("declared");
-    let outputs = |v: &Values| v.get(&case.relation, output).expect("Y").to_vec();
+    let outputs =
+        |v: &Values| stele_ir::relation::eval_column(&case.relation, v, output).expect("Y");
     let real: Vec<usize> = (0..case.honest.output.len())
         .filter(|&x| case.projection.real(x))
         .collect();
@@ -1182,6 +1252,76 @@ fn projection_survey_within(
         if phase == 1 {
             return all;
         }
+        // For virtual remainder limbs in the `"round"` chain (RFC-0028 §1.2), recompute
+        // the chain's carries so each virtual remainder limb evaluates to `w.remainder[k]`.
+        let sync_round_carries = |values: &mut Values, w: &ProjectionWitness| {
+            let Some(pcols) = case.projection.columns.as_ref() else {
+                return;
+            };
+            if pcols.mixed.is_some() || w.remainder.is_empty() {
+                return;
+            }
+            let Some((_, chain)) = pcols.chains.iter().find(|(n, _)| n.ends_with("/round")) else {
+                return;
+            };
+            let size = 1usize << chain.vars;
+            let n = chain.positions.len();
+            let mut cache: alloc::collections::BTreeMap<ColumnId, Vec<i64>> =
+                alloc::collections::BTreeMap::new();
+            for terms in &chain.positions {
+                for t in terms {
+                    for f in &t.factors {
+                        cache.entry(f.column).or_insert_with(|| {
+                            stele_ir::relation::eval_column(&case.relation, values, f.column)
+                                .expect("eval")
+                        });
+                    }
+                }
+            }
+            let mut cols: Vec<Vec<i64>> = vec![vec![0; size]; n];
+            for x in 0..size {
+                let mut carry = 0i128;
+                for (k, terms) in chain.positions.iter().enumerate() {
+                    let mut sum = carry;
+                    for t in terms {
+                        let mut p = i128::from(t.coeff);
+                        for f in &t.factors {
+                            p *= i128::from(cache[&f.column][f.index(x as u64)]);
+                        }
+                        sum += p;
+                    }
+                    if k < w.remainder.len() {
+                        sum -= i128::from(w.remainder[k][x]);
+                    }
+                    carry = sum.div_euclid(1 << chain.radix);
+                    cols[k][x] = carry as i64;
+                }
+            }
+            for (carry, column) in chain.carries.iter().zip(cols) {
+                match *carry {
+                    None => {}
+                    Some(crate::development::Carry::One(c)) => {
+                        values.set(&case.relation, c, column).expect("carry");
+                    }
+                    Some(crate::development::Carry::Split(lo, hi)) => {
+                        values
+                            .set(
+                                &case.relation,
+                                lo,
+                                column.iter().map(|v| v.rem_euclid(1 << 16)).collect(),
+                            )
+                            .expect("lo");
+                        values
+                            .set(
+                                &case.relation,
+                                hi,
+                                column.iter().map(|v| v.div_euclid(1 << 16)).collect(),
+                            )
+                            .expect("hi");
+                    }
+                }
+            }
+        };
         let k_bits = -shift;
         for &x in &real {
             // |Y| +-1 with remainder limb `r` absorbing -+2^(K - 8r): the chain holds
@@ -1192,12 +1332,13 @@ fn projection_survey_within(
                         w.magnitude[x] += d;
                         w.remainder[r][x] -= d << (k_bits - 8 * r as i32);
                     };
-                    let (description, values, rejected, _) = custom(
+                    let (description, mut values, rejected, w) = custom(
                         alloc::format!("Magnitude[{x}] {d:+}, remainder limb {r} absorbs it"),
                         &lie,
                         Some(PStep::Output),
                         skip,
                     );
+                    sync_round_carries(&mut values, &w);
                     all.push(Candidate {
                         description,
                         values,
@@ -1215,7 +1356,15 @@ fn projection_survey_within(
                     .expect("declared")
                     .remainder
                     .iter()
-                    .map(|id| case.relation.columns[id.0 as usize].width.bits)
+                    .map(|id| {
+                        case.relation
+                            .ranges
+                            .iter()
+                            .find(|rg| rg.column == *id)
+                            .map_or(case.relation.columns[id.0 as usize].width.bits, |rg| {
+                                rg.width.bits
+                            })
+                    })
                     .collect();
                 let lie = move |w: &mut ProjectionWitness| {
                     let rho: i128 = w
@@ -1233,7 +1382,7 @@ fn projection_survey_within(
                         rest -= limb << (8 * i);
                     }
                 };
-                let (description, values, rejected, _) = custom(
+                let (description, mut values, rejected, w) = custom(
                     alloc::format!(
                         "Magnitude[{x}] -1, rho + 2^K packed with limb {r} one bit wider"
                     ),
@@ -1241,6 +1390,7 @@ fn projection_survey_within(
                     Some(PStep::Output),
                     skip,
                 );
+                sync_round_carries(&mut values, &w);
                 all.push(Candidate {
                     description,
                     values,
@@ -1280,6 +1430,281 @@ fn projection_survey_within(
                 });
             }
         }
+        // Mixed-radix fast path: mutate committed columns directly, plus targeted
+        // sign/tie/borrow/carry-bump attacks.
+        let pcols = case.projection.columns.as_ref().expect("declared");
+        if let Some(mc) = &pcols.mixed {
+            let mut committed: Vec<(String, ColumnId)> = Vec::new();
+            for (i, &cid) in mc.head.iter().enumerate() {
+                committed.push((alloc::format!("head{i}"), cid));
+            }
+            committed.push(("w_top".into(), mc.w_top));
+            committed.push(("sign".into(), pcols.sign));
+            for (i, &cid) in mc.rcs.iter().enumerate() {
+                committed.push((alloc::format!("rc{i}"), cid));
+            }
+            for (i, &cid) in mc.out_cols.iter().enumerate() {
+                committed.push((alloc::format!("out{i}"), cid));
+            }
+            let rad0 = 1i64 << mc.plan.radices[0];
+            let rad1 = 1i64 << mc.plan.radices[1];
+            let len = case.honest.sign.len();
+            for x in 0..len {
+                for (cname, cid) in &committed {
+                    for delta in [1i64, -1, 2, -2, rad0, -rad0, rad1, -rad1] {
+                        let mut v = case.values.clone();
+                        let mut col = v.get(&case.relation, *cid).expect("c").to_vec();
+                        col[x] += delta;
+                        v.set(&case.relation, *cid, col).expect("s");
+                        all.push(Candidate {
+                            description: alloc::format!("mixed {cname}[{x}] {delta:+}"),
+                            values: v,
+                            rejected: false,
+                        });
+                    }
+                }
+                // Flip sign and/or bump (w_top, rc0, rc_last) together to kill twos, w*, rho*.
+                let s0 = case.values.get(&case.relation, pcols.sign).expect("s")[x];
+                let w_top_0 = case.values.get(&case.relation, mc.w_top).expect("w_top")[x];
+                let rc0_id = mc.rcs[0];
+                let rc_last_id = *mc.rcs.last().expect("rc_last");
+                let rc0_0 = case.values.get(&case.relation, rc0_id).expect("rc0")[x];
+                let rc1_0 = case
+                    .values
+                    .get(&case.relation, rc_last_id)
+                    .expect("rc_last")[x];
+                for dw in [-1i64, 0, 1] {
+                    for s_new in [0i64, 1, -1, 2] {
+                        for d0 in [-1i64, 0, 1] {
+                            for d1 in [-1i64, 0, 1] {
+                                if dw == 0 && s_new == s0 && d0 == 0 && d1 == 0 {
+                                    continue;
+                                }
+                                let mut v = case.values.clone();
+                                let set_at = |v: &mut Values, id: ColumnId, val: i64| {
+                                    let mut col = v.get(&case.relation, id).expect("c").to_vec();
+                                    col[x] = val;
+                                    v.set(&case.relation, id, col).expect("s");
+                                };
+                                set_at(&mut v, mc.w_top, w_top_0 + dw);
+                                set_at(&mut v, pcols.sign, s_new);
+                                set_at(&mut v, rc0_id, rc0_0 + d0);
+                                set_at(&mut v, rc_last_id, rc1_0 + d1);
+                                all.push(Candidate {
+                                    description: alloc::format!(
+                                        "mixed[{x}] w_top{dw:+} sign={s_new} rc0{d0:+} rc_last{d1:+}"
+                                    ),
+                                    values: v,
+                                    rejected: false,
+                                });
+                            }
+                        }
+                    }
+                }
+                if let super::projection::MixedKind::PerRow {
+                    c0_width: Some(_),
+                    q1_width: None,
+                    ..
+                } = mc.plan.kind
+                {
+                    let (v1_id, c0_id) = (mc.head[0], mc.head[1]);
+                    let c0_0 = case.values.get(&case.relation, c0_id).expect("c0")[x];
+                    let v1_0 = case.values.get(&case.relation, v1_id).expect("v1")[x];
+                    let v_val = i128::from(case.honest.sums[0][x]);
+                    let v0_0 = v_val - i128::from(rad0) * i128::from(v1_0);
+                    let (_, ld, lg, lo) = case.projection.logs();
+                    let (row_idx, j_idx) = (x >> lo, x & ((1 << lo) - 1));
+                    let s_val = i128::from(case.honest.scales[row_idx << (ld - lg)]);
+                    let m_val = i128::from(m.get(j_idx).copied().unwrap_or(0));
+                    for dc0 in [-1i64, 1] {
+                        let c0_new = c0_0 + dc0;
+                        let w0_new = v0_0 * s_val - i128::from(rad0) * i128::from(c0_new);
+                        for dw2 in [-1i64, 0, 1] {
+                            let w2_new = w_top_0 + dw2;
+                            let w1_new = i128::from(v1_0) * s_val + i128::from(c0_new)
+                                - i128::from(rad1) * i128::from(w2_new);
+                            for s_new in [0i64, 1] {
+                                let rc0_new = (w0_new * m_val - i128::from(s_new)
+                                    + i128::from(rad0))
+                                .div_euclid(i128::from(rad0))
+                                    as i64;
+                                let rc1_new =
+                                    (w1_new * m_val + i128::from(rc0_new) + i128::from(rad1 / 2)
+                                        - 1)
+                                    .div_euclid(i128::from(rad1))
+                                        as i64;
+                                let mut v = case.values.clone();
+                                let set_at = |v: &mut Values, id: ColumnId, val: i64| {
+                                    let mut col = v.get(&case.relation, id).expect("c").to_vec();
+                                    col[x] = val;
+                                    v.set(&case.relation, id, col).expect("s");
+                                };
+                                set_at(&mut v, c0_id, c0_new);
+                                set_at(&mut v, mc.w_top, w2_new);
+                                set_at(&mut v, pcols.sign, s_new);
+                                set_at(&mut v, rc0_id, rc0_new);
+                                set_at(&mut v, rc_last_id, rc1_new);
+                                all.push(Candidate {
+                                    description: alloc::format!(
+                                        "mixed[{x}] c0{dc0:+} w2{dw2:+} sign={s_new} rc0={rc0_new} rc1={rc1_new}"
+                                    ),
+                                    values: v,
+                                    rejected: false,
+                                });
+                            }
+                        }
+                    }
+                }
+                // Grouped2: bump q0/b1 and rebalance (w_top, sign, rc0, rc_last) to kill w0/w1/b0.
+                if let super::projection::MixedKind::Grouped2 {
+                    b1_width,
+                    q1_width: None,
+                    ..
+                } = mc.plan.kind
+                {
+                    let (_, _, _, lo) = case.projection.logs();
+                    let j_idx = x & ((1 << lo) - 1);
+                    let m_val = i128::from(m.get(j_idx).copied().unwrap_or(0));
+                    let c0_val = i128::from(case.honest.sums[0][x]);
+                    let c1_val = i128::from(case.honest.sums[1][x]);
+                    let q0_id = if b1_width.is_some() {
+                        mc.head[1]
+                    } else {
+                        mc.head[0]
+                    };
+                    let q0_0 = case.values.get(&case.relation, q0_id).expect("q0")[x];
+                    let b1_id_opt = b1_width.map(|_| mc.head[0]);
+                    let b1_0 = b1_id_opt
+                        .map_or(0, |id| case.values.get(&case.relation, id).expect("b1")[x]);
+                    for (db1, dq0) in [(0i64, -1i64), (0, 1), (-1, 0), (1, 0)] {
+                        if db1 != 0 && b1_id_opt.is_none() {
+                            continue;
+                        }
+                        let b1_new = b1_0 + db1;
+                        let q0_new = q0_0 + dq0;
+                        let (w0_new, w1_full) = if b1_id_opt.is_some() {
+                            let b0_new = c1_val - i128::from(rad0) * i128::from(b1_new);
+                            (
+                                c0_val + 256 * b0_new - i128::from(rad0) * i128::from(q0_new),
+                                i128::from(q0_new) + 256 * i128::from(b1_new),
+                            )
+                        } else {
+                            (
+                                c0_val + 256 * c1_val - i128::from(rad0) * i128::from(q0_new),
+                                i128::from(q0_new),
+                            )
+                        };
+                        for dw2 in [-1i64, 0, 1] {
+                            let w2_new = w_top_0 + dw2;
+                            let w1_new = w1_full - i128::from(rad1) * i128::from(w2_new);
+                            for s_new in [0i64, 1] {
+                                let rc0_new = (w0_new * m_val - i128::from(s_new)
+                                    + i128::from(rad0))
+                                .div_euclid(i128::from(rad0))
+                                    as i64;
+                                let rc1_new =
+                                    (w1_new * m_val + i128::from(rc0_new) + i128::from(rad1 / 2)
+                                        - 1)
+                                    .div_euclid(i128::from(rad1))
+                                        as i64;
+                                let mut v = case.values.clone();
+                                let set_at = |v: &mut Values, id: ColumnId, val: i64| {
+                                    let mut col = v.get(&case.relation, id).expect("c").to_vec();
+                                    col[x] = val;
+                                    v.set(&case.relation, id, col).expect("s");
+                                };
+                                if let Some(b1_id) = b1_id_opt {
+                                    set_at(&mut v, b1_id, b1_new);
+                                }
+                                set_at(&mut v, q0_id, q0_new);
+                                set_at(&mut v, mc.w_top, w2_new);
+                                set_at(&mut v, pcols.sign, s_new);
+                                set_at(&mut v, rc0_id, rc0_new);
+                                set_at(&mut v, rc_last_id, rc1_new);
+                                all.push(Candidate {
+                                    description: alloc::format!(
+                                        "grouped2[{x}] b1{db1:+} q0{dq0:+} w2{dw2:+} sign={s_new}"
+                                    ),
+                                    values: v,
+                                    rejected: false,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Overflowing inputs that wrap modulo 256^k when a high `round/k` or `sign/k`
+        // identity is deleted: honest `code = 64` (power of two) yields an exact multiple
+        // of 2^24 or 2^32, so wrapping `Magnitude` or `Bytes` to 0 stays inside int16.
+        if let Some((chain, k)) = skip {
+            if pcols.mixed.is_none() && (chain.ends_with("/round") || chain.ends_with("/sign")) {
+                let is_sign = chain.ends_with("/sign");
+                for &code in &[4i64, 64, 127] {
+                    let mut w = case.honest.clone();
+                    let d_len = inputs[0].len();
+                    for lane in 0..d_len {
+                        if weights[0][lane] != 0 {
+                            w.codes[lane] = code;
+                        }
+                    }
+                    case.projection.complete(&mut w, PStep::Digits, None);
+                    let honest_rejected = w.output.iter().any(|&y| i16::try_from(y).is_err());
+                    if !honest_rejected {
+                        continue;
+                    }
+                    if is_sign {
+                        let modulus = 1i128 << (8 * k);
+                        for x in 0..w.sign.len() {
+                            let v_abs: i128 = w
+                                .bytes
+                                .iter()
+                                .enumerate()
+                                .map(|(j, b)| i128::from(b[x]) << (8 * j))
+                                .sum();
+                            let wrapped = v_abs % modulus;
+                            for (j, b) in w.bytes.iter_mut().enumerate() {
+                                b[x] = ((wrapped >> (8 * j)) & 255) as i64;
+                            }
+                        }
+                        case.projection.complete(&mut w, PStep::Magnitude, None);
+                    } else {
+                        let k_bits = (-shift).max(0) as u32;
+                        let shift_up = shift.max(0) as u32;
+                        let step_bits = (8 * k as u32).saturating_sub(k_bits);
+                        if step_bits == 0 || step_bits >= 62 {
+                            continue;
+                        }
+                        let modulus = 1i128 << step_bits;
+                        for x in 0..w.magnitude.len() {
+                            let y_abs = i128::from(w.magnitude[x]);
+                            if y_abs > 32767 {
+                                let w_mag = (y_abs % modulus) >> shift_up;
+                                w.magnitude[x] = (w_mag << shift_up) as i64;
+                            }
+                        }
+                        case.projection.complete(&mut w, PStep::Output, None);
+                    }
+                    let mut values = case.values.clone();
+                    values
+                        .set(&case.relation, case.codes, w.codes.clone())
+                        .expect("codes");
+                    if case
+                        .projection
+                        .write(&case.relation, &w, &mut values, skip)
+                        .is_ok()
+                    {
+                        all.push(Candidate {
+                            description: alloc::format!(
+                                "overflow code={code} wrapped at {chain}/{k}"
+                            ),
+                            values,
+                            rejected: true,
+                        });
+                    }
+                }
+            }
+        }
         // Inputs the executor rejects: one code set to +-127, honestly completed.
         let lanes = case.honest.codes.len();
         for i in 0..lanes {
@@ -1314,7 +1739,7 @@ fn kept(frozen: Option<PStep>) -> String {
 
 /// Why widening a range or range lookup by one bit changes no output over Z.
 fn widen_reason(name: &str) -> Option<&'static str> {
-    let rules: [(&str, &str); 21] = [
+    let rules: [(&str, &str); 30] = [
         ("/carry", "chain carries are fixed by their position identities; width only feeds the bound rule"),
         ("/weight/range", "committed model data, never prover-chosen (RFC-0026 §2.2)"),
         ("L0/row/magnitude/range", "a = |x| <= 32768 by the sign identity with sigma in {0,1}"),
@@ -1332,10 +1757,19 @@ fn widen_reason(name: &str) -> Option<&'static str> {
         ("L0/q/digit/", "the fold fixes b0 + 256 b1 = q*s; V depends only on that sum"),
         ("L0/q/byte/", "bytes stay nonnegative, so (1 - 2 tau) sum 256^k v_k = V fixes tau and the sum; P uses only the sum"),
         ("L0/q/scale/", "s = sum 256^c s_c is fixed by the scale identity; P uses only the sum"),
+        ("L0/q/fold_scale/", "s = sum 256^c s_c is fixed by the fold scale decomposition; P uses only the sum"),
+        ("L0/q/v0/range", "v0 + 2^r0 v1 = V identically; w0 + 2^r0 w1 + 2^K w2 = V*s depends only on V"),
+        ("L0/q/v1/range", "v1 is fixed over Z by v0 in [0, 2^r0); width only feeds the bound rule"),
+        ("L0/q/c0/range", "c0 is fixed over Z by w0 in [0, 2^r0); width only feeds the bound rule"),
+        ("L0/q/q0/range", "q0 is fixed over Z by w0 in [0, 2^r0); width only feeds the bound rule"),
+        ("L0/q/b1/range", "b1 is fixed over Z by b0 in [0, 2^r0); width only feeds the bound rule"),
+        ("L0/q/w0/range", "widened w0 stays nonnegative, so w0 + 2^r0 w1 + 2^K w2 = V*s keeps w2 sign when w0 + 2^r0 w1 < 2^K; width feeds the bound rule"),
+        ("L0/q/w2/range", "w2 is fixed over Z by w1 in [0, 2^r1); width only feeds the bound rule"),
+        ("L0/q/rc0/range", "rc0 is fixed over Z by rho0 in [0, 2^r0); width only feeds the bound rule"),
+        ("L0/q/rc1/range", "rc1 is fixed over Z by rho1 in [0, 2^r1); width only feeds the bound rule"),
         ("L0/q/magnitude/range", "Ymag is fixed by the rounding chain; |Y| is bounded by the output range"),
-        ("L0/q/sign/range", "UNUSED"),
+        ("L0/q/sign/range", "twos = w2 + 2^b sign in [0, 2^b) already forces sign in {0, 1}; width only feeds the bound rule"),
         ("L0/q/output/range", "UNUSED"),
-        ("L0/row/sign/range", "UNUSED"),
     ];
     rules
         .iter()
@@ -1458,6 +1892,42 @@ fn projection_tables(mode: Mode) -> Vec<Vec<(String, Outcome)>> {
             &[vec![2, 2]],
             &[1],
             -9,
+            mode,
+        ),
+        // Mixed-radix tie with c0 present (s = 2, V = -1, m = 2, K = 3, r0 = 2, r1 = 1):
+        // deleting w0/range admits c0 += 1, w2 += 1, sign = 0, rc0 = 0 >= 0, flipping -1 to 0.
+        projection_survey(
+            Policy::Static(2),
+            &[vec![2, 0], vec![-2, 0]],
+            &[vec![1, 0]],
+            &[2],
+            -3,
+            mode,
+        ),
+        // General-path overflow at l = -1 (K = 1, outside mixed-radix): code = 4 gives
+        // P = 4 * 128 * 256 * 32768 = 2^32, killing round/2, round/3, round/4 via wrapping.
+        projection_survey(
+            Policy::Static(256),
+            &[vec![0, 0]],
+            &[vec![-128, 0]],
+            &[32768],
+            -1,
+            mode,
+        ),
+        // General-path grouped overflow at l = -1: 16 lanes (8 groups of 2) with
+        // scale = 256, m = 256 (even lanes have x = 32512, w = 0; odd lanes have
+        // x = 0, w = -128): honest Y = 0, while code = 64 on odd lanes gives
+        // |V| = 2^24 and P = 2^32, killing sign/3 and round/2..4 via wrapping.
+        projection_survey(
+            Policy::Grouped(2),
+            &[vec![
+                32512, 0, 32512, 0, 32512, 0, 32512, 0, 32512, 0, 32512, 0, 32512, 0, 32512, 0,
+            ]],
+            &[vec![
+                0, -128, 0, -128, 0, -128, 0, -128, 0, -128, 0, -128, 0, -128, 0, -128,
+            ]],
+            &[256],
+            -1,
             mode,
         ),
     ]
@@ -1586,21 +2056,19 @@ fn accepts_projection_domain_over_max_vars_in_row_blocks() {
     let mut projection = Projection::new("L0/q", output, None, plan).expect("plan");
     projection.declare(&mut relation);
     assert_eq!(relation.validate(), Ok(()));
-    let blocks: Vec<_> = relation
-        .matmuls
-        .iter()
-        .filter(|m| m.name.starts_with("L0/q/sum/0/"))
-        .map(|m| (m.name.as_str(), m.free + m.summed))
-        .collect();
-    assert_eq!(
-        blocks,
-        [
-            ("L0/q/sum/0/block0/block0", 30),
-            ("L0/q/sum/0/block0/block1", 30),
-            ("L0/q/sum/0/block1/block0", 30),
-            ("L0/q/sum/0/block1/block1", 30),
-        ]
+    assert!(
+        !relation.matmuls.iter().any(|m| m.name.starts_with("L0/q/")),
+        "virtual Contraction handles free + summed > MAX_VARS directly (RFC-0028 §2.1)"
     );
+    let sum0 = projection.columns.as_ref().expect("declared").sums[0];
+    assert!(matches!(
+        relation.columns[sum0.0 as usize].kind,
+        Kind::Virtual(stele_ir::relation::Def::Contraction {
+            free: 19,
+            summed: 13,
+            ..
+        })
+    ));
 }
 
 #[test]
@@ -1908,15 +2376,32 @@ fn matches_reference_executor_capture() {
                     let n = log2_ceil(tokens) + log2_ceil(hidden);
                     let mut relation = Relation::default();
                     let g = relation.add_group("L0/gated/test", n);
-                    let high = relation.add_column("high", Kind::Witness(g), Width::signed(16), n);
-                    let low = relation.add_column("low", Kind::Witness(g), Width::unsigned(15), n);
-                    for (col, w) in [(high, Width::signed(16)), (low, Width::unsigned(15))] {
+                    let limb_bits = crate::silu::LOW_BITS;
+                    let h_hi =
+                        relation.add_column("high/hi", Kind::Witness(g), Width::signed(2), n);
+                    let h_lo =
+                        relation.add_column("high/lo", Kind::Witness(g), Width::unsigned(15), n);
+                    let low =
+                        relation.add_column("low", Kind::Witness(g), Width::unsigned(limb_bits), n);
+                    for (col, w) in [
+                        (h_hi, Width::signed(2)),
+                        (h_lo, Width::unsigned(15)),
+                        (low, Width::unsigned(limb_bits)),
+                    ] {
                         relation.ranges.push(Range {
                             name: "limb".into(),
                             column: col,
                             width: w,
                         });
                     }
+                    let high = relation.add_virtual(
+                        "high",
+                        stele_ir::relation::Def::Linear {
+                            constant: 0,
+                            terms: vec![(1 << 15, r(h_hi, 0..n)), (1, r(h_lo, 0..n))],
+                        },
+                        n,
+                    );
                     let mut conv = crate::silu::GatedConversion::new(
                         layer, high, low, tokens, hidden, *policy,
                     )
@@ -1940,17 +2425,21 @@ fn matches_reference_executor_capture() {
                         .flat_map(|p| capture.blocks[layer][p].gated.iter().copied())
                         .collect();
                     let d = log2_ceil(hidden);
-                    let limb = 1i64 << 15;
-                    let mut h_col = vec![0i64; 1 << n];
+                    let limb = 1i64 << limb_bits;
+                    let mut h_hi_col = vec![0i64; 1 << n];
+                    let mut h_lo_col = vec![0i64; 1 << n];
                     let mut l_col = vec![0i64; 1 << n];
                     for p in 0..tokens {
                         for j in 0..hidden {
                             let v = product[p * hidden + j];
-                            h_col[(p << d) | j] = v.div_euclid(limb);
+                            let q = v.div_euclid(limb);
+                            h_hi_col[(p << d) | j] = q.div_euclid(1 << 15);
+                            h_lo_col[(p << d) | j] = q.rem_euclid(1 << 15);
                             l_col[(p << d) | j] = v.rem_euclid(limb);
                         }
                     }
-                    values.set(&relation, high, h_col).expect("high");
+                    values.set(&relation, h_hi, h_hi_col).expect("high/hi");
+                    values.set(&relation, h_lo, h_lo_col).expect("high/lo");
                     values.set(&relation, low, l_col).expect("low");
                     conv.assign(&relation, &product, &mut values).expect("conv");
                     let lo = log2_ceil(weights.len());
@@ -2126,24 +2615,21 @@ fn accepts_wide_and_grouped_gated_projections_and_rejects_near_misses() {
             }
             for delta in [-1i64, 1] {
                 let forged = w.output[x] + delta;
-                let mut bad = w.clone();
-                bad.output[x] = forged;
-                for k in 0..3 {
-                    bad.output_bytes[k][x] = if k == 2 {
-                        forged.div_euclid(1 << 16)
-                    } else {
-                        forged.div_euclid(1 << (8 * k)).rem_euclid(256)
-                    };
+                // Output/0 and output/1 are virtual (RFC-0028 §1.2); on non-vanishing shifts,
+                // tampering committed output/2 shifts virtual output by +-65536 and must be rejected.
+                if !setup.projection.vanishing() {
+                    let mut bad = w.clone();
+                    bad.output_bytes[2][x] += delta;
+                    let mut v = setup.values.clone();
+                    setup
+                        .projection
+                        .write(&setup.relation, &bad, &mut v, None)
+                        .expect("write");
+                    assert!(
+                        check(&setup.relation, &v).is_err(),
+                        "forged output/2 delta={delta} at x={x} shift={shift}"
+                    );
                 }
-                let mut v = setup.values.clone();
-                setup
-                    .projection
-                    .write(&setup.relation, &bad, &mut v, None)
-                    .expect("write");
-                assert!(
-                    check(&setup.relation, &v).is_err(),
-                    "forged output {forged} at x={x} shift={shift}"
-                );
                 // Also try forging magnitude directly to match |forged| and recomputing remainder!
                 if shift < 0 && !setup.projection.vanishing() {
                     let mut bad_mag = w.clone();

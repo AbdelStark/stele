@@ -120,6 +120,7 @@ impl Finish {
                     ..c.clone()
                 })
                 .collect(),
+            ranges: relation.ranges.clone(),
             ..Relation::default()
         };
         this.build(&mut scratch)?;

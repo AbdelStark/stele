@@ -17,8 +17,8 @@ struct Case {
 }
 
 impl Case {
-    fn column(&self, id: ColumnId) -> &[i64] {
-        self.values.get(&self.relation, id).expect("column")
+    fn column(&self, id: ColumnId) -> Vec<i64> {
+        stele_ir::relation::eval_column(&self.relation, &self.values, id).expect("column")
     }
 
     /// `T = 2^15·high + low` at every padded index.
@@ -34,7 +34,8 @@ impl Case {
     fn with(&self, changes: &[(ColumnId, usize, i64)]) -> Values {
         let mut values = self.values.clone();
         for &(id, index, v) in changes {
-            let mut column = values.get(&self.relation, id).expect("column").to_vec();
+            let mut column =
+                stele_ir::relation::eval_column(&self.relation, &values, id).expect("column");
             column[index] = v;
             values.set(&self.relation, id, column).expect("set");
         }
@@ -172,72 +173,35 @@ fn matches_reference_llama_fixture() {
     assert!((0..2 * hidden).all(|k| product[((k / hidden) << 14) | (k % hidden)] == expected[k]));
 }
 
-/// Every limb downstream of `(Ul, Uh, a)` recomputed honestly at `index`.
+/// Committed advice downstream of `(Ul, Uh, a)` recomputed honestly at `index`.
 fn limbs(case: &Case, index: usize, ul: i64, uh: i64, a: i64) -> Vec<(ColumnId, usize, i64)> {
     let c = case.module.columns().expect("declared");
-    let low = ul * a;
-    let middle = uh * a + (low >> 8);
     vec![
-        (c.up_low, index, ul),
         (c.up_high, index, uh),
         (c.activation, index, a),
-        (c.carry, index, low >> 8),
-        (c.byte, index, low & 0xff),
-        (c.middle, index, middle & 0x7f),
-        (c.high, index, middle >> 7),
-        (c.low, index, ((middle & 0x7f) << 8) | (low & 0xff)),
+        (c.carry, index, (ul * a) >> LOW_BITS),
     ]
 }
 
 /// Strongest near misses at `index`, each failing one constraint:
-/// - `T ± 1` through `Tl` alone (the `low` Compose);
-/// - `T ± 1` through `d` with `c` honest (`low_product`), and with the carry chosen to
-///   satisfy `low_product` (`high_product`);
-/// - `T ± 2^8` and `T ± 2^15` with `c`, `d` honest and `Th`, `w`, `Tl` recomputed
-///   (`high_product`, and the high limb E16-05 consumes);
-/// - a forged split `Ul ± 1` with every downstream limb recomputed (the `up` Compose);
-/// - `a ± 1` with every limb recomputed (the lookup).
+/// - `carry ± 1` (shifts `low` by `∓2^14`, failing `low` range);
+/// - forged `up_high ± 1` with `carry` recomputed (shifts `up_low` by `∓2^14`, failing `up_low`);
+/// - `a ± 1` with `carry` recomputed (fails the `silu` lookup).
 fn near_misses(case: &Case, index: usize) -> Vec<Values> {
     let c = case.module.columns().expect("declared");
     let get = |id| case.column(id)[index];
-    let (ul, uh, a, carry, byte) = (
+    let (ul, uh, a, carry) = (
         get(c.up_low),
         get(c.up_high),
         get(c.activation),
         get(c.carry),
-        get(c.byte),
     );
-    let product = (get(c.high) << LOW_BITS) + get(c.low);
     let mut all = Vec::new();
     for sign in [1, -1] {
-        let low = get(c.low) + sign;
-        if (0..1 << LOW_BITS).contains(&low) {
-            all.push(case.with(&[(c.low, index, low)]));
-        }
-        let wrong = product + sign;
-        let (d, w) = (wrong & 0xff, (wrong >> 8) & 0x7f);
-        for carry in [carry, (ul * a - d).div_euclid(256)] {
-            all.push(case.with(&[
-                (c.high, index, wrong >> LOW_BITS),
-                (c.low, index, wrong & 0x7fff),
-                (c.byte, index, d),
-                (c.middle, index, w),
-                (c.carry, index, carry),
-            ]));
-        }
-        for shift in [8, 15] {
-            let wrong = product + sign * (1 << shift);
-            assert_eq!(wrong & 0xff, byte, "the byte is unchanged");
-            all.push(case.with(&[
-                (c.high, index, wrong >> LOW_BITS),
-                (c.low, index, wrong & 0x7fff),
-                (c.middle, index, (wrong >> 8) & 0x7f),
-            ]));
-        }
-        let forged = ul + sign;
-        if (0..256).contains(&forged) {
-            all.push(case.with(&limbs(case, index, forged, uh, a)));
-        }
+        // Committed-column near-misses (RFC-0028 §1.2): `high`, `low`, `up_low` are
+        // virtual, so an attacker can only forge committed `carry`, `up_high`, `silu`.
+        all.push(case.with(&[(c.carry, index, carry + sign)]));
+        all.push(case.with(&limbs(case, index, ul, uh + sign, a)));
         all.push(case.with(&limbs(case, index, ul, uh, a + sign)));
     }
     all
@@ -267,16 +231,10 @@ fn rejects_wrong_table_entry() {
     let c = case.module.columns().expect("declared");
     for index in [0, 9, 30] {
         let a = case.column(c.activation)[index] + 1;
-        let (ul, uh) = (case.column(c.up_low)[index], case.column(c.up_high)[index]);
-        let low = ul * a;
-        let middle = uh * a + (low >> 8);
+        let ul = case.column(c.up_low)[index];
         let values = case.with(&[
             (c.activation, index, a),
-            (c.carry, index, low >> 8),
-            (c.byte, index, low & 0xff),
-            (c.middle, index, middle & 0x7f),
-            (c.high, index, middle >> 7),
-            (c.low, index, ((middle & 0x7f) << 8) | (low & 0xff)),
+            (c.carry, index, (ul * a) >> LOW_BITS),
         ]);
         assert!(matches!(
             check(&case.relation, &values),
@@ -296,23 +254,10 @@ fn rejects_wrong_limb() {
     let index = 5;
     let get = |id| case.column(id)[index];
     let tampers = [
-        // Th carries 2^15 into Tl, through w.
-        vec![
-            (c.high, index, get(c.high) + 1),
-            (c.middle, index, get(c.middle) - 128),
-            (c.low, index, get(c.low) - (1 << 15)),
-        ],
-        // c carries 2^8 into d.
-        vec![
-            (c.carry, index, get(c.carry) + 1),
-            (c.byte, index, get(c.byte) - 256),
-            (c.middle, index, get(c.middle) + 1),
-        ],
-        // Uh carries 2^8 into Ul.
-        vec![
-            (c.up_high, index, get(c.up_high) + 1),
-            (c.up_low, index, get(c.up_low) - 256),
-        ],
+        // c carries 2^14 into Tl.
+        vec![(c.carry, index, get(c.carry) + 1)],
+        // Uh carries 2^14 into Ul.
+        vec![(c.up_high, index, get(c.up_high) + 1)],
     ];
     for tamper in tampers {
         assert!(matches!(
@@ -331,13 +276,11 @@ fn rejects_nonzero_padding() {
     let padding = (0..32)
         .find(|&i| case.module.entry(i).is_none())
         .expect("padding");
-    for tamper in [
-        (c.high, padding, 1),
-        (c.low, padding, 1),
-        (c.byte, padding, 1),
-    ] {
-        assert!(check(&case.relation, &case.with(&[tamper])).is_err());
-    }
+    // On padding (`mask = 0`), virtual `high` and `low` evaluate to 0; forging committed
+    // `carry = 1` shifts `low` to `-2^14` and fails its range check.
+    assert_eq!(case.column(c.low)[padding], 0);
+    assert_eq!(case.column(c.high)[padding], 0);
+    assert!(check(&case.relation, &case.with(&[(c.carry, padding, 1)])).is_err());
 }
 
 /// Realistic shapes validate (RFC-0026 §3.6): the Llama-3.1-8B fixture at its hidden
@@ -380,7 +323,7 @@ fn rejects_table_with_minimum_output() {
 
 /// RFC-0026 §5.2 deletion survey with `check_except`: for every constraint of the
 /// product, an in-range attacker that `check` rejects and `check_except(.., [name])`
-/// accepts. The `high`, `up_high` and `carry` ranges are implied (review notes).
+/// accepts. The `up_high` and `carry` ranges are implied (review notes).
 #[test]
 fn rejects_relation_without_each_constraint() {
     let mut rng = Rng(25);
@@ -388,80 +331,36 @@ fn rejects_relation_without_each_constraint() {
     let case = case(&table, &rng.capture(4 * 8, false), 4, 8);
     let c = case.module.columns().expect("declared");
     let get = |id: ColumnId, i: usize| case.column(id)[i];
-    let product = |i: usize| (get(c.high, i) << LOW_BITS) + get(c.low, i);
     // A real lane whose limbs leave room for every move below.
     let i = (0..32)
         .find(|&i| {
-            let (ul, uh, a, w, d) = (
+            let (ul, uh, a, carry) = (
                 get(c.up_low, i),
                 get(c.up_high, i),
                 get(c.activation, i),
-                get(c.middle, i),
-                get(c.byte, i),
+                get(c.carry, i),
             );
-            (1..255).contains(&ul)
-                && uh > -127
-                && (get(c.carry, i) + a).abs() < 32000
-                && (1..127).contains(&w)
-                && d < 255
-                && get(c.high, i) > -32000
+            (1..(1 << LOW_BITS) - 1).contains(&ul)
+                && uh > -2
+                && (carry + a).abs() < 32000
+                && carry > -32767
         })
         .expect("a lane with slack in every limb");
-    let (ul, uh, a, carry, d, w, th) = (
+    let (ul, uh, a, carry) = (
         get(c.up_low, i),
         get(c.up_high, i),
         get(c.activation, i),
         get(c.carry, i),
-        get(c.byte, i),
-        get(c.middle, i),
-        get(c.high, i),
     );
-    let wrong = product(i) + 1;
     let attacks: Vec<(&str, Values)> = vec![
-        // T + 1 through d, with c honest.
-        (
-            "low_product",
-            case.with(&[(c.byte, i, d + 1), (c.low, i, get(c.low, i) + 1)]),
-        ),
-        // T + 2^8 with c and d honest.
-        (
-            "high_product",
-            case.with(&[
-                (c.middle, i, w + 1),
-                (c.low, i, get(c.low, i) + 256),
-                (c.high, i, (wrong - 1 + 256) >> LOW_BITS),
-            ]),
-        ),
-        ("up", case.with(&limbs(&case, i, ul + 1, uh, a))),
-        ("low", case.with(&[(c.low, i, get(c.low, i) + 1)])),
         ("silu", case.with(&limbs(&case, i, ul, uh, a + 1))),
-        // Ul + 256 with Uh − 1: the same U; the carry absorbs a.
+        // Ul + 2^14 with Uh − 1: the same U; the carry absorbs a.
         (
             "up_low",
-            case.with(&[
-                (c.up_low, i, ul + 256),
-                (c.up_high, i, uh - 1),
-                (c.carry, i, carry + a),
-            ]),
+            case.with(&[(c.up_high, i, uh - 1), (c.carry, i, carry + a)]),
         ),
-        // d + 256 with c − 1 and w − 1: the same T and Tl.
-        (
-            "byte",
-            case.with(&[
-                (c.byte, i, d + 256),
-                (c.carry, i, carry - 1),
-                (c.middle, i, w - 1),
-            ]),
-        ),
-        // w + 128 with Th − 1: the same T, Tl moved by 2^15.
-        (
-            "middle",
-            case.with(&[
-                (c.middle, i, w + 128),
-                (c.high, i, th - 1),
-                (c.low, i, get(c.low, i) + (1 << LOW_BITS)),
-            ]),
-        ),
+        // Tl + 2^14 with c − 1: the same T = 2^14·Th + Tl.
+        ("low", case.with(&[(c.carry, i, carry - 1)])),
     ];
     let prefix = "L0/gated/";
     let names: Vec<String> = case
@@ -474,7 +373,7 @@ fn rejects_relation_without_each_constraint() {
         .chain(case.relation.ranges.iter().map(|r| r.name.clone()))
         .filter(|n| n.starts_with(prefix))
         .collect();
-    let implied = ["high", "up_high", "carry"];
+    let implied = ["up_high", "carry"];
     for name in &names {
         let short = &name[prefix.len()..];
         assert!(

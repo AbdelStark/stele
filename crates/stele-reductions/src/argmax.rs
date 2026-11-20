@@ -1,33 +1,35 @@
-//! Greedy argmax check of the development-profile relation (RFC-0026 §5 row 13, task
-//! E16-09).
+//! Greedy argmax check of the development-profile relation (RFC-0026 §5 row 13,
+//! RFC-0028 §1.2, tasks E16-09 and E18-05).
 //!
 //! Integer definition (RFC-0025 §2.6): the checked token `c_i` of row `i ∈ [r, e)` is the
 //! least vocabulary id attaining the row maximum of the int16 logits. `c_i = x_{i+1}`
 //! for `i < T−1` and the next token `y` for `i = T−1` (RFC-0026 §1.1).
 //!
-//! Columns on the logits layout `(i, v)` (`v` padded to `2^nv`, row index high):
+//! Committed columns: **none** (all three module columns are virtual under RFC-0028 §1.2):
 //! - public one-hot `O[i,v] = [i checked]·[v = c_i]`, `lt[i,v] = chk[i,v]·[v < c_i]`, and
 //!   `chk[i,v] = row[i]·real[v]` (checked row, real id `v < V`) as two broadcast factors;
-//! - `sel_i = Σ_v O[i,v]·L[i,v]` by matmul. A vocabulary wider than `2^15` ids is
-//!   summed in plan-fixed blocks of `2^15` (the block bits are free bits of the first
-//!   matmul, `sel_b`), then over blocks, so each matmul meets the §3.6 bound;
-//! - the margin `Mg = chk·(sel − L) − lt`, unsigned 16 (one identity, one range).
+//! - virtual contraction `sel_i = Σ_v O[i,v]·L[i,v]`. A vocabulary wider than `2^14` ids
+//!   is summed in plan-fixed blocks of `2^14` (`blocks`, virtual contraction) and then
+//!   summed over blocks (`selected`, virtual contraction), so each contraction meets the
+//!   strict `<= (p − 1)/2` bound (`2^14 · 1 · 2^15 = 2^29 < p/2`), tightened via RFC-0028 A1
+//!   signed-16 range checks;
+//! - virtual pointwise margin `Mg = row·real·sel − row·real·L − lt`, unsigned 16 range.
 //!
-//! `Mg ≥ 0` makes `sel_i` a maximum, and every `v < c_i` attaining it would give
-//! `Mg = −1`; unchecked rows and padded ids have `Mg = 0`, so they never compete. The
-//! soundness argument is RFC-0026 §5 row 13; the lemma is in
-//! `agents/reviews/e16-09-residual-argmax.md`.
+//! **Output uniqueness (RFC-0026 §5.2, RFC-0028 §1.2).** Every module column is a fixed
+//! polynomial function of the public indicators and int16 logits `L` with no witness advice:
+//! `sel_i = L[i, c_i]` on checked rows (and `0` elsewhere), and `Mg >= 0` makes `sel_i` a
+//! row maximum while ruling out any earlier tie `v < c_i` (which would give `Mg = −1`).
+//! Unchecked rows and padded ids evaluate to `Mg = 0`.
 
 use alloc::format;
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_ir::relation::{
-    ColumnId, GroupId, Identity, Invalid, Kind, Matmul, Module, Range, Ref, Relation, Term, Values,
-    Violation, Width,
+    ColumnId, Def, Invalid, Kind, Module, Range, Ref, Relation, Term, Values, Violation, Width,
 };
 
-/// Largest summed width of one selection matmul: `2^15 + 2^15·1·2^15 < p`.
-const BLOCK_BITS: u8 = 15;
+/// Largest summed width of one virtual selection contraction: `2^14 · 1 · 2^15 = 2^29 <= (p - 1)/2`.
+const BLOCK_BITS: u8 = 14;
 const NAME: &str = "G/argmax";
 
 fn log2_ceil(n: usize) -> u8 {
@@ -111,14 +113,6 @@ impl Argmax {
         )
     }
 
-    fn group(relation: &mut Relation, n: u8) -> GroupId {
-        let name = format!("{NAME}/{n}");
-        match relation.groups.iter().position(|g| g.name == name) {
-            Some(g) => GroupId(g as u32),
-            None => relation.add_group(&name, n),
-        }
-    }
-
     /// `(O, lt)` at a padded `(i, v)` index.
     fn public(&self, index: usize) -> (i64, i64) {
         let (_, v, _) = self.bits();
@@ -158,10 +152,9 @@ impl Module for Argmax {
         let real = public("real", real, v);
         let ones = (nb > 0).then(|| public("ones", vec![1; 1 << nb], nb));
 
-        let mut witness = |label: &str, width: Width, log_len: u8| {
-            let group = Self::group(relation, log_len);
+        let mut add_ranged_virtual = |label: &str, def: Def, width: Width, log_len: u8| {
             let name = format!("{NAME}/{label}");
-            let id = relation.add_column(&name, Kind::Witness(group), width, log_len);
+            let id = relation.add_virtual(&name, def, log_len);
             relation.ranges.push(Range {
                 name,
                 column: id,
@@ -169,43 +162,46 @@ impl Module for Argmax {
             });
             id
         };
-        let selected = witness("selected", Width::signed(16), t);
-        let blocks = ones.map(|_| witness("blocks", Width::signed(16), t + nb));
-        let margin = witness("margin", Width::unsigned(16), n);
 
         // sel_b[i, b] = Σ_{v_low} O[i, b, v_low]·L[i, b, v_low]: free bits (b, i),
-        // summed bits v_low.
+        // summed bits v_low (RFC-0028 §1.2 virtual contraction).
         let free = t + nb;
         let read = |column| Ref {
             column,
             vars: (free..free + vb).chain(0..free).collect(),
         };
-        relation.matmuls.push(Matmul {
-            name: format!("{NAME}/select"),
+        let select_def = Def::Contraction {
             free,
             summed: vb,
-            out: Ref::identity(blocks.unwrap_or(selected), free),
             lhs: read(onehot),
             rhs: read(self.logits),
-        });
-        if let (Some(blocks), Some(ones)) = (blocks, ones) {
-            // sel[i] = Σ_b sel_b[i, b].
-            relation.matmuls.push(Matmul {
-                name: format!("{NAME}/block_sum"),
-                free: t,
-                summed: nb,
-                out: Ref::identity(selected, t),
-                lhs: Ref {
-                    column: blocks,
-                    vars: (t..t + nb).chain(0..t).collect(),
+        };
+        let (blocks, selected) = if let Some(ones) = ones {
+            let blocks = add_ranged_virtual("blocks", select_def, Width::signed(16), free);
+            let selected = add_ranged_virtual(
+                "selected",
+                Def::Contraction {
+                    free: t,
+                    summed: nb,
+                    lhs: Ref {
+                        column: blocks,
+                        vars: (t..t + nb).chain(0..t).collect(),
+                    },
+                    rhs: Ref {
+                        column: ones,
+                        vars: (t..t + nb).collect(),
+                    },
                 },
-                rhs: Ref {
-                    column: ones,
-                    vars: (t..t + nb).collect(),
-                },
-            });
-        }
-        // Mg − row·real·sel + row·real·L + lt = 0.
+                Width::signed(16),
+                t,
+            );
+            (Some(blocks), selected)
+        } else {
+            let selected = add_ranged_virtual("selected", select_def, Width::signed(16), t);
+            (None, selected)
+        };
+
+        // Virtual pointwise margin: Mg = row·real·sel − row·real·L − lt ∈ [0, 2^16).
         let at = |column| Ref::identity(column, n);
         let (row, real, sel) = (
             Ref {
@@ -218,28 +214,27 @@ impl Module for Argmax {
                 vars: (v..n).collect(),
             },
         );
-        relation.identities.push(Identity {
-            name: format!("{NAME}/greedy"),
-            vars: n,
-            terms: vec![
-                Term {
-                    coeff: 1,
-                    factors: vec![at(margin)],
-                },
-                Term {
-                    coeff: -1,
-                    factors: vec![row.clone(), real.clone(), sel],
-                },
-                Term {
-                    coeff: 1,
-                    factors: vec![row, real, at(self.logits)],
-                },
-                Term {
-                    coeff: 1,
-                    factors: vec![at(below)],
-                },
-            ],
-        });
+        let margin = add_ranged_virtual(
+            "margin",
+            Def::Pointwise {
+                terms: vec![
+                    Term {
+                        coeff: 1,
+                        factors: vec![row.clone(), real.clone(), sel],
+                    },
+                    Term {
+                        coeff: -1,
+                        factors: vec![row, real, at(self.logits)],
+                    },
+                    Term {
+                        coeff: -1,
+                        factors: vec![at(below)],
+                    },
+                ],
+            },
+            Width::unsigned(16),
+            n,
+        );
         self.columns = Some(ArgmaxColumns {
             selected,
             blocks,
@@ -249,35 +244,17 @@ impl Module for Argmax {
 
     fn assign(
         &self,
-        relation: &Relation,
+        _relation: &Relation,
         capture: &[Vec<i16>],
-        values: &mut Values,
+        _values: &mut Values,
     ) -> Result<(), Violation> {
-        let columns = self.columns.expect("Argmax::assign before declare");
+        let _columns = self.columns.expect("Argmax::assign before declare");
         if capture.len() != self.choices.len()
             || capture.iter().any(|row| row.len() != self.vocabulary)
         {
             return Err(Violation::Missing(self.logits));
         }
-        let (t, v, nb) = self.bits();
-        let vb = v - nb;
-        let mut selected = vec![0; 1 << t];
-        let mut blocks = vec![0; 1 << (t + nb)];
-        let mut margin = vec![0; 1 << (t + v)];
-        for (i, (choice, row)) in self.choices.iter().zip(capture).enumerate() {
-            let Some(c) = *choice else { continue };
-            let sel = i64::from(row[c]);
-            selected[i] = sel;
-            blocks[(i << nb) | (c >> vb)] = sel;
-            for (id, l) in row.iter().enumerate() {
-                margin[(i << v) | id] = sel - i64::from(*l) - i64::from(id < c);
-            }
-        }
-        values.set(relation, columns.selected, selected)?;
-        if let Some(id) = columns.blocks {
-            values.set(relation, id, blocks)?;
-        }
-        values.set(relation, columns.margin, margin)?;
+        // RFC-0028 §1.2: every Argmax column is virtual; no committed witness values are assigned.
         Ok(())
     }
 }

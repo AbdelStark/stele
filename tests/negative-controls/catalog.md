@@ -221,8 +221,8 @@
 | NC-1336 | development segment root order | 0026 A27 | swap only the 32-byte witness stack roots of two segments in a `stele-dev-e2e-v2` proof, retaining every other byte under declared Policy 1 (`Expander`) and Policy 2 (`CircleAll`) runs | Policy 1: RootMismatch; Policy 2: GrindMismatch | done |
 | NC-1337 | development virtual linear operand | 0028 §6 | +1 on one operand evaluation sent for a `Linear` virtual column reduction | `LinearMismatch` | done |
 | NC-1338 | development virtual definition mismatch | 0028 §6 | prove with a virtual column's values differing from its definition at one index | `LinearMismatch` | done |
-| NC-1339 | development virtual rounding remainder | 0028 §6, 0008 A9 | commit `y + 1` for one rounding, with virtual `rem` recomputed | `RootMismatch` | todo |
-| NC-1340 | development virtual advice inverse | 0028 §2.2, §6 | declare advice (a rounding output) as `Linear` with the integer representing a field inverse of `2^k` | `StatementMismatch` | todo |
+| NC-1339 | development virtual rounding remainder | 0028 §6, 0008 A9 | commit `y + 1` for one rounding, with virtual `rem` recomputed | `RootMismatch` | done |
+| NC-1340 | development virtual advice inverse | 0028 §2.2, §6 | declare advice (a rounding output) as `Linear` with the integer representing a field inverse of `2^k` | `StatementMismatch` | done |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206
@@ -446,5 +446,9 @@ A12/A14/A16 allocations; the two segment controls already execute as NC-1335 and
 under A27). Task E18-02 executes Control NC-1337 (+1 on one operand evaluation in a
 `Linear` virtual column reduction) and Control NC-1338 (proving with a `Linear` virtual
 column's materialized values perturbed by +1 at one index) through
-`relation::verify_segmented`, asserting `LinearMismatch`. Reservations NC-1339 and NC-1340
-remain `todo` for E18-04 and add no coverage until executed through the actual verifier.
+`relation::verify_segmented`, asserting `LinearMismatch` (plus adaptive operand compensation
+discharged downstream). Task E18-04 executes Control NC-1339 (committing `y + 1` on a rounding
+with virtual remainder `rem = acc - 2^k * y` range-checked through RFC-0008 A9, asserting
+`RootMismatch`) and Control NC-1340 (declaring a rounding output as `Linear` with the integer
+field inverse of `2^k`, asserting `StatementMismatch` on the static `p/2` derived-magnitude bound)
+through `relation::verify_segmented`.

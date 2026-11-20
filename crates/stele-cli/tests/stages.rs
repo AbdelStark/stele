@@ -113,9 +113,10 @@ fn accepts_l0_cli_stage_timers_and_thread_independent_counters() {
     ] {
         assert!(counters1.contains_key(counter), "missing counter {counter}");
     }
-    // Development-tier weights currently undergo 4 physical passes: Step 3 Range counts,
-    // Step 5 Range originals, Step 6 matmul, and Step 7 model opening.
-    assert_eq!(counters1["weight_reads"], 4);
+    // Development-tier weights currently undergo 5 physical passes: materialising the
+    // virtual matmul accumulators (RFC-0028 §2.1, task E18-05), Step 3 Range counts,
+    // Step 5 Range originals, the Step 2.4 contraction reduction, and Step 7 model opening.
+    assert_eq!(counters1["weight_reads"], 5);
     let per_check_sum: u64 = counters1
         .iter()
         .filter(|(k, _)| k.starts_with("lookup_positions_check_"))

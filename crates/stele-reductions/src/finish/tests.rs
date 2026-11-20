@@ -184,9 +184,28 @@ fn matches_executor_capture_fixtures() {
         }
         let logits = case.finish.columns().expect("declared").logits;
         let mut values = case.values.clone();
-        let mut column = values.get(&case.relation, logits).expect("logits").to_vec();
+        // `logits` may be virtual (RFC-0028 §1.2): tamper the committed column that
+        // shifts `logits[0]` by ±1 (`G/head/rc1` on the mixed path, `G/head/magnitude`
+        // on the general path, or `logits` itself when committed).
+        let tamper_id = if matches!(
+            case.relation.columns[logits.0 as usize].kind,
+            stele_ir::relation::Kind::Witness(_)
+        ) {
+            logits
+        } else {
+            case.relation
+                .columns
+                .iter()
+                .position(|c| c.name == "G/head/rc1" || c.name == "G/head/magnitude")
+                .map(|i| ColumnId(i as u32))
+                .expect("head logit-driving witness column")
+        };
+        let mut column = values
+            .get(&case.relation, tamper_id)
+            .expect("tamper")
+            .to_vec();
         column[0] += 1;
-        values.set(&case.relation, logits, column).expect("set");
+        values.set(&case.relation, tamper_id, column).expect("set");
         assert!(check(&case.relation, &values).is_err(), "tampered logit");
         checked += 1;
     }

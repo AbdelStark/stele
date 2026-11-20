@@ -89,9 +89,18 @@ fn restamped(
     statement: &Statement,
     proof: &[u8],
 ) -> Result<Option<Error>, String> {
-    let mut c = container::decode(proof).map_err(|e| format!("{e:?}"))?;
-    c.statement = statement_digest_for(public, statement).map_err(|e| format!("{e:?}"))?;
-    Ok(verify(public, statement, &c.encode()).err())
+    let digest = statement_digest_for(public, statement).map_err(|e| format!("{e:?}"))?;
+    let bytes = match container::decode_any(proof).map_err(|e| format!("{e:?}"))? {
+        container::Decoded::V1(mut c) => {
+            c.statement = digest;
+            c.encode()
+        }
+        container::Decoded::V2(mut c) => {
+            c.statement = digest;
+            c.encode()
+        }
+    };
+    Ok(verify(public, statement, &bytes).err())
 }
 
 /// RFC-0026 A11, NC-1316: replay the engine with the plan and model sources fixed at
@@ -104,7 +113,7 @@ fn engine_with_input(
     proof: &[u8],
     plan: Sources,
 ) -> Result<Option<Error>, String> {
-    let c = container::decode(proof).map_err(|e| format!("{e:?}"))?;
+    let decoded = container::decode_any(proof).map_err(|e| format!("{e:?}"))?;
     let layouts = relation::model_layout(rel, plan).map_err(|e| format!("{e:?}"))?;
     let mut certificates = Vec::new();
     for (l, (root, bytes)) in layouts.iter().zip(&public.commitment) {
@@ -116,20 +125,49 @@ fn engine_with_input(
             verify_certificate(source, bytes).map_err(|f| format!("{:?}", f.cause))?;
         certificates.push(verified);
     }
-    let bytes = public_input(input, &c.cqis_id, statement);
-    let mut t = Transcript::<relation::K>::new(&bytes).map_err(|e| format!("{e:?}"))?;
-    let sections = relation::Proof {
-        groups: c.groups,
-        multiplicities: c.multiplicities,
-        identities: c.identities,
-        lookups: c.lookups,
-        matmuls: c.matmuls,
-        openings: c.openings,
-    };
     let refs: Vec<_> = certificates.iter().collect();
-    Ok(relation::verify(&mut t, rel, &refs, &sections, plan)
-        .err()
-        .map(Error::Engine))
+    match decoded {
+        container::Decoded::V1(c) => {
+            let bytes = public_input(input, &c.cqis_id, statement);
+            let mut t = Transcript::<relation::K>::new(&bytes).map_err(|e| format!("{e:?}"))?;
+            let sections = relation::Proof {
+                groups: c.groups,
+                multiplicities: c.multiplicities,
+                identities: c.identities,
+                lookups: c.lookups,
+                matmuls: c.matmuls,
+                openings: c.openings,
+            };
+            Ok(relation::verify(&mut t, rel, &refs, &sections, plan)
+                .err()
+                .map(Error::Engine))
+        }
+        container::Decoded::V2(c) => {
+            let bytes = public_input(input, &c.cqis_id, statement);
+            let mut t = Transcript::<relation::K>::new(&bytes).map_err(|e| format!("{e:?}"))?;
+            let sections = relation::ProofV2 {
+                segments: c
+                    .segments
+                    .into_iter()
+                    .map(|s| relation::SegmentProof {
+                        groups: s.groups,
+                        multiplicities: s.multiplicities,
+                        identities: s.identities,
+                        lookups: s.lookups,
+                        matmuls: s.matmuls,
+                        reductions: s.reductions,
+                        openings: s.openings,
+                    })
+                    .collect(),
+                model_openings: c.model_openings,
+            };
+            Ok(
+                relation::verify_segmented(&mut t, rel, &refs, &sections, plan)
+                    .err()
+                    .map(Error::Engine),
+            )
+        }
+    }
 }
 
 fn name(error: &Error) -> String {
@@ -437,16 +475,61 @@ pub fn run(id: u16) -> Result<(), String> {
         }
         1305 => {
             let mut changed = false;
-            let mut hook = |relation: &mut Relation, _: &mut Values| {
+            let mut hook = |relation: &mut Relation, values: &mut Values| {
                 // Double one power-of-two rounding coefficient: one exponent + 1.
-                if let Some(term) = relation
-                    .identities
-                    .iter_mut()
-                    .flat_map(|i| i.terms.iter_mut())
-                    .find(|t| t.coeff > 2 && (t.coeff as u64).is_power_of_two())
-                {
-                    term.coeff *= 2;
-                    changed = true;
+                // Pick the first rounding exponent whose doubled coefficient still
+                // satisfies the tampered relation on the witness (checking identities
+                // first, then RFC-0028 Linear virtual rounding definitions) so the
+                // prover produces a genuine proof under the tampered plan and the
+                // honest verifier rejects it at §4 step 1 (`RoundSumMismatch`).
+                for i in 0..relation.identities.len() {
+                    for j in 0..relation.identities[i].terms.len() {
+                        let c = relation.identities[i].terms[j].coeff;
+                        if c > 2 && (c as u64).is_power_of_two() {
+                            relation.identities[i].terms[j].coeff = c * 2;
+                            if stele_reductions::stele_ir::relation::check(relation, values).is_ok()
+                            {
+                                changed = true;
+                                return;
+                            }
+                            relation.identities[i].terms[j].coeff = c;
+                        }
+                    }
+                }
+                for col_idx in 0..relation.columns.len() {
+                    let term_count = match &relation.columns[col_idx].kind {
+                        stele_reductions::stele_ir::relation::Kind::Virtual(
+                            stele_reductions::stele_ir::relation::Def::Linear { terms, .. },
+                        ) => terms.len(),
+                        _ => 0,
+                    };
+                    for j in 0..term_count {
+                        let c = match &relation.columns[col_idx].kind {
+                            stele_reductions::stele_ir::relation::Kind::Virtual(
+                                stele_reductions::stele_ir::relation::Def::Linear { terms, .. },
+                            ) => terms[j].0,
+                            _ => 0,
+                        };
+                        if c.unsigned_abs() > 2 && c.unsigned_abs().is_power_of_two() {
+                            if let stele_reductions::stele_ir::relation::Kind::Virtual(
+                                stele_reductions::stele_ir::relation::Def::Linear { terms, .. },
+                            ) = &mut relation.columns[col_idx].kind
+                            {
+                                terms[j].0 = c * 2;
+                            }
+                            if stele_reductions::stele_ir::relation::check(relation, values).is_ok()
+                            {
+                                changed = true;
+                                return;
+                            }
+                            if let stele_reductions::stele_ir::relation::Kind::Virtual(
+                                stele_reductions::stele_ir::relation::Def::Linear { terms, .. },
+                            ) = &mut relation.columns[col_idx].kind
+                            {
+                                terms[j].0 = c;
+                            }
+                        }
+                    }
                 }
             };
             let proof =
@@ -772,8 +855,12 @@ pub fn run(id: u16) -> Result<(), String> {
             prove_tampered(&public, &mut exec, &weights, &committed, &honest, &mut hook)
                 .map_err(|e| format!("capture prover: {e:?}"))?;
             let rel = captured.ok_or("no relation")?;
-            let mut c = container::decode(&proof).map_err(|e| format!("{e:?}"))?;
-            let root = c.multiplicities[0][..32].try_into().map_err(|_| "root")?;
+            let mut decoded = container::decode_any(&proof).map_err(|e| format!("{e:?}"))?;
+            let mult0: &mut Vec<u8> = match &mut decoded {
+                container::Decoded::V1(c) => &mut c.multiplicities[0],
+                container::Decoded::V2(c) => &mut c.segments[0].multiplicities[0],
+            };
+            let root = mult0[..32].try_into().map_err(|_| "root")?;
             let source = relation::multiplicity_source(&rel, Sources::CircleAll, 0, root)
                 .map_err(|e| format!("{e:?}"))?;
             // Certificate wire `u8(1) || [n_t] || t || n_q || ..` (as NC-1313).
@@ -782,8 +869,12 @@ pub fn run(id: u16) -> Result<(), String> {
                 return Err("multiplicity source not rate 1/4 with k_q = 16".into());
             }
             let at = 1 + if tensor > 0 { 8 } else { 0 } + source.columns() * 16;
-            c.multiplicities[0][32 + at] ^= 1;
-            ("GrindMismatch", verify(&public, &honest, &c.encode()).err())
+            mult0[32 + at] ^= 1;
+            let bytes = match decoded {
+                container::Decoded::V1(c) => c.encode(),
+                container::Decoded::V2(c) => c.encode(),
+            };
+            ("GrindMismatch", verify(&public, &honest, &bytes).err())
         }
         1313..=1315 => {
             // The plan-derived relation, captured from the prover's own declaration.
@@ -792,7 +883,7 @@ pub fn run(id: u16) -> Result<(), String> {
             prove_tampered(&public, &mut exec, &weights, &committed, &honest, &mut hook)
                 .map_err(|e| format!("capture prover: {e:?}"))?;
             let rel = captured.ok_or("no relation")?;
-            let mut c = container::decode(&proof).map_err(|e| format!("{e:?}"))?;
+            let mut decoded = container::decode_any(&proof).map_err(|e| format!("{e:?}"))?;
             let mut tampered = public.clone();
             // Certificate wire `u8(1) || [n_t] || t || n_q || ..`; opening `u8(1) || u || n_q || ..`.
             let nonce = |source: &Source<relation::K>, kind| {
@@ -802,18 +893,25 @@ pub fn run(id: u16) -> Result<(), String> {
             };
             match id {
                 1313 | 1314 => {
-                    let root = c.groups[0][..32].try_into().map_err(|_| "root")?;
+                    let (grp0, open0): (&mut Vec<u8>, &mut Vec<u8>) = match &mut decoded {
+                        container::Decoded::V1(c) => (&mut c.groups[0], &mut c.openings[0]),
+                        container::Decoded::V2(c) => {
+                            let s = &mut c.segments[0];
+                            (&mut s.groups[0], &mut s.openings[0])
+                        }
+                    };
+                    let root = grp0[..32].try_into().map_err(|_| "root")?;
                     let stack = relation::stack_source(&rel, Sources::Circle, root)
                         .map_err(|e| format!("{e:?}"))?
                         .ok_or("no stack")?;
                     if id == 1313 {
                         let at = nonce(&stack, ProofKind::Certificate).ok_or("no k_q = 16")?;
-                        c.groups[0][32 + at] ^= 1;
+                        grp0[32 + at] ^= 1;
                     } else {
                         // Claim-batch rounds (3 values each) and the final value precede it.
                         let bits = (stack.rows() * stack.columns()).trailing_zeros() as usize;
                         let at = nonce(&stack, ProofKind::Opening).ok_or("no k_q = 16")?;
-                        c.openings[0][bits * 48 + 16 + at] ^= 1;
+                        open0[bits * 48 + 16 + at] ^= 1;
                     }
                 }
                 _ => {
@@ -828,10 +926,11 @@ pub fn run(id: u16) -> Result<(), String> {
                     certificate[at] ^= 1;
                 }
             }
-            (
-                "GrindMismatch",
-                verify(&tampered, &honest, &c.encode()).err(),
-            )
+            let bytes = match decoded {
+                container::Decoded::V1(c) => c.encode(),
+                container::Decoded::V2(c) => c.encode(),
+            };
+            ("GrindMismatch", verify(&tampered, &honest, &bytes).err())
         }
         1321 => {
             // Lookup section i is check i, whose LU entry carries its grinding bits; a
@@ -841,9 +940,12 @@ pub fn run(id: u16) -> Result<(), String> {
                 .iter()
                 .filter(|e| e.line == stele_reductions::relation::Line::Lu)
                 .map(|e| e.grind > 0);
-            let mut c = container::decode(&proof).map_err(|e| format!("{e:?}"))?;
-            let section = c
-                .lookups
+            let mut decoded = container::decode_any(&proof).map_err(|e| format!("{e:?}"))?;
+            let lookups: &mut [Vec<u8>] = match &mut decoded {
+                container::Decoded::V1(c) => &mut c.lookups,
+                container::Decoded::V2(c) => &mut c.segments[0].lookups,
+            };
+            let section = lookups
                 .iter_mut()
                 .zip(ground)
                 .filter(|(_, g)| *g)
@@ -852,7 +954,11 @@ pub fn run(id: u16) -> Result<(), String> {
                 .ok_or("no ground check with a nonzero nonce")?;
             let nonce = u64::from_le_bytes(section[..8].try_into().map_err(|_| "nonce")?);
             section[..8].copy_from_slice(&(nonce - 1).to_le_bytes());
-            ("GrindMismatch", verify(&public, &honest, &c.encode()).err())
+            let bytes = match decoded {
+                container::Decoded::V1(c) => c.encode(),
+                container::Decoded::V2(c) => c.encode(),
+            };
+            ("GrindMismatch", verify(&public, &honest, &bytes).err())
         }
         1323 => {
             // The ground check with the fewest bits keeps the search short.
@@ -869,13 +975,28 @@ pub fn run(id: u16) -> Result<(), String> {
                 .filter(|(_, k)| **k > 0)
                 .min_by_key(|(_, k)| **k)
                 .ok_or("no ground check")?;
-            let c = container::decode(&proof).map_err(|e| format!("{e:?}"))?;
-            let honest_nonce =
-                u64::from_le_bytes(c.lookups[i][..8].try_into().map_err(|_| "nonce")?);
+            let decoded = container::decode_any(&proof).map_err(|e| format!("{e:?}"))?;
+            let honest_nonce = {
+                let sec = match &decoded {
+                    container::Decoded::V1(c) => &c.lookups[i],
+                    container::Decoded::V2(c) => &c.segments[0].lookups[i],
+                };
+                u64::from_le_bytes(sec[..8].try_into().map_err(|_| "nonce")?)
+            };
             let with = |n: u64| {
-                let mut c = c.clone();
-                c.lookups[i][..8].copy_from_slice(&n.to_le_bytes());
-                verify(&public, &honest, &c.encode()).err()
+                let bytes = match &decoded {
+                    container::Decoded::V1(c) => {
+                        let mut c = c.clone();
+                        c.lookups[i][..8].copy_from_slice(&n.to_le_bytes());
+                        c.encode()
+                    }
+                    container::Decoded::V2(c) => {
+                        let mut c = c.clone();
+                        c.segments[0].lookups[i][..8].copy_from_slice(&n.to_le_bytes());
+                        c.encode()
+                    }
+                };
+                verify(&public, &honest, &bytes).err()
             };
             // The verifier's predicate rejects every candidate before the next valid
             // nonce with `GrindMismatch`; that nonce is the first it lets through.
@@ -1107,6 +1228,13 @@ mod privacy {
         )
         .map_err(|e| format!("{e:?}"))?;
         let (relation, values) = captured.ok_or("relation")?;
+        let (relation, values) = zk::commit_records(
+            &relation,
+            Some((&values, &relation)),
+            usize::from(model.shape().width()),
+        )
+        .map_err(|e| format!("{e:?}"))?;
+        let values = values.ok_or("values")?;
         Ok((statement, relation, values))
     }
 
@@ -1737,6 +1865,67 @@ pub fn run_segments(id: u32) -> Result<(), String> {
                     }
                 }
             }
+            let col_segs = layout.relation.column_segments();
+            for (i, col) in redirected.columns.iter_mut().enumerate() {
+                if col_segs[i] == Some(1) {
+                    if let Kind::Virtual(def) = &mut col.kind {
+                        match def {
+                            stele_reductions::stele_ir::relation::Def::Linear { terms, .. } => {
+                                for (_, r) in terms {
+                                    if r.column == carried_id {
+                                        r.column = non_carried_id;
+                                        replaced = true;
+                                    }
+                                }
+                            }
+                            stele_reductions::stele_ir::relation::Def::Pointwise { terms } => {
+                                for term in terms {
+                                    for f in &mut term.factors {
+                                        if f.column == carried_id {
+                                            f.column = non_carried_id;
+                                            replaced = true;
+                                        }
+                                    }
+                                }
+                            }
+                            stele_reductions::stele_ir::relation::Def::Contraction {
+                                lhs,
+                                rhs,
+                                ..
+                            } => {
+                                for r in [lhs, rhs] {
+                                    if r.column == carried_id {
+                                        r.column = non_carried_id;
+                                        replaced = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            for lu in &mut redirected.lookups {
+                if layout.relation.lookup_segment(lu) == 1 {
+                    for r in &mut lu.tuple {
+                        if r.column == carried_id {
+                            r.column = non_carried_id;
+                            replaced = true;
+                        }
+                    }
+                    if let Some(sel) = &mut lu.selector {
+                        if sel.column == carried_id {
+                            sel.column = non_carried_id;
+                            replaced = true;
+                        }
+                    }
+                }
+            }
+            for rng in &mut redirected.ranges {
+                if layout.relation.range_segment(rng) == 1 && rng.column == carried_id {
+                    rng.column = non_carried_id;
+                    replaced = true;
+                }
+            }
             if !replaced {
                 return Err("expected segment 1 relation reading carried column".into());
             }
@@ -1978,13 +2167,136 @@ pub fn run_virtual_linear(id: u32) -> Result<(), String> {
 
 #[cfg(test)]
 #[test]
-fn rejects_nc_1335_to_nc_1338_segments_and_virtual_linear() {
+fn rejects_nc_1335_to_nc_1340_segments_and_virtual_columns() {
     for id in [1335, 1336] {
         assert_eq!(run_segments(id), Ok(()), "NC-{id}");
     }
     assert_eq!(run_virtual_linear(1337), Ok(()), "NC-1337");
     #[cfg(feature = "controls")]
     assert_eq!(run_virtual_linear(1338), Ok(()), "NC-1338");
+    for id in [1339, 1340] {
+        assert_eq!(run_virtual_rounding(id), Ok(()), "NC-{id}");
+    }
+}
+
+/// RFC-0028 §2.2, §6 & RFC-0008 A9 (task E18-04):
+/// - `1339`: commit `y + 1` for one rounding, with virtual remainder `rem = acc - 2^k * y`
+///   recomputed; the virtual range lookup rejects at `verify_segmented` with `RootMismatch`.
+/// - `1340`: declare rounding output `y` as `Def::Linear` using the integer field inverse of
+///   `2^k` mod `p`; `verify_segmented` rejects with `StatementMismatch(Invalid::Bound)`.
+pub fn run_virtual_rounding(id: u16) -> Result<(), String> {
+    use stele_reductions::relation::{verify_segmented, ProofV2, Sources};
+    use stele_reductions::stele_hash::Transcript;
+    use stele_reductions::stele_ir::relation::{Def, Invalid, Kind, Range, Ref, Width};
+
+    const PUBLIC: &[u8] = b"stele/nc/e18-04/virtual-rounding/v1";
+    let sources = Sources::CircleAll;
+
+    // Honest relation: `acc = 2^4 * y + rem`, with `y` committed advice and `rem` virtual `Linear`
+    // range-checked to `u4` (0..16).
+    let mut rel = Relation::default();
+    let g = rel.add_group_in("nc/rnd", 2, 0);
+    let acc = rel.add_column("nc/acc", Kind::Witness(g), Width::unsigned(12), 2);
+    let y = rel.add_column("nc/y", Kind::Witness(g), Width::unsigned(8), 2);
+    for (name, col, width) in [
+        ("r_acc", acc, Width::unsigned(12)),
+        ("r_y", y, Width::unsigned(8)),
+    ] {
+        rel.ranges.push(Range {
+            name: name.into(),
+            column: col,
+            width,
+        });
+    }
+    let rem = rel.add_virtual(
+        "nc/rem",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(acc, 2)), (-16, Ref::identity(y, 2))],
+        },
+        2,
+    );
+    rel.ranges.push(Range {
+        name: "r_rem".into(),
+        column: rem,
+        width: Width::unsigned(4),
+    });
+    rel.validate().map_err(|e| format!("validate: {e:?}"))?;
+
+    let mut honest_vals = Values::new(&rel);
+    honest_vals
+        .set(&rel, acc, vec![100, 205, 19, 31])
+        .map_err(|e| format!("acc: {e:?}"))?;
+    honest_vals
+        .set(&rel, y, vec![6, 12, 1, 1])
+        .map_err(|e| format!("y: {e:?}"))?;
+    let mut tp = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+    let honest =
+        relation::prove_segmented(&mut tp, &rel, |_| Ok(honest_vals.clone()), &[], sources)
+            .map_err(|e| format!("honest prove: {e:?}"))?;
+    let mut tv = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+    verify_segmented(&mut tv, &rel, &[], &honest, sources)
+        .map_err(|e| format!("honest verify: {e:?}"))?;
+
+    match id {
+        1339 => {
+            // Tamper: commit `y[0] + 1 = 7` -> virtual `rem[0] = 100 - 112 = -12` outside `u4`.
+            let mut bad_vals = honest_vals;
+            bad_vals
+                .set(&rel, y, vec![7, 12, 1, 1])
+                .map_err(|e| format!("bad y: {e:?}"))?;
+            let mut tp = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            let bad =
+                relation::prove_segmented(&mut tp, &rel, |_| Ok(bad_vals.clone()), &[], sources)
+                    .map_err(|e| format!("bad prove: {e:?}"))?;
+            let mut tv = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            match verify_segmented(&mut tv, &rel, &[], &bad, sources) {
+                Err(relation::Error::Fraction(stele_lookup::fraction::Error::RootMismatch)) => {
+                    Ok(())
+                }
+                other => Err(format!(
+                    "NC-1339: expected Fraction(RootMismatch), got {other:?}"
+                )),
+            }
+        }
+        1340 => {
+            // Tamper: declare advice `y` as `Def::Linear` using `inv(16) mod p = 2^27`.
+            let mut bad_rel = Relation::default();
+            let g_inv = bad_rel.add_group_in("nc/inv", 2, 0);
+            let i_acc = bad_rel.add_column("nc/acc", Kind::Witness(g_inv), Width::unsigned(12), 2);
+            let i_rem = bad_rel.add_column("nc/rem", Kind::Witness(g_inv), Width::unsigned(4), 2);
+            bad_rel.ranges.push(Range {
+                name: "r_acc".into(),
+                column: i_acc,
+                width: Width::unsigned(12),
+            });
+            bad_rel.ranges.push(Range {
+                name: "r_rem".into(),
+                column: i_rem,
+                width: Width::unsigned(4),
+            });
+            let inv_16: i64 = 1i64 << 27;
+            let _y_fake = bad_rel.add_virtual(
+                "nc/y_fake",
+                Def::Linear {
+                    constant: 0,
+                    terms: vec![
+                        (inv_16, Ref::identity(i_acc, 2)),
+                        (-inv_16, Ref::identity(i_rem, 2)),
+                    ],
+                },
+                2,
+            );
+            let mut tv = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            match verify_segmented(&mut tv, &bad_rel, &[], &ProofV2::default(), sources) {
+                Err(relation::Error::StatementMismatch(Invalid::Bound { .. })) => Ok(()),
+                other => Err(format!(
+                    "NC-1340: expected StatementMismatch(Invalid::Bound), got {other:?}"
+                )),
+            }
+        }
+        _ => Err(format!("unknown virtual rounding control {id}")),
+    }
 }
 
 /// E8-02f1b (controls only): forged one-layer byte-5 windows (T = 16) for the independent
@@ -2073,6 +2385,50 @@ pub fn forged_windows(dir: &std::path::Path, public_entry: usize) -> Result<(), 
     let model_sources: Vec<_> = prepared.iter().zip(&certificates).collect();
     let (cqis_id, _) = stele_prover::development::model_identity(&public).map_err(|x| e(&x))?;
     let digest = statement_digest_for(&public, &statement).map_err(|x| e(&x))?;
+    // Pick a referenced public column whose `public_entry` can be bumped by +1 without
+    // violating any relation constraint against the honest witness (e.g., an unused padding
+    // or masked-off position, or an inequality margin slack like `G/argmax/below`), so every
+    // sumcheck/lookup/reduction succeeds and only Step 8 (`PublicMismatch`) rejects it.
+    use stele_reductions::stele_ir::relation::Kind as RelKind;
+    let forged_pub_col = (0..rel.columns.len())
+        .find_map(|i| {
+            let id = ColumnId(i as u32);
+            let RelKind::Public(v) = &rel.columns[i].kind else {
+                return None;
+            };
+            if public_entry >= v.len() {
+                return None;
+            }
+            let referenced = rel.identities.iter().any(|idn| {
+                idn.terms
+                    .iter()
+                    .any(|t| t.factors.iter().any(|r| r.column == id))
+            }) || rel
+                .matmuls
+                .iter()
+                .any(|m| m.out.column == id || m.lhs.column == id || m.rhs.column == id)
+                || rel.lookups.iter().any(|l| {
+                    l.tuple.iter().any(|r| r.column == id)
+                        || l.selector.as_ref().is_some_and(|s| s.column == id)
+                })
+                || rel.ranges.iter().any(|r| r.column == id)
+                || rel.columns.iter().any(|c| match &c.kind {
+                    RelKind::Virtual(def) => def.operands().contains(&id),
+                    _ => false,
+                });
+            if !referenced {
+                return None;
+            }
+            let mut candidate = rel.clone();
+            if let RelKind::Public(cv) = &mut candidate.columns[i].kind {
+                cv[public_entry] += 1;
+            }
+            stele_reductions::stele_ir::relation::check(&candidate, &values)
+                .ok()
+                .map(|()| id)
+        })
+        .ok_or("no forgeable public column in one-layer relation")?;
+    let expected_pub = format!("PublicMismatch({forged_pub_col:?})");
     for (name, forge, expected) in [
         (
             "forged-table",
@@ -2082,38 +2438,69 @@ pub fn forged_windows(dir: &std::path::Path, public_entry: usize) -> Result<(), 
                 witness: None,
                 column_claim: None,
             },
-            "TableDenominatorMismatch",
+            "TableDenominatorMismatch".to_string(),
         ),
         (
             "forged-public",
             relation::Forge {
                 table: None,
-                public: Some((ColumnId(30), public_entry)),
+                public: Some((forged_pub_col, public_entry)),
                 witness: None,
                 column_claim: None,
             },
-            "PublicMismatch(ColumnId(30))",
+            expected_pub,
         ),
     ] {
         let input = public_input(&public, &cqis_id, &statement);
         let mut t = Transcript::<relation::K>::new(&input).map_err(|x| e(&x))?;
-        let p = relation::prove_forged(&mut t, &rel, &values, &model_sources, set, &forge)
+        let proof = if rel.has_virtual() || rel.is_segmented() {
+            let p = relation::prove_segmented_forged(
+                &mut t,
+                &rel,
+                &values,
+                &model_sources,
+                set,
+                &forge,
+            )
             .map_err(|x| e(&x))?;
-        let proof = container::Container {
-            cqis_id,
-            statement: digest,
-            groups: p.groups,
-            multiplicities: p.multiplicities,
-            identities: p.identities,
-            lookups: p.lookups,
-            matmuls: p.matmuls,
-            openings: p.openings,
-        }
-        .encode();
+            container::ContainerV2 {
+                cqis_id,
+                statement: digest,
+                segments: p
+                    .segments
+                    .into_iter()
+                    .map(|s| container::SegmentSections {
+                        groups: s.groups,
+                        multiplicities: s.multiplicities,
+                        identities: s.identities,
+                        lookups: s.lookups,
+                        matmuls: s.matmuls,
+                        reductions: s.reductions,
+                        openings: s.openings,
+                    })
+                    .collect(),
+                model_openings: p.model_openings,
+            }
+            .encode()
+        } else {
+            let p = relation::prove_forged(&mut t, &rel, &values, &model_sources, set, &forge)
+                .map_err(|x| e(&x))?;
+            container::Container {
+                cqis_id,
+                statement: digest,
+                groups: p.groups,
+                multiplicities: p.multiplicities,
+                identities: p.identities,
+                lookups: p.lookups,
+                matmuls: p.matmuls,
+                openings: p.openings,
+            }
+            .encode()
+        };
         let got = verify(&public, &statement, &proof)
             .err()
             .map(|x| format!("{x:?}"));
-        if !got.as_deref().is_some_and(|g| g.contains(expected)) {
+        if !got.as_deref().is_some_and(|g| g.contains(&expected)) {
             return Err(format!("{name}: expected {expected}, got {got:?}"));
         }
         let out = dir.join(name);

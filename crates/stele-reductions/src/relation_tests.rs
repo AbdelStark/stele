@@ -1448,8 +1448,7 @@ fn rejects_unsupported_virtual_kinds_and_encodes_distinctly() {
         Some(crate::zk::Error::Statement)
     );
 
-    // Pointwise and Contraction stay `Error::Unsupported` in `prove_segmented`/`verify_segmented`
-    // until E18-03/E18-04.
+    // Distinct virtual definitions encode distinctly under `stele/v0.1/relation/encoding/v2`.
     let mut rel_pw = rel.clone();
     rel_pw.columns[1].kind = Kind::Virtual(Def::Pointwise {
         terms: vec![IdentityTerm {
@@ -1458,30 +1457,7 @@ fn rejects_unsupported_virtual_kinds_and_encodes_distinctly() {
         }],
     });
     assert_eq!(rel_pw.validate(), Ok(()));
-    let mut ts = Transcript::new(PUBLIC).expect("transcript");
-    assert_eq!(
-        prove_segmented(
-            &mut ts,
-            &rel_pw,
-            |_| Ok(vals.clone()),
-            &[],
-            Sources::CircleAll
-        )
-        .err(),
-        Some(Error::Unsupported)
-    );
-    let mut tvs = Transcript::new(PUBLIC).expect("transcript");
-    assert_eq!(
-        verify_segmented(
-            &mut tvs,
-            &rel_pw,
-            &[],
-            &ProofV2::default(),
-            Sources::CircleAll
-        )
-        .err(),
-        Some(Error::Unsupported)
-    );
+    assert_ne!(super::codec::encode(&rel), super::codec::encode(&rel_pw));
 
     let enc1 = super::codec::encode(&rel);
     let mut rel2 = rel.clone();
@@ -2818,6 +2794,477 @@ fn accepts_contraction_virtual_columns_and_rejects_nc_1307_and_nc_1338() {
         assert_eq!(
             verify_segmented(&mut tv, &r_big, &[], &ProofV2::default(), sources).err(),
             Some(Error::Unsupported)
+        );
+    }
+}
+
+/// RFC-0028 §2.4, §5, §6 & RFC-0012 A19 (task E18-04): virtual `Def::Pointwise` columns
+/// (degree 1..=3 -> sumcheck degree 2..=4 with `eq`, repeated factors, constants, broadcast
+/// `Ref`, `log_len == 0`, single-claim vs multi-claim RFC-0006 A2 mode 1 batching, virtual
+/// lookups & range checks, unclaimed columns, `EqMismatch`, overflow `Capacity`), plus
+/// `NC-1338` (direct & adaptive), `NC-1339` (virtual rounding remainder range lookup), and
+/// `NC-1340` (advice inverse rejected by static magnitude bound).
+#[test]
+fn accepts_pointwise_virtual_columns_and_rejects_nc_1338_to_nc_1340() {
+    use stele_ir::relation::Def;
+
+    let sources = Sources::CircleAll;
+
+    // --- Part 1: Degree-3 Pointwise (sumcheck degree 4 with `eq`), sign-magnitude
+    // `a = (1 - 2*sigma) * x` (RFC-0028 §1.2), multi-claim batching, virtual lookup/range,
+    // broadcast Ref, constant-only `log_len == 0`, and unclaimed Pointwise.
+    {
+        let mut rel = Relation::default();
+        let g2 = rel.add_group_in("pw/w2", 2, 0);
+        let g1 = rel.add_group_in("pw/w1", 1, 0);
+        let g0 = rel.add_group_in("pw/w0", 0, 0);
+        let x = rel.add_column("pw/x", Kind::Witness(g2), Width::signed(5), 2);
+        let sigma = rel.add_column("pw/sigma", Kind::Witness(g2), Width::unsigned(1), 2);
+        let z_b = rel.add_column("pw/zb", Kind::Witness(g1), Width::signed(4), 1);
+        let out_mag = rel.add_column("pw/out_mag", Kind::Witness(g2), Width::unsigned(5), 2);
+        let out_cub = rel.add_column("pw/out_cub", Kind::Witness(g2), Width::signed(14), 2);
+        let out_c0 = rel.add_column("pw/out_c0", Kind::Witness(g0), Width::signed(5), 0);
+        for (name, col, width) in [
+            ("rx", x, Width::signed(5)),
+            ("rsig", sigma, Width::unsigned(1)),
+            ("rzb", z_b, Width::signed(4)),
+            ("rmag", out_mag, Width::unsigned(5)),
+            ("rcub", out_cub, Width::signed(14)),
+            ("rc0", out_c0, Width::signed(5)),
+        ] {
+            rel.ranges.push(Range {
+                name: name.into(),
+                column: col,
+                width,
+            });
+        }
+        // Sign-magnitude virtual Pointwise: `mag = x - 2 * sigma * x` (degree 2 -> SC deg 3).
+        let v_mag = rel.add_virtual(
+            "pw/v_mag",
+            Def::Pointwise {
+                terms: vec![
+                    IdentityTerm {
+                        coeff: 1,
+                        factors: vec![Ref::identity(x, 2)],
+                    },
+                    IdentityTerm {
+                        coeff: -2,
+                        factors: vec![Ref::identity(sigma, 2), Ref::identity(x, 2)],
+                    },
+                ],
+            },
+            2,
+        );
+        // Degree-3 Pointwise (SC degree 4 with `eq`) with repeated factor `x * x * zb_bcast + 2 * v_mag - 3`.
+        let v_cub = rel.add_virtual(
+            "pw/v_cub",
+            Def::Pointwise {
+                terms: vec![
+                    IdentityTerm {
+                        coeff: 1,
+                        factors: vec![
+                            Ref::identity(x, 2),
+                            Ref::identity(x, 2),
+                            Ref {
+                                column: z_b,
+                                vars: vec![0],
+                            },
+                        ],
+                    },
+                    IdentityTerm {
+                        coeff: 2,
+                        factors: vec![Ref::identity(v_mag, 2)],
+                    },
+                    IdentityTerm {
+                        coeff: -3,
+                        factors: vec![],
+                    },
+                ],
+            },
+            2,
+        );
+        // Constant-only Pointwise on `log_len == 0` (SC degree 1 with `eq`).
+        let v_c0 = rel.add_virtual(
+            "pw/v_c0",
+            Def::Pointwise {
+                terms: vec![IdentityTerm {
+                    coeff: -5,
+                    factors: vec![],
+                }],
+            },
+            0,
+        );
+        // Unclaimed Pointwise (must emit 0 reduction sections).
+        let _unclaimed = rel.add_virtual(
+            "pw/unused",
+            Def::Pointwise {
+                terms: vec![IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(x, 2), Ref::identity(x, 2)],
+                }],
+            },
+            2,
+        );
+        // Multi-claim on `v_mag`: identity (`out_mag - v_mag = 0`), range check on `v_mag`,
+        // AND `v_cub` reads `v_mag` -> 3 claims total on `v_mag`!
+        rel.identities.push(Identity {
+            name: "pw/eq_mag".into(),
+            vars: 2,
+            terms: vec![
+                IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(out_mag, 2)],
+                },
+                IdentityTerm {
+                    coeff: -1,
+                    factors: vec![Ref::identity(v_mag, 2)],
+                },
+            ],
+        });
+        rel.ranges.push(Range {
+            name: "pw/r_vmag".into(),
+            column: v_mag,
+            width: Width::unsigned(5),
+        });
+        // Single-claim on `v_cub`: identity `out_cub - v_cub = 0`.
+        rel.identities.push(Identity {
+            name: "pw/eq_cub".into(),
+            vars: 2,
+            terms: vec![
+                IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(out_cub, 2)],
+                },
+                IdentityTerm {
+                    coeff: -1,
+                    factors: vec![Ref::identity(v_cub, 2)],
+                },
+            ],
+        });
+        // Single-claim on `v_c0`.
+        rel.identities.push(Identity {
+            name: "pw/eq_c0".into(),
+            vars: 0,
+            terms: vec![
+                IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(out_c0, 0)],
+                },
+                IdentityTerm {
+                    coeff: -1,
+                    factors: vec![Ref::identity(v_c0, 0)],
+                },
+            ],
+        });
+        assert_eq!(rel.validate(), Ok(()));
+
+        let x_vals = vec![3i64, -4, 0, -2];
+        let sig_vals = vec![0i64, 1, 0, 1];
+        let zb_vals = vec![2i64, -3];
+        let mag_vals: Vec<i64> = (0..4).map(|i| x_vals[i] * (1 - 2 * sig_vals[i])).collect();
+        let cub_vals: Vec<i64> = (0..4)
+            .map(|i| x_vals[i] * x_vals[i] * zb_vals[i & 1] + 2 * mag_vals[i] - 3)
+            .collect();
+        let mut vals = Values::new(&rel);
+        vals.set(&rel, x, x_vals).expect("x");
+        vals.set(&rel, sigma, sig_vals).expect("sigma");
+        vals.set(&rel, z_b, zb_vals).expect("zb");
+        vals.set(&rel, out_mag, mag_vals.clone()).expect("mag");
+        vals.set(&rel, out_cub, cub_vals.clone()).expect("cub");
+        vals.set(&rel, out_c0, vec![-5]).expect("c0");
+        assert_eq!(stele_ir::relation::check(&rel, &vals), Ok(()));
+
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let proof =
+            prove_segmented(&mut tp, &rel, |_| Ok(vals.clone()), &[], sources).expect("prove pw");
+        // Reductions in decreasing ColumnId order: `v_c0`, `v_cub`, `v_mag` (`_unclaimed` skipped).
+        assert_eq!(proof.segments[0].reductions.len(), 3);
+
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        let ledger = verify_segmented(&mut tv, &rel, &[], &proof, sources).expect("verify pw");
+        // `v_cub` has 1 claim -> 1 SC line of numerator `2 * 4 = 8` (m=2, degree=4).
+        let cub_lines: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|e| e.name == "pw/v_cub")
+            .collect();
+        assert_eq!(cub_lines.len(), 1);
+        assert_eq!(cub_lines[0].line, Line::Sc);
+        assert_eq!(cub_lines[0].numerator, 2 * 4);
+        assert_eq!(cub_lines[0].round, 4);
+        // `v_mag` has 3 claims -> RLC + SC (batch) + SC (pointwise, m=2, degree=3 -> 6).
+        let mag_lines: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|e| e.name == "pw/v_mag")
+            .collect();
+        assert_eq!(mag_lines.len(), 3);
+        assert_eq!(mag_lines[0].line, Line::Rlc);
+        assert_eq!(mag_lines[1].line, Line::Sc);
+        assert_eq!(mag_lines[2].line, Line::Sc);
+        assert_eq!(mag_lines[2].numerator, 2 * 3);
+
+        // Tamper round 0 of the multi-claim `claim_batch` prefix inside `v_mag`'s reduction section
+        // (index 2 in decreasing ColumnId order: `v_c0`, `v_cub`, `v_mag`) -> `RoundSumMismatch`.
+        let mut bad_pw_batch = proof.clone();
+        let sec = &mut bad_pw_batch.segments[0].reductions[2];
+        let orig = K::from_le_bytes(sec[..16].try_into().expect("16")).expect("k");
+        sec[..16].copy_from_slice(&(orig + K::from_i64(1)).to_le_bytes());
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &[], &bad_pw_batch, sources).err(),
+            Some(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch))
+        );
+
+        // Poisoning `Values` slot for virtual Pointwise `v_cub` must be ignored (bit-identical proof).
+        let mut vals_bogus = vals.clone();
+        vals_bogus
+            .set(&rel, v_cub, vec![123, 456, 789, 101])
+            .expect("bogus");
+        let mut tp2 = Transcript::new(PUBLIC).expect("t");
+        let proof2 = prove_segmented(&mut tp2, &rel, |_| Ok(vals_bogus.clone()), &[], sources)
+            .expect("prove bogus");
+        assert_eq!(proof.segments[0].reductions, proof2.segments[0].reductions);
+
+        // Noncanonical QM31 limb -> NoncanonicalField.
+        let mut bad_nc = proof.clone();
+        bad_nc.segments[0].reductions[1][..4].copy_from_slice(&((1u32 << 31) - 1).to_le_bytes());
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &[], &bad_nc, sources).err(),
+            Some(Error::NoncanonicalField)
+        );
+
+        // Truncated reduction section -> ProofShape.
+        let mut short = proof.clone();
+        short.segments[0].reductions[1].pop();
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &[], &short, sources).err(),
+            Some(Error::ProofShape)
+        );
+
+        // Direct & adaptive NC-1338 on single-claim `v_cub`:
+        let mut forged_vals = vals.clone();
+        let mut cub_f = cub_vals;
+        cub_f[0] += 1;
+        forged_vals.set(&rel, out_cub, cub_f).expect("cub_f");
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let forged_direct = prove_segmented_forged_virtual(
+            &mut tp,
+            &rel,
+            |_| Ok(forged_vals.clone()),
+            &[],
+            sources,
+            v_cub,
+            0,
+            None,
+        )
+        .expect("forged direct");
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &[], &forged_direct, sources).err(),
+            Some(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch))
+        );
+
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let forged_adapt = prove_segmented_forged_virtual(
+            &mut tp,
+            &rel,
+            |_| Ok(forged_vals.clone()),
+            &[],
+            sources,
+            v_cub,
+            0,
+            Some(0),
+        )
+        .expect("forged adapt");
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &rel, &[], &forged_adapt, sources).err(),
+            Some(Error::Sumcheck(
+                stele_sumcheck::Error::FinalEvaluationMismatch
+            ))
+        );
+
+        // Tamper `eq` final value on a single-term linear Pointwise (`v = x`, scaling `eq` by 2
+        // and `x` by 1/2 preserves `eq * x == running` so sumcheck passes and `EqMismatch` fires!).
+        let mut r_eq = Relation::default();
+        let g_eq = r_eq.add_group_in("eq/w", 1, 0);
+        let ex = r_eq.add_column("eq/x", Kind::Witness(g_eq), Width::signed(5), 1);
+        let ey = r_eq.add_column("eq/y", Kind::Witness(g_eq), Width::signed(5), 1);
+        r_eq.ranges.push(Range {
+            name: "rx".into(),
+            column: ex,
+            width: Width::signed(5),
+        });
+        r_eq.ranges.push(Range {
+            name: "ry".into(),
+            column: ey,
+            width: Width::signed(5),
+        });
+        let ev = r_eq.add_virtual(
+            "eq/v",
+            Def::Pointwise {
+                terms: vec![IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(ex, 1)],
+                }],
+            },
+            1,
+        );
+        r_eq.identities.push(Identity {
+            name: "eq/id".into(),
+            vars: 1,
+            terms: vec![
+                IdentityTerm {
+                    coeff: 1,
+                    factors: vec![Ref::identity(ey, 1)],
+                },
+                IdentityTerm {
+                    coeff: -1,
+                    factors: vec![Ref::identity(ev, 1)],
+                },
+            ],
+        });
+        assert_eq!(r_eq.validate(), Ok(()));
+        let mut eq_vals = Values::new(&r_eq);
+        eq_vals.set(&r_eq, ex, vec![3, 5]).expect("ex");
+        eq_vals.set(&r_eq, ey, vec![3, 5]).expect("ey");
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let mut p_eq =
+            prove_segmented(&mut tp, &r_eq, |_| Ok(eq_vals.clone()), &[], sources).expect("p_eq");
+        // 1 round of width 3 (`3 * 16 = 48` bytes), then 2 finals `[eq, x]`.
+        let sec = &mut p_eq.segments[0].reductions[0];
+        let off = 3 * 16;
+        let eq_v = K::from_le_bytes(sec[off..off + 16].try_into().expect("16")).expect("k");
+        let x_v = K::from_le_bytes(sec[off + 16..off + 32].try_into().expect("16")).expect("k");
+        let two = K::from_i64(2);
+        let inv_two = stele_field::Inverse::inverse(two).expect("inv2");
+        sec[off..off + 16].copy_from_slice(&(eq_v * two).to_le_bytes());
+        sec[off + 16..off + 32].copy_from_slice(&(x_v * inv_two).to_le_bytes());
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &r_eq, &[], &p_eq, sources).err(),
+            Some(Error::EqMismatch)
+        );
+    }
+
+    // --- Part 2: NC-1339 (commit `y + 1` for rounding, virtual `rem = acc - 2^k * y` range
+    // lookup rejects with `Fraction(RootMismatch)`) and NC-1340 (advice inverse of `2^k`
+    // declared as `Linear` rejects with `StatementMismatch(Invalid::Bound)`).
+    {
+        let mut r_rnd = Relation::default();
+        let g = r_rnd.add_group_in("rnd/w", 2, 0);
+        let acc = r_rnd.add_column("rnd/acc", Kind::Witness(g), Width::unsigned(12), 2);
+        let y = r_rnd.add_column("rnd/y", Kind::Witness(g), Width::unsigned(8), 2);
+        r_rnd.ranges.push(Range {
+            name: "r_acc".into(),
+            column: acc,
+            width: Width::unsigned(12),
+        });
+        r_rnd.ranges.push(Range {
+            name: "r_y".into(),
+            column: y,
+            width: Width::unsigned(8),
+        });
+        // Virtual remainder: `rem = acc - 16 * y` (k = 4), range-checked to `u4` (0..16).
+        let rem = r_rnd.add_virtual(
+            "rnd/rem",
+            Def::Linear {
+                constant: 0,
+                terms: vec![(1, Ref::identity(acc, 2)), (-16, Ref::identity(y, 2))],
+            },
+            2,
+        );
+        r_rnd.ranges.push(Range {
+            name: "r_rem".into(),
+            column: rem,
+            width: Width::unsigned(4),
+        });
+        assert_eq!(r_rnd.validate(), Ok(()));
+        let mut honest_vals = Values::new(&r_rnd);
+        // acc = [100, 205, 19, 31], y = [6, 12, 1, 1], rem = [4, 13, 3, 15].
+        honest_vals
+            .set(&r_rnd, acc, vec![100, 205, 19, 31])
+            .expect("acc");
+        honest_vals.set(&r_rnd, y, vec![6, 12, 1, 1]).expect("y");
+        assert_eq!(stele_ir::relation::check(&r_rnd, &honest_vals), Ok(()));
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let p_ok = prove_segmented(&mut tp, &r_rnd, |_| Ok(honest_vals.clone()), &[], sources)
+            .expect("honest round");
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        verify_segmented(&mut tv, &r_rnd, &[], &p_ok, sources).expect("verify round");
+
+        // NC-1339: commit `y[0] + 1 = 7` -> virtual `rem[0] = 100 - 112 = -12` outside `u4`.
+        let mut bad_vals = honest_vals;
+        bad_vals.set(&r_rnd, y, vec![7, 12, 1, 1]).expect("bad y");
+        let mut tp = Transcript::new(PUBLIC).expect("t");
+        let p_bad = prove_segmented(&mut tp, &r_rnd, |_| Ok(bad_vals.clone()), &[], sources)
+            .expect("prove bad round");
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented(&mut tv, &r_rnd, &[], &p_bad, sources).err(),
+            Some(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+        );
+
+        // NC-1340: declare rounding output `y` as `Def::Linear` using the field inverse of `2^4 = 16`
+        // mod `p = 2^31 - 1` (`inv_16 = (p + 1) / 16 = 2^27 = 134_217_728`, so `16 * inv_16 ≡ 1 (mod p)`).
+        let mut r_inv = Relation::default();
+        let g_inv = r_inv.add_group_in("inv/w", 2, 0);
+        let i_acc = r_inv.add_column("inv/acc", Kind::Witness(g_inv), Width::unsigned(12), 2);
+        let i_rem = r_inv.add_column("inv/rem", Kind::Witness(g_inv), Width::unsigned(4), 2);
+        r_inv.ranges.push(Range {
+            name: "r_acc".into(),
+            column: i_acc,
+            width: Width::unsigned(12),
+        });
+        r_inv.ranges.push(Range {
+            name: "r_rem".into(),
+            column: i_rem,
+            width: Width::unsigned(4),
+        });
+        let inv_16: i64 = 1i64 << 27;
+        let _y_fake = r_inv.add_virtual(
+            "inv/y_fake",
+            Def::Linear {
+                constant: 0,
+                terms: vec![
+                    (inv_16, Ref::identity(i_acc, 2)),
+                    (-inv_16, Ref::identity(i_rem, 2)),
+                ],
+            },
+            2,
+        );
+        let mut tv = Transcript::new(PUBLIC).expect("t");
+        assert!(matches!(
+            verify_segmented(&mut tv, &r_inv, &[], &ProofV2::default(), sources),
+            Err(Error::StatementMismatch(
+                stele_ir::relation::Invalid::Bound { .. }
+            ))
+        ));
+    }
+
+    // --- Part 3: Overflow during `Def::Pointwise` materialization -> Error::Capacity.
+    {
+        let mut r_ovf = Relation::default();
+        let g = r_ovf.add_group_in("ovf/pw", 1, 0);
+        let x = r_ovf.add_column("ovf/x", Kind::Witness(g), Width::signed(8), 1);
+        let v = r_ovf.add_virtual(
+            "ovf/v",
+            Def::Pointwise {
+                terms: vec![IdentityTerm {
+                    coeff: i64::MAX,
+                    factors: vec![Ref::identity(x, 1), Ref::identity(x, 1)],
+                }],
+            },
+            1,
+        );
+        let mut vals = Values::new(&r_ovf);
+        vals.set(&r_ovf, x, vec![i64::MAX, 0]).expect("x");
+        assert_eq!(
+            super::ResolvedColumns::for_segment(&r_ovf, &vals, &[v], None).err(),
+            Some(Error::Capacity)
         );
     }
 }

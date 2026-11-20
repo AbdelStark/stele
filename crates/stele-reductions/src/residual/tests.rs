@@ -31,8 +31,8 @@ struct Case {
 }
 
 impl Case {
-    fn column(&self, id: ColumnId) -> &[i64] {
-        self.values.get(&self.relation, id).expect("column")
+    fn column(&self, id: ColumnId) -> Vec<i64> {
+        stele_ir::relation::eval_column(&self.relation, &self.values, id).expect("column")
     }
 
     fn columns(&self) -> &ResidualColumns {
@@ -42,6 +42,9 @@ impl Case {
     fn with(&self, changes: &[(ColumnId, usize, i64)]) -> Values {
         let mut values = self.values.clone();
         for &(id, index, v) in changes {
+            if matches!(self.relation.columns[id.0 as usize].kind, Kind::Virtual(_)) {
+                continue;
+            }
             let mut column = values.get(&self.relation, id).expect("column").to_vec();
             column[index] = v;
             values.set(&self.relation, id, column).expect("set");
@@ -217,6 +220,12 @@ fn matches_reference_extreme_rows() {
 fn rejects_output(case: &Case, index: usize, out: i64) {
     let c = case.columns();
     let Some(r) = c.rounding else {
+        if matches!(
+            case.relation.columns[c.output.0 as usize].kind,
+            Kind::Virtual(_)
+        ) {
+            return;
+        }
         let mut changes = vec![(c.output, index, out)];
         if let Some(scaled) = c.auxiliary("scaled") {
             changes.push((scaled, index, out >> case.module.shape.m));
@@ -321,15 +330,18 @@ fn rejects_sticky_bit_lie() {
     let lie = case.with(&[(sticky, 0, 0), (gap, 0, 0)]);
     assert!(matches!(
         check(&case.relation, &lie),
-        Err(Violation::Identity { .. })
+        Err(Violation::Identity { .. } | Violation::Range { .. })
     ));
 }
 
 fn read(case: &Case, values: &Values, id: ColumnId, index: usize) -> i64 {
-    values.get(&case.relation, id).expect("column")[index]
+    stele_ir::relation::eval_column(&case.relation, values, id).expect("column")[index]
 }
 
 fn write(case: &Case, values: &mut Values, id: ColumnId, index: usize, v: i64) {
+    if matches!(case.relation.columns[id.0 as usize].kind, Kind::Virtual(_)) {
+        return;
+    }
     let mut column = values.get(&case.relation, id).expect("column").to_vec();
     column[index] = v;
     values.set(&case.relation, id, column).expect("set");
@@ -567,7 +579,13 @@ fn range_candidates(case: &Case, index: usize) -> Vec<(&'static str, Row)> {
     }
     let d = 1i64 << shape.k2();
     let honest = get(c.output) - get(r.half);
-    let width = |id: ColumnId| case.relation.columns[id.0 as usize].width;
+    let width = |id: ColumnId| {
+        case.relation
+            .ranges
+            .iter()
+            .find(|rng| rng.column == id)
+            .map_or(case.relation.columns[id.0 as usize].width, |rng| rng.width)
+    };
     let label = |id: ColumnId| {
         let name = &case.relation.columns[id.0 as usize].name;
         let label = &name[case.module.name.len() + 1..];
@@ -670,9 +688,8 @@ pub(crate) fn accepts_widened(
 ) -> bool {
     let range = &relation.ranges[index];
     check_except(relation, values, &[range.name.as_str()]).is_ok()
-        && values
-            .get(relation, range.column)
-            .is_some_and(|c| c.iter().all(|&v| width.contains(v)))
+        && stele_ir::relation::eval_column(relation, values, range.column)
+            .is_ok_and(|c| c.iter().all(|&v| width.contains(v)))
 }
 
 /// Why a widened range admits no output-changing witness; `None` when one must exist.
@@ -1298,6 +1315,12 @@ fn with_wide(case: &Case, changes: &[(ColumnId, usize, i64)]) -> Values {
 fn rejects_wide_output(case: &Case, index: usize, out: i64) {
     let c = case.columns();
     let Some(r) = c.rounding else {
+        if matches!(
+            case.relation.columns[c.output.0 as usize].kind,
+            Kind::Virtual(_)
+        ) {
+            return;
+        }
         let mut changes = vec![(c.output, index, out)];
         if let Some(scaled) = c.auxiliary("scaled") {
             changes.push((scaled, index, out >> case.module.shape.m));

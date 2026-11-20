@@ -19,26 +19,31 @@ const CHAINS: &[ChainSpec] = &[
         name: "S",
         free: "S_",
         wide: None,
+        radix: 8,
     },
     ChainSpec {
         name: "quotient",
         free: "R",
         wide: None,
+        radix: 8,
     },
     ChainSpec {
         name: "remainder",
         free: "gap",
         wide: None,
+        radix: 8,
     },
     ChainSpec {
         name: "Jg",
         free: "Jg",
         wide: None,
+        radix: 12,
     },
     ChainSpec {
         name: "output",
         free: "Z",
         wide: Some("Y"),
+        radix: 12,
     },
 ];
 
@@ -205,8 +210,8 @@ impl NormAttack<'_> {
                 ("M0", m & 255),
                 ("M1", m >> 8),
                 ("J", j),
-                ("J0", j & 255),
-                ("J1", j >> 8),
+                ("J0", j & 4095),
+                ("J1", j >> 12),
             ] {
                 set(r, v, self.col(name), t, value);
             }
@@ -254,7 +259,7 @@ impl NormAttack<'_> {
         for col in referenced_witness(r, c) {
             let len = 1usize << r.columns[col.0 as usize].log_len;
             for i in 0..len.min(128) {
-                for delta in [1i128, -1, 256, -256] {
+                for delta in [1i128, -1, 256, -256, 4096, -4096] {
                     for mode in [
                         "alone",
                         "solved",
@@ -290,8 +295,8 @@ impl NormAttack<'_> {
                                             ("M0", m & 255),
                                             ("M1", m >> 8),
                                             ("J", j),
-                                            ("J0", j & 255),
-                                            ("J1", j >> 8),
+                                            ("J0", j & 4095),
+                                            ("J1", j >> 12),
                                         ] {
                                             set(r, &mut v, self.col(name), i, value);
                                         }
@@ -381,7 +386,7 @@ impl NormAttack<'_> {
                     )
             }
             "Z" => {
-                let es = 8
+                let es = 12
                     * (0..)
                         .take_while(|j| self.try_col(&format!("Z{j}")).is_some())
                         .count() as u32;
@@ -392,23 +397,26 @@ impl NormAttack<'_> {
                     let base = self.y(&v);
                     for e in 0..4 {
                         let at = 4 * t + e;
-                        let z: i128 = (0..es / 8)
-                            .map(|j| get(r, &v, self.col(&format!("Z{j}")), at) << (8 * j))
+                        let z: i128 = (0..es / 12)
+                            .map(|j| get(r, &v, self.col(&format!("Z{j}")), at) << (12 * j))
                             .sum();
                         let target = z - (1i128 << es);
-                        if target < -(1i128 << (8 * (i + 1))) {
+                        if target < -(1i128 << (12 * (i + 1))) {
                             continue;
                         }
                         let mut w = v.clone();
-                        set(r, &mut w, column, at, target.div_euclid(1 << (8 * i)));
+                        let val = target.div_euclid(1 << (12 * i));
+                        set(r, &mut w, column, at, val);
                         self.solver.keep.set(Some(column));
+                        self.solver.keep_val.set(Some((column, at, val)));
                         let ok = self.solver.solve(&mut w, c);
                         self.solver.keep.set(None);
+                        self.solver.keep_val.set(None);
                         if ok.is_some()
                             && self.emit(
                                 format!(
                                     "row {x:?}: Z near 2^Es, Y - 1, Z{i} = {}",
-                                    target.div_euclid(1 << (8 * i))
+                                    target.div_euclid(1 << (12 * i))
                                 ),
                                 w,
                                 &base,
@@ -458,17 +466,20 @@ impl NormAttack<'_> {
                         ("M0", m & 255),
                         ("M1", m >> 8),
                         ("J", j),
-                        ("J0", j & 255),
-                        ("J1", j >> 8),
+                        ("J0", j & 4095),
+                        ("J1", j >> 12),
                     ] {
                         set(r, &mut v, self.col(n), t, value);
                     }
                     // The other byte column follows; this one holds the edge from byte i up.
                     let edge = if up { rem - d } else { d - 1 - (rem + d) };
-                    set(r, &mut v, column, t, edge.div_euclid(1 << (8 * i)));
+                    let val = edge.div_euclid(1 << (8 * i));
+                    set(r, &mut v, column, t, val);
                     self.solver.keep.set(Some(column));
+                    self.solver.keep_val.set(Some((column, t, val)));
                     let ok = self.solver.solve(&mut v, c);
                     self.solver.keep.set(None);
+                    self.solver.keep_val.set(None);
                     if ok.is_some()
                         && self.emit(
                             format!(
@@ -549,7 +560,7 @@ impl NormAttack<'_> {
             }
             let wrapped = match position {
                 Some(i) => {
-                    let modulus = 1i128 << (8 * (i - top));
+                    let modulus = 1i128 << (12 * (i - top));
                     let w = (truth + modulus / 2).rem_euclid(modulus) - modulus / 2;
                     if i16::try_from(w).is_err() {
                         continue;
@@ -710,8 +721,8 @@ impl NormAttack<'_> {
                         ("M0", m & 255),
                         ("M1", m >> 8),
                         ("J", j),
-                        ("J0", j & 255),
-                        ("J1", j >> 8),
+                        ("J0", j & 4095),
+                        ("J1", j >> 12),
                     ] {
                         set(r, &mut v, self.col(name), t, value);
                     }
@@ -892,6 +903,7 @@ fn rmsnorm_survey(exhaustive: bool) {
             scope: SCOPE,
             specs: CHAINS,
             keep: Cell::new(None),
+            keep_val: Cell::new(None),
         },
         rsqrt: {
             let table = stele_cqis::tables::Table::rsqrt().expect("table");

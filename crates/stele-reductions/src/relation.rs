@@ -458,6 +458,7 @@ const BATCH: u64 = (1 << 62) | (2 << 48);
 const TUPLE: u64 = (1 << 62) | (3 << 48);
 const VIRTUAL_BATCH: u64 = (1 << 62) | (4 << 48);
 const VIRTUAL_CONTRACTION: u64 = (1 << 62) | (5 << 48);
+const VIRTUAL_POINTWISE: u64 = (1 << 62) | (6 << 48);
 /// Source id of model source `k` is `MODEL + k` (RFC-0026 A5).
 const MODEL: u64 = 1 << 32;
 /// Largest model source: 2^30 entries, the per-source cap of RFC-0010 v2.
@@ -1066,6 +1067,60 @@ impl<'a> ResolvedColumns<'a> {
                     }
                     this.computed[id.0 as usize] = Some(out);
                 }
+                Kind::Virtual(Def::Pointwise { terms }) => {
+                    type PointwiseTerm<'b> = (i128, Vec<(&'b [i64], &'b Ref)>);
+                    let n = 1usize << col.log_len;
+                    let ops: Vec<PointwiseTerm<'_>> = terms
+                        .iter()
+                        .map(|t| {
+                            let factors = t
+                                .factors
+                                .iter()
+                                .map(|r| Ok::<_, Error>((this.get(r.column)?, r)))
+                                .collect::<Result<Vec<_>, _>>()?;
+                            Ok::<_, Error>((i128::from(t.coeff), factors))
+                        })
+                        .collect::<Result<_, _>>()?;
+                    let mut out = vec![0i64; n];
+                    stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+                        let mut local_overflow = false;
+                        for (j, slot) in chunk.iter_mut().enumerate() {
+                            let x = (start + j) as u64;
+                            let mut acc = Some(0i128);
+                            for (coeff, factors) in &ops {
+                                let mut prod = Some(*coeff);
+                                for &(data, r) in factors {
+                                    prod = prod
+                                        .and_then(|p| p.checked_mul(i128::from(data[r.index(x)])));
+                                }
+                                acc = acc.and_then(|a| prod.and_then(|p| a.checked_add(p)));
+                            }
+                            match acc.and_then(|a| i64::try_from(a).ok()) {
+                                Some(v) => *slot = v,
+                                None => local_overflow = true,
+                            }
+                        }
+                        if local_overflow {
+                            chunk[0] = i64::MIN;
+                        }
+                    });
+                    if out.contains(&i64::MIN) {
+                        for (x, slot) in out.iter_mut().enumerate() {
+                            let mut acc = 0i128;
+                            for (coeff, factors) in &ops {
+                                let mut prod = *coeff;
+                                for &(data, r) in factors {
+                                    prod = prod
+                                        .checked_mul(i128::from(data[r.index(x as u64)]))
+                                        .ok_or(Error::Capacity)?;
+                                }
+                                acc = acc.checked_add(prod).ok_or(Error::Capacity)?;
+                            }
+                            *slot = i64::try_from(acc).map_err(|_| Error::Capacity)?;
+                        }
+                    }
+                    this.computed[id.0 as usize] = Some(out);
+                }
                 _ => return Err(Error::Unsupported),
             }
             if let Some((forged_col, idx)) = forge_entry {
@@ -1509,8 +1564,19 @@ fn route_column_claim(
     column: ColumnId,
     batch: &mut [(Vec<K>, K)],
 ) -> Result<(), Error> {
+    route_column_claim_for(&plan.groups, stack, claims, column, batch)
+}
+
+#[cfg(feature = "controls")]
+fn route_column_claim_for(
+    groups: &[Group],
+    stack: &Stack,
+    claims: &Claims,
+    column: ColumnId,
+    batch: &mut [(Vec<K>, K)],
+) -> Result<(), Error> {
     let mut index = 0;
-    for group in &plan.groups {
+    for group in groups {
         for (j, &c) in group.columns.iter().enumerate() {
             if c != column {
                 index += claims.0[c.0 as usize].len();
@@ -1626,10 +1692,16 @@ pub fn stack_source(
     sources: Sources,
     root: [u8; 32],
 ) -> Result<Option<Source<K>>, Error> {
-    plan(relation, sources)?
-        .stack
-        .map(|stack| stack.source(root))
-        .transpose()
+    let stack = if relation.has_virtual() || relation.is_segmented() {
+        plan_segmented(relation, sources)?
+            .segments
+            .into_iter()
+            .next()
+            .and_then(|seg| seg.stack)
+    } else {
+        plan(relation, sources)?.stack
+    };
+    stack.map(|s| s.source(root)).transpose()
 }
 
 /// The plan-derived multiplicity source of check `index` under `root` (RFC-0008 A5,
@@ -1640,10 +1712,25 @@ pub fn multiplicity_source(
     index: usize,
     root: [u8; 32],
 ) -> Result<Source<K>, Error> {
-    let plan = plan(relation, sources)?;
-    let check = plan.checks.get(index).ok_or(Error::Unsupported)?;
+    let check = if relation.has_virtual() || relation.is_segmented() {
+        let seg = plan_segmented(relation, sources)?
+            .segments
+            .into_iter()
+            .next()
+            .ok_or(Error::Unsupported)?;
+        seg.checks
+            .into_iter()
+            .nth(index)
+            .ok_or(Error::Unsupported)?
+    } else {
+        plan(relation, sources)?
+            .checks
+            .into_iter()
+            .nth(index)
+            .ok_or(Error::Unsupported)?
+    };
     let l = check.layout;
-    sources.source(l.id, l.ell, mu_code(check)?.code_id(), root)
+    sources.source(l.id, l.ell, mu_code(&check)?.code_id(), root)
 }
 
 /// Place per-weight messages (`ColumnId` order, `2^n` entries each, signed
@@ -2671,28 +2758,66 @@ struct SegmentedPlan {
     weights: Vec<Weight>,
     model: Vec<Stack>,
     sources: Sources,
+    #[cfg(feature = "controls")]
+    column_claim: Option<ColumnId>,
+}
+
+/// Shared RFC-0006 A1 sumcheck instance for a `Def::Pointwise` virtual column:
+/// `Σ_x eq(z, x) · Σ_t c_t Π_f f(x) = claimed_sum` (RFC-0028 §2.4).
+/// Input `0` is `eq(z, ·)`; inputs `1..=inputs.len()` are the deduplicated factor `Ref`s.
+fn pointwise_instance(
+    col_id: ColumnId,
+    log_len: u8,
+    terms: &[IdentityTerm],
+    claimed_sum: K,
+) -> (Vec<Ref>, Instance<K>, usize) {
+    let mut inputs: Vec<Ref> = Vec::new();
+    let mut sc_terms = Vec::with_capacity(terms.len());
+    let mut degree = 1usize;
+    for term in terms {
+        let mut factors = Vec::with_capacity(1 + term.factors.len());
+        factors.push(0u32);
+        for f in &term.factors {
+            let index = inputs.iter().position(|r| r == f).unwrap_or_else(|| {
+                inputs.push(f.clone());
+                inputs.len() - 1
+            });
+            factors.push((1 + index) as u32);
+        }
+        degree = degree.max(factors.len());
+        sc_terms.push(Term {
+            coefficient: K::from_i64(term.coeff),
+            factors,
+        });
+    }
+    let instance = Instance {
+        id: VIRTUAL_POINTWISE | u64::from(col_id.0),
+        num_vars: u32::from(log_len),
+        inputs: (0..(1 + inputs.len()) as u64).collect(),
+        terms: sc_terms,
+        claimed_sum,
+    };
+    (inputs, instance, degree)
 }
 
 fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan, Error> {
     relation.validate().map_err(Error::StatementMismatch)?;
-    // E18-02 admits `Def::Linear`, E18-03 admits `Def::Contraction`; `Def::Pointwise` lands in E18-04.
+    // RFC-0028 §2.1: all three virtual kinds (`Linear`, `Pointwise`, `Contraction`) are admitted;
+    // contractions must fit their sumcheck variables (`shared + summed`) within `MAX_VARS`.
     for col in &relation.columns {
-        match &col.kind {
-            Kind::Virtual(Def::Pointwise { .. }) => return Err(Error::Unsupported),
-            Kind::Virtual(Def::Contraction {
-                free,
-                summed,
-                lhs,
-                rhs,
-            }) => {
-                let shared = (0..*free)
-                    .filter(|d| lhs.vars.contains(d) && rhs.vars.contains(d))
-                    .count();
-                if shared + usize::from(*summed) > usize::from(stele_ir::relation::MAX_VARS) {
-                    return Err(Error::Unsupported);
-                }
+        if let Kind::Virtual(Def::Contraction {
+            free,
+            summed,
+            lhs,
+            rhs,
+        }) = &col.kind
+        {
+            let shared = (0..*free)
+                .filter(|d| lhs.vars.contains(d) && rhs.vars.contains(d))
+                .count();
+            if shared + usize::from(*summed) > usize::from(stele_ir::relation::MAX_VARS) {
+                return Err(Error::Unsupported);
             }
-            _ => {}
         }
     }
     let seg_count = relation.segments();
@@ -2862,6 +2987,8 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
         weights,
         model,
         sources,
+        #[cfg(feature = "controls")]
+        column_claim: None,
     })
 }
 
@@ -3015,10 +3142,109 @@ fn prove_sumcheck_forged(
     ))
 }
 
+/// Forge a segmented or virtual-column proof (`ProofV2`, RFC-0028) by applying a
+/// `Forge` tamper (`table` shift or `public` entry bump) while keeping `relation`'s
+/// original statement digest in the transcript (controls only).
+#[cfg(feature = "controls")]
+pub fn prove_segmented_forged(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+    forge: &Forge,
+) -> Result<ProofV2, Error> {
+    let plan_timer = Stopwatch::start();
+    let mut plan = plan_segmented(relation, sources)?;
+    let plan_ns = plan_timer.elapsed_ns();
+    if let Some(c) = forge.column_claim {
+        if forge.table.is_some() || forge.public.is_some() || forge.witness.is_some() {
+            return Err(Error::Unsupported);
+        }
+        let group = plan
+            .segments
+            .iter()
+            .flat_map(|seg| seg.groups.iter())
+            .find(|g| g.columns.contains(&c))
+            .ok_or(Error::Unsupported)?;
+        let j = group
+            .columns
+            .iter()
+            .position(|&id| id == c)
+            .ok_or(Error::Unsupported)?;
+        let next = *group.columns.get(j + 1).ok_or(Error::Unsupported)?;
+        let selected = values.get(relation, c).ok_or(Error::Unsupported)?;
+        let adjacent = values.get(relation, next).ok_or(Error::Unsupported)?;
+        if selected != adjacent {
+            return Err(Error::Unsupported);
+        }
+        plan.column_claim = Some(c);
+    }
+    if let Some(i) = forge.table {
+        plan.segments
+            .first_mut()
+            .and_then(|seg| seg.checks.get_mut(i))
+            .ok_or(Error::Unsupported)?
+            .shift = 1;
+    }
+    let mut read = relation.clone();
+    if let Some((c, j)) = forge.public {
+        match read.columns.get_mut(c.0 as usize).map(|c| &mut c.kind) {
+            Some(Kind::Public(v)) if j < v.len() => v[j] += 1,
+            _ => return Err(Error::Unsupported),
+        }
+    }
+    let changed = forge
+        .witness
+        .map(|(c, j)| {
+            let column = read.columns.get(c.0 as usize).ok_or(Error::Unsupported)?;
+            if !matches!(column.kind, Kind::Witness(_))
+                || !plan.segments.iter().any(|seg| {
+                    seg.sizes.iter().any(|&m| {
+                        identities_for(&read, Some(seg.segment), m)
+                            .iter()
+                            .any(|identity| {
+                                identity
+                                    .terms
+                                    .iter()
+                                    .any(|term| term.factors.iter().any(|r| r.column == c))
+                            })
+                    })
+                })
+            {
+                return Err(Error::Unsupported);
+            }
+            let mut entries = values.get(&read, c).ok_or(Error::Unsupported)?.to_vec();
+            let entry = entries.get_mut(j).ok_or(Error::Unsupported)?;
+            *entry = entry
+                .checked_add(1)
+                .filter(|v| column.width.contains(*v))
+                .ok_or(Error::Unsupported)?;
+            let mut changed = values.clone();
+            changed
+                .set(&read, c, entries)
+                .map_err(|_| Error::Unsupported)?;
+            Ok::<_, Error>(changed)
+        })
+        .transpose()?;
+    let actual = changed.as_ref().unwrap_or(values);
+    prove_segmented_with_plan(
+        t,
+        &read,
+        &plan,
+        plan_ns,
+        |_| Ok(actual.clone()),
+        model,
+        None,
+        changed.as_ref().map(|_| values),
+    )
+    .map(|(p, _)| p)
+}
+
 fn prove_segmented_impl<F>(
     t: &mut Transcript<K>,
     relation: &Relation,
-    mut segment_values: F,
+    segment_values: F,
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
     sources: Sources,
     forge_virtual: Option<(ColumnId, usize, Option<usize>)>,
@@ -3029,6 +3255,32 @@ where
     let plan_timer = Stopwatch::start();
     let plan = plan_segmented(relation, sources)?;
     let plan_ns = plan_timer.elapsed_ns();
+    prove_segmented_with_plan(
+        t,
+        relation,
+        &plan,
+        plan_ns,
+        segment_values,
+        model,
+        forge_virtual,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prove_segmented_with_plan<F>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    plan: &SegmentedPlan,
+    plan_ns: u64,
+    mut segment_values: F,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    forge_virtual: Option<(ColumnId, usize, Option<usize>)>,
+    round_values: Option<&Values>,
+) -> Result<(ProofV2, Metrics), Error>
+where
+    F: FnMut(u32) -> Result<Values, Error>,
+{
     if let Some((col_id, idx, comp)) = forge_virtual {
         let col = relation
             .columns
@@ -3043,7 +3295,7 @@ where
                     return Err(Error::Unsupported);
                 }
             }
-            Kind::Virtual(Def::Contraction { .. }) => {
+            Kind::Virtual(Def::Contraction { .. } | Def::Pointwise { .. }) => {
                 if comp.is_some_and(|m| m > 0) {
                     return Err(Error::Unsupported);
                 }
@@ -3149,6 +3401,16 @@ where
                         }
                     }
                 }
+                Kind::Virtual(Def::Pointwise { terms }) => {
+                    let v_len = 1u64 << relation.columns[vid.0 as usize].log_len;
+                    for term in terms {
+                        for f in &term.factors {
+                            if let Some(w_idx) = weight_index[f.column.0 as usize] {
+                                col_reads[w_idx] = col_reads[w_idx].saturating_add(v_len);
+                            }
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -3245,6 +3507,12 @@ where
 
         // Step 2.3 (a): zerochecks for segment `s`.
         let zerocheck_timer = Stopwatch::start();
+        #[cfg(feature = "controls")]
+        let round_resolved = round_values
+            .map(|rv| ResolvedColumns::for_segment(relation, rv, &seg.virtuals, None))
+            .transpose()?;
+        #[cfg(not(feature = "controls"))]
+        let _ = round_values;
         let seg_zc_base = ZEROCHECK | (u64::from(seg.segment) << 16);
         for &m in &seg.sizes {
             let lambdas = identity_lambdas_for(t, relation, Some(seg.segment), m)?;
@@ -3261,21 +3529,34 @@ where
                     col_reads[w_idx] = col_reads[w_idx].saturating_add(zc_reads);
                 }
             }
-            let mut tables = Vec::with_capacity(inputs.len());
-            for r in &inputs {
-                let col = resolved.get(r.column)?;
-                let mut table = vec![K::from_i64(0); 1 << m];
-                stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
-                    for (j, out) in chunk.iter_mut().enumerate() {
-                        *out = K::from_i64(col[r.index((start + j) as u64)]);
-                    }
-                });
-                tables.push(table);
-            }
+            let tables_for = |res: &ResolvedColumns<'_>| -> Result<Vec<Vec<K>>, Error> {
+                let mut tables = Vec::with_capacity(inputs.len());
+                for r in &inputs {
+                    let col = res.get(r.column)?;
+                    let mut table = vec![K::from_i64(0); 1 << m];
+                    stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
+                        for (j, out) in chunk.iter_mut().enumerate() {
+                            *out = K::from_i64(col[r.index((start + j) as u64)]);
+                        }
+                    });
+                    tables.push(table);
+                }
+                Ok(tables)
+            };
+            let tables = tables_for(&resolved)?;
             let z = zerocheck::Zerocheck {
                 instance: &instance,
                 skip: 0,
             };
+            #[cfg(feature = "controls")]
+            let (zp, point) = match round_resolved.as_ref() {
+                Some(orig) => {
+                    let reference = tables_for(orig)?;
+                    z.prove_forged_finals(&reference, &tables, t)
+                }
+                None => z.prove_with_point(&tables, t),
+            }?;
+            #[cfg(not(feature = "controls"))]
             let (zp, point) = z.prove_with_point(&tables, t)?;
             let mut out = Vec::new();
             for row in &zp.rounds {
@@ -3510,6 +3791,91 @@ where
                     shape.route_operands(lhs, rhs, *free, &sc, &sp.final_values, &mut claims);
                     proof.segments[s].reductions.push(out);
                 }
+                Kind::Virtual(Def::Pointwise { terms }) => {
+                    let mut out = Vec::new();
+                    let (z, claimed_val) = if col_claims.len() > 1 {
+                        let batch = claim_batch::Batch {
+                            id: VIRTUAL_BATCH | u64::from(col_id.0),
+                            tensor: u64::from(col_id.0),
+                            num_vars: u32::from(col.log_len),
+                            claims: &col_claims,
+                        };
+                        let table: Vec<K> = resolved
+                            .get(col_id)?
+                            .iter()
+                            .map(|&v| K::from_i64(v))
+                            .collect();
+                        let (bp, point) = batch.prove_with_point(table, t)?;
+                        for row in &bp.rounds {
+                            put(&mut out, row);
+                        }
+                        put(&mut out, &bp.final_values);
+                        (point, bp.final_values[0])
+                    } else {
+                        col_claims.into_iter().next().ok_or(Error::ProofShape)?
+                    };
+                    let (inputs, instance, _degree) =
+                        pointwise_instance(col_id, col.log_len, terms, claimed_val);
+                    let pw_reads = 1u64 << col.log_len;
+                    for r in &inputs {
+                        if let Some(w_idx) = weight_index[r.column.0 as usize] {
+                            col_reads[w_idx] = col_reads[w_idx].saturating_add(pw_reads);
+                        }
+                    }
+                    let mut tables = Vec::with_capacity(1 + inputs.len());
+                    tables.push(stele_sumcheck::parallel::eq_table(&z)?);
+                    for r in &inputs {
+                        let data = resolved.get(r.column)?;
+                        let mut table = vec![K::from_i64(0); 1usize << col.log_len];
+                        stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
+                            for (j, slot) in chunk.iter_mut().enumerate() {
+                                *slot = K::from_i64(data[r.index((start + j) as u64)]);
+                            }
+                        });
+                        tables.push(table);
+                    }
+                    let dense = Dense::new(&instance, tables)?;
+                    #[cfg(any(test, feature = "controls"))]
+                    let (sp, sc) = if let Some((forged_col, _, comp)) = forge_virtual {
+                        if forged_col == col_id {
+                            prove_sumcheck_forged(&instance, dense, t, comp.is_some())?
+                        } else {
+                            let mut sc = Vec::new();
+                            let capture = Capture {
+                                dense,
+                                point: &mut sc,
+                            };
+                            let sp = stele_sumcheck::prove(&instance, capture, t)?;
+                            (sp, sc)
+                        }
+                    } else {
+                        let mut sc = Vec::new();
+                        let capture = Capture {
+                            dense,
+                            point: &mut sc,
+                        };
+                        let sp = stele_sumcheck::prove(&instance, capture, t)?;
+                        (sp, sc)
+                    };
+                    #[cfg(not(any(test, feature = "controls")))]
+                    let (sp, sc) = {
+                        let mut sc = Vec::new();
+                        let capture = Capture {
+                            dense,
+                            point: &mut sc,
+                        };
+                        let sp = stele_sumcheck::prove(&instance, capture, t)?;
+                        (sp, sc)
+                    };
+                    for row in &sp.rounds {
+                        put(&mut out, row);
+                    }
+                    put(&mut out, &sp.final_values);
+                    for (r, &val) in inputs.iter().zip(&sp.final_values[1..]) {
+                        claims.push(r, &sc, val);
+                    }
+                    proof.segments[s].reductions.push(out);
+                }
                 _ => return Err(Error::Unsupported),
             }
         }
@@ -3522,8 +3888,21 @@ where
         if let Some((prev_s, prev_prepared, prev_handle)) = prev.take() {
             let prev_seg = &plan.segments[prev_s];
             if let Some(prev_stack) = &prev_seg.stack {
-                let batch = group_claims_for(&prev_seg.groups, prev_stack, &claims);
+                #[allow(unused_mut)]
+                let mut batch = group_claims_for(&prev_seg.groups, prev_stack, &claims);
                 if !batch.is_empty() {
+                    #[cfg(feature = "controls")]
+                    if let Some(c) = plan.column_claim {
+                        if prev_seg.groups.iter().any(|g| g.columns.contains(&c)) {
+                            route_column_claim_for(
+                                &prev_seg.groups,
+                                prev_stack,
+                                &claims,
+                                c,
+                                &mut batch,
+                            )?;
+                        }
+                    }
                     let opening = Opening {
                         id: BATCH | ((prev_s as u64) << 32),
                         tensor: prev_stack.id,
@@ -3547,8 +3926,21 @@ where
     if let Some((last_s, last_prepared, last_handle)) = prev.take() {
         let last_seg = &plan.segments[last_s];
         if let Some(last_stack) = &last_seg.stack {
-            let batch = group_claims_for(&last_seg.groups, last_stack, &claims);
+            #[allow(unused_mut)]
+            let mut batch = group_claims_for(&last_seg.groups, last_stack, &claims);
             if !batch.is_empty() {
+                #[cfg(feature = "controls")]
+                if let Some(c) = plan.column_claim {
+                    if last_seg.groups.iter().any(|g| g.columns.contains(&c)) {
+                        route_column_claim_for(
+                            &last_seg.groups,
+                            last_stack,
+                            &claims,
+                            c,
+                            &mut batch,
+                        )?;
+                    }
+                }
                 let opening = Opening {
                     id: BATCH | ((last_s as u64) << 32),
                     tensor: last_stack.id,
@@ -3878,6 +4270,68 @@ pub fn verify_segmented(
                         &sp.final_values,
                         &mut claims,
                     );
+                    ledger.add(
+                        Line::Sc,
+                        &col.name,
+                        reduction.sc.numerator,
+                        u64::from(reduction.sc.degree),
+                    );
+                }
+                Kind::Virtual(Def::Pointwise { terms }) => {
+                    let (z, claimed_val) = if col_claims.len() > 1 {
+                        let batch = claim_batch::Batch {
+                            id: VIRTUAL_BATCH | u64::from(col_id.0),
+                            tensor: u64::from(col_id.0),
+                            num_vars: u32::from(col.log_len),
+                            claims: &col_claims,
+                        };
+                        let mut rounds = Vec::with_capacity(usize::from(col.log_len));
+                        for _ in 0..col.log_len {
+                            rounds.push(reader.ks(3)?);
+                        }
+                        let bp = stele_sumcheck::Proof {
+                            rounds,
+                            final_values: reader.ks(1)?,
+                        };
+                        let reduction = batch.verify(&bp, t)?;
+                        ledger.add(
+                            Line::Rlc,
+                            &col.name,
+                            reduction.rlc.numerator,
+                            reduction.rlc.numerator,
+                        );
+                        ledger.add(
+                            Line::Sc,
+                            &col.name,
+                            reduction.sc.numerator,
+                            u64::from(reduction.sc.degree),
+                        );
+                        let claim = &reduction.claims[0];
+                        (claim.point.clone(), claim.value)
+                    } else {
+                        col_claims.into_iter().next().ok_or(Error::ProofShape)?
+                    };
+                    let (inputs, instance, degree) =
+                        pointwise_instance(col_id, col.log_len, terms, claimed_val);
+                    let width = degree + 1;
+                    let mut rounds = Vec::with_capacity(usize::from(col.log_len));
+                    for _ in 0..col.log_len {
+                        rounds.push(reader.ks(width)?);
+                    }
+                    let sp = stele_sumcheck::Proof {
+                        rounds,
+                        final_values: reader.ks(instance.inputs.len())?,
+                    };
+                    reader.end()?;
+                    let reduction = stele_sumcheck::verify(&instance, &sp, t)?;
+                    let expected_eq = stele_poly::eq_evaluate(&z, &reduction.point)
+                        .map_err(|_| Error::Capacity)?;
+                    if sp.final_values[0] != expected_eq {
+                        return Err(Error::EqMismatch);
+                    }
+                    for (r, &val) in inputs.iter().zip(&sp.final_values[1..]) {
+                        claims.push(r, &reduction.point, val);
+                    }
                     ledger.add(
                         Line::Sc,
                         &col.name,

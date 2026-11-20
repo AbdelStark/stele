@@ -36,10 +36,18 @@ class Reader:
     def blob(self): return self.take(self.number('I'))
 
 
+def skip_ref(r):
+    r.take(4)
+    r.take(r.number('B'))
+
+
 def columns(raw):
     r = Reader(raw)
-    assert r.take(31) == b'stele/v0.1/relation/encoding/v1'
-    for _ in range(r.number('I')): r.blob(); r.take(1)
+    magic = r.take(31)
+    assert magic in (b'stele/v0.1/relation/encoding/v1', b'stele/v0.1/relation/encoding/v2')
+    v2 = magic == b'stele/v0.1/relation/encoding/v2'
+    for _ in range(r.number('I')):
+        r.blob(); r.take(5 if v2 else 1)
     out = []
     for _ in range(r.number('I')):
         name, kind = r.blob().decode(), r.number('B')
@@ -48,9 +56,26 @@ def columns(raw):
         elif kind == 2:
             count = r.number('I'); start = r.at
             vals = [r.number('q') for _ in range(count)]
+        elif kind == 3 and v2:
+            tag = r.number('B')
+            if tag == 0:
+                r.take(8)
+                for _ in range(r.number('I')): r.take(8); skip_ref(r)
+            elif tag == 1:
+                for _ in range(r.number('I')):
+                    r.take(8)
+                    for _ in range(r.number('B')): skip_ref(r)
+            elif tag == 2:
+                r.take(2); skip_ref(r); skip_ref(r)
+            else:
+                raise AssertionError(f'bad virtual def tag {tag}')
+            seg_opt = r.number('B')
+            if seg_opt == 1: r.take(4)
+            else: assert seg_opt == 0
         else: assert kind == 1
         width_at = r.at
         signed, width, log = r.take(3)
+        if v2: r.take(1)
         out.append((name, kind, signed, width, log, vals, start, width_at))
     return out
 

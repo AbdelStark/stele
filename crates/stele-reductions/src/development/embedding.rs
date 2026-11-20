@@ -1,11 +1,14 @@
 //! RFC-0026 §5 row 1: the family-1 embedding gather of RFC-0025 §2.5,
 //! `R0[t,k] = R(e[x_t,k] · m[x_t] · 2^s)` with `s = ee + f0` and one half-away rounding.
 //!
-//! Columns: the token embedding `E` (weight, V×d), the gathered codes `G = O·E` (one
-//! matmul per row block, `O` the public one-hot of the tokens), the sign `σ` of `G`
-//! (lookup `(G, σ)`), the output `R0` (T×d) and, when `s < 0`, the rounding remainder
-//! `ρ` (one or two range-checked limbs). Public: `O`, `m[t] = m[x_t]`, the real-feature
-//! mask `w[k] = [k < d]` and block masks. Shared patterns: sign, round-half-away.
+//! Committed columns (RFC-0028 §1.2):
+//! - Weight: token embedding `E` (`V×d`, int8 or int4).
+//! - Witness advice: `sigma` (`u1`, sign of `G` via `(G, sigma)` lookup); when `s < 0`,
+//!   rounded output `R0` (`s16`) and high remainder limb `rho_hi` (only if `h > 16`).
+//! - Virtual: gathered block contractions `G_b`, merged codes `G`, exact output `R0`
+//!   (when `s >= 0`), and low rounding remainder `rho_lo` (when `s < 0`).
+//!
+//! Public: `O`, `m[t] = m[x_t]`, real-feature mask `w[k] = [k < d]`, and block masks.
 //!
 //! **Output uniqueness (RFC-0026 §5.2).** The matmul fixes `G[t,k] = E[x_t,k]`. The sign
 //! lookup fixes `σ = [G < 0]`. With `P = G·m·w`:
@@ -24,7 +27,7 @@ use alloc::format;
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_ir::relation::{
-    ColumnId, Kind, Lookup, Matmul, Module, Relation, Values, Violation, Width, MAX_VARS,
+    ColumnId, Def, Kind, Lookup, Module, Range, Relation, Values, Violation, Width, MAX_VARS,
 };
 
 /// Plan data of the family-1 token embedding (RFC-0025 §2.1, §2.5).
@@ -57,6 +60,7 @@ pub struct EmbeddingCapture {
 
 struct Columns {
     weight: ColumnId,
+    #[allow(dead_code)]
     blocks: Vec<ColumnId>,
     gathered: ColumnId,
     sign: ColumnId,
@@ -150,36 +154,58 @@ impl Module for Embedding {
                 })
                 .collect();
             let onehot = scope.public(relation, &format!("O{b}"), onehot, lb + lv);
-            let out = if lb == lt {
-                scope.witness(relation, "G", code, ld + lt)
+            let label = if lb == lt {
+                alloc::string::String::from("G")
             } else {
-                scope.ranged(relation, &format!("G{b}"), code, ld + lb)
+                format!("G{b}")
             };
-            relation.matmuls.push(Matmul {
-                name: format!("{}/gather{b}", scope.name),
-                free: ld + lb,
-                summed: lv,
-                out: at(out, 0..ld + lb),
-                lhs: at(onehot, (ld + lb..ld + lb + lv).chain(ld..ld + lb)),
-                rhs: at(weight, (0..ld).chain(ld + lb..ld + lb + lv)),
-            });
+            // Virtual contraction gather: 2^lv * 1 * 2^(bits-1) <= HALF_MODULUS; range check
+            // tightens downstream magnitude to `code` via RFC-0028 A1.
+            let out = relation.add_virtual(
+                &format!("{}/{label}", scope.name),
+                Def::Contraction {
+                    free: ld + lb,
+                    summed: lv,
+                    lhs: at(onehot, (ld + lb..ld + lb + lv).chain(ld..ld + lb)),
+                    rhs: at(weight, (0..ld).chain(ld + lb..ld + lb + lv)),
+                },
+                ld + lb,
+            );
+            let need_block_range = lb == lt
+                || ((1u128 << (lt - lb)) * (1u128 << lv) * code.magnitude()
+                    > stele_ir::relation::HALF_MODULUS);
+            if need_block_range {
+                relation.ranges.push(Range {
+                    name: format!("{}/{label}/range", scope.name),
+                    column: out,
+                    width: code,
+                });
+            }
             blocks.push(out);
         }
         let all = || 0..ld + lt;
         let gathered = if lb == lt {
             blocks[0]
         } else {
-            let gathered = scope.witness(relation, "G", code, ld + lt);
-            let mut terms = vec![term(1, vec![at(gathered, all())])];
+            let mut terms = Vec::new();
             for (b, &block) in blocks.iter().enumerate() {
                 let mask = (0..t).map(|i| i64::from(i / size == b)).collect();
                 let mask = scope.public(relation, &format!("B{b}"), mask, lt);
                 terms.push(term(
-                    -1,
+                    1,
                     vec![at(mask, ld..ld + lt), at(block, (0..ld).chain(ld..ld + lb))],
                 ));
             }
-            scope.identity(relation, "blocks", ld + lt, terms);
+            let gathered = relation.add_virtual(
+                &format!("{}/G", scope.name),
+                Def::Pointwise { terms },
+                ld + lt,
+            );
+            relation.ranges.push(Range {
+                name: format!("{}/G/range", scope.name),
+                column: gathered,
+                width: code,
+            });
             gathered
         };
         let sign = scope.witness(relation, "sigma", Width::unsigned(1), ld + lt);
@@ -207,27 +233,29 @@ impl Module for Embedding {
                 })
                 .collect();
             let scaled = scope.public(relation, "mm", scaled, lt);
-            output = scope.ranged(relation, "R0", Width::signed(16), ld + lt);
-            scope.identity(
-                relation,
-                "exact",
-                ld + lt,
-                vec![
-                    term(1, vec![at(output, all())]),
-                    term(
-                        -1,
+            output = relation.add_virtual(
+                &format!("{}/R0", scope.name),
+                Def::Pointwise {
+                    terms: vec![term(
+                        1,
                         vec![
                             at(gathered, all()),
                             at(scaled, ld..ld + lt),
                             at(mask, 0..ld),
                         ],
-                    ),
-                ],
+                    )],
+                },
+                ld + lt,
             );
+            relation.ranges.push(Range {
+                name: format!("{}/R0/range", scope.name),
+                column: output,
+                width: Width::signed(16),
+            });
         } else {
             let h = (-shift).min(CAP) as u8;
             // |P| <= 2^(bits-1)·65535, so |R0| <= (that + 2^(h-1)) >> h: narrow R0 to keep the
-            // identity under p (the int16 interface width is an upper bound, RFC-0026 §5.1).
+            // virtual remainder under p/2 (the int16 interface width is an upper bound).
             let largest = ((1u64 << (bits - 1)) * 65535 + (1 << (h - 1))) >> h;
             let width = super::limbs::width_of(-(largest as i128), largest as i128);
             output = scope.ranged(relation, "R0", Width::signed(width.bits.min(16)), ld + lt);
@@ -244,19 +272,34 @@ impl Module for Embedding {
             if h > 1 {
                 terms.push(term((1 << (h - 1)) - 1, vec![]));
             }
-            let mut left = h;
-            for i in 0..2 {
-                if left == 0 {
-                    break;
-                }
-                let bits = left.min(16);
-                let limb =
-                    scope.ranged(relation, &format!("rho{i}"), Width::unsigned(bits), ld + lt);
-                terms.push(term(-(1 << (16 * i)), vec![at(limb, all())]));
-                remainder.push(limb);
-                left -= bits;
+            if h > 16 {
+                let high = scope.ranged(relation, "rho1", Width::unsigned(h - 16), ld + lt);
+                terms.push(term(-(1 << 16), vec![at(high, all())]));
+                let low = relation.add_virtual(
+                    &format!("{}/rho0", scope.name),
+                    Def::Pointwise { terms },
+                    ld + lt,
+                );
+                relation.ranges.push(Range {
+                    name: format!("{}/rho0/range", scope.name),
+                    column: low,
+                    width: Width::unsigned(16),
+                });
+                remainder.push(low);
+                remainder.push(high);
+            } else {
+                let low = relation.add_virtual(
+                    &format!("{}/rho0", scope.name),
+                    Def::Pointwise { terms },
+                    ld + lt,
+                );
+                relation.ranges.push(Range {
+                    name: format!("{}/rho0/range", scope.name),
+                    column: low,
+                    width: Width::unsigned(h),
+                });
+                remainder.push(low);
             }
-            scope.identity(relation, "round", ld + lt, terms);
         }
         self.columns = Some(Columns {
             weight,
@@ -292,36 +335,32 @@ impl Module for Embedding {
             }
             Ok(out)
         };
-        // Padded weight entries are committed as 0 (RFC-0026 §2.1), so G is 0 there too.
         let gathered = grid(&capture.codes, c.gathered)?;
         let output = grid(&capture.output, c.output)?;
-        let size = t / c.blocks.len();
-        if c.blocks.len() > 1 {
-            for (b, &block) in c.blocks.iter().enumerate() {
-                let rows = gathered[(b * size) << ld..((b + 1) * size) << ld].to_vec();
-                values.set(relation, block, rows)?;
-            }
-        }
         let sign: Vec<i64> = gathered.iter().map(|&g| i64::from(g < 0)).collect();
-        if let [low, rest @ ..] = c.remainder.as_slice() {
+        if let [_, high] = c.remainder.as_slice() {
             let h = (-self.shift()).min(CAP);
-            let rho: Vec<i64> = (0..gathered.len())
+            let rho_hi: Vec<i64> = (0..gathered.len())
                 .map(|i| {
                     let (row, k) = (i >> ld, i & ((1 << ld) - 1));
                     let p = gathered[i] * self.mantissa(row) * i64::from(k < d);
-                    (output[i] << h) - p + sign[i] + (1 << (h - 1)) - 1
+                    ((output[i] << h) - p + sign[i] + (1 << (h - 1)) - 1) >> 16
                 })
                 .collect();
-            if let [high] = rest {
-                values.set(relation, *low, rho.iter().map(|r| r & 0xffff).collect())?;
-                values.set(relation, *high, rho.iter().map(|r| r >> 16).collect())?;
-            } else {
-                values.set(relation, *low, rho)?;
-            }
+            values.set(relation, *high, rho_hi)?;
         }
-        values.set(relation, c.gathered, gathered)?;
         values.set(relation, c.sign, sign)?;
-        values.set(relation, c.output, output)?;
+        if matches!(relation.columns[c.output.0 as usize].kind, Kind::Virtual(_)) {
+            let actual = stele_ir::relation::eval_column(relation, values, c.output)?;
+            if let Some(point) = actual.iter().zip(&output).position(|(a, b)| a != b) {
+                return Err(Violation::Identity {
+                    relation: format!("{}/exact", self.scope.name),
+                    point: point as u64,
+                });
+            }
+        } else {
+            values.set(relation, c.output, output)?;
+        }
         Ok(())
     }
 }

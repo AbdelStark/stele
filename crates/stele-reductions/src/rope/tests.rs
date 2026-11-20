@@ -104,8 +104,8 @@ struct Case {
 }
 
 impl Case {
-    fn column(&self, id: ColumnId) -> &[i64] {
-        self.values.get(&self.relation, id).expect("column")
+    fn column(&self, id: ColumnId) -> Vec<i64> {
+        stele_ir::relation::eval_column(&self.relation, &self.values, id).expect("column")
     }
 }
 
@@ -219,7 +219,8 @@ impl Case {
     fn with(&self, changes: &[(ColumnId, usize, i64)]) -> Values {
         let mut values = self.values.clone();
         for &(id, index, v) in changes {
-            let mut column = values.get(&self.relation, id).expect("column").to_vec();
+            let mut column =
+                stele_ir::relation::eval_column(&self.relation, &values, id).expect("column");
             column[index] = v;
             values.set(&self.relation, id, column).expect("set");
         }
@@ -318,14 +319,21 @@ fn rejects_tampered_partner() {
     let r = fixtures(8, 0).remove(2);
     let case = case(Some(&r), &rng.input(64, false), 4, 2, 8).expect("honest");
     let id = case.rope.columns().expect("declared").partner;
+    // RFC-0028 §1.2: `partner` is a virtual contraction computed from `input` and `perm`;
+    // `check` ignores any forged `Values` entry, while changing `out` to match a forged
+    // partner (+k in numerator) fails `numerator`.
+    assert!(matches!(
+        case.relation.columns[id.0 as usize].kind,
+        Kind::Virtual(_)
+    ));
     let mut values = case.values.clone();
     let mut partner = case.column(id).to_vec();
     partner[9] += 1;
     values.set(&case.relation, id, partner).expect("set");
-    assert!(matches!(
-        check(&case.relation, &values),
-        Err(Violation::Matmul { .. })
-    ));
+    assert_eq!(check(&case.relation, &values), Ok(()));
+    let out = case.rope.columns().expect("declared").output;
+    let bad = case.with(&[(out, 9, case.column(out)[9] + 1)]);
+    assert!(check(&case.relation, &bad).is_err());
 }
 
 /// Honest outputs of the other layout, or of every row shifted by one position, are
@@ -476,7 +484,7 @@ fn rejects_flipped_half_at_tie() {
         ]);
         assert!(matches!(
             check(&case.relation, &values),
-            Err(Violation::Identity { relation, .. }) if relation.ends_with("/rounding")
+            Err(Violation::Range { relation, .. }) if relation.ends_with("/tie")
         ));
     }
 }
@@ -667,6 +675,9 @@ fn rejects_relation_without_each_constraint() {
         .chain(case.relation.ranges.iter().map(|r| r.name.clone()))
         .filter(|n| n.starts_with(prefix))
         .collect();
+    // Virtualizations remove `gather` (virtual Contraction), `rounding` (virtual tie),
+    // and `sign` (virtual twos); keep attackers for every remaining constraint.
+    attacks.retain(|(short, _, _)| names.iter().any(|n| &n[prefix.len()..] == *short));
     // Implied ranges: P is a permutation of int16 x (gather); tc and the int16 out force
     // ν ∈ {0, 1} (sign). Both stay for range discipline.
     let implied = ["partner", "negative"];

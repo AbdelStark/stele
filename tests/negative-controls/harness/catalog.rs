@@ -63,10 +63,10 @@ fn accepts_repository_catalog_without_crediting_stub() {
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
     assert!(
-        coverage.contains("82/126 bindings; 154/252 controls"),
+        coverage.contains("84/126 bindings; 156/252 controls"),
         "{coverage}"
     );
-    assert_eq!(coverage.matches("MISSING").count(), 98);
+    assert_eq!(coverage.matches("MISSING").count(), 96);
     for id in [
         203, 210, 211, 212, 213, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317,
         318, 400, 401, 402, 403, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 603, 605, 609,
@@ -74,7 +74,7 @@ fn accepts_repository_catalog_without_crediting_stub() {
         907, 908, 909, 910, 911, 913, 914, 915, 916, 930, 931, 932, 1300, 1301, 1302, 1303, 1304,
         1305, 1306, 1307, 1308, 1309, 1310, 1311, 1312, 1313, 1314, 1315, 1316, 1317, 1318, 1319,
         1320, 1321, 1322, 1323, 1324, 1325, 1326, 1327, 1328, 1329, 1330, 1331, 1332, 1333, 1334,
-        1335, 1336, 1337, 1338,
+        1335, 1336, 1337, 1338, 1339, 1340,
     ] {
         assert!(
             catalog
@@ -87,11 +87,7 @@ fn accepts_repository_catalog_without_crediting_stub() {
             line.starts_with(&format!("NC-{id:04} |")) && line.ends_with("passed")
         }));
     }
-    for id in (100..=126)
-        .chain(704..=710)
-        .chain(1204..=1206)
-        .chain(1339..=1340)
-    {
+    for id in (100..=126).chain(704..=710).chain(1204..=1206) {
         assert!(
             !catalog
                 .iter()
