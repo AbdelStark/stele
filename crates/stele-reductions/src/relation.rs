@@ -32,7 +32,14 @@ use stele_sumcheck::{claim_batch, parallel, zerocheck, Dense, DenseTable, Instan
 mod codec;
 #[path = "relation_lookup.rs"]
 mod lookup;
+#[path = "relation_recursive.rs"]
+mod recursive;
 pub use codec::{digest, encode};
+pub use recursive::{
+    eq_prefix_mle, prove_recursive_measured, recursive_model_layout, recursive_model_layout_for,
+    recursive_model_sources, verify_recursive, verify_recursive_model, RecursiveModelLayout,
+    RecursiveModelSource,
+};
 
 /// The development profile's challenge field (RFC-0026 §1.2).
 pub type K = QM31;
@@ -60,6 +67,8 @@ pub enum Error {
     Lookup(crate::lookup::Error),
     /// A certificate or opening rejected.
     Pcs(stele_pcs::Error),
+    /// An RFC-0029 recursive commitment or joined tail rejected.
+    Recursive(stele_pcs::recursive::RecursiveError),
     /// A batched lookup's member evaluations do not sum to its tuple claim (A3).
     MemberSumMismatch,
     /// A matmul's shared-bit equality factor disagrees with eq(ρ, r).
@@ -81,6 +90,11 @@ impl From<stele_hash::Error> for Error {
 impl From<stele_sumcheck::Error> for Error {
     fn from(e: stele_sumcheck::Error) -> Self {
         Self::Sumcheck(e)
+    }
+}
+impl From<stele_pcs::recursive::RecursiveError> for Error {
+    fn from(e: stele_pcs::recursive::RecursiveError) -> Self {
+        Self::Recursive(e)
     }
 }
 
@@ -187,6 +201,56 @@ impl Ledger {
             },
             grind: p.column_grind_bits,
         });
+    }
+    /// Certified registration rounds of an RFC-0029 version-4 model source (RFC-0026 A29).
+    fn certified_registration(
+        &mut self,
+        name: &str,
+        cert: &stele_pcs::recursive::CertificateLedger,
+    ) {
+        self.pcs.push(PcsRound {
+            name: name.into(),
+            tensor: Some(cert.proximity_numerator),
+            target: 0,
+            grind: 0,
+        });
+        self.pcs.push(PcsRound {
+            name: name.into(),
+            tensor: None,
+            target: u32::from(cert.target_bits),
+            grind: 0,
+        });
+    }
+    /// Soundness ledger lines for one RFC-0029 recursion level (RFC-0029 §5, RFC-0012 A20).
+    fn recursive_level(
+        &mut self,
+        name: &str,
+        lvl: &stele_pcs::recursive::LevelLedger,
+        count_proximity: bool,
+    ) {
+        if count_proximity && lvl.proximity_numerator > 0 {
+            self.pcs.push(PcsRound {
+                name: name.into(),
+                tensor: Some(lvl.proximity_numerator),
+                target: 0,
+                grind: 0,
+            });
+        }
+        self.pcs.push(PcsRound {
+            name: name.into(),
+            tensor: None,
+            target: u32::from(lvl.target_bits),
+            grind: 0,
+        });
+        if lvl.sumcheck_numerator > 0 {
+            self.add(Line::Sc, name, lvl.sumcheck_numerator, 2);
+        }
+        if lvl.beta_numerator > 0 {
+            self.add(Line::Rlc, name, lvl.beta_numerator, lvl.beta_numerator);
+        }
+        if lvl.gamma_numerator > 0 {
+            self.add(Line::Rlc, name, lvl.gamma_numerator, lvl.gamma_numerator);
+        }
     }
     /// `ε_interactive · |K|`: the sum of every non-FS, non-PCS numerator.
     pub fn interactive(&self) -> u64 {
@@ -485,18 +549,25 @@ pub enum Sources {
     Circle,
     /// A12: `Circle`, with every multiplicity source at Circle rate 1/4 too.
     CircleAll,
-    /// A14 (Draft): `CircleAll`, with each check's `(β, α)` round ground at the
+    /// A14: `CircleAll`, with each check's `(β, α)` round ground at the
     /// least bits meeting RFC-0012 A17 (C1) (profile byte 5).
     CircleAllGrind,
+    /// A29 / RFC-0029: coefficient-form Circle sources (version 4, Policy 3) for segments,
+    /// stacked multiplicity sources, and certified model sources joining one recursion
+    /// per proof (profile byte 6, task E19-04).
+    CircleRecursive,
 }
 impl Sources {
     /// Stacked and model sources are A11's Circle rate-1/4 sources (A11, A12).
     fn circle(self) -> bool {
         self != Sources::Expander
     }
-    /// Every multiplicity source is Circle rate 1/4 (A12, A14).
+    /// Every multiplicity source is Circle rate 1/4 (A12, A14, A29).
     fn quarter_mu(self) -> bool {
-        matches!(self, Sources::CircleAll | Sources::CircleAllGrind)
+        matches!(
+            self,
+            Sources::CircleAll | Sources::CircleAllGrind | Sources::CircleRecursive
+        )
     }
     /// The verifier's source of `(id, ell, code)` under this set's policy.
     pub fn source(self, id: u64, ell: u8, code: &[u8], root: [u8; 32]) -> Result<Source<K>, Error> {

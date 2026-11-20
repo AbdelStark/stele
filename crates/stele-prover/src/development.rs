@@ -172,6 +172,8 @@ pub const CIRCLE_ALL_PROFILE: u8 = 3;
 /// RFC-0026 A14 (Draft): the profile byte of a development proof on A12 sources whose
 /// lookup `(β, α)` rounds grind (`Sources::CircleAllGrind`).
 pub const GRIND_PROFILE: u8 = 5;
+/// RFC-0026 A29 / RFC-0029: joined recursive openings (`Sources::CircleRecursive`).
+pub const RECURSIVE_PROFILE: u8 = 6;
 const STATEMENT_TAG: &[u8] = b"stele/v0.1/dev-e2e/statement";
 const SEGMENTED_INPUT_TAG: &[u8] = b"stele/v0.1/dev-e2e/segmented";
 
@@ -210,6 +212,7 @@ pub fn public_input(public: &Public, cqis_id: &[u8; 32], statement: &Statement) 
         Sources::Circle => out.push(CIRCLE_PROFILE),
         Sources::CircleAll => out.push(CIRCLE_ALL_PROFILE),
         Sources::CircleAllGrind => out.push(GRIND_PROFILE),
+        Sources::CircleRecursive => out.push(RECURSIVE_PROFILE),
     }
     if public.segment_layers > 0 {
         out.extend_from_slice(SEGMENTED_INPUT_TAG);
@@ -283,6 +286,11 @@ fn layout_for(
             );
     let sources = match zk {
         true => 1,
+        false if public.sources == Sources::CircleRecursive => {
+            relation::recursive_model_layout(&layout.relation)
+                .map_err(Error::Engine)?
+                .len()
+        }
         false => relation::model_layout(&layout.relation, public.sources)
             .map_err(Error::Engine)?
             .len(),
@@ -313,13 +321,18 @@ struct RoleLayout {
     lanes: usize,
 }
 
+enum WeightLayouts {
+    Standard(Vec<relation::ModelLayout>),
+    Recursive(Vec<relation::RecursiveModelLayout>),
+}
+
 /// Weight codes of an Artifact in plan order, and its public 1-D records.
 /// Weight matrices are streamed directly into `stacked` (M31) without retaining
 /// duplicate `i16`/`i64` copies, and decoded per role on demand (RFC-0026 A27, task E18-06).
 pub struct Weights {
     pub vectors: Vec<(u16, Vec<i16>)>,
-    /// The model sources and their stacked messages (RFC-0026 A5).
-    layouts: Vec<relation::ModelLayout>,
+    /// The model sources and their stacked messages (RFC-0026 A5, A29).
+    layouts: WeightLayouts,
     stacked: Vec<Vec<M31>>,
     roles: Vec<RoleLayout>,
     sources: Sources,
@@ -452,10 +465,26 @@ impl Weights {
             lengths.push(padded.trailing_zeros() as u8);
             matched.push(rec);
         }
-        let layouts = relation::model_layout_for(&lengths, sources).map_err(Error::Engine)?;
-        let mut stacked: Vec<Vec<M31>> = layouts
+        let layouts = if sources == Sources::CircleRecursive {
+            WeightLayouts::Recursive(
+                relation::recursive_model_layout_for(&lengths).map_err(Error::Engine)?,
+            )
+        } else {
+            WeightLayouts::Standard(
+                relation::model_layout_for(&lengths, sources).map_err(Error::Engine)?,
+            )
+        };
+        let source_bits: Vec<u8> = match &layouts {
+            WeightLayouts::Standard(ls) => ls.iter().map(|l| l.bits).collect(),
+            WeightLayouts::Recursive(ls) => ls.iter().map(|l| l.bits).collect(),
+        };
+        let source_blocks: Vec<&[(usize, usize)]> = match &layouts {
+            WeightLayouts::Standard(ls) => ls.iter().map(|l| l.blocks.as_slice()).collect(),
+            WeightLayouts::Recursive(ls) => ls.iter().map(|l| l.blocks.as_slice()).collect(),
+        };
+        let mut stacked: Vec<Vec<M31>> = source_bits
             .iter()
-            .map(|l| alloc::vec![M31::from_i64(0); 1 << l.bits])
+            .map(|&bits| alloc::vec![M31::from_i64(0); 1 << bits])
             .collect();
         let mut roles: Vec<RoleLayout> = matched
             .iter()
@@ -466,8 +495,8 @@ impl Weights {
                 lanes: rec.lanes,
             })
             .collect();
-        for (source_idx, model_layout) in layouts.iter().enumerate() {
-            for &(w, offset) in &model_layout.blocks {
+        for (source_idx, blocks) in source_blocks.iter().enumerate() {
+            for &(w, offset) in *blocks {
                 let rec = matched[w];
                 roles[w].source = source_idx;
                 roles[w].offset = offset;
@@ -498,41 +527,71 @@ impl Weights {
     }
 }
 
-/// The prepared model commitment, built once per model (RFC-0026 §2.2).
+enum CommittedKind<'a> {
+    Standard {
+        prepared: Vec<PreparedSource<'a, K>>,
+        certificates: Vec<VerifiedCertificate<K>>,
+    },
+    Recursive(Vec<relation::RecursiveModelSource<'a>>),
+}
+
+/// The prepared model commitment, built once per model (RFC-0026 §2.2, A29).
 pub struct Committed<'a> {
-    prepared: Vec<PreparedSource<'a, K>>,
-    certificates: Vec<VerifiedCertificate<K>>,
+    kind: CommittedKind<'a>,
     /// `(root, certificate)` per source, for [`Public::commitment`].
     pub commitment: Vec<([u8; 32], Vec<u8>)>,
 }
 
 impl<'a> Committed<'a> {
     pub fn new(weights: &'a Weights) -> Result<Self, Error> {
-        let mut prepared = Vec::new();
-        let mut certificates = Vec::new();
-        let mut commitment = Vec::new();
-        for (layout, message) in weights.layouts.iter().zip(&weights.stacked) {
-            let p = layout
-                .sources
-                .prepare(layout.id, layout.ell, &layout.code, message)
-                .map_err(|e| match e {
-                    relation::Error::Pcs(e) => Error::Commitment(e),
-                    e => Error::Engine(e),
-                })?;
-            let (bytes, _) = p
-                .certificate()
-                .map_err(|_| Error::Commitment(stele_reductions::stele_pcs::Error::Capacity))?;
-            let (verified, _) =
-                verify_certificate(*p.source(), &bytes).map_err(|f| Error::Commitment(f.cause))?;
-            commitment.push((p.source().root(), bytes));
-            certificates.push(verified);
-            prepared.push(p);
+        match &weights.layouts {
+            WeightLayouts::Standard(layouts) => {
+                let mut prepared = Vec::new();
+                let mut certificates = Vec::new();
+                let mut commitment = Vec::new();
+                for (layout, message) in layouts.iter().zip(&weights.stacked) {
+                    let p = layout
+                        .sources
+                        .prepare(layout.id, layout.ell, &layout.code, message)
+                        .map_err(|e| match e {
+                            relation::Error::Pcs(e) => Error::Commitment(e),
+                            e => Error::Engine(e),
+                        })?;
+                    let (bytes, _) = p.certificate().map_err(|_| {
+                        Error::Commitment(stele_reductions::stele_pcs::Error::Capacity)
+                    })?;
+                    let (verified, _) = verify_certificate(*p.source(), &bytes)
+                        .map_err(|f| Error::Commitment(f.cause))?;
+                    commitment.push((p.source().root(), bytes));
+                    certificates.push(verified);
+                    prepared.push(p);
+                }
+                Ok(Self {
+                    kind: CommittedKind::Standard {
+                        prepared,
+                        certificates,
+                    },
+                    commitment,
+                })
+            }
+            WeightLayouts::Recursive(layouts) => {
+                let mut sources = Vec::with_capacity(layouts.len());
+                let mut commitment = Vec::with_capacity(layouts.len());
+                for (layout, message) in layouts.iter().zip(&weights.stacked) {
+                    let src = relation::RecursiveModelSource::register(layout, message)
+                        .map_err(Error::Engine)?;
+                    commitment.push((
+                        src.prepared.source().root(),
+                        src.prepared.certificate_proof().to_vec(),
+                    ));
+                    sources.push(src);
+                }
+                Ok(Self {
+                    kind: CommittedKind::Recursive(sources),
+                    commitment,
+                })
+            }
         }
-        Ok(Self {
-            prepared,
-            certificates,
-            commitment,
-        })
     }
 }
 
@@ -686,11 +745,104 @@ fn prove_inner_captured(
     let checked = hook.is_none();
     let input = public_input(public, &d.cqis_id, statement);
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
-    let model = committed
-        .prepared
-        .iter()
-        .zip(&committed.certificates)
-        .collect::<Vec<_>>();
+
+    if public.sources == Sources::CircleRecursive {
+        let CommittedKind::Recursive(rec_model) = &committed.kind else {
+            return Err(Error::StatementMismatch);
+        };
+        if public.segment_layers > 0 {
+            if hook.is_some() {
+                return Err(Error::StatementMismatch);
+            }
+            let mut witness_ns = witness_timer.elapsed_ns();
+            let mut plain_check_ns = 0u64;
+            let mut carried: Option<Vec<i64>> = None;
+            let mut callback_err: Option<Error> = None;
+            let res = relation::prove_recursive_measured(
+                &mut t,
+                &layout.relation,
+                |seg| {
+                    let assign_timer = relation::Stopwatch::start();
+                    let (values, next_carried) =
+                        match layout.assign_segment(seg, capture, weights, carried.take()) {
+                            Ok(pair) => pair,
+                            Err(err) => {
+                                callback_err = Some(err);
+                                return Err(relation::Error::Unsupported);
+                            }
+                        };
+                    witness_ns = witness_ns.saturating_add(assign_timer.elapsed_ns());
+                    carried = next_carried;
+                    if checked {
+                        let check_timer = relation::Stopwatch::start();
+                        if let Err(v) = check_segment(&layout.relation, seg, &values) {
+                            callback_err = Some(Error::Check(v));
+                            return Err(relation::Error::Unsupported);
+                        }
+                        plain_check_ns = plain_check_ns.saturating_add(check_timer.elapsed_ns());
+                    }
+                    Ok(values)
+                },
+                rec_model,
+            );
+            if let Some(err) = callback_err {
+                return Err(err);
+            }
+            let (proof, engine) = res.map_err(Error::Engine)?;
+            let digest = statement_digest(&input, &relation::digest(&layout.relation));
+            let report = Report {
+                model_commitment_ns: 0,
+                witness_ns,
+                plain_check_ns,
+                engine,
+            };
+            return Ok((sections_v2(proof, d.cqis_id, digest).encode(), report));
+        }
+
+        let mut values = layout.assign(capture, weights)?;
+        let witness_ns = witness_timer.elapsed_ns();
+        laps.lap("witness/layout_capture_assign");
+        if let Some(hook) = hook {
+            hook(&mut layout.relation, &mut values);
+        }
+        let mut plain_check_ns = 0u64;
+        if checked {
+            let check_timer = relation::Stopwatch::start();
+            check(&layout.relation, &values).map_err(Error::Check)?;
+            plain_check_ns = check_timer.elapsed_ns();
+        }
+        let mut single = Some(values);
+        let (proof, engine) = relation::prove_recursive_measured(
+            &mut t,
+            &layout.relation,
+            |seg| {
+                if seg == 0 {
+                    single.take().ok_or(relation::Error::Unsupported)
+                } else {
+                    Err(relation::Error::Unsupported)
+                }
+            },
+            rec_model,
+        )
+        .map_err(Error::Engine)?;
+        let digest = statement_digest(&input, &relation::digest(&layout.relation));
+        let report = Report {
+            model_commitment_ns: 0,
+            witness_ns,
+            plain_check_ns,
+            engine,
+        };
+        return Ok((sections_v2(proof, d.cqis_id, digest).encode(), report));
+    }
+
+    let CommittedKind::Standard {
+        prepared,
+        certificates,
+    } = &committed.kind
+    else {
+        return Err(Error::StatementMismatch);
+    };
+    let model = prepared.iter().zip(certificates).collect::<Vec<_>>();
 
     if public.segment_layers > 0 {
         if hook.is_some() {
@@ -856,7 +1008,9 @@ pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Le
         return Err(Error::StatementMismatch);
     }
     let layout = layout(&d, public, statement)?;
-    let expected_v2 = public.segment_layers > 0 || layout.relation.has_virtual();
+    let expected_v2 = public.segment_layers > 0
+        || layout.relation.has_virtual()
+        || public.sources == Sources::CircleRecursive;
     if expected_v2 != matches!(decoded, container::Decoded::V2(_)) {
         return Err(Error::StatementMismatch);
     }
@@ -875,8 +1029,42 @@ pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Le
         .iter()
         .map(|(id, _, _)| layout.relation.columns[id.0 as usize].log_len)
         .collect();
-    let certs = certificates(public, &bits)?;
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
+    if public.sources == Sources::CircleRecursive {
+        let container::Decoded::V2(c) = decoded else {
+            return Err(Error::StatementMismatch);
+        };
+        let layouts = relation::recursive_model_layout_for(&bits).map_err(Error::Engine)?;
+        if layouts.len() != public.commitment.len() {
+            return Err(Error::StatementMismatch);
+        }
+        let verified_models: Vec<_> = public
+            .commitment
+            .iter()
+            .zip(&layouts)
+            .map(|((root, bytes), l)| relation::verify_recursive_model(l, *root, bytes))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(Error::Engine)?;
+        let sections = ProofV2 {
+            segments: c
+                .segments
+                .into_iter()
+                .map(|s| SegmentProof {
+                    groups: s.groups,
+                    multiplicities: s.multiplicities,
+                    identities: s.identities,
+                    lookups: s.lookups,
+                    matmuls: s.matmuls,
+                    reductions: s.reductions,
+                    openings: s.openings,
+                })
+                .collect(),
+            model_openings: c.model_openings,
+        };
+        return relation::verify_recursive(&mut t, &layout.relation, &verified_models, &sections)
+            .map_err(Error::Engine);
+    }
+    let certs = certificates(public, &bits)?;
     // The engine derives every section count and length (RFC-0026 §4.1, A27).
     match decoded {
         container::Decoded::V1(c) => {
@@ -1067,6 +1255,7 @@ pub fn prove_window_development_segmented_measured(
     let sources = match profile {
         CIRCLE_ALL_PROFILE => Sources::CircleAll,
         GRIND_PROFILE => Sources::CircleAllGrind,
+        RECURSIVE_PROFILE => Sources::CircleRecursive,
         _ => return Err(Error::StatementMismatch),
     };
     prove_window_sources_measured(

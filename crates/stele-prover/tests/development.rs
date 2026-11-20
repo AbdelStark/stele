@@ -2676,3 +2676,146 @@ fn accepts_segmented_one_layer_and_wide_gqa_windows() {
         "A16 registry::publish must reject segmented public bundles"
     );
 }
+
+#[test]
+fn accepts_recursive_profile_6_unsegmented_and_segmented_and_rejects_tampers() {
+    let case = load("one-layer");
+    let base = Statement {
+        tokens: vec![1],
+        start: 0,
+        end: 1,
+        next: None,
+    };
+
+    for seg_layers in [0u16, 1u16] {
+        let (public, statement, proof, report) =
+            stele_prover::development::prove_window_development_segmented_measured(
+                case.bytes[0],
+                case.bytes[2],
+                case.bytes[1],
+                &case.artifact,
+                base.clone(),
+                16,
+                stele_prover::development::RECURSIVE_PROFILE,
+                seg_layers,
+            )
+            .expect("profile-6 prove");
+
+        assert_eq!(public.sources, Sources::CircleRecursive);
+        assert_eq!(public.segment_layers, seg_layers);
+        let decoded_v2 = container::decode_v2(&proof).expect("stele-dev-e2e-v2");
+        if seg_layers == 0 {
+            assert_eq!(decoded_v2.segments.len(), 1);
+        } else {
+            assert_eq!(decoded_v2.segments.len(), 2);
+        }
+
+        // Bundle round-trip (`stele-dev-public-v6` unseg, `stele-dev-public-v5` seg).
+        let encoded_pub = bundle::encode(&public, &statement);
+        let expected_magic: &[u8] = if seg_layers == 0 {
+            b"stele-dev-public-v6"
+        } else {
+            b"stele-dev-public-v5"
+        };
+        assert!(encoded_pub.starts_with(expected_magic));
+        assert_eq!(
+            bundle::decode(&encoded_pub),
+            Ok((public.clone(), statement.clone()))
+        );
+
+        let ledger = verify(&public, &statement, &proof).expect("profile-6 verify");
+        assert!(ledger.pcs_sources >= 3);
+        assert_eq!(
+            stele_prover::development::registry::publish(&public, &statement).err(),
+            Some(Error::StatementMismatch),
+            "A16 registry::publish must reject profile-6 public bundles"
+        );
+
+        // INV-8 determinism.
+        let (pub2, stmt2, proof2, report2) =
+            stele_prover::development::prove_window_development_segmented_measured(
+                case.bytes[0],
+                case.bytes[2],
+                case.bytes[1],
+                &case.artifact,
+                base.clone(),
+                16,
+                stele_prover::development::RECURSIVE_PROFILE,
+                seg_layers,
+            )
+            .expect("second profile-6 prove");
+        assert_eq!(pub2, public);
+        assert_eq!(stmt2, statement);
+        assert_eq!(proof2, proof);
+        assert_eq!(
+            report.engine.committed_cells,
+            report2.engine.committed_cells
+        );
+        assert_eq!(
+            report.engine.lookup_positions,
+            report2.engine.lookup_positions
+        );
+
+        // Composed NC-0630/0631: tamper segment-0 witness level-0 opening.
+        let mut bad_l0 = decoded_v2.clone();
+        let last = bad_l0.segments[0].openings[0].len() - 1;
+        bad_l0.segments[0].openings[0][last] ^= 1;
+        assert!(matches!(
+            verify(&public, &statement, &bad_l0.encode()).err(),
+            Some(Error::Engine(stele_reductions::relation::Error::Recursive(
+                _
+            )))
+        ));
+
+        // Composed NC-0632: tamper joined tail section.
+        let mut bad_tail = decoded_v2.clone();
+        let tail_idx = bad_tail.model_openings.len() - 1;
+        let tail_last = bad_tail.model_openings[tail_idx].len() - 16;
+        bad_tail.model_openings[tail_idx][tail_last] ^= 1;
+        assert!(matches!(
+            verify(&public, &statement, &bad_tail.encode()).err(),
+            Some(Error::Engine(stele_reductions::relation::Error::Recursive(
+                _
+            )))
+        ));
+
+        // Composed NC-0633: truncate joined tail section.
+        let mut bad_shape = decoded_v2.clone();
+        bad_shape.model_openings[tail_idx].pop();
+        assert!(matches!(
+            verify(&public, &statement, &bad_shape.encode()).err(),
+            Some(Error::Engine(stele_reductions::relation::Error::Recursive(
+                stele_reductions::stele_pcs::recursive::RecursiveError::ProofShape
+            )))
+        ));
+
+        // Composed NC-0634: tamper segment-0 claim_batch round.
+        let mut bad_batch = decoded_v2.clone();
+        bad_batch.segments[0].openings[0][0] ^= 1;
+        assert!(matches!(
+            verify(&public, &statement, &bad_batch.encode()).err(),
+            Some(Error::Engine(
+                stele_reductions::relation::Error::Sumcheck(_)
+                    | stele_reductions::relation::Error::NoncanonicalField
+            ))
+        ));
+
+        // Composed NC-0635: tamper model registration certificate.
+        let mut bad_pub = public.clone();
+        bad_pub.commitment[0].1[0] ^= 1;
+        assert!(matches!(
+            verify(&bad_pub, &statement, &proof).err(),
+            Some(Error::Engine(stele_reductions::relation::Error::Recursive(
+                _
+            )))
+        ));
+
+        // Profile byte mismatch rejects.
+        let mut wrong_profile = public.clone();
+        wrong_profile.sources = Sources::CircleAll;
+        assert_eq!(
+            verify(&wrong_profile, &statement, &proof).err(),
+            Some(Error::StatementMismatch)
+        );
+    }
+}
