@@ -25,6 +25,53 @@ pub(super) struct Data<'a> {
     records: Vec<Record<'a>>,
     pub(super) scope: [[u8; 32]; 3],
 }
+/// Matrix cells from which the rows of a projection split over threads: the vocabulary
+/// head, not a block's projections.
+#[cfg(feature = "std")]
+const PARALLEL_CELLS: usize = 1 << 22;
+
+/// `[row(0), .., row(rows - 1)]`. A row depends only on its index, so with `std` the rows
+/// of a large matrix run in blocks on scoped threads: the same values in the same order,
+/// and the first failing row's error.
+fn rows_in_blocks<T: Copy + Default + Send>(
+    rows: usize,
+    columns: usize,
+    row: impl Fn(usize) -> Result<T, Error> + Sync,
+) -> Result<Vec<T>, Error> {
+    let mut out = reserved(rows)?;
+    out.resize(rows, T::default());
+    let fill = |first: usize, block: &mut [T]| -> Result<(), Error> {
+        for (i, slot) in block.iter_mut().enumerate() {
+            *slot = row(first + i)?;
+        }
+        Ok(())
+    };
+    #[cfg(feature = "std")]
+    {
+        let workers = if rows.saturating_mul(columns) >= PARALLEL_CELLS {
+            crate::workers().min(rows / 64)
+        } else {
+            1
+        };
+        if workers > 1 {
+            let per = rows.div_ceil(workers);
+            let fill = &fill;
+            std::thread::scope(|scope| {
+                let mut handles = reserved(workers)?;
+                for (b, block) in out.chunks_mut(per).enumerate() {
+                    handles.push(scope.spawn(move || fill(b * per, block)));
+                }
+                crate::join_all(handles)
+            })?;
+            return Ok(out);
+        }
+    }
+    #[cfg(not(feature = "std"))]
+    let _ = columns;
+    fill(0, &mut out)?;
+    Ok(out)
+}
+
 impl<'a> Data<'a> {
     pub(super) fn new(
         model: &'a Model,
@@ -156,9 +203,9 @@ impl<'a> Data<'a> {
         let mut out = reserved(r.rows)?;
         let scales = row.scales();
         let g = r.columns / scales.len();
-        for j in 0..r.rows {
-            // RFC-0004 A15: A' = sum_i s_k(i)*q_i*w_i (|A'| < 2^51), then one rounding.
-            let (dot, product) = if scales.len() > 1 {
+        // RFC-0004 A15: A' = sum_i s_k(i)*q_i*w_i (|A'| < 2^51), then one rounding.
+        let dot_of = |j: usize| -> i128 {
+            if scales.len() > 1 {
                 let dot: i64 = if r.bits == 8 {
                     // The same sum, one int32 dot per group (|dot| < 2^28, as in `dot`).
                     let w = &r.raw[j * r.columns..(j + 1) * r.columns];
@@ -186,18 +233,25 @@ impl<'a> Data<'a> {
                         })
                         .sum()
                 };
-                let dot = i128::from(dot);
-                (dot, dot * i128::from(scale.mantissas()[j]))
+                i128::from(dot)
             } else {
-                let dot = self.dot(ordinal, row, j);
-                (
-                    dot,
-                    dot * i128::from(scale.mantissas()[j]) * i128::from(row.scale()),
-                )
+                self.dot(ordinal, row, j)
+            }
+        };
+        let bias_shift = i32::from(fraction) - i32::from(fb);
+        // Each output row's dot, scaled product, bias and rounded value.
+        let rows = rows_in_blocks(r.rows, r.columns, |j| {
+            let dot = dot_of(j);
+            let product = if scales.len() > 1 {
+                dot * i128::from(scale.mantissas()[j])
+            } else {
+                dot * i128::from(scale.mantissas()[j]) * i128::from(row.scale())
             };
             let b = bias.map_or(0, |i| self.code(i, j));
-            let bias_shift = i32::from(fraction) - i32::from(fb);
             let value = numerics::scaled_sum(product, shift, i128::from(b), bias_shift, 1)?;
+            Ok((dot, product, b, value))
+        })?;
+        for (dot, product, b, value) in rows {
             if let Some(w) = capture.as_deref_mut() {
                 w.push(dot, product, b)?;
                 w.output
