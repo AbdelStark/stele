@@ -197,17 +197,11 @@ impl Rotation {
             .coefficient(position, pair)
             .map_err(super::Error::Generation)
     }
-    /// Regenerate and hash every canonical coefficient in position-major order.
-    /// Rows are at most 32768 bytes; no research materialization cap applies.
-    pub fn data_digest(self) -> Result<[u8; 32], super::Error> {
-        let mut digest = blake3::Hasher::new();
-        digest.update(b"stele/v0.1/cqis/rotation-data");
-        digest.update(blake3::hash(&self.encode()?).as_bytes());
+    /// Canonical coefficient rows of `positions`, position-major, into `out`.
+    fn rows(self, positions: core::ops::Range<u32>, out: &mut [u8]) -> Result<(), super::Error> {
         let row_length = 2 * usize::from(self.width());
-        let mut row = reserved(row_length)?;
-        row.resize(row_length, 0);
         let mut generator = Generator::new(self);
-        for position in 0..self.length() {
+        for (position, row) in positions.zip(out.chunks_exact_mut(row_length)) {
             for (pair, output) in row.chunks_exact_mut(4).enumerate() {
                 let pair = u16::try_from(pair).map_err(|_| super::Error::Capacity)?;
                 let (c, s) = generator
@@ -216,11 +210,66 @@ impl Rotation {
                 output[..2].copy_from_slice(&c.to_le_bytes());
                 output[2..].copy_from_slice(&s.to_le_bytes());
             }
-            digest.update(&row);
+        }
+        Ok(())
+    }
+    /// Regenerate and hash every canonical coefficient in position-major order.
+    /// Rows are at most 32768 bytes and are made in blocks of [`BLOCK_ROWS`], one block
+    /// per worker at a time, so no research materialization cap applies. With `std` the
+    /// blocks of a round run on scoped threads; rows are independent and hashed in
+    /// position order, so the digest is the same.
+    pub fn data_digest(self) -> Result<[u8; 32], super::Error> {
+        let mut digest = blake3::Hasher::new();
+        digest.update(b"stele/v0.1/cqis/rotation-data");
+        digest.update(blake3::hash(&self.encode()?).as_bytes());
+        let row_length = 2 * usize::from(self.width());
+        #[cfg(feature = "std")]
+        let workers = std::thread::available_parallelism().map_or(1, |n| n.get());
+        #[cfg(not(feature = "std"))]
+        let workers = 1usize;
+        let mut buffers: Vec<Vec<u8>> = reserved(workers)?;
+        for _ in 0..workers {
+            let mut buffer = reserved(BLOCK_ROWS * row_length)?;
+            buffer.resize(BLOCK_ROWS * row_length, 0);
+            buffers.push(buffer);
+        }
+        let mut next = 0u32;
+        while next < self.length() {
+            let mut blocks: Vec<(core::ops::Range<u32>, &mut Vec<u8>)> = reserved(workers)?;
+            for buffer in &mut buffers {
+                let end = next.saturating_add(BLOCK_ROWS as u32).min(self.length());
+                if next < end {
+                    blocks.push((next..end, buffer));
+                }
+                next = end;
+            }
+            #[cfg(feature = "std")]
+            std::thread::scope(|scope| {
+                let handles: Vec<_> = blocks
+                    .iter_mut()
+                    .map(|(positions, buffer)| {
+                        let positions = positions.clone();
+                        scope.spawn(move || self.rows(positions, buffer))
+                    })
+                    .collect();
+                handles
+                    .into_iter()
+                    .try_for_each(|handle| handle.join().map_err(|_| super::Error::Capacity)?)
+            })?;
+            #[cfg(not(feature = "std"))]
+            for (positions, buffer) in &mut blocks {
+                self.rows(positions.clone(), buffer)?;
+            }
+            for (positions, buffer) in &blocks {
+                digest.update(&buffer[..positions.len() * row_length]);
+            }
         }
         Ok(*digest.finalize().as_bytes())
     }
 }
+
+/// Positions per regeneration block.
+const BLOCK_ROWS: usize = 64;
 
 #[cfg(test)]
 mod tests;

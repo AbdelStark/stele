@@ -6,6 +6,8 @@
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
 
 mod numerics;
 

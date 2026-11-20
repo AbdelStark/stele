@@ -1176,7 +1176,8 @@ def field_sources(root):
             # controls' adversaries (zk), never a verifier input. E16-22: `std` also runs
             # the plain checker (stele-ir) on the pool, with the same result.
             or manifest.get('features', {})
-                != {'std': ['stele-sumcheck/std', 'stele-pcs/std', 'stele-ir/std'],
+                # E22-11: `std` also regenerates the rotation table on scoped threads (stele-cqis).
+                != {'std': ['stele-sumcheck/std', 'stele-pcs/std', 'stele-ir/std', 'stele-cqis/std'],
                     'controls': ['stele-sumcheck/controls'],
                     # ADR-108: the standard-profile lookup, for tests and controls only.
                     'standard-unproven': ['stele-pcs/standard-unproven'],
