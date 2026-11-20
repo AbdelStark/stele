@@ -245,6 +245,17 @@ pub fn eq_table_scaled<K: ChallengeField>(point: &[K], scale: K) -> Result<Vec<K
     Ok(out)
 }
 
+/// Whether [`layer_round_kernel`] runs a host kernel for `K`, and not the reference loop:
+/// a caller whose operands are not tables copies them into tables only then.
+pub fn layer_kernel_available<K: ChallengeField>() -> bool {
+    #[cfg(feature = "std")]
+    {
+        K::from_qm31(stele_field::QM31::ZERO).is_some() && stele_simd::accelerated()
+    }
+    #[cfg(not(feature = "std"))]
+    false
+}
+
 /// The three partial sums of a fraction-tree layer round with unit weights over `range`
 /// (`stele_simd::layer_round_reference`: `e[x]·t` for `t = q1·(p0 + γ·q0) + p1·q0` at `x`,
 /// at `x + half` and of their differences), from the host's kernel when the field is QM31

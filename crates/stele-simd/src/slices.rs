@@ -52,6 +52,12 @@ impl Backend {
     }
 }
 
+/// Whether this host's widest backend has kernels: callers that must copy their operands
+/// into tables first do so only when it pays.
+pub fn accelerated() -> bool {
+    matches!(Backend::detect(), Backend::Avx2 | Backend::Avx512)
+}
+
 /// [`fold_reference`] on the widest backend of this host.
 pub fn fold(lo: &mut [QM31], hi: &[QM31], c: QM31) {
     // `detect` returns an available backend, so this cannot fail.

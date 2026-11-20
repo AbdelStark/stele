@@ -522,6 +522,9 @@ struct BaseLeafSummand<'a, K: ChallengeField + Eq> {
     point: &'a mut Vec<K>,
 }
 
+/// Leaf pairs copied into tables per kernel call of the base-leaf round: 32 KiB of QM31.
+const LEAF_BLOCK: usize = 128;
+
 /// Whether `i` is [`layer`]'s polynomial `left·p0·q1·eq + right·p1·q0·eq + γ·q0·q1·eq`: a
 /// hand-written summand hard-codes this factor layout and reads only the coefficients.
 fn is_layer_instance<K: ChallengeField>(i: &Instance<K>) -> bool {
@@ -560,8 +563,49 @@ impl<K: ChallengeField + Eq> Summand<K> for BaseLeafSummand<'_, K> {
             left * q1.mul_m31(p0) + right * q0.mul_m31(p1) + gamma * (q0 * q1)
         };
         let q = |idx: usize| self.leaves.denom_at(self.denom, idx);
+        let one = K::from_i64(1);
+        // With unit weights the term is the layer's, `q1·(p0 + γ·q0) + p1·q0`, on the
+        // embedded selectors. Where the host has a kernel, blocks of leaves are copied
+        // into short tables for it: the same sums.
+        let blocks =
+            left == one && right == one && stele_sumcheck::parallel::layer_kernel_available::<K>();
         let mut sums = [K::from_i64(0); 3];
         stele_sumcheck::parallel::sum_ranges(half, &mut sums, |range, out| {
+            if blocks {
+                let zero = K::from_i64(0);
+                let mut tables = [[zero; 2 * LEAF_BLOCK]; 4];
+                let mut start = range.start;
+                while start < range.end {
+                    let n = (range.end - start).min(LEAF_BLOCK);
+                    for j in 0..n {
+                        let (lo, hi) = (2 * (start + j), 2 * (start + j + half));
+                        // Lower half: the pair at `x`; upper half: the pair at `x + half`.
+                        for (at, leaf) in [(j, lo), (n + j, hi)] {
+                            tables[0][at] = one.mul_m31(sigma[leaf]);
+                            tables[1][at] = q(leaf);
+                            tables[2][at] = one.mul_m31(sigma[leaf + 1]);
+                            tables[3][at] = q(leaf + 1);
+                        }
+                    }
+                    let partial = stele_sumcheck::parallel::layer_round_kernel(
+                        [
+                            &tables[0][..2 * n],
+                            &tables[1][..2 * n],
+                            &tables[2][..2 * n],
+                            &tables[3][..2 * n],
+                        ],
+                        &suffix[start..start + n],
+                        gamma,
+                        0..n,
+                    )
+                    .ok_or(stele_sumcheck::Error::PublicShape)?;
+                    for (total, part) in out.iter_mut().zip(partial) {
+                        *total = *total + part;
+                    }
+                    start += n;
+                }
+                return Ok(());
+            }
             for col in range {
                 let (lo, hi) = (2 * col, 2 * (col + half));
                 let (p0a, p0b, p1a, p1b) = (sigma[lo], sigma[hi], sigma[lo + 1], sigma[hi + 1]);
