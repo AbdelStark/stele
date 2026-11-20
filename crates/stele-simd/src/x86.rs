@@ -51,9 +51,54 @@ macro_rules! x86_backend {
                 let f = $plus64($and(v, mask), $shr::<31>(v));
                 $plus64($and(f, mask), $shr::<31>(f))
             }
-            /// `lo[j] += c·(hi[j] − lo[j])` on whole vectors of QM31 elements (four `u32`
-            /// limbs each, basis order). Returns the number of elements done; the caller
-            /// finishes the tail with the reference.
+            /// The QM31 product of each element of `x` with the element of `y` in its place
+            /// (four `u32` limbs each, basis order, canonical in and out).
+            ///
+            /// Per element there are two 64-bit lanes: lane 0 holds the a limbs, lane 1 the
+            /// b limbs. With x = (a0, a1, b0, b1) and y = (c0, c1, d0, d1), i² = −1 and
+            /// u² = 2 + i: ac = (a0c0 − a1c1, a0c1 + a1c0), bd likewise, r = ac + (2 + i)·bd
+            /// and s = ad + bc. A subtracted product x·y is added as x·(p − y), so every
+            /// lane is a sum of at most four products below p², below 2^64.
+            #[target_feature(enable=$feature)]
+            unsafe fn mul4(x: $v, y: $v) -> $v {
+                let p64 = $dup64(i64::from(P));
+                let four_p = $dup64(4 * i64::from(P));
+                // SAFETY: RFC-0003 §§1,2: register arithmetic only; the caller enables the
+                // feature and passes canonical limbs.
+                unsafe {
+                    let odd = $shr::<32>(x); // (a1, b1)
+                    let yo = $shr::<32>(y); // (c1, d1)
+                    let nyo = $minus64(p64, yo); // (p − c1, p − d1)
+                    let ys = $swap::<0b01_00_11_10>(y); // (d0, c0)
+                    let yos = $swap::<0b01_00_11_10>(yo); // (d1, c1)
+                    let nyos = $swap::<0b01_00_11_10>(nyo); // (p − d1, p − c1)
+                    let v1 = $plus64($times(x, y), $times(odd, nyo)); // (ac0, bd0)
+                    let v2 = $plus64($times(x, yo), $times(odd, y)); // (ac1, bd1)
+                    let s0 = $plus64($times(x, ys), $times(odd, nyos)); // halves of s0
+                    let s1 = $plus64($times(x, yos), $times(odd, ys)); // halves of s1
+                    let (v1, v2) = (fold2(v1), fold2(v2));
+                    let (v1s, v2s) = ($swap::<0b01_00_11_10>(v1), $swap::<0b01_00_11_10>(v2));
+                    // Lane 0: r0 = ac0 + 2·bd0 − bd1, r1 = ac1 + bd0 + 2·bd1.
+                    let r0 = $plus64($plus64(v1, $shl::<1>(v1s)), $minus64(four_p, v2s));
+                    let r1 = $plus64($plus64(v2, v1s), $shl::<1>(v2s));
+                    let s0 = $plus64(s0, $swap::<0b01_00_11_10>(s0));
+                    let s1 = $plus64(s1, $swap::<0b01_00_11_10>(s1));
+                    // Folded lanes fit 32 bits with a zero upper half, so the 32-bit
+                    // canonical step applies to them.
+                    let (r0, r1) = (canonical(fold2(r0)), canonical(fold2(r1)));
+                    let (s0, s1) = (canonical(fold2(s0)), canonical(fold2(s1)));
+                    // (r0, r1) from lane 0 and (s0, s1) from lane 1 of each element.
+                    $blend($or(r0, $shl::<32>(r1)), $or(s0, $shl::<32>(s1)))
+                }
+            }
+            /// One element in every element slot of a vector.
+            #[target_feature(enable=$feature)]
+            unsafe fn splat(c: [u32; 4]) -> $v {
+                let lane = |low: u32, high: u32| i64::from(low) | (i64::from(high) << 32);
+                $pair(lane(c[0], c[1]), lane(c[2], c[3]))
+            }
+            /// `lo[j] += c·(hi[j] − lo[j])` on whole vectors of QM31 elements. Returns the
+            /// number of elements done; the caller finishes the tail with the reference.
             #[target_feature(enable=$feature)]
             pub(crate) unsafe fn fold(
                 lo: *mut u32,
@@ -62,59 +107,79 @@ macro_rules! x86_backend {
                 c: [u32; 4],
             ) -> usize {
                 let per = $width / 4;
-                let p32 = $dup32(P as i32);
-                let four_p = $dup64(4 * i64::from(P));
-                let (c0, c1, d0, d1) = (
-                    i64::from(c[0]),
-                    i64::from(c[1]),
-                    i64::from(c[2]),
-                    i64::from(c[3]),
-                );
-                let (nc1, nd1) = (i64::from(P) - c1, i64::from(P) - d1);
-                // Per element two 64-bit lanes: lane 0 meets the a limbs, lane 1 the b limbs.
-                // With x = (a0, a1, b0, b1) and c = (c0, c1, d0, d1), i² = −1, u² = 2 + i:
-                //   ac = (a0c0 − a1c1, a0c1 + a1c0), bd likewise,
-                //   r = ac + (2 + i)·bd, s = ad + bc.
-                // A subtracted product x·y is added as x·(p − y), so every lane is a sum of
-                // at most four products below p², below 2^64.
-                let (k1, k2, k3) = ($pair(c0, d0), $pair(nc1, nd1), $pair(c1, d1));
-                let (k5, k6, k7) = ($pair(d0, c0), $pair(nd1, nc1), $pair(d1, c1));
                 let done = n / per * per;
-                let mut i = 0;
                 // SAFETY: RFC-0003 §6: the caller enables the feature and supplies `n`
                 // elements behind each pointer; each load and store covers `per` whole
                 // elements below `done <= n`.
                 unsafe {
+                    let c = splat(c);
+                    let mut i = 0;
                     while i < done {
-                        let a = $load(lo.add(4 * i).cast());
-                        let b = $load(hi.add(4 * i).cast());
-                        // d = b − a per limb, canonical.
-                        let d = canonical($minus32($plus32(b, p32), a));
-                        let odd = $shr::<32>(d);
-                        let v1 = $plus64($times(d, k1), $times(odd, k2)); // (ac0, bd0)
-                        let v2 = $plus64($times(d, k3), $times(odd, k1)); // (ac1, bd1)
-                        let s0 = $plus64($times(d, k5), $times(odd, k6)); // halves of s0
-                        let s1 = $plus64($times(d, k7), $times(odd, k5)); // halves of s1
-                        let (v1, v2) = (fold2(v1), fold2(v2));
-                        let (v1s, v2s) = ($swap::<0b01_00_11_10>(v1), $swap::<0b01_00_11_10>(v2));
-                        // Lane 0: r0 = ac0 + 2·bd0 − bd1, r1 = ac1 + bd0 + 2·bd1.
-                        let r0 = $plus64($plus64(v1, $shl::<1>(v1s)), $minus64(four_p, v2s));
-                        let r1 = $plus64($plus64(v2, v1s), $shl::<1>(v2s));
-                        let s0 = $plus64(s0, $swap::<0b01_00_11_10>(s0));
-                        let s1 = $plus64(s1, $swap::<0b01_00_11_10>(s1));
-                        // Folded lanes fit 32 bits with a zero upper half, so the 32-bit
-                        // canonical step applies to them.
-                        let (r0, r1) = (canonical(fold2(r0)), canonical(fold2(r1)));
-                        let (s0, s1) = (canonical(fold2(s0)), canonical(fold2(s1)));
-                        let r = $or(r0, $shl::<32>(r1));
-                        let s = $or(s0, $shl::<32>(s1));
-                        // (r0, r1) from lane 0 and (s0, s1) from lane 1 of each element.
-                        let product = $blend(r, s);
-                        $store(lo.add(4 * i).cast(), canonical($plus32(a, product)));
+                        let a = load(lo.add(4 * i));
+                        let b = load(hi.add(4 * i));
+                        store(lo.add(4 * i), add(a, mul4(c, sub(b, a))));
                         i += per;
                     }
                 }
                 done
+            }
+            /// Partial sums of a fraction-tree layer round with unit weights, over the
+            /// positions `start..start + done` (`done` returned, a multiple of the vector's
+            /// elements): `e[x]·t` for `t = q1·(p0 + γ·q0) + p1·q0` at `x`, at `x + half`,
+            /// and of the differences of the two. `t` holds `p0, q0, p1, q1`.
+            #[target_feature(enable=$feature)]
+            pub(crate) unsafe fn layer_round(
+                t: [*const u32; 4],
+                e: *const u32,
+                half: usize,
+                (start, end): (usize, usize),
+                gamma: [u32; 4],
+            ) -> ([[u32; 4]; 3], usize) {
+                let per = $width / 4;
+                let done = (end - start) / per * per;
+                let mut out = [[0u32; 4]; 3];
+                // SAFETY: RFC-0003 §6: the caller enables the feature and supplies `2·half`
+                // elements behind each table pointer and `half` behind `e`, with
+                // `end <= half`; each load covers `per` whole elements below those bounds.
+                unsafe {
+                    let g = splat(gamma);
+                    let zero = $dup32(0);
+                    let mut acc = [zero; 3];
+                    let mut x = start;
+                    while x < start + done {
+                        let y = x + half;
+                        let at = |table: *const u32, i: usize| load(table.add(4 * i));
+                        let (p0x, q0x, p1x, q1x) =
+                            (at(t[0], x), at(t[1], x), at(t[2], x), at(t[3], x));
+                        let (p0y, q0y, p1y, q1y) =
+                            (at(t[0], y), at(t[1], y), at(t[2], y), at(t[3], y));
+                        let weight = at(e, x);
+                        let (gx, gy) = (mul4(q0x, g), mul4(q0y, g));
+                        let tx = add(mul4(q1x, add(p0x, gx)), mul4(p1x, q0x));
+                        let ty = add(mul4(q1y, add(p0y, gy)), mul4(p1y, q0y));
+                        // γ·(q0y − q0x) is γ·q0y − γ·q0x.
+                        let td = add(
+                            mul4(sub(q1y, q1x), add(sub(p0y, p0x), sub(gy, gx))),
+                            mul4(sub(p1y, p1x), sub(q0y, q0x)),
+                        );
+                        acc[0] = add(acc[0], mul4(weight, tx));
+                        acc[1] = add(acc[1], mul4(weight, ty));
+                        acc[2] = add(acc[2], mul4(weight, td));
+                        x += per;
+                    }
+                    for (sum, lanes) in out.iter_mut().zip(acc) {
+                        let mut limbs = [0u32; $width];
+                        store(limbs.as_mut_ptr(), lanes);
+                        for element in limbs.chunks_exact(4) {
+                            for (total, limb) in sum.iter_mut().zip(element) {
+                                // Canonical limbs: the sum is below 2p.
+                                let s = *total + *limb;
+                                *total = if s >= P { s - P } else { s };
+                            }
+                        }
+                    }
+                }
+                (out, done)
             }
         }
     };

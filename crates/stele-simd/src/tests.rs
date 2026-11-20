@@ -192,3 +192,47 @@ fn matches_reference_qm31_fold_on_seeded_and_edge_tables() {
         }
     }
 }
+
+#[test]
+fn matches_reference_qm31_layer_round_on_seeded_and_edge_tables() {
+    let backends = backends();
+    let mut seed = 0x5354_454c_4500_0021;
+    // 1000 seeded layers: halves across a vector boundary, sub-ranges that start and end
+    // off a vector boundary, edge limbs and an edge γ in a quarter of them.
+    for case in 0..1000usize {
+        let half = case % 23;
+        let edge = case % 4 == 0;
+        let tables: Vec<Vec<_>> = (0..4)
+            .map(|_| (0..2 * half).map(|_| element(&mut seed, edge)).collect())
+            .collect();
+        let e: Vec<_> = (0..half).map(|_| element(&mut seed, edge)).collect();
+        let gamma = element(&mut seed, case % 8 == 0);
+        let start = if half == 0 { 0 } else { case / 23 % (half + 1) };
+        let end = start + (case / 7 % (half - start + 1));
+        let view = [
+            &tables[0][..],
+            &tables[1][..],
+            &tables[2][..],
+            &tables[3][..],
+        ];
+        let expected = crate::layer_round_reference(view, &e, gamma, start..end);
+        for backend in &backends {
+            assert_eq!(
+                backend
+                    .layer_round(view, &e, gamma, start..end)
+                    .expect("available"),
+                expected,
+                "{backend:?} case {case}"
+            );
+        }
+        assert_eq!(crate::layer_round(view, &e, gamma, start..end), expected);
+    }
+    let zero = element(&mut seed, false);
+    for backend in [Backend::Neon, Backend::Avx2, Backend::Avx512] {
+        if !backend.available() {
+            assert!(backend
+                .layer_round([&[], &[], &[], &[]], &[], zero, 0..0)
+                .is_err());
+        }
+    }
+}

@@ -170,4 +170,4 @@ mod slices;
 mod tests;
 #[cfg(target_arch = "x86_64")]
 mod x86;
-pub use slices::{fold, fold_reference};
+pub use slices::{fold, fold_reference, layer_round, layer_round_reference, LayerTables};
