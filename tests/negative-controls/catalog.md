@@ -223,6 +223,7 @@
 | NC-1338 | development virtual definition mismatch | 0028 §6 | prove with a virtual column's values differing from its definition at one index | `LinearMismatch` | done |
 | NC-1339 | development virtual rounding remainder | 0028 §6, 0008 A9 | commit `y + 1` for one rounding, with virtual `rem` recomputed | `RootMismatch` | done |
 | NC-1340 | development virtual advice inverse | 0028 §2.2, §6 | declare advice (a rounding output) as `Linear` with the integer representing a field inverse of `2^k` | `StatementMismatch` | done |
+| NC-1341 | development lookup split | 0026 A8 | under instance bound `B = 2`, move one member value across an instance boundary with the receiving instance keeping its multiplicities (relation-engine level through the segmented verifier; a development plan has `B = 30`) | `RootMismatch` | done |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206

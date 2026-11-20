@@ -97,6 +97,67 @@ fn accepts_om31_selected_product_original_consumers() {
     check::<OM31>();
 }
 
+fn check_base_selected_parity<K: ChallengeField + Eq + core::fmt::Debug>() {
+    use stele_field::{Field, M31};
+    let one = K::from_i64(1);
+    for m in [0u32, 1, 4] {
+        let len = 1usize << m;
+        let mut seed = Transcript::<K>::new(b"e20-02-sel-seed").expect("t");
+        let alpha = seed.challenge(ChallengeLabel::Sumcheck).expect("alpha");
+        let beta = seed.challenge(ChallengeLabel::Sumcheck).expect("beta");
+        let d = Descriptor::new(79, m, m, [10, 11], &[]).expect("tree");
+        let shape = LeafDescriptor::new(&d, &[91, 92]).expect("leaf");
+        let sigma_m31: Vec<M31> = (0..len)
+            .map(|i| if i % 3 == 0 { M31::ZERO } else { M31::ONE })
+            .collect();
+        let sigma_k: Vec<K> = sigma_m31.iter().map(|&s| one.mul_m31(s)).collect();
+        let xs_m31 = vec![
+            (0..len)
+                .map(|i| M31::from_i64((i * 11 + 5) as i64 % 256))
+                .collect::<Vec<_>>(),
+            (0..len)
+                .map(|i| M31::from_i64(((i * 7) % 19) as i64 - 9))
+                .collect::<Vec<_>>(),
+        ];
+        let xs_k: Vec<Vec<K>> = xs_m31
+            .iter()
+            .map(|col| col.iter().map(|&v| one.mul_m31(v)).collect())
+            .collect();
+        let leaves: Vec<[K; 2]> = (0..len)
+            .map(|i| {
+                let s = sigma_k[i];
+                let row = xs_k[0][i] + beta * xs_k[1][i];
+                [s, one - s + s * (alpha - row)]
+            })
+            .collect();
+        let (_, original) = d
+            .prove(&leaves, &mut Transcript::new(b"tree").expect("t"))
+            .expect("tree");
+        let mut t_ref = Transcript::new(b"sel-parity").expect("t");
+        let (p_ref, r_ref) = SelectedProduct::new(shape, &original, &sigma_k, alpha, beta)
+            .expect("new")
+            .prove(&xs_k, &mut t_ref)
+            .expect("prove");
+        let mut t_opt = Transcript::new(b"sel-parity").expect("t");
+        let (p_opt, r_opt) = SelectedProduct::new_base(shape, &original, &sigma_m31, alpha, beta)
+            .expect("new_base")
+            .prove_base(&xs_m31, &mut t_opt)
+            .expect("prove_base");
+        assert_eq!(p_opt, p_ref);
+        assert_eq!(r_opt, r_ref);
+        assert_eq!(
+            t_opt.challenge(ChallengeLabel::Sumcheck),
+            t_ref.challenge(ChallengeLabel::Sumcheck)
+        );
+    }
+}
+
+#[test]
+fn matches_reference_base_selected_product_qm31_and_om31() {
+    check_base_selected_parity::<QM31>();
+    check_base_selected_parity::<OM31>();
+}
+
 fn context_shapes<K: ChallengeField + Eq + core::fmt::Debug>() {
     let one = K::from_i64(1);
     let two = K::from_i64(2);

@@ -45,7 +45,7 @@ fn pick_identity_witness(rel: &Relation, values: &Values) -> Result<(ColumnId, u
         let Some(entries) = values.get(rel, id) else {
             continue;
         };
-        if let Some(j) = entries.iter().position(|&v| col.width.contains(v + 1)) {
+        if let Some(j) = entries.iter().position(|v| col.width.contains(v + 1)) {
             let mut mutated = values.clone();
             let mut e = entries.to_vec();
             e[j] += 1;

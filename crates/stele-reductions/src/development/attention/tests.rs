@@ -1798,7 +1798,7 @@ fn rejects_score_other_rounding_direction() {
         .mixed_score
     {
         let top_c = *ms.carries.last().expect("top carry");
-        let c_val = case.values.get(&case.relation, top_c).expect("c")[x];
+        let c_val = case.values.get(&case.relation, top_c).expect("c").at(x);
         for other in [c_val - 1, c_val + 1] {
             let mut v = case.values.clone();
             let mut col = v.get(&case.relation, top_c).expect("c").to_vec();

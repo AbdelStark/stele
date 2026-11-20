@@ -10,15 +10,15 @@
 //! possibly shifted by `-width.min()` (RFC-0026 §3.4), so the selected-product claims
 //! are routed to RFC-0026 §4 step 7 instead of being opened here (RFC-0008 A2
 //! as amended for RFC-0026; every root is fixed before the first lookup draw).
-use super::{put, Check, Claims, Error, Ledger, Line, Reader, ResolvedColumns, K};
+use super::{bits_point, put, Check, Claims, Error, Ledger, Line, Reader, ResolvedColumns, K};
 use crate::lookup::{functionals, phase};
 use alloc::vec::Vec;
 use stele_field::{Field, Serialize, M31};
 use stele_hash::{AbsorbLabel, ChallengeLabel, Transcript};
 use stele_ir::relation::Relation;
-use stele_lookup::fraction::{self, LeafDescriptor, SelectedProduct};
+use stele_lookup::fraction::{self, BaseLeaves, LeafDescriptor, SelectedProduct};
 use stele_pcs::{verify_opening, Functional, PreparedSource, Source, VerifiedCertificate};
-use stele_sumcheck::parallel::{for_each_chunk, sum_ranges};
+use stele_sumcheck::parallel::{for_each_chunk, join, sum_ranges};
 
 const FRACTION: fn(fraction::Error) -> Error = Error::Fraction;
 
@@ -43,21 +43,22 @@ fn statement(check: &Check) -> Vec<u8> {
     out
 }
 
-/// The concatenated selector: each member's public selector (or ones) on its block,
-/// zero on the padding.
-fn sigma(check: &Check, relation: &Relation) -> Vec<K> {
-    let mut out = alloc::vec![K::from_i64(0); 1 << check.m];
+/// The concatenated selector in the base field M31: each member's public selector (or ones)
+/// on its block (offset by `block_index << m` under RFC-0026 A8), zero on the padding.
+fn sigma_base(check: &Check, relation: &Relation) -> Vec<M31> {
+    let mut out = alloc::vec![M31::ZERO; 1 << check.m];
     for member in &check.members {
+        let block_base = member.block_index << member.m;
         let block = &mut out[member.offset..member.offset + (1 << member.m)];
         for_each_chunk(block, |start, chunk| {
             for (j, s) in chunk.iter_mut().enumerate() {
-                let x = start + j;
+                let x = (block_base | (start + j)) as u64;
                 *s = match &member.selector {
-                    None => K::from_i64(1),
+                    None => M31::ONE,
                     // Validated public 0/1 column (RFC-0026 §3.3).
                     Some(r) => match &relation.columns[r.column.0 as usize].kind {
-                        stele_ir::relation::Kind::Public(v) => K::from_i64(v[r.index(x as u64)]),
-                        _ => K::from_i64(0),
+                        stele_ir::relation::Kind::Public(v) => M31::from_i64(v[r.index(x)]),
+                        _ => M31::ZERO,
                     },
                 };
             }
@@ -66,18 +67,20 @@ fn sigma(check: &Check, relation: &Relation) -> Vec<K> {
     out
 }
 
-/// Concatenated tuple column `i`: on each member block,
-/// `x_i(local) = column(ref.index(local)) + offset`; zero on the padding.
-fn originals(check: &Check, resolved: &ResolvedColumns<'_>) -> Result<Vec<Vec<K>>, Error> {
-    let mut out = alloc::vec![alloc::vec![K::from_i64(0); 1 << check.m]; check.c];
+/// Concatenated base-field tuple column `i`: on each member block,
+/// `x_i(local) = column(ref.index((block_index << m) | local)) + offset`; zero on the padding.
+fn originals_base(check: &Check, resolved: &ResolvedColumns<'_>) -> Result<Vec<Vec<M31>>, Error> {
+    let mut out = alloc::vec![alloc::vec![M31::ZERO; 1 << check.m]; check.c];
     for member in &check.members {
+        let block_base = member.block_index << member.m;
         for (x, (r, offset)) in out.iter_mut().zip(&member.tuple) {
             let col = resolved.get(r.column)?;
-            let shift = K::from_i64(*offset);
+            let shift = M31::from_i64(*offset);
             let block = &mut x[member.offset..member.offset + (1 << member.m)];
             for_each_chunk(block, |start, chunk| {
                 for (j, v) in chunk.iter_mut().enumerate() {
-                    *v = K::from_i64(col[r.index((start + j) as u64)]) + shift;
+                    let dom = (block_base | (start + j)) as u64;
+                    *v = M31::from_i64(col.at(r.index(dom))) + shift;
                 }
             });
         }
@@ -99,8 +102,9 @@ fn block_weight(check: &Check, member: &super::Member, z: &[K]) -> K {
     })
 }
 
-/// Each member's tuple evaluations at the low coordinates of `z`, member-major.
-fn split(check: &Check, xs: &[Vec<K>], z: &[K]) -> Result<Vec<K>, Error> {
+/// Each member's tuple evaluations at the low coordinates of `z`, member-major,
+/// computed directly from base-field originals via `mul_m31` (task E20-02).
+fn split_base(check: &Check, xs: &[Vec<M31>], z: &[K]) -> Result<Vec<K>, Error> {
     let mut out = Vec::new();
     for member in &check.members {
         let low = &z[usize::from(check.m - member.m)..];
@@ -110,7 +114,7 @@ fn split(check: &Check, xs: &[Vec<K>], z: &[K]) -> Result<Vec<K>, Error> {
             let mut dot = [K::from_i64(0)];
             sum_ranges(eq.len(), &mut dot, |range, out| {
                 for i in range {
-                    out[0] = out[0] + block[i] * eq[i];
+                    out[0] = out[0] + eq[i].mul_m31(block[i]);
                 }
                 Ok(())
             })?;
@@ -145,9 +149,10 @@ pub(super) fn counts(
         .map(|(i, row)| (key(row), i))
         .collect();
     index.sort_unstable();
-    let selected = sigma(check, relation);
+    let selected = sigma_base(check, relation);
     let mut mu = alloc::vec![0i64; 1 << check.k];
     for member in &check.members {
+        let block_base = member.block_index << member.m;
         let mut xs = Vec::new();
         for (r, offset) in &member.tuple {
             xs.push((r, resolved.get(r.column)?, M31::from_i64(*offset)));
@@ -157,12 +162,13 @@ pub(super) fn counts(
         for_each_chunk(&mut rows, |start, chunk| {
             for (j, row) in chunk.iter_mut().enumerate() {
                 let local = start + j;
-                if selected[member.offset + local] == K::from_i64(0) {
+                if selected[member.offset + local] == M31::ZERO {
                     continue;
                 }
+                let dom = (block_base | local) as u64;
                 let mut k = [0u32; 2];
                 for (k, (r, col, shift)) in k.iter_mut().zip(&xs) {
-                    *k = (M31::from_i64(col[r.index(local as u64)]) + *shift).as_u32();
+                    *k = (M31::from_i64(col.at(r.index(dom))) + *shift).as_u32();
                 }
                 // Unmatched tuples stay in the lookup leaves; the roots decide (A5 producer).
                 if let Ok(p) = index.binary_search_by_key(&k, |e| e.0) {
@@ -337,13 +343,18 @@ fn check_members(
     Ok(())
 }
 
-/// Route each member value to its column at the member's low coordinates (minus its
-/// shift), as RFC-0008 A6 column claims.
+/// Route each member value to its column at `(bits(block_index) ‖ z_low)` (RFC-0026 A8;
+/// equals `z_low` when `block_bits == 0`), minus its shift, as RFC-0008 A6 column claims.
 fn route(check: &Check, z: &[K], members: &[K], claims: &mut Claims) {
     for (member, v) in check.members.iter().zip(members.chunks_exact(check.c)) {
         let low = &z[usize::from(check.m - member.m)..];
+        let domain = if member.block_bits == 0 {
+            low.to_vec()
+        } else {
+            bits_point(member.block_index, member.block_bits, low)
+        };
         for ((r, offset), value) in member.tuple.iter().zip(v) {
-            claims.push(r, low, *value - K::from_i64(*offset));
+            claims.push(r, &domain, *value - K::from_i64(*offset));
         }
     }
 }
@@ -387,6 +398,8 @@ pub(super) fn absorb_virtual_members(
 
 /// Produce one lookup section; never checks the verifier's equations itself.
 /// `counts` is [`counts`] of `(check, relation, resolved)`, made once in step 3.
+/// Keeps leaf layers in the base field, reads small-domain first layers from precomputed
+/// tables, and builds left/right trees concurrently on the work pool (task E20-02).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn prove(
     t: &mut Transcript<K>,
@@ -399,67 +412,96 @@ pub(super) fn prove(
     claims: &mut Claims,
 ) -> Result<(), Error> {
     let p = start(t, check, mu.1, Nonce::Prove(out))?;
-    let xs = originals(check, resolved)?;
-    let sigma = sigma(check, relation);
-    let one = K::from_i64(1);
-    // compress(row) without the row: the same Horner fold over the tuple columns.
-    let mut leaves = alloc::vec![[K::from_i64(0); 2]; sigma.len()];
-    for_each_chunk(&mut leaves, |start, chunk| {
-        for (j, leaf) in chunk.iter_mut().enumerate() {
-            let (i, s) = (start + j, sigma[start + j]);
-            let row = xs
-                .iter()
-                .rev()
-                .fold(K::from_i64(0), |v, x| v * p.beta + x[i]);
-            *leaf = [s, one - s + s * (p.alpha - row)];
+    let (sigma, xs) = join(
+        || sigma_base(check, relation),
+        || originals_base(check, resolved),
+    );
+    let xs = xs?;
+    let base_leaves = if check.c == 1 {
+        BaseLeaves::SmallDomain {
+            sigma: &sigma,
+            values: &xs[0],
+            alpha: p.alpha,
+            table_size: check.t,
         }
-    });
-    let (left_proof, lookup) = p.left.prove(&leaves, t).map_err(FRACTION)?;
-    out.extend_from_slice(&left_proof.encode(&p.left).map_err(FRACTION)?);
-    let message = mu.0.message();
-    let mut right = alloc::vec![[K::from_i64(0), one]; check.entries.len() / check.c];
-    for_each_chunk(&mut right, |start, chunk| {
-        for (j, out) in chunk.iter_mut().enumerate() {
-            let i = start + j;
-            if i < check.t {
-                let row = &check.entries[i * check.c..(i + 1) * check.c];
-                let row = row
-                    .iter()
-                    .rev()
-                    .fold(K::from_i64(0), |v, x| v * p.beta + K::from_i64(*x));
-                *out = [K::from_i64(counts[i]), p.alpha - row];
+    } else {
+        BaseLeaves::General {
+            sigma: &sigma,
+            xs: &xs,
+            alpha: p.alpha,
+            beta: p.beta,
+        }
+    };
+    let one = K::from_i64(1);
+    let build_right = || -> Result<fraction::BuiltTree<K>, Error> {
+        let mut right = alloc::vec![[K::from_i64(0), one]; check.entries.len() / check.c];
+        for_each_chunk(&mut right, |start, chunk| {
+            for (j, out) in chunk.iter_mut().enumerate() {
+                let i = start + j;
+                if i < check.t {
+                    let row = &check.entries[i * check.c..(i + 1) * check.c];
+                    let row = row
+                        .iter()
+                        .rev()
+                        .fold(K::from_i64(0), |v, x| v * p.beta + K::from_i64(*x));
+                    *out = [K::from_i64(counts[i]), p.alpha - row];
+                }
+            }
+        });
+        // Malicious-prover seam: a zero-count row's denominator moved (sum unchanged).
+        #[cfg(any(test, feature = "controls"))]
+        if check.shift != 0 {
+            if let Some(i) = (0..check.t).find(|i| counts[*i] == 0) {
+                right[i][1] = right[i][1] + K::from_i64(check.shift);
             }
         }
-    });
-    // Malicious-prover seam: a zero-count row's denominator moved (sum unchanged).
-    #[cfg(any(test, feature = "controls"))]
-    if check.shift != 0 {
-        if let Some(i) = (0..check.t).find(|i| counts[*i] == 0) {
-            right[i][1] = right[i][1] + K::from_i64(check.shift);
-        }
-    }
-    let (right_proof, table) = p.right.prove(&right, t).map_err(FRACTION)?;
+        p.right.build_levels(&right).map_err(FRACTION)
+    };
+    let (left_tree, right_tree) = join(
+        || p.left.build_base_levels(base_leaves).map_err(FRACTION),
+        build_right,
+    );
+    let (left_proof, lookup) = p
+        .left
+        .prove_built_base(base_leaves, left_tree?, t)
+        .map_err(FRACTION)?;
+    out.extend_from_slice(&left_proof.encode(&p.left).map_err(FRACTION)?);
+    let (right_proof, table) = p.right.prove_built(right_tree?, t).map_err(FRACTION)?;
     out.extend_from_slice(&right_proof.encode(&p.right).map_err(FRACTION)?);
     let ids: Vec<u64> = (0..check.c).map(|i| check.tuple_id(i)).collect();
     let leaf = LeafDescriptor::new(&p.left, &ids).map_err(FRACTION)?;
-    let (proof, selected) = SelectedProduct::new(leaf, &lookup, &sigma, p.alpha, p.beta)
+    let (proof, selected) = SelectedProduct::new_base(leaf, &lookup, &sigma, p.alpha, p.beta)
         .map_err(FRACTION)?
-        .prove(&xs, t)
+        .prove_base(&xs, t)
         .map_err(FRACTION)?;
     out.extend_from_slice(&leaf.encode(&proof).map_err(FRACTION)?);
-    #[allow(unused_mut)]
-    let mut members = split(check, &xs, &selected.point)?;
-    #[cfg(test)]
-    if let Some(other) = &check.split {
-        let other_resolved = ResolvedColumns::borrowed(relation, other);
-        members = split(check, &originals(check, &other_resolved)?, &selected.point)?;
-    }
+    let message = mu.0.message();
+    let pieces =
+        functionals::pieces(mu.0.source(), &table.point, check.t).map_err(Error::Lookup)?;
+    let (members, values) = join(
+        || -> Result<Vec<K>, Error> {
+            #[cfg(test)]
+            if let Some(other) = &check.split {
+                let other_resolved = ResolvedColumns::borrowed(relation, other);
+                return split_base(
+                    check,
+                    &originals_base(check, &other_resolved)?,
+                    &selected.point,
+                );
+            }
+            split_base(check, &xs, &selected.point)
+        },
+        || {
+            pieces
+                .iter()
+                .map(|q| (q.id, q.value(message)))
+                .collect::<Vec<(u8, K)>>()
+        },
+    );
+    let members = members?;
     put(out, &members);
     absorb_virtual_members(t, check, relation, &members)?;
     route(check, &selected.point, &members, claims);
-    let pieces =
-        functionals::pieces(mu.0.source(), &table.point, check.t).map_err(Error::Lookup)?;
-    let values: Vec<(u8, K)> = pieces.iter().map(|q| (q.id, q.value(message))).collect();
     for (_, v) in &values {
         out.extend_from_slice(&v.to_le_bytes());
     }
@@ -503,11 +545,11 @@ pub(super) fn verify(
     check_table(check, &p, &table)?;
     let ids: Vec<u64> = (0..check.c).map(|i| check.tuple_id(i)).collect();
     let leaf = LeafDescriptor::new(&p.left, &ids).map_err(FRACTION)?;
-    let sigma = sigma(check, relation);
+    let sigma = sigma_base(check, relation);
     let leaf_proof = leaf
         .decode(reader.take(leaf.proof_size().map_err(FRACTION)?)?)
         .map_err(FRACTION)?;
-    let selected = SelectedProduct::new(leaf, &lookup, &sigma, p.alpha, p.beta)
+    let selected = SelectedProduct::new_base(leaf, &lookup, &sigma, p.alpha, p.beta)
         .map_err(FRACTION)?
         .verify(&leaf_proof, t)
         .map_err(FRACTION)?;

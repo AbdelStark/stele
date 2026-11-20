@@ -20,12 +20,13 @@ use core::fmt;
 use stele_field::{Field, Serialize, M31, QM31};
 use stele_hash::{AbsorbLabel, ChallengeLabel, HashUsage, Transcript};
 use stele_ir::relation::{
-    ColumnId, Def, Identity, Invalid, Kind, Ref, Relation, Term as IdentityTerm, Values,
+    ColumnId, ColumnSlice, Def, Identity, Invalid, Kind, Ref, Relation, Term as IdentityTerm,
+    Values,
 };
 use stele_pcs::{
     verify_certificate, verify_point, PreparedSource, ProofKind, Source, VerifiedCertificate,
 };
-use stele_sumcheck::{claim_batch, parallel, zerocheck, Dense, Instance, Term};
+use stele_sumcheck::{claim_batch, parallel, zerocheck, Dense, DenseTable, Instance, Term};
 
 #[path = "relation_codec.rs"]
 mod codec;
@@ -575,9 +576,16 @@ impl Stack {
     }
 }
 
-/// One lookup or range inside its table's batched A5 statement (RFC-0026 A3).
+/// Default lookup instance domain bound `B` (RFC-0026 A8): 2^30 positions per instance.
+pub const DEFAULT_INSTANCE_BOUND: u8 = 30;
+
+/// One lookup or range inside its table's batched A5 statement (RFC-0026 A3, A8).
 pub(crate) struct Member {
     m: u8,
+    /// Leading domain bits cut by RFC-0026 A8 when the original member exceeded `2^B`; 0 if unsplit.
+    block_bits: u8,
+    /// Aligned block index in `0..2^block_bits`; 0 if unsplit.
+    block_index: usize,
     tuple: Vec<(Ref, i64)>,
     selector: Option<Ref>,
     /// Start of this member's block in the concatenated domain; a multiple of 2^m.
@@ -603,6 +611,11 @@ pub(crate) struct Check {
     /// Test-only malicious-prover seam: added to the committed count of row 0.
     #[cfg(test)]
     skew: i64,
+    /// Malicious-prover seam (tests and the `controls` feature; RFC-0026 A8 control
+    /// NC-1341): override this instance's committed multiplicities, so a member value can
+    /// move across an instance boundary without its multiplicity.
+    #[cfg(any(test, feature = "controls"))]
+    count_override: Option<Vec<i64>>,
     /// Test-only malicious-prover seam: member evaluations taken from these values.
     #[cfg(test)]
     split: Option<Values>,
@@ -783,6 +796,8 @@ fn check(
         grind,
         #[cfg(test)]
         skew: 0,
+        #[cfg(any(test, feature = "controls"))]
+        count_override: None,
         #[cfg(test)]
         split: None,
         #[cfg(any(test, feature = "controls"))]
@@ -790,7 +805,113 @@ fn check(
     })
 }
 
+/// Build RFC-0026 A3 & A8 check instances for `targets` under domain bound `B = instance_bound`.
+/// Unsplit targets (`total <= 2^B`) keep identical ids, source ids and names.
+fn build_a8_checks(
+    targets: Vec<(Target, Vec<Member>)>,
+    relation: &Relation,
+    sources: Sources,
+    instance_bound: u8,
+    id_base: u64,
+    source_base: u64,
+    max_checks: Option<usize>,
+) -> Result<Vec<Check>, Error> {
+    if instance_bound == 0 || instance_bound > 30 {
+        return Err(Error::Unsupported);
+    }
+    let cap = 1usize << instance_bound;
+    let mut checks = Vec::new();
+    for (target, raw_members) in targets {
+        let (base_name, t, entries) = match target {
+            Target::Table(table) => {
+                let table = &relation.tables[table as usize];
+                let entries: Vec<i64> = table.rows.iter().flatten().copied().collect();
+                (table.name.clone(), table.rows.len(), entries)
+            }
+            Target::Range(bits) => {
+                let t = 1usize << bits;
+                (alloc::format!("range_{bits}"), t, (0..t as i64).collect())
+            }
+        };
+        // RFC-0026 A8: cut members larger than 2^B along their leading domain bits first,
+        // then sort in A3 descending-size order and split into <= 2^B instances.
+        let mut expanded = Vec::new();
+        for member in raw_members {
+            if member.m > instance_bound {
+                let block_bits = member.m - instance_bound;
+                let blocks = 1usize << block_bits;
+                for block_index in 0..blocks {
+                    expanded.push(Member {
+                        m: instance_bound,
+                        block_bits,
+                        block_index,
+                        tuple: member.tuple.clone(),
+                        selector: member.selector.clone(),
+                        offset: 0,
+                    });
+                }
+            } else {
+                expanded.push(member);
+            }
+        }
+        expanded.sort_by(|a, b| b.m.cmp(&a.m));
+        let mut buckets: Vec<Vec<Member>> = Vec::new();
+        let mut cur = Vec::new();
+        let mut cur_total = 0usize;
+        for member in expanded {
+            let size = 1usize << member.m;
+            if !cur.is_empty() && cur_total + size > cap {
+                buckets.push(cur);
+                cur = Vec::new();
+                cur_total = 0;
+            }
+            cur_total += size;
+            cur.push(member);
+        }
+        if !cur.is_empty() {
+            buckets.push(cur);
+        }
+        let multi = buckets.len() > 1;
+        for (inst_idx, members) in buckets.into_iter().enumerate() {
+            if let Some(limit) = max_checks {
+                if checks.len() >= limit {
+                    return Err(Error::Unsupported);
+                }
+            }
+            let idx = checks.len() as u64;
+            let name = if multi {
+                alloc::format!("{base_name}/inst{inst_idx}")
+            } else {
+                base_name.clone()
+            };
+            checks.push(check(
+                id_base | idx,
+                source_base + idx,
+                name,
+                members,
+                t,
+                entries.clone(),
+                sources,
+            )?);
+        }
+    }
+    Ok(checks)
+}
+
 fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
+    plan_with_bound(relation, sources, DEFAULT_INSTANCE_BOUND)
+}
+
+/// Derive the plan with RFC-0026 A8 lookup instance bound `B` (`1 <= B <= 30`; default 30).
+/// Unsplit plans (every target total `<= 2^B`) produce identical checks, ids and proof bytes.
+fn plan_with_bound(
+    relation: &Relation,
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<Plan, Error> {
+    if instance_bound == 0 || instance_bound > 30 {
+        return Err(Error::Unsupported);
+    }
     relation.validate().map_err(Error::StatementMismatch)?;
     if relation.has_virtual() {
         return Err(Error::Unsupported);
@@ -837,8 +958,8 @@ fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
         }
     };
     let base = 3;
-    // RFC-0026 A3: one check per table, in order of first use (lookups, then ranges);
-    // members keep relation order before the size sort.
+    // RFC-0026 A3 & A8: one check (an ordered list of instances of <= 2^B positions) per table,
+    // in order of first use (lookups, then ranges); members keep relation order before size sort.
     let mut targets: Vec<(Target, Vec<Member>)> = Vec::new();
     let mut add =
         |target: Target, member: Member| match targets.iter_mut().find(|(t, _)| *t == target) {
@@ -850,6 +971,8 @@ fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
             Target::Table(lookup.table.0),
             Member {
                 m: lookup.vars,
+                block_bits: 0,
+                block_index: 0,
                 tuple: lookup.tuple.iter().map(|r| (r.clone(), 0)).collect(),
                 selector: lookup.selector.clone(),
                 offset: 0,
@@ -863,28 +986,15 @@ fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
             Target::Range(range.width.bits),
             Member {
                 m: log_len,
+                block_bits: 0,
+                block_index: 0,
                 tuple: vec![(Ref::identity(range.column, log_len), -range.width.min())],
                 selector: None,
                 offset: 0,
             },
         );
     }
-    let mut checks = Vec::new();
-    for (id, (target, members)) in targets.into_iter().enumerate() {
-        let id = id as u64;
-        let (name, t, entries) = match target {
-            Target::Table(table) => {
-                let table = &relation.tables[table as usize];
-                let entries = table.rows.iter().flatten().copied().collect();
-                (table.name.clone(), table.rows.len(), entries)
-            }
-            Target::Range(bits) => {
-                let t = 1usize << bits;
-                (alloc::format!("range_{bits}"), t, (0..t as i64).collect())
-            }
-        };
-        checks.push(check(id, base + id, name, members, t, entries, sources)?);
-    }
+    let checks = build_a8_checks(targets, relation, sources, instance_bound, 0, base, None)?;
     let lengths: Vec<u8> = (0..relation.columns.len())
         .filter(|i| relation.columns[*i].kind == Kind::Weight)
         .map(|i| relation.columns[i].log_len)
@@ -925,8 +1035,70 @@ fn column<'a>(
     relation: &'a Relation,
     values: &'a Values,
     id: ColumnId,
-) -> Result<&'a [i64], Error> {
+) -> Result<ColumnSlice<'a>, Error> {
     values.get(relation, id).ok_or(Error::Missing(id))
+}
+
+/// Packed integer storage for one materialized virtual column within a segment (E20-01).
+enum VirtualBuf {
+    I16(Vec<i16>),
+    I32(Vec<i32>),
+    I64(Vec<i64>),
+}
+
+impl VirtualBuf {
+    /// Storage only: the narrowest type that holds every value exactly. No strategy is
+    /// chosen from this scan (RFC-0006 A5 eligibility comes from the declared widths).
+    fn from_i64(values: Vec<i64>) -> Self {
+        let max_abs = values.iter().fold(0u64, |m, &v| m.max(v.unsigned_abs()));
+        if max_abs <= i16::MAX as u64 {
+            Self::I16(values.into_iter().map(|v| v as i16).collect())
+        } else if max_abs <= i32::MAX as u64 {
+            Self::I32(values.into_iter().map(|v| v as i32).collect())
+        } else {
+            Self::I64(values)
+        }
+    }
+
+    fn as_slice(&self) -> ColumnSlice<'_> {
+        match self {
+            Self::I16(v) => ColumnSlice::I16(v),
+            Self::I32(v) => ColumnSlice::I32(v),
+            Self::I64(v) => ColumnSlice::I64(v),
+        }
+    }
+
+    fn bump_one(&mut self, idx: usize) -> Result<(), Error> {
+        let v = self
+            .as_slice()
+            .at(idx)
+            .checked_add(1)
+            .ok_or(Error::Unsupported)?;
+        match self {
+            Self::I16(buf) => {
+                if let Ok(narrow) = i16::try_from(v) {
+                    *buf.get_mut(idx).ok_or(Error::Unsupported)? = narrow;
+                } else {
+                    let mut wide: Vec<i64> = buf.iter().map(|&x| i64::from(x)).collect();
+                    *wide.get_mut(idx).ok_or(Error::Unsupported)? = v;
+                    *self = Self::I64(wide);
+                }
+            }
+            Self::I32(buf) => {
+                if let Ok(narrow) = i32::try_from(v) {
+                    *buf.get_mut(idx).ok_or(Error::Unsupported)? = narrow;
+                } else {
+                    let mut wide: Vec<i64> = buf.iter().map(|&x| i64::from(x)).collect();
+                    *wide.get_mut(idx).ok_or(Error::Unsupported)? = v;
+                    *self = Self::I64(wide);
+                }
+            }
+            Self::I64(buf) => {
+                *buf.get_mut(idx).ok_or(Error::Unsupported)? = v;
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Column values available within one segment: committed/weight/public columns borrowed from
@@ -935,7 +1107,7 @@ fn column<'a>(
 pub(crate) struct ResolvedColumns<'a> {
     relation: &'a Relation,
     values: &'a Values,
-    computed: Vec<Option<Vec<i64>>>,
+    computed: Vec<Option<VirtualBuf>>,
 }
 
 impl<'a> ResolvedColumns<'a> {
@@ -964,14 +1136,14 @@ impl<'a> ResolvedColumns<'a> {
         let mut this = Self {
             relation,
             values,
-            computed: vec![None; relation.columns.len()],
+            computed: (0..relation.columns.len()).map(|_| None).collect(),
         };
         for &id in virtuals_desc.iter().rev() {
             let col = &relation.columns[id.0 as usize];
             match &col.kind {
                 Kind::Virtual(Def::Linear { constant, terms }) => {
                     let n = 1usize << col.log_len;
-                    let ops: Vec<(i128, &[i64], &Ref)> = terms
+                    let ops: Vec<(i128, ColumnSlice<'_>, &Ref)> = terms
                         .iter()
                         .map(|(c, r)| Ok::<_, Error>((i128::from(*c), this.get(r.column)?, r)))
                         .collect::<Result<_, _>>()?;
@@ -985,7 +1157,7 @@ impl<'a> ResolvedColumns<'a> {
                             for &(coeff, data, r) in &ops {
                                 acc = acc.and_then(|a| {
                                     coeff
-                                        .checked_mul(i128::from(data[r.index(x)]))
+                                        .checked_mul(i128::from(data.at(r.index(x))))
                                         .and_then(|p| a.checked_add(p))
                                 });
                             }
@@ -1006,14 +1178,14 @@ impl<'a> ResolvedColumns<'a> {
                             let mut acc = c0;
                             for &(coeff, data, r) in &ops {
                                 let prod = coeff
-                                    .checked_mul(i128::from(data[r.index(x as u64)]))
+                                    .checked_mul(i128::from(data.at(r.index(x as u64))))
                                     .ok_or(Error::Capacity)?;
                                 acc = acc.checked_add(prod).ok_or(Error::Capacity)?;
                             }
                             *slot = i64::try_from(acc).map_err(|_| Error::Capacity)?;
                         }
                     }
-                    this.computed[id.0 as usize] = Some(out);
+                    this.computed[id.0 as usize] = Some(VirtualBuf::from_i64(out));
                 }
                 Kind::Virtual(Def::Contraction {
                     free,
@@ -1030,10 +1202,10 @@ impl<'a> ResolvedColumns<'a> {
                         .checked_shl(u32::from(*summed))
                         .ok_or(Error::Capacity)?;
                     let free_u32 = u32::from(*free);
-                    let max_abs = |slice: &[i64]| -> u128 {
+                    let max_abs = |slice: ColumnSlice<'_>| -> u128 {
                         slice
                             .iter()
-                            .fold(0u128, |m, &v| m.max(v.unsigned_abs() as u128))
+                            .fold(0u128, |m, v| m.max(v.unsigned_abs() as u128))
                     };
                     let safe_i64 = max_abs(lhs_data)
                         .checked_mul(max_abs(rhs_data))
@@ -1047,7 +1219,7 @@ impl<'a> ResolvedColumns<'a> {
                                 let mut acc = 0i64;
                                 for y in 0..n_sum as u64 {
                                     let xy = x | (y << free_u32);
-                                    acc += lhs_data[lhs.index(xy)] * rhs_data[rhs.index(xy)];
+                                    acc += lhs_data.at(lhs.index(xy)) * rhs_data.at(rhs.index(xy));
                                 }
                                 *slot = acc;
                             }
@@ -1057,18 +1229,18 @@ impl<'a> ResolvedColumns<'a> {
                             let mut acc = 0i128;
                             for y in 0..n_sum as u64 {
                                 let xy = (x as u64) | (y << free_u32);
-                                let prod = i128::from(lhs_data[lhs.index(xy)])
-                                    .checked_mul(i128::from(rhs_data[rhs.index(xy)]))
+                                let prod = i128::from(lhs_data.at(lhs.index(xy)))
+                                    .checked_mul(i128::from(rhs_data.at(rhs.index(xy))))
                                     .ok_or(Error::Capacity)?;
                                 acc = acc.checked_add(prod).ok_or(Error::Capacity)?;
                             }
                             *slot = i64::try_from(acc).map_err(|_| Error::Capacity)?;
                         }
                     }
-                    this.computed[id.0 as usize] = Some(out);
+                    this.computed[id.0 as usize] = Some(VirtualBuf::from_i64(out));
                 }
                 Kind::Virtual(Def::Pointwise { terms }) => {
-                    type PointwiseTerm<'b> = (i128, Vec<(&'b [i64], &'b Ref)>);
+                    type PointwiseTerm<'b> = (i128, Vec<(ColumnSlice<'b>, &'b Ref)>);
                     let n = 1usize << col.log_len;
                     let ops: Vec<PointwiseTerm<'_>> = terms
                         .iter()
@@ -1090,8 +1262,9 @@ impl<'a> ResolvedColumns<'a> {
                             for (coeff, factors) in &ops {
                                 let mut prod = Some(*coeff);
                                 for &(data, r) in factors {
-                                    prod = prod
-                                        .and_then(|p| p.checked_mul(i128::from(data[r.index(x)])));
+                                    prod = prod.and_then(|p| {
+                                        p.checked_mul(i128::from(data.at(r.index(x))))
+                                    });
                                 }
                                 acc = acc.and_then(|a| prod.and_then(|p| a.checked_add(p)));
                             }
@@ -1111,7 +1284,7 @@ impl<'a> ResolvedColumns<'a> {
                                 let mut prod = *coeff;
                                 for &(data, r) in factors {
                                     prod = prod
-                                        .checked_mul(i128::from(data[r.index(x as u64)]))
+                                        .checked_mul(i128::from(data.at(r.index(x as u64))))
                                         .ok_or(Error::Capacity)?;
                                 }
                                 acc = acc.checked_add(prod).ok_or(Error::Capacity)?;
@@ -1119,7 +1292,7 @@ impl<'a> ResolvedColumns<'a> {
                             *slot = i64::try_from(acc).map_err(|_| Error::Capacity)?;
                         }
                     }
-                    this.computed[id.0 as usize] = Some(out);
+                    this.computed[id.0 as usize] = Some(VirtualBuf::from_i64(out));
                 }
                 _ => return Err(Error::Unsupported),
             }
@@ -1128,15 +1301,14 @@ impl<'a> ResolvedColumns<'a> {
                     let col_vals = this.computed[id.0 as usize]
                         .as_mut()
                         .ok_or(Error::Unsupported)?;
-                    let entry = col_vals.get_mut(idx).ok_or(Error::Unsupported)?;
-                    *entry = entry.checked_add(1).ok_or(Error::Unsupported)?;
+                    col_vals.bump_one(idx)?;
                 }
             }
         }
         Ok(this)
     }
 
-    pub(crate) fn get(&self, id: ColumnId) -> Result<&[i64], Error> {
+    pub(crate) fn get(&self, id: ColumnId) -> Result<ColumnSlice<'_>, Error> {
         if matches!(
             self.relation.columns.get(id.0 as usize).map(|c| &c.kind),
             Some(Kind::Virtual(_))
@@ -1144,7 +1316,7 @@ impl<'a> ResolvedColumns<'a> {
             return self
                 .computed
                 .get(id.0 as usize)
-                .and_then(|v| v.as_deref())
+                .and_then(|v| v.as_ref().map(VirtualBuf::as_slice))
                 .ok_or(Error::Missing(id));
         }
         column(self.relation, self.values, id)
@@ -1165,26 +1337,30 @@ fn restrict(r: &Ref, domain: &[K]) -> Vec<K> {
     point
 }
 
-fn mle(values: &[i64], point: &[K]) -> Result<K, Error> {
-    let eq = stele_poly::eq_table(point).map_err(|_| Error::Capacity)?;
-    Ok(values
-        .iter()
-        .zip(eq)
-        .fold(K::from_i64(0), |s, (v, w)| s + K::from_i64(*v) * w))
+fn mle(values: ColumnSlice<'_>, point: &[K]) -> Result<K, Error> {
+    let eq = parallel::eq_table(point).map_err(|_| Error::Capacity)?;
+    let mut dot = [K::from_i64(0)];
+    parallel::sum_ranges(eq.len(), &mut dot, |range, out| {
+        for i in range {
+            out[0] = out[0] + eq[i].mul_m31(M31::from_i64(values.at(i)));
+        }
+        Ok(())
+    })?;
+    Ok(dot[0])
 }
 
-fn mle_dot(values: &[i64], eq: &[K]) -> Result<K, Error> {
+fn mle_dot(values: ColumnSlice<'_>, eq: &[K]) -> Result<K, Error> {
     let mut acc = [K::from_i64(0)];
     stele_sumcheck::parallel::sum_ranges(values.len(), &mut acc, |range, out| {
         for i in range {
-            out[0] = out[0] + K::from_i64(values[i]) * eq[i];
+            out[0] = out[0] + eq[i].mul_m31(M31::from_i64(values.at(i)));
         }
         Ok(())
     })?;
     Ok(acc[0])
 }
 
-fn mle_parallel(values: &[i64], point: &[K]) -> Result<K, Error> {
+fn mle_parallel(values: ColumnSlice<'_>, point: &[K]) -> Result<K, Error> {
     let eq = stele_sumcheck::parallel::eq_table(point)?;
     mle_dot(values, &eq)
 }
@@ -1426,40 +1602,48 @@ impl MatmulShape {
         point
     }
     /// Operand table over the sumcheck variables, non-shared free bits fixed at ρ.
-    fn table(&self, r: &Ref, col: &[i64]) -> Result<Vec<K>, Error> {
+    /// Returns a base-field [`DenseTable::Base`] when no non-fixed outer bits exist,
+    /// avoiding a dense extension-field table before the first sumcheck fold (E20-01).
+    fn table_mixed(&self, r: &Ref, col: ColumnSlice<'_>) -> Result<DenseTable<K>, Error> {
         let nv = self.vars.len();
         let mut mask = 0usize;
-        // Per entry-index bit: its sumcheck variable (`inner`, as `(j, z bit)`), or a bit
-        // outside the sumcheck (`outer`) whose weights `eq` folds in, in `r.vars` order.
+        // Per entry-index bit: a fixed bit (RFC-0026 A6), its sumcheck variable (`inner`,
+        // as `(j, z bit)`), or a non-fixed outer free bit (`outer`) folded via `eq`.
         let (mut inner, mut outer) = (Vec::new(), Vec::new());
-        let mut eq = vec![K::from_i64(1)];
-        for (j, d) in r.vars.iter().enumerate() {
-            match self.position(*d) {
-                Some(p) => {
-                    mask |= 1 << (nv - 1 - p);
-                    inner.push((j, nv - 1 - p));
-                }
-                None => {
-                    let x = self.fixed_at(*d);
-                    let low: Vec<K> = eq.iter().map(|w| *w * (K::from_i64(1) - x)).collect();
-                    let high: Vec<K> = eq.iter().map(|w| *w * x).collect();
-                    eq = [low, high].concat();
-                    outer.push(j);
-                }
-            }
-        }
-        // Entries outside a row block (RFC-0026 A6) have eq weight 0: skip them, so
-        // the blocks of a split read each operand entry once in total.
         let (mut fixed, mut selected) = (0usize, 0usize);
+        let mut eq = vec![K::from_i64(1)];
         for (j, d) in r.vars.iter().enumerate() {
             if let Some(bit) = Ref::fixed(*d) {
                 fixed |= 1 << j;
                 selected |= usize::from(bit) << j;
+            } else if let Some(p) = self.position(*d) {
+                mask |= 1 << (nv - 1 - p);
+                inner.push((j, nv - 1 - p));
+            } else {
+                let x = self.rho_at(*d);
+                let low: Vec<K> = eq.iter().map(|w| *w * (K::from_i64(1) - x)).collect();
+                let high: Vec<K> = eq.iter().map(|w| *w * x).collect();
+                eq = [low, high].concat();
+                outer.push(j);
             }
+        }
+        if outer.is_empty() {
+            let mut out = vec![M31::from_i64(0); 1 << nv];
+            parallel::for_each_chunk(&mut out, |start, chunk| {
+                for (k, slot) in chunk.iter_mut().enumerate() {
+                    let z = start + k;
+                    let mut index = selected;
+                    for &(j, bit) in &inner {
+                        index |= ((z >> bit) & 1) << j;
+                    }
+                    *slot = M31::from_i64(col.at(index));
+                }
+            });
+            return Ok(DenseTable::Base(out));
         }
         // Exact field sums: the split leaves every entry equal to the sequential loop's.
         let mut reduced = vec![K::from_i64(0); 1 << nv];
-        stele_sumcheck::parallel::sum_ranges(col.len(), &mut reduced, |range, reduced| {
+        parallel::sum_ranges(col.len(), &mut reduced, |range, reduced| {
             for index in range {
                 if index & fixed != selected {
                     continue;
@@ -1471,27 +1655,28 @@ impl MatmulShape {
                     .iter()
                     .enumerate()
                     .fold(0, |o, (k, j)| o | ((index >> j) & 1) << k);
-                reduced[z] = reduced[z] + eq[o] * K::from_i64(col[index]);
+                reduced[z] = reduced[z] + eq[o].mul_m31(M31::from_i64(col.at(index)));
             }
             Ok(())
         })?;
-        Ok((0..1 << nv).map(|z| reduced[z & mask]).collect())
+        if mask == (1usize << nv) - 1 {
+            Ok(DenseTable::Ext(reduced))
+        } else {
+            Ok(DenseTable::Ext(
+                (0..1 << nv).map(|z| reduced[z & mask]).collect(),
+            ))
+        }
     }
-    fn eq_table(&self) -> Vec<K> {
-        let nv = self.vars.len();
-        (0..1usize << nv)
-            .map(|z| {
-                self.shared.iter().fold(K::from_i64(1), |acc, d| {
-                    let p = self.position(*d).unwrap_or(0);
-                    let x = self.rho_at(*d);
-                    acc * if (z >> (nv - 1 - p)) & 1 == 1 {
-                        x
-                    } else {
-                        K::from_i64(1) - x
-                    }
-                })
-            })
-            .collect()
+    /// Shared-variable `eq(ρ_shared, ·)` table of length `2^|shared|`, never expanded across
+    /// the leading `summed` variables (E20-01).
+    fn eq_shared(&self) -> Result<Option<Vec<K>>, Error> {
+        if self.shared.is_empty() {
+            return Ok(None);
+        }
+        // `self.vars` is sorted descending, so `self.shared` occupies the trailing
+        // `self.shared.len()` coordinates in descending bit order.
+        let point: Vec<K> = self.shared.iter().rev().map(|&d| self.rho_at(d)).collect();
+        Ok(Some(parallel::eq_table(&point)?))
     }
     /// Operand claims at (ρ, r); `finals` lead with eq when k > 0.
     fn route_operands(
@@ -1766,8 +1951,8 @@ pub fn model_messages(relation: &Relation, values: &Values) -> Result<Vec<Vec<M3
             let mut message = vec![M31::from_i64(0); 1 << layout.bits];
             for &(w, offset) in &layout.blocks {
                 let col = column(relation, values, weight_cols[w])?;
-                for (out, v) in message[offset..].iter_mut().zip(col) {
-                    *out = M31::from_i64(*v);
+                for (out, v) in message[offset..].iter_mut().zip(col.iter()) {
+                    *out = M31::from_i64(v);
                 }
             }
             Ok(message)
@@ -1785,10 +1970,60 @@ fn weights_message(
     for weight in plan.weights.iter().filter(|w| w.source == k) {
         let col = column(relation, values, weight.column)?;
         for (out, v) in message[weight.offset..].iter_mut().zip(col) {
-            *out = M31::from_i64(*v);
+            *out = M31::from_i64(v);
         }
     }
     Ok(message)
+}
+
+/// True iff `committed` equals `weights_message(relation, plan, k, values)` entry-for-entry,
+/// checked with zero allocation (E20-01).
+fn weights_match_message(
+    relation: &Relation,
+    plan: &Plan,
+    k: usize,
+    values: &Values,
+    committed: &[M31],
+) -> Result<bool, Error> {
+    let total = 1usize << plan.model[k].bits;
+    if committed.len() != total {
+        return Ok(false);
+    }
+    let mut covered = 0usize;
+    let mut sum_len = 0usize;
+    for weight in plan.weights.iter().filter(|w| w.source == k) {
+        let col = column(relation, values, weight.column)?;
+        let len = 1usize << weight.n;
+        let end = weight.offset + len;
+        if end > total || col.len() != len {
+            return Ok(false);
+        }
+        if !committed[weight.offset..end]
+            .iter()
+            .zip(col)
+            .all(|(&c, v)| c == M31::from_i64(v))
+        {
+            return Ok(false);
+        }
+        covered = covered.max(end);
+        sum_len += len;
+    }
+    if sum_len != covered {
+        return Ok(false);
+    }
+    Ok(committed[covered..].iter().all(|&c| c == M31::from_i64(0)))
+}
+
+fn eval_m31(message: &[M31], point: &[K]) -> Result<K, Error> {
+    let eq = parallel::eq_table(point).map_err(|_| Error::Capacity)?;
+    let mut dot = [K::from_i64(0)];
+    parallel::sum_ranges(eq.len(), &mut dot, |range, out| {
+        for i in range {
+            out[0] = out[0] + eq[i].mul_m31(message[i]);
+        }
+        Ok(())
+    })?;
+    Ok(dot[0])
 }
 
 /// The supplied model certificates must be the derived layouts under their roots.
@@ -1837,13 +2072,6 @@ fn weight_claims_for(
     out
 }
 
-fn to_k(message: &[M31]) -> Vec<K> {
-    message
-        .iter()
-        .map(|v| K::from_i64(i64::from(v.as_u32())))
-        .collect()
-}
-
 /// Bind every model root to the transcript right after the statement (A5), so the
 /// proof binds the model even when the caller's public input omits it.
 fn absorb_model(
@@ -1884,10 +2112,36 @@ pub fn prove_measured(
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
     sources: Sources,
 ) -> Result<(Proof, Metrics), Error> {
+    prove_measured_with_instance_bound(t, relation, values, model, sources, DEFAULT_INSTANCE_BOUND)
+}
+
+/// [`prove`] with an explicit plan-fixed RFC-0026 A8 lookup instance bound `B` (`1 <= B <= 30`).
+#[cfg(test)]
+pub(crate) fn prove_with_instance_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<Proof, Error> {
+    prove_measured_with_instance_bound(t, relation, values, model, sources, instance_bound)
+        .map(|(proof, _)| proof)
+}
+
+/// [`prove_measured`] with an explicit plan-fixed RFC-0026 A8 lookup instance bound `B`.
+pub(crate) fn prove_measured_with_instance_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<(Proof, Metrics), Error> {
     // E16-22: stage timing, off unless STELE_STAGE_TIMES.
     let mut laps = parallel::Laps::start();
     let plan_timer = Stopwatch::start();
-    let plan = plan(relation, sources)?;
+    let plan = plan_with_bound(relation, sources, instance_bound)?;
     let plan_ns = plan_timer.elapsed_ns();
     laps.lap("dev/plan");
     let (proof, mut metrics) =
@@ -2060,11 +2314,12 @@ fn prove_plan_measured(
     }
     let mut col_reads = vec![0u64; plan.weights.len()];
     let member_selected = |member: &Member| -> u64 {
+        let block_base = (member.block_index as u64) << member.m;
         match &member.selector {
             None => 1u64 << member.m,
             Some(sel) => match &relation.columns[sel.column.0 as usize].kind {
                 Kind::Public(v) => (0..(1u64 << member.m))
-                    .filter(|&x| v[sel.index(x)] != 0)
+                    .filter(|&local| v[sel.index(block_base | local)] != 0)
                     .count() as u64,
                 _ => 0,
             },
@@ -2084,7 +2339,7 @@ fn prove_plan_measured(
                 let col = column(relation, values, *id)?;
                 let start = group.offset + (j << group.n);
                 for (out, v) in message[start..].iter_mut().zip(col) {
-                    *out = M31::from_i64(*v);
+                    *out = M31::from_i64(v);
                 }
             }
         }
@@ -2117,6 +2372,12 @@ fn prove_plan_measured(
     };
     let resolved = ResolvedColumns::borrowed(relation, values);
     let mu_messages = |i: usize| {
+        #[cfg(any(test, feature = "controls"))]
+        let counts = match &plan.checks[i].count_override {
+            Some(overridden) => overridden.clone(),
+            None => lookup::counts(&plan.checks[i], relation, &resolved)?,
+        };
+        #[cfg(not(any(test, feature = "controls")))]
         let counts = lookup::counts(&plan.checks[i], relation, &resolved)?;
         let message = lookup::multiplicities(&plan.checks[i], &counts)?;
         Ok::<_, Error>((counts, message))
@@ -2185,30 +2446,46 @@ fn prove_plan_measured(
                 col_reads[w_idx] = col_reads[w_idx].saturating_add(zc_reads);
             }
         }
-        let tables_for = |values: &Values| -> Result<Vec<Vec<K>>, Error> {
-            let mut tables = Vec::new();
-            for r in &inputs {
-                let col = column(relation, values, r.column)?;
-                let mut table = vec![K::from_i64(0); 1 << m];
-                stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
-                    for (j, out) in chunk.iter_mut().enumerate() {
-                        *out = K::from_i64(col[r.index((start + j) as u64)]);
-                    }
-                });
-                tables.push(table);
-            }
-            Ok(tables)
-        };
-        let tables = tables_for(values)?;
-        let reference = round_values.map(tables_for).transpose()?;
         let z = zerocheck::Zerocheck {
             instance: &instance,
             skip: 0,
         };
-        let (zp, point) = match reference.as_deref() {
+        let (zp, point) = match round_values {
             #[cfg(feature = "controls")]
-            Some(original) => z.prove_forged_finals(original, &tables, t),
-            _ => z.prove_with_point(&tables, t),
+            Some(original_values) => {
+                let tables_k = |vals: &Values| -> Result<Vec<Vec<K>>, Error> {
+                    let mut tables = Vec::new();
+                    for r in &inputs {
+                        let col = column(relation, vals, r.column)?;
+                        let mut table = vec![K::from_i64(0); 1 << m];
+                        parallel::for_each_chunk(&mut table, |start, chunk| {
+                            for (j, out) in chunk.iter_mut().enumerate() {
+                                *out = K::from_i64(col.at(r.index((start + j) as u64)));
+                            }
+                        });
+                        tables.push(table);
+                    }
+                    Ok(tables)
+                };
+                let original = tables_k(original_values)?;
+                let tables = tables_k(values)?;
+                z.prove_forged_finals(&original, &tables, t)
+            }
+            _ => {
+                // Base-field tables before the first sumcheck fold (RFC-0006 A5, E20-01).
+                let mut tables = Vec::with_capacity(inputs.len());
+                for r in &inputs {
+                    let col = column(relation, values, r.column)?;
+                    let mut table = vec![M31::from_i64(0); 1 << m];
+                    parallel::for_each_chunk(&mut table, |start, chunk| {
+                        for (j, out) in chunk.iter_mut().enumerate() {
+                            *out = M31::from_i64(col.at(r.index((start + j) as u64)));
+                        }
+                    });
+                    tables.push(table);
+                }
+                z.prove_base_with_point(&tables, t)
+            }
         }?;
         let mut out = Vec::new();
         for row in &zp.rounds {
@@ -2264,21 +2541,36 @@ fn prove_plan_measured(
             }
         }
         let shape = MatmulShape::new(t, mm)?;
-        let out = column(relation, values, mm.out.column)?;
-        let out_value = mle(out, &restrict(&mm.out, &shape.rho))?;
+        let out_col = column(relation, values, mm.out.column)?;
+        let lhs_col = column(relation, values, mm.lhs.column)?;
+        let rhs_col = column(relation, values, mm.rhs.column)?;
+        // Evaluate `out~(ρ)` and build both operand tables concurrently on the work pool (E20-02).
+        let ((out_value, eq), (lhs, rhs)) = parallel::join(
+            || {
+                let out_pt = restrict(&mm.out, &shape.rho);
+                (mle(out_col, &out_pt), shape.eq_shared())
+            },
+            || {
+                parallel::join(
+                    || shape.table_mixed(&mm.lhs, lhs_col),
+                    || shape.table_mixed(&mm.rhs, rhs_col),
+                )
+            },
+        );
+        let out_value = out_value?;
+        let eq = eq?;
+        let lhs = lhs?;
+        let rhs = rhs?;
         let instance = shape.instance(MATMUL | i as u64, out_value);
-        let mut tables = Vec::new();
-        if !shape.shared.is_empty() {
-            tables.push(shape.eq_table());
-        }
-        tables.push(shape.table(&mm.lhs, column(relation, values, mm.lhs.column)?)?);
-        tables.push(shape.table(&mm.rhs, column(relation, values, mm.rhs.column)?)?);
         let mut sc = Vec::new();
-        let capture = Capture {
-            dense: Dense::new(&instance, tables)?,
+        let summand = MatmulSummand {
+            rem: 1usize << shape.vars.len(),
+            eq,
+            lhs,
+            rhs,
             point: &mut sc,
         };
-        let sp = stele_sumcheck::prove(&instance, capture, t)?;
+        let sp = stele_sumcheck::prove(&instance, summand, t)?;
         let mut out = Vec::new();
         put(&mut out, &[out_value]);
         for row in &sp.rounds {
@@ -2309,10 +2601,14 @@ fn prove_plan_measured(
                 bits: stack.bits,
                 batch: &batch,
             };
-            let table = to_k(&message(stack, values)?);
+            let proving = if core::ptr::eq(committed, values) {
+                None
+            } else {
+                Some(message(stack, values)?)
+            };
             proof
                 .openings
-                .push(opening.prove(t, table, prepared, handle)?);
+                .push(opening.prove(t, proving.as_deref(), prepared, handle)?);
         }
     }
     // One claim batch and one opening per model source (A5).
@@ -2332,10 +2628,14 @@ fn prove_plan_measured(
                 bits: stack.bits,
                 batch: &batch,
             };
-            let table = to_k(&weights_message(relation, plan, k, values)?);
+            let proving = if weights_match_message(relation, plan, k, values, prepared.message())? {
+                None
+            } else {
+                Some(weights_message(relation, plan, k, values)?)
+            };
             proof
                 .openings
-                .push(opening.prove(t, table, prepared, certificate)?);
+                .push(opening.prove(t, proving.as_deref(), prepared, certificate)?);
         }
     }
     metrics.openings_ns = openings_timer.elapsed_ns();
@@ -2359,25 +2659,280 @@ fn prove_plan_measured(
     Ok((proof, metrics))
 }
 
-/// Dense strategy that records the engine's challenges (as in stele-lookup's tree).
-struct Capture<'a> {
-    dense: Dense<K>,
+/// Contraction sumcheck strategy with base-field operands and unexpanded shared-bit
+/// `eq(ρ_shared, ·)` table (RFC-0006 A5, E20-01). Proof bytes match `Dense` identically.
+struct MatmulSummand<'a> {
+    rem: usize,
+    eq: Option<Vec<K>>,
+    lhs: DenseTable<K>,
+    rhs: DenseTable<K>,
     point: &'a mut Vec<K>,
 }
-impl stele_sumcheck::Summand<K> for Capture<'_> {
-    fn shape(&self) -> (u32, usize) {
-        self.dense.shape()
+
+fn fold_dense_table(table: &mut DenseTable<K>, r: K) -> Result<(), stele_sumcheck::Error> {
+    match table {
+        DenseTable::Base(v) => {
+            *table = DenseTable::Ext(parallel::fold_base(v, r)?);
+        }
+        DenseTable::Ext(v) => {
+            parallel::fold(v, r);
+        }
     }
-    fn round(&self, i: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
-        self.dense.round(i)
+    Ok(())
+}
+
+fn final_dense_value(table: &DenseTable<K>) -> Result<K, stele_sumcheck::Error> {
+    match table {
+        DenseTable::Base(v) if v.len() == 1 => Ok(K::from_i64(i64::from(v[0].as_u32()))),
+        DenseTable::Ext(v) if v.len() == 1 => Ok(v[0]),
+        _ => Err(stele_sumcheck::Error::PublicShape),
+    }
+}
+
+impl stele_sumcheck::Summand<K> for MatmulSummand<'_> {
+    fn shape(&self) -> (u32, usize) {
+        (
+            self.rem.trailing_zeros(),
+            2 + usize::from(self.eq.is_some()),
+        )
+    }
+    /// The rounds hard-code one product of every input with coefficient one.
+    fn validate_instance(&self, instance: &Instance<K>) -> Result<(), stele_sumcheck::Error> {
+        let (num_vars, inputs) = self.shape();
+        let product = matches!(instance.terms.as_slice(), [term]
+            if term.coefficient == K::from_i64(1)
+                && term.factors.iter().copied().eq(0..inputs as u32));
+        if num_vars != instance.num_vars || inputs != instance.inputs.len() || !product {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        Ok(())
+    }
+    fn round(&self, _instance: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
+        if self.rem < 2 {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        let half = self.rem / 2;
+        let zero = K::from_i64(0);
+        let one = K::from_i64(1);
+        match &self.eq {
+            None => {
+                let mut evals = vec![zero; 3];
+                parallel::sum_ranges(half, &mut evals, |range, out| {
+                    match (&self.lhs, &self.rhs) {
+                        (DenseTable::Base(l), DenseTable::Base(r)) => {
+                            let mut local = [M31::from_i64(0); 3];
+                            for i in range {
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                local[0] = local[0] + l0 * r0;
+                                local[1] = local[1] + l1 * r1;
+                                local[2] = local[2] + (l1 + dl) * (r1 + dr);
+                            }
+                            for t in 0..3 {
+                                out[t] = out[t] + one.mul_m31(local[t]);
+                            }
+                        }
+                        (DenseTable::Base(l), DenseTable::Ext(r)) => {
+                            for i in range {
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                out[0] = out[0] + r0.mul_m31(l0);
+                                out[1] = out[1] + r1.mul_m31(l1);
+                                out[2] = out[2] + (r1 + dr).mul_m31(l1 + dl);
+                            }
+                        }
+                        (DenseTable::Ext(l), DenseTable::Base(r)) => {
+                            for i in range {
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                out[0] = out[0] + l0.mul_m31(r0);
+                                out[1] = out[1] + l1.mul_m31(r1);
+                                out[2] = out[2] + (l1 + dl).mul_m31(r1 + dr);
+                            }
+                        }
+                        (DenseTable::Ext(l), DenseTable::Ext(r)) => {
+                            for i in range {
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                out[0] = out[0] + l0 * r0;
+                                out[1] = out[1] + l1 * r1;
+                                out[2] = out[2] + (l1 + dl) * (r1 + dr);
+                            }
+                        }
+                    }
+                    Ok(())
+                })?;
+                Ok(evals)
+            }
+            Some(eq) if eq.len() < self.rem => {
+                // Summed round: `eq` depends only on the trailing `shared` bits, so
+                // `eq[i]` and `eq[i + half]` are identical (`e(t) = eq[i & mask]`).
+                let mask = eq.len() - 1;
+                let mut evals = vec![zero; 4];
+                parallel::sum_ranges(half, &mut evals, |range, out| {
+                    match (&self.lhs, &self.rhs) {
+                        (DenseTable::Base(l), DenseTable::Base(r)) => {
+                            for i in range {
+                                let e = eq[i & mask];
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                let (l2, r2) = (l1 + dl, r1 + dr);
+                                out[0] = out[0] + e.mul_m31(l0 * r0);
+                                out[1] = out[1] + e.mul_m31(l1 * r1);
+                                out[2] = out[2] + e.mul_m31(l2 * r2);
+                                out[3] = out[3] + e.mul_m31((l2 + dl) * (r2 + dr));
+                            }
+                        }
+                        (DenseTable::Base(l), DenseTable::Ext(r)) => {
+                            for i in range {
+                                let e = eq[i & mask];
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                let (l2, r2) = (l1 + dl, r1 + dr);
+                                out[0] = out[0] + e * r0.mul_m31(l0);
+                                out[1] = out[1] + e * r1.mul_m31(l1);
+                                out[2] = out[2] + e * r2.mul_m31(l2);
+                                out[3] = out[3] + e * (r2 + dr).mul_m31(l2 + dl);
+                            }
+                        }
+                        (DenseTable::Ext(l), DenseTable::Base(r)) => {
+                            for i in range {
+                                let e = eq[i & mask];
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                let (l2, r2) = (l1 + dl, r1 + dr);
+                                out[0] = out[0] + e * l0.mul_m31(r0);
+                                out[1] = out[1] + e * l1.mul_m31(r1);
+                                out[2] = out[2] + e * l2.mul_m31(r2);
+                                out[3] = out[3] + e * (l2 + dl).mul_m31(r2 + dr);
+                            }
+                        }
+                        (DenseTable::Ext(l), DenseTable::Ext(r)) => {
+                            for i in range {
+                                let e = eq[i & mask];
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                let (l2, r2) = (l1 + dl, r1 + dr);
+                                out[0] = out[0] + e * l0 * r0;
+                                out[1] = out[1] + e * l1 * r1;
+                                out[2] = out[2] + e * l2 * r2;
+                                out[3] = out[3] + e * (l2 + dl) * (r2 + dr);
+                            }
+                        }
+                    }
+                    Ok(())
+                })?;
+                Ok(evals)
+            }
+            Some(eq) => {
+                // Shared round: `eq` has length `self.rem` and folds with `lhs` and `rhs`.
+                let mut evals = vec![zero; 4];
+                parallel::sum_ranges(half, &mut evals, |range, out| {
+                    match (&self.lhs, &self.rhs) {
+                        (DenseTable::Base(l), DenseTable::Base(r)) => {
+                            for i in range {
+                                let (e0, e1) = (eq[i], eq[i + half]);
+                                let de = e1 - e0;
+                                let e2 = e1 + de;
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                let (l2, r2) = (l1 + dl, r1 + dr);
+                                out[0] = out[0] + e0.mul_m31(l0 * r0);
+                                out[1] = out[1] + e1.mul_m31(l1 * r1);
+                                out[2] = out[2] + e2.mul_m31(l2 * r2);
+                                out[3] = out[3] + (e2 + de).mul_m31((l2 + dl) * (r2 + dr));
+                            }
+                        }
+                        (DenseTable::Base(l), DenseTable::Ext(r)) => {
+                            for i in range {
+                                let (e0, e1) = (eq[i], eq[i + half]);
+                                let de = e1 - e0;
+                                let e2 = e1 + de;
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                let (l2, r2) = (l1 + dl, r1 + dr);
+                                out[0] = out[0] + e0 * r0.mul_m31(l0);
+                                out[1] = out[1] + e1 * r1.mul_m31(l1);
+                                out[2] = out[2] + e2 * r2.mul_m31(l2);
+                                out[3] = out[3] + (e2 + de) * (r2 + dr).mul_m31(l2 + dl);
+                            }
+                        }
+                        (DenseTable::Ext(l), DenseTable::Base(r)) => {
+                            for i in range {
+                                let (e0, e1) = (eq[i], eq[i + half]);
+                                let de = e1 - e0;
+                                let e2 = e1 + de;
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                let (l2, r2) = (l1 + dl, r1 + dr);
+                                out[0] = out[0] + e0 * l0.mul_m31(r0);
+                                out[1] = out[1] + e1 * l1.mul_m31(r1);
+                                out[2] = out[2] + e2 * l2.mul_m31(r2);
+                                out[3] = out[3] + (e2 + de) * (l2 + dl).mul_m31(r2 + dr);
+                            }
+                        }
+                        (DenseTable::Ext(l), DenseTable::Ext(r)) => {
+                            for i in range {
+                                let (e0, e1) = (eq[i], eq[i + half]);
+                                let de = e1 - e0;
+                                let e2 = e1 + de;
+                                let (l0, l1) = (l[i], l[i + half]);
+                                let (r0, r1) = (r[i], r[i + half]);
+                                let (dl, dr) = (l1 - l0, r1 - r0);
+                                let (l2, r2) = (l1 + dl, r1 + dr);
+                                out[0] = out[0] + e0 * l0 * r0;
+                                out[1] = out[1] + e1 * l1 * r1;
+                                out[2] = out[2] + e2 * l2 * r2;
+                                out[3] = out[3] + (e2 + de) * (l2 + dl) * (r2 + dr);
+                            }
+                        }
+                    }
+                    Ok(())
+                })?;
+                Ok(evals)
+            }
+        }
     }
     fn fold(&mut self, r: K) -> Result<(), stele_sumcheck::Error> {
-        self.dense.fold(r)?;
+        if self.rem < 2 {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        if let Some(eq) = &mut self.eq {
+            if eq.len() == self.rem {
+                parallel::fold(eq, r);
+            }
+        }
+        fold_dense_table(&mut self.lhs, r)?;
+        fold_dense_table(&mut self.rhs, r)?;
+        self.rem /= 2;
         self.point.push(r);
         Ok(())
     }
     fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
-        self.dense.final_values()
+        if self.rem != 1 {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        let mut out = Vec::with_capacity(2 + usize::from(self.eq.is_some()));
+        if let Some(eq) = &self.eq {
+            if eq.len() != 1 {
+                return Err(stele_sumcheck::Error::PublicShape);
+            }
+            out.push(eq[0]);
+        }
+        out.push(final_dense_value(&self.lhs)?);
+        out.push(final_dense_value(&self.rhs)?);
+        Ok(out)
     }
 }
 
@@ -2415,27 +2970,26 @@ impl Opening<'_> {
     fn prove(
         &self,
         t: &mut Transcript<K>,
-        table: Vec<K>,
+        proving: Option<&[M31]>,
         prepared: &PreparedSource<'_, K>,
         handle: &VerifiedCertificate<K>,
     ) -> Result<Vec<u8>, Error> {
-        // Batch over the committed table whenever the claims hold on it (always, for an
-        // honest prover); otherwise over the proving table, so that a lying prover's
-        // only failure is the opening of the committed source below.
-        let committed = to_k(prepared.message());
-        let same = table == committed;
+        // Batch over the committed base-field message whenever the claims hold on it
+        // (always, for an honest prover); otherwise over the proving message, so that a
+        // lying prover's only failure is the opening of the committed source below.
+        // No dense extension-field table is allocated before the first sumcheck fold (E20-01).
+        let committed_msg = prepared.message();
+        let same = proving.is_none_or(|msg| msg == committed_msg);
         let consistent = same
             || self.batch.iter().all(|(point, value)| {
-                stele_poly::eq_table(point).is_ok_and(|eq| {
-                    committed
-                        .iter()
-                        .zip(eq)
-                        .fold(K::from_i64(0), |s, (v, w)| s + *v * w)
-                        == *value
-                })
+                eval_m31(committed_msg, point).is_ok_and(|eval| eval == *value)
             });
-        let batched = if consistent { committed } else { table };
-        let (bp, point) = self.batch().prove_with_point(batched, t)?;
+        let batched = if consistent {
+            committed_msg
+        } else {
+            proving.unwrap_or(committed_msg)
+        };
+        let (bp, point) = self.batch().prove_base_with_point(batched, t)?;
         let mut out = Vec::new();
         for row in &bp.rounds {
             put(&mut out, row);
@@ -2446,11 +3000,7 @@ impl Opening<'_> {
         let committed = if consistent {
             bp.final_values[0]
         } else {
-            let eq = stele_poly::eq_table(&point).map_err(|_| Error::Capacity)?;
-            to_k(prepared.message())
-                .into_iter()
-                .zip(eq)
-                .fold(K::from_i64(0), |s, (v, w)| s + v * w)
+            eval_m31(committed_msg, &point)?
         };
         let (bytes, _) = prepared
             .opening_point(t, handle, self.tensor, &point, committed)
@@ -2468,8 +3018,7 @@ impl Opening<'_> {
         prepared: &PreparedSource<'_, K>,
         handle: &VerifiedCertificate<K>,
     ) -> Result<Vec<u8>, Error> {
-        let committed = to_k(prepared.message());
-        let (bp, point) = self.batch().prove_with_point(committed, t)?;
+        let (bp, point) = self.batch().prove_base_with_point(prepared.message(), t)?;
         let mut out = Vec::new();
         for row in &bp.rounds {
             put(&mut out, row);
@@ -2543,7 +3092,19 @@ pub fn verify(
     proof: &Proof,
     sources: Sources,
 ) -> Result<Ledger, Error> {
-    let plan = plan(relation, sources)?;
+    verify_with_instance_bound(t, relation, model, proof, sources, DEFAULT_INSTANCE_BOUND)
+}
+
+/// [`verify`] with an explicit plan-fixed RFC-0026 A8 lookup instance bound `B` (`1 <= B <= 30`).
+pub(crate) fn verify_with_instance_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    model: &[&VerifiedCertificate<K>],
+    proof: &Proof,
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<Ledger, Error> {
+    let plan = plan_with_bound(relation, sources, instance_bound)?;
     model_check(&plan, model)?;
     let mut ledger = Ledger::default();
     for (k, certificate) in model.iter().enumerate() {
@@ -2730,7 +3291,7 @@ pub fn verify(
     for (i, column) in relation.columns.iter().enumerate() {
         if let Kind::Public(values) = &column.kind {
             for (point, value) in &claims.0[i] {
-                if mle(values, point)? != *value {
+                if mle(ColumnSlice::I64(values), point)? != *value {
                     return Err(Error::PublicMismatch(ColumnId(i as u32)));
                 }
             }
@@ -2801,6 +3362,14 @@ fn pointwise_instance(
 }
 
 fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan, Error> {
+    plan_segmented_with_bound(relation, sources, DEFAULT_INSTANCE_BOUND)
+}
+
+fn plan_segmented_with_bound(
+    relation: &Relation,
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<SegmentedPlan, Error> {
     relation.validate().map_err(Error::StatementMismatch)?;
     // RFC-0028 §2.1: all three virtual kinds (`Linear`, `Pointwise`, `Contraction`) are admitted;
     // contractions must fit their sumcheck variables (`shared + summed`) within `MAX_VARS`.
@@ -2885,6 +3454,8 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
                 Target::Table(lookup.table.0),
                 Member {
                     m: lookup.vars,
+                    block_bits: 0,
+                    block_index: 0,
                     tuple: lookup.tuple.iter().map(|r| (r.clone(), 0)).collect(),
                     selector: lookup.selector.clone(),
                     offset: 0,
@@ -2900,32 +3471,23 @@ fn plan_segmented(relation: &Relation, sources: Sources) -> Result<SegmentedPlan
                 Target::Range(range.width.bits),
                 Member {
                     m: log_len,
+                    block_bits: 0,
+                    block_index: 0,
                     tuple: vec![(Ref::identity(range.column, log_len), -range.width.min())],
                     selector: None,
                     offset: 0,
                 },
             );
         }
-        if targets.len() >= (1 << 16) - 3 {
-            return Err(Error::Unsupported);
-        }
-        let mut checks = Vec::with_capacity(targets.len());
-        for (j, (target, members)) in targets.into_iter().enumerate() {
-            let id = source_base | (j as u64);
-            let source_id = source_base + 3 + (j as u64);
-            let (name, t, entries) = match target {
-                Target::Table(table) => {
-                    let table = &relation.tables[table as usize];
-                    let entries = table.rows.iter().flatten().copied().collect();
-                    (table.name.clone(), table.rows.len(), entries)
-                }
-                Target::Range(bits) => {
-                    let t = 1usize << bits;
-                    (alloc::format!("range_{bits}"), t, (0..t as i64).collect())
-                }
-            };
-            checks.push(check(id, source_id, name, members, t, entries, sources)?);
-        }
+        let checks = build_a8_checks(
+            targets,
+            relation,
+            sources,
+            instance_bound,
+            source_base,
+            source_base + 3,
+            Some((1 << 16) - 3),
+        )?;
         let mut sizes: Vec<u8> = relation
             .identities
             .iter()
@@ -3003,8 +3565,8 @@ fn segment_stack_message(
         for (j, id) in group.columns.iter().enumerate() {
             let col = column(relation, values, *id)?;
             let start = group.offset + (j << group.n);
-            for (out, v) in message[start..].iter_mut().zip(col) {
-                *out = M31::from_i64(*v);
+            for (out, v) in message[start..].iter_mut().zip(col.iter()) {
+                *out = M31::from_i64(v);
             }
         }
     }
@@ -3025,6 +3587,34 @@ where
     F: FnMut(u32) -> Result<Values, Error>,
 {
     prove_segmented_measured(t, relation, segment_values, model, sources).map(|(p, _)| p)
+}
+
+/// [`prove_segmented_measured`] with an explicit RFC-0026 A8 lookup instance bound `B`.
+#[cfg(test)]
+pub(crate) fn prove_segmented_measured_with_instance_bound<F>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    segment_values: F,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<(ProofV2, Metrics), Error>
+where
+    F: FnMut(u32) -> Result<Values, Error>,
+{
+    let plan_timer = Stopwatch::start();
+    let plan = plan_segmented_with_bound(relation, sources, instance_bound)?;
+    let plan_ns = plan_timer.elapsed_ns();
+    prove_segmented_with_plan(
+        t,
+        relation,
+        &plan,
+        plan_ns,
+        segment_values,
+        model,
+        None,
+        None,
+    )
 }
 
 /// [`prove_segmented`] together with stage timings and deterministic counters (RFC-0018 A2, RFC-0026 A27, RFC-0028 §2.4).
@@ -3072,6 +3662,28 @@ where
     .map(|(p, _)| p)
 }
 
+/// Wrapper capturing sumcheck verifier challenges for a `Summand` (e.g. `Dense<K>`).
+struct Capture<'a, S> {
+    inner: S,
+    point: &'a mut Vec<K>,
+}
+
+impl<S: stele_sumcheck::Summand<K>> stele_sumcheck::Summand<K> for Capture<'_, S> {
+    fn shape(&self) -> (u32, usize) {
+        self.inner.shape()
+    }
+    fn round(&self, instance: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
+        self.inner.round(instance)
+    }
+    fn fold(&mut self, challenge: K) -> Result<(), stele_sumcheck::Error> {
+        self.point.push(challenge);
+        self.inner.fold(challenge)
+    }
+    fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
+        self.inner.final_values()
+    }
+}
+
 /// Malicious-prover helper for RFC-0028 §6 NC-1338 on sumcheck-backed virtual reductions:
 /// emits a sumcheck proof matching the RFC-0006 A1 transcript order against a forged
 /// `instance.claimed_sum` without honest-prover self-abort. When `force_rounds` is `false`,
@@ -3079,14 +3691,13 @@ where
 /// `force_rounds` is `true`, each round's `values[0]` is shifted to satisfy the round-sum
 /// equation so the verifier rejects at `FinalEvaluationMismatch`.
 #[cfg(any(test, feature = "controls"))]
-fn prove_sumcheck_forged(
+fn prove_sumcheck_forged<S: stele_sumcheck::Summand<K>>(
     instance: &Instance<K>,
-    mut dense: Dense<K>,
+    mut dense: S,
     t: &mut Transcript<K>,
     force_rounds: bool,
 ) -> Result<(stele_sumcheck::Proof<K>, Vec<K>), Error> {
     use stele_field::Inverse;
-    use stele_sumcheck::Summand;
 
     let degree = instance
         .terms
@@ -3347,11 +3958,13 @@ where
     }
     let mut col_reads = vec![0u64; plan.weights.len()];
     let member_selected = |member: &Member| -> u64 {
+        // A8: a block reads its selector at `(block index ‖ local)`.
+        let block_base = (member.block_index as u64) << member.m;
         match &member.selector {
             None => 1u64 << member.m,
             Some(sel) => match &relation.columns[sel.column.0 as usize].kind {
                 Kind::Public(v) => (0..(1u64 << member.m))
-                    .filter(|&x| v[sel.index(x)] != 0)
+                    .filter(|&local| v[sel.index(block_base | local)] != 0)
                     .count() as u64,
                 _ => 0,
             },
@@ -3446,6 +4059,12 @@ where
             (res, timer.elapsed_ns())
         };
         let mu_messages_fn = |i: usize| {
+            #[cfg(any(test, feature = "controls"))]
+            let counts = match &seg.checks[i].count_override {
+                Some(overridden) => overridden.clone(),
+                None => lookup::counts(&seg.checks[i], relation, &resolved)?,
+            };
+            #[cfg(not(any(test, feature = "controls")))]
             let counts = lookup::counts(&seg.checks[i], relation, &resolved)?;
             let message = lookup::multiplicities(&seg.checks[i], &counts)?;
             Ok::<_, Error>((counts, message))
@@ -3529,21 +4148,6 @@ where
                     col_reads[w_idx] = col_reads[w_idx].saturating_add(zc_reads);
                 }
             }
-            let tables_for = |res: &ResolvedColumns<'_>| -> Result<Vec<Vec<K>>, Error> {
-                let mut tables = Vec::with_capacity(inputs.len());
-                for r in &inputs {
-                    let col = res.get(r.column)?;
-                    let mut table = vec![K::from_i64(0); 1 << m];
-                    stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
-                        for (j, out) in chunk.iter_mut().enumerate() {
-                            *out = K::from_i64(col[r.index((start + j) as u64)]);
-                        }
-                    });
-                    tables.push(table);
-                }
-                Ok(tables)
-            };
-            let tables = tables_for(&resolved)?;
             let z = zerocheck::Zerocheck {
                 instance: &instance,
                 skip: 0,
@@ -3551,13 +4155,54 @@ where
             #[cfg(feature = "controls")]
             let (zp, point) = match round_resolved.as_ref() {
                 Some(orig) => {
-                    let reference = tables_for(orig)?;
+                    let tables_k = |res: &ResolvedColumns<'_>| -> Result<Vec<Vec<K>>, Error> {
+                        let mut tables = Vec::with_capacity(inputs.len());
+                        for r in &inputs {
+                            let col = res.get(r.column)?;
+                            let mut table = vec![K::from_i64(0); 1 << m];
+                            stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
+                                for (j, out) in chunk.iter_mut().enumerate() {
+                                    *out = K::from_i64(col.at(r.index((start + j) as u64)));
+                                }
+                            });
+                            tables.push(table);
+                        }
+                        Ok(tables)
+                    };
+                    let reference = tables_k(orig)?;
+                    let tables = tables_k(&resolved)?;
                     z.prove_forged_finals(&reference, &tables, t)
                 }
-                None => z.prove_with_point(&tables, t),
+                None => {
+                    let mut tables = Vec::with_capacity(inputs.len());
+                    for r in &inputs {
+                        let col = resolved.get(r.column)?;
+                        let mut table = vec![M31::from_i64(0); 1 << m];
+                        stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
+                            for (j, out) in chunk.iter_mut().enumerate() {
+                                *out = M31::from_i64(col.at(r.index((start + j) as u64)));
+                            }
+                        });
+                        tables.push(table);
+                    }
+                    z.prove_base_with_point(&tables, t)
+                }
             }?;
             #[cfg(not(feature = "controls"))]
-            let (zp, point) = z.prove_with_point(&tables, t)?;
+            let (zp, point) = {
+                let mut tables = Vec::with_capacity(inputs.len());
+                for r in &inputs {
+                    let col = resolved.get(r.column)?;
+                    let mut table = vec![M31::from_i64(0); 1 << m];
+                    stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
+                        for (j, out) in chunk.iter_mut().enumerate() {
+                            *out = M31::from_i64(col.at(r.index((start + j) as u64)));
+                        }
+                    });
+                    tables.push(table);
+                }
+                z.prove_base_with_point(&tables, t)?
+            };
             let mut out = Vec::new();
             for row in &zp.rounds {
                 put(&mut out, row);
@@ -3619,18 +4264,18 @@ where
             let out = resolved.get(mm.out.column)?;
             let out_value = mle(out, &restrict(&mm.out, &shape.rho))?;
             let instance = shape.instance(MATMUL | mm_idx as u64, out_value);
-            let mut tables = Vec::new();
-            if !shape.shared.is_empty() {
-                tables.push(shape.eq_table());
-            }
-            tables.push(shape.table(&mm.lhs, resolved.get(mm.lhs.column)?)?);
-            tables.push(shape.table(&mm.rhs, resolved.get(mm.rhs.column)?)?);
+            let eq = shape.eq_shared()?;
+            let lhs = shape.table_mixed(&mm.lhs, resolved.get(mm.lhs.column)?)?;
+            let rhs = shape.table_mixed(&mm.rhs, resolved.get(mm.rhs.column)?)?;
             let mut sc = Vec::new();
-            let capture = Capture {
-                dense: Dense::new(&instance, tables)?,
+            let summand = MatmulSummand {
+                rem: 1usize << shape.vars.len(),
+                eq,
+                lhs,
+                rhs,
                 point: &mut sc,
             };
-            let sp = stele_sumcheck::prove(&instance, capture, t)?;
+            let sp = stele_sumcheck::prove(&instance, summand, t)?;
             let mut out = Vec::new();
             put(&mut out, &[out_value]);
             for row in &sp.rounds {
@@ -3717,12 +4362,14 @@ where
                             num_vars: u32::from(col.log_len),
                             claims: &col_claims,
                         };
-                        let table: Vec<K> = resolved
-                            .get(col_id)?
-                            .iter()
-                            .map(|&v| K::from_i64(v))
-                            .collect();
-                        let (bp, point) = batch.prove_with_point(table, t)?;
+                        let col_slice = resolved.get(col_id)?;
+                        let mut table = vec![M31::from_i64(0); col_slice.len()];
+                        parallel::for_each_chunk(&mut table, |start, chunk| {
+                            for (j, slot) in chunk.iter_mut().enumerate() {
+                                *slot = M31::from_i64(col_slice.at(start + j));
+                            }
+                        });
+                        let (bp, point) = batch.prove_base_with_point(&table, t)?;
                         for row in &bp.rounds {
                             put(&mut out, row);
                         }
@@ -3742,46 +4389,35 @@ where
                     let shape = MatmulShape::from_point(z, *free, *summed, lhs, rhs);
                     let instance =
                         shape.instance(VIRTUAL_CONTRACTION | u64::from(col_id.0), claimed_val);
-                    let mut tables = Vec::with_capacity(2 + usize::from(!shape.shared.is_empty()));
-                    if !shape.shared.is_empty() {
-                        tables.push(shape.eq_table());
-                    }
-                    tables.push(shape.table(lhs, resolved.get(lhs.column)?)?);
-                    tables.push(shape.table(rhs, resolved.get(rhs.column)?)?);
+                    let eq = shape.eq_shared()?;
+                    let lhs_tbl = shape.table_mixed(lhs, resolved.get(lhs.column)?)?;
+                    let rhs_tbl = shape.table_mixed(rhs, resolved.get(rhs.column)?)?;
                     metrics.contractions_reduced = metrics.contractions_reduced.saturating_add(1);
                     metrics.contraction_partial_evals =
                         metrics.contraction_partial_evals.saturating_add(2);
-                    let dense = Dense::new(&instance, tables)?;
+                    let mut sc = Vec::new();
+                    let summand = MatmulSummand {
+                        rem: 1usize << shape.vars.len(),
+                        eq,
+                        lhs: lhs_tbl,
+                        rhs: rhs_tbl,
+                        point: &mut sc,
+                    };
                     #[cfg(any(test, feature = "controls"))]
                     let (sp, sc) = if let Some((forged_col, _, comp)) = forge_virtual {
                         if forged_col == col_id {
-                            prove_sumcheck_forged(&instance, dense, t, comp.is_some())?
+                            prove_sumcheck_forged(&instance, summand, t, comp.is_some())?
                         } else {
-                            let mut sc = Vec::new();
-                            let capture = Capture {
-                                dense,
-                                point: &mut sc,
-                            };
-                            let sp = stele_sumcheck::prove(&instance, capture, t)?;
+                            let sp = stele_sumcheck::prove(&instance, summand, t)?;
                             (sp, sc)
                         }
                     } else {
-                        let mut sc = Vec::new();
-                        let capture = Capture {
-                            dense,
-                            point: &mut sc,
-                        };
-                        let sp = stele_sumcheck::prove(&instance, capture, t)?;
+                        let sp = stele_sumcheck::prove(&instance, summand, t)?;
                         (sp, sc)
                     };
                     #[cfg(not(any(test, feature = "controls")))]
                     let (sp, sc) = {
-                        let mut sc = Vec::new();
-                        let capture = Capture {
-                            dense,
-                            point: &mut sc,
-                        };
-                        let sp = stele_sumcheck::prove(&instance, capture, t)?;
+                        let sp = stele_sumcheck::prove(&instance, summand, t)?;
                         (sp, sc)
                     };
                     for row in &sp.rounds {
@@ -3800,12 +4436,14 @@ where
                             num_vars: u32::from(col.log_len),
                             claims: &col_claims,
                         };
-                        let table: Vec<K> = resolved
-                            .get(col_id)?
-                            .iter()
-                            .map(|&v| K::from_i64(v))
-                            .collect();
-                        let (bp, point) = batch.prove_with_point(table, t)?;
+                        let col_slice = resolved.get(col_id)?;
+                        let mut table = vec![M31::from_i64(0); col_slice.len()];
+                        parallel::for_each_chunk(&mut table, |start, chunk| {
+                            for (j, slot) in chunk.iter_mut().enumerate() {
+                                *slot = M31::from_i64(col_slice.at(start + j));
+                            }
+                        });
+                        let (bp, point) = batch.prove_base_with_point(&table, t)?;
                         for row in &bp.rounds {
                             put(&mut out, row);
                         }
@@ -3823,18 +4461,18 @@ where
                         }
                     }
                     let mut tables = Vec::with_capacity(1 + inputs.len());
-                    tables.push(stele_sumcheck::parallel::eq_table(&z)?);
+                    tables.push(DenseTable::Ext(stele_sumcheck::parallel::eq_table(&z)?));
                     for r in &inputs {
                         let data = resolved.get(r.column)?;
-                        let mut table = vec![K::from_i64(0); 1usize << col.log_len];
+                        let mut table = vec![M31::from_i64(0); 1usize << col.log_len];
                         stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
                             for (j, slot) in chunk.iter_mut().enumerate() {
-                                *slot = K::from_i64(data[r.index((start + j) as u64)]);
+                                *slot = M31::from_i64(data.at(r.index((start + j) as u64)));
                             }
                         });
-                        tables.push(table);
+                        tables.push(DenseTable::Base(table));
                     }
-                    let dense = Dense::new(&instance, tables)?;
+                    let dense = Dense::new_mixed(&instance, tables)?;
                     #[cfg(any(test, feature = "controls"))]
                     let (sp, sc) = if let Some((forged_col, _, comp)) = forge_virtual {
                         if forged_col == col_id {
@@ -3842,7 +4480,7 @@ where
                         } else {
                             let mut sc = Vec::new();
                             let capture = Capture {
-                                dense,
+                                inner: dense,
                                 point: &mut sc,
                             };
                             let sp = stele_sumcheck::prove(&instance, capture, t)?;
@@ -3851,7 +4489,7 @@ where
                     } else {
                         let mut sc = Vec::new();
                         let capture = Capture {
-                            dense,
+                            inner: dense,
                             point: &mut sc,
                         };
                         let sp = stele_sumcheck::prove(&instance, capture, t)?;
@@ -3861,7 +4499,7 @@ where
                     let (sp, sc) = {
                         let mut sc = Vec::new();
                         let capture = Capture {
-                            dense,
+                            inner: dense,
                             point: &mut sc,
                         };
                         let sp = stele_sumcheck::prove(&instance, capture, t)?;
@@ -3999,6 +4637,47 @@ where
     Ok((proof, metrics))
 }
 
+/// RFC-0026 A8 control (NC-1341): [`prove_segmented`] under the instance bound `bound`,
+/// with the committed multiplicities of lookup instance `forge.0` of the first segment
+/// replaced by `forge.1`. A development plan fixes `B = 30`, where no test-sized check
+/// splits, so the control and its verifier take the bound (controls only).
+#[cfg(feature = "controls")]
+pub fn prove_segmented_forged_multiplicities<F>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    segment_values: F,
+    sources: Sources,
+    bound: u8,
+    forge: Option<(usize, Vec<i64>)>,
+) -> Result<ProofV2, Error>
+where
+    F: FnMut(u32) -> Result<Values, Error>,
+{
+    let mut plan = plan_segmented_with_bound(relation, sources, bound)?;
+    if let Some((instance, counts)) = forge {
+        plan.segments
+            .first_mut()
+            .and_then(|s| s.checks.get_mut(instance))
+            .ok_or(Error::Unsupported)?
+            .count_override = Some(counts);
+    }
+    prove_segmented_with_plan(t, relation, &plan, 0, segment_values, &[], None, None)
+        .map(|(proof, _)| proof)
+}
+
+/// [`verify_segmented`] under the instance bound of
+/// [`prove_segmented_forged_multiplicities`] (controls only).
+#[cfg(feature = "controls")]
+pub fn verify_segmented_under_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    proof: &ProofV2,
+    sources: Sources,
+    bound: u8,
+) -> Result<Ledger, Error> {
+    verify_segmented_with_instance_bound(t, relation, &[], proof, sources, bound)
+}
+
 /// Verify a segmented development proof (`stele-dev-e2e-v2`, RFC-0026 A27) and return its ledger.
 pub fn verify_segmented(
     t: &mut Transcript<K>,
@@ -4007,7 +4686,19 @@ pub fn verify_segmented(
     proof: &ProofV2,
     sources: Sources,
 ) -> Result<Ledger, Error> {
-    let plan = plan_segmented(relation, sources)?;
+    verify_segmented_with_instance_bound(t, relation, model, proof, sources, DEFAULT_INSTANCE_BOUND)
+}
+
+/// [`verify_segmented`] with an explicit RFC-0026 A8 lookup instance bound `B`.
+pub(crate) fn verify_segmented_with_instance_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    model: &[&VerifiedCertificate<K>],
+    proof: &ProofV2,
+    sources: Sources,
+    instance_bound: u8,
+) -> Result<Ledger, Error> {
+    let plan = plan_segmented_with_bound(relation, sources, instance_bound)?;
     model_check_stacks(&plan.model, model)?;
     if proof.segments.len() != plan.segments.len() {
         return Err(Error::ProofShape);
@@ -4435,7 +5126,7 @@ pub fn verify_segmented(
     for (i, column) in relation.columns.iter().enumerate() {
         if let Kind::Public(values) = &column.kind {
             for (point, value) in &claims.0[i] {
-                if mle(values, point)? != *value {
+                if mle(ColumnSlice::I64(values), point)? != *value {
                     return Err(Error::PublicMismatch(ColumnId(i as u32)));
                 }
             }

@@ -282,6 +282,205 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
     ) -> Result<(Proof<K>, Vec<K>), Error> {
         self.prove_tables(tables, None, t)
     }
+    /// Base-field first-round variant of [`Self::prove_with_point`] (RFC-0006 A5, task E20-01):
+    /// keeps inputs in `M31` through round 0 (factoring `term.coefficient` out of the inner
+    /// hypercube sum and computing factor products in `M31`) and folds directly into half-sized
+    /// extension-field tables. Proof bytes and returned point are bit-identical to
+    /// [`Self::prove_with_point`].
+    pub fn prove_base_with_point(
+        &self,
+        tables: &[Vec<stele_field::M31>],
+        t: &mut Transcript<K>,
+    ) -> Result<(Proof<K>, Vec<K>), Error> {
+        use stele_field::M31;
+        let (degree, s, j, count) = self.shape()?;
+        if tables.len() != self.instance.inputs.len()
+            || tables.iter().any(|tbl| {
+                !tbl.len().is_power_of_two() || tbl.len().trailing_zeros() != self.instance.num_vars
+            })
+        {
+            return Err(Error::PublicShape);
+        }
+        let width = 1usize.checked_shl(j).ok_or(Error::Capacity)?;
+        let alpha = self.start(t, j)?;
+        let one = K::from_i64(1);
+        let zero = K::from_i64(0);
+        if self.skip == 0 {
+            let (weights, mut running) = self.skip_round(t, &[], s)?;
+            if j == 0 {
+                let mut final_values = Vec::new();
+                reserve(&mut final_values, tables.len())?;
+                for tbl in tables {
+                    final_values.push(one.mul_m31(tbl[0]));
+                }
+                self.finish(t, &final_values, &weights, running)?;
+                return Ok((
+                    Proof {
+                        skip_values: Vec::new(),
+                        rounds: Vec::new(),
+                        final_values,
+                    },
+                    Vec::new(),
+                ));
+            }
+            let mut rounds = Vec::new();
+            reserve(&mut rounds, j as usize)?;
+            let mut point = zeros(j as usize)?;
+
+            // Round 0 directly on base-field `M31` tables: no full-sized `Vec<K>` allocated.
+            let half = width / 2;
+            let eq0 = crate::parallel::eq_table(&alpha[1..])?;
+            let num_nodes = degree + 1;
+            let num_terms = self.instance.terms.len();
+            let acc_len = num_terms.checked_mul(num_nodes).ok_or(Error::Capacity)?;
+            let mut term_sums = zeros(acc_len)?;
+            crate::parallel::sum_ranges(half, &mut term_sums, |range, out| {
+                out.fill(zero);
+                let mut vals = Vec::new();
+                let mut steps = Vec::new();
+                reserve(&mut vals, tables.len())?;
+                reserve(&mut steps, tables.len())?;
+                vals.resize(tables.len(), M31::ZERO);
+                steps.resize(tables.len(), M31::ZERO);
+                for col in range {
+                    let eq_w = eq0[col];
+                    for ((v, d), tbl) in vals.iter_mut().zip(&mut steps).zip(tables) {
+                        let a = tbl[col];
+                        *v = a;
+                        *d = tbl[col + half] - a;
+                    }
+                    for node in 0..num_nodes {
+                        for (ti, term) in self.instance.terms.iter().enumerate() {
+                            let prod = term
+                                .factors
+                                .iter()
+                                .fold(M31::ONE, |acc, &f| acc * vals[f as usize]);
+                            let idx = ti * num_nodes + node;
+                            out[idx] = out[idx] + eq_w.mul_m31(prod);
+                        }
+                        if node + 1 < num_nodes {
+                            for (v, d) in vals.iter_mut().zip(&steps) {
+                                *v = *v + *d;
+                            }
+                        }
+                    }
+                }
+                Ok(())
+            })?;
+            let mut row0 = zeros(num_nodes)?;
+            for (ti, term) in self.instance.terms.iter().enumerate() {
+                for node in 0..num_nodes {
+                    row0[node] = row0[node] + term.coefficient * term_sums[ti * num_nodes + node];
+                }
+            }
+            (point[0], running) = self.round(t, 0, &row0, alpha[0], running)?;
+            rounds.push(row0);
+
+            // Fold M31 inputs directly into half-sized extension-field state tables.
+            let mut state = Vec::new();
+            reserve(&mut state, tables.len())?;
+            for tbl in tables {
+                state.push(crate::parallel::fold_base(tbl, point[0])?);
+            }
+            for h in 1..j as usize {
+                let eq = crate::parallel::eq_table(&alpha[h + 1..])?;
+                let row = crate::parallel::map(degree + 1, |node| {
+                    self.sum(&state, &eq, Some(K::from_i64(node as i64)))
+                })
+                .into_iter()
+                .collect::<Result<Vec<K>, Error>>()?;
+                (point[h], running) = self.round(t, h, &row, alpha[h], running)?;
+                for table in &mut state {
+                    fold(table, point[h]);
+                }
+                rounds.push(row);
+            }
+            // With `skip == 0`, `state` is already folded across all `j` rounds; no re-folding!
+            let mut final_values = Vec::new();
+            reserve(&mut final_values, state.len())?;
+            for tbl in &state {
+                final_values.push(tbl[0]);
+            }
+            self.finish(t, &final_values, &weights, running)?;
+            return Ok((
+                Proof {
+                    skip_values: Vec::new(),
+                    rounds,
+                    final_values,
+                },
+                point,
+            ));
+        }
+        // `skip > 0`: combine slices directly from `M31` into width `2^(m - skip) < 2^m`.
+        let hybrid_base = |weights: &[K]| -> Result<Vec<Vec<K>>, Error> {
+            let mut out = Vec::new();
+            reserve(&mut out, tables.len())?;
+            for table in tables {
+                let mut values = zeros(width)?;
+                crate::parallel::for_each_chunk(&mut values, |start, chunk| {
+                    for (slice, weight) in table.chunks_exact(width).zip(weights) {
+                        for (dst, &v) in chunk.iter_mut().zip(&slice[start..]) {
+                            *dst = *dst + weight.mul_m31(v);
+                        }
+                    }
+                });
+                out.push(values);
+            }
+            Ok(out)
+        };
+        let eq = crate::parallel::eq_table(&alpha)?;
+        let mut skip_values = zeros(count)?;
+        for (offset, value) in skip_values.iter_mut().enumerate() {
+            let weights = crate::interpolation_weights(s, K::from_i64((s + offset) as i64))?;
+            *value = self.sum(&hybrid_base(&weights)?, &eq, None)?;
+        }
+        let (weights, mut running) = self.skip_round(t, &skip_values, s)?;
+        let mut state = hybrid_base(&weights)?;
+        let mut rounds = Vec::new();
+        reserve(&mut rounds, j as usize)?;
+        let mut point = zeros(j as usize)?;
+        for h in 0..j as usize {
+            let eq = crate::parallel::eq_table(&alpha[h + 1..])?;
+            let row = crate::parallel::map(degree + 1, |node| {
+                self.sum(&state, &eq, Some(K::from_i64(node as i64)))
+            })
+            .into_iter()
+            .collect::<Result<Vec<K>, Error>>()?;
+            (point[h], running) = self.round(t, h, &row, alpha[h], running)?;
+            for table in &mut state {
+                fold(table, point[h]);
+            }
+            rounds.push(row);
+        }
+        let tail_eq = crate::parallel::eq_table(&point)?;
+        let mut final_values = Vec::new();
+        reserve(
+            &mut final_values,
+            tables.len().checked_mul(s).ok_or(Error::Capacity)?,
+        )?;
+        for table in tables {
+            for slice in table.chunks_exact(width) {
+                let mut acc = [zero];
+                crate::parallel::sum_ranges(width, &mut acc, |range, out| {
+                    out[0] = zero;
+                    for idx in range {
+                        out[0] = out[0] + tail_eq[idx].mul_m31(slice[idx]);
+                    }
+                    Ok(())
+                })?;
+                final_values.push(acc[0]);
+            }
+        }
+        self.finish(t, &final_values, &weights, running)?;
+        Ok((
+            Proof {
+                skip_values,
+                rounds,
+                final_values,
+            },
+            point,
+        ))
+    }
     /// Controls only: use honest round tables but emit genuine evaluations of
     /// `final_tables` (RFC-0026 §9 NC-1302). Only this producer's final truth
     /// check is omitted; the unchanged A3 verifier must reject the false identity.

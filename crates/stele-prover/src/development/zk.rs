@@ -878,7 +878,7 @@ pub fn commit_records(
         out.set(&rel, hi, hiv).map_err(|_| Error::Witness)?;
     }
     for (low, h1, sigma) in derived {
-        let get = |id| out.get(&rel, id).map(<[i64]>::to_vec).ok_or(Error::Witness);
+        let get = |id| out.get(&rel, id).map(|s| s.to_vec()).ok_or(Error::Witness);
         let (h1v, sv) = (get(h1)?, get(sigma)?);
         let lv = h1v.iter().zip(&sv).map(|(h, s)| h + 128 * s).collect();
         out.set(&rel, low, lv).map_err(|_| Error::Witness)?;

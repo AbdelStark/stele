@@ -1646,6 +1646,83 @@ pub fn run_width() -> Result<(), String> {
     .map_err(|e| format!("{e:?}"))
 }
 
+/// NC-1341 (RFC-0026 A8): a member value moved across a lookup instance boundary without
+/// its multiplicity, through the segmented relation-engine prover and verifier, the pair
+/// every development proof with virtual columns uses.
+///
+/// A development plan fixes the instance bound `B = 30`, where only a check above `2^30`
+/// positions splits. The control therefore runs a minimal relation under `B = 2` (A8,
+/// "Control"): eight unsigned-2 values in one range, two instances of four. The values
+/// `[3, 1, 2, 3 | 0, 2, 1, 0]` are the honest `[0, 1, 2, 3 | 3, 2, 1, 0]` with `x[0]` and
+/// `x[4]` swapped: every value is in range and the counts over the whole column are
+/// unchanged. The tamper commits `[1, 1, 1, 1]` for the receiving instance, its counts
+/// before the move. Its A5 root equation rejects with `RootMismatch`.
+#[cfg(feature = "controls")]
+pub fn run_split() -> Result<(), String> {
+    use stele_hash::Transcript;
+    use stele_reductions::relation::{
+        prove_segmented_forged_multiplicities, verify_segmented_under_bound, Sources,
+    };
+    use stele_reductions::stele_ir::relation::{check, Kind, Range, Width};
+
+    const PUBLIC: &[u8] = b"stele/nc-1341/split";
+    const BOUND: u8 = 2;
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/split/3", 3);
+    let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(2), 3);
+    rel.ranges.push(Range {
+        name: "x".into(),
+        column: x,
+        width: Width::unsigned(2),
+    });
+    let mut moved = Values::new(&rel);
+    moved
+        .set(&rel, x, vec![3, 1, 2, 3, 0, 2, 1, 0])
+        .map_err(|e| format!("{e:?}"))?;
+    // Every moved value is in range: the tamper is the multiplicity vector alone.
+    check(&rel, &moved).map_err(|e| format!("fixture: {e:?}"))?;
+    crate::check_control(
+        &None,
+        &Tamper1341,
+        |forge: &Option<(usize, Vec<i64>)>| {
+            let mut t = Transcript::new(PUBLIC).map_err(|e| format!("{e:?}"))?;
+            prove_segmented_forged_multiplicities(
+                &mut t,
+                &rel,
+                |_| Ok(moved.clone()),
+                Sources::CircleAll,
+                BOUND,
+                forge.clone(),
+            )
+            .map_err(|e| format!("{e:?}"))
+        },
+        |proof| {
+            let mut t = Transcript::new(PUBLIC).map_err(|e| format!("{e:?}"))?;
+            verify_segmented_under_bound(&mut t, &rel, proof, Sources::CircleAll, BOUND)
+                .map(|_| ())
+                .map_err(|e| name_of(&format!("{e:?}")))
+        },
+        "RootMismatch".to_string(),
+    )
+    .map_err(|e| format!("{e:?}"))
+}
+
+#[cfg(feature = "controls")]
+struct Tamper1341;
+#[cfg(feature = "controls")]
+impl crate::ProverHook<Option<(usize, Vec<i64>)>> for Tamper1341 {
+    fn tamper(&self, forge: &mut Option<(usize, Vec<i64>)>) {
+        // Instance 1 receives the moved value and keeps its old counts.
+        *forge = Some((1, vec![1, 1, 1, 1]));
+    }
+}
+
+#[cfg(all(test, feature = "controls"))]
+#[test]
+fn rejects_nc_1341_value_moved_across_an_instance_boundary() {
+    run_split().expect("NC-1341");
+}
+
 /// The innermost variant name of a nested error's debug form.
 #[cfg(feature = "controls")]
 fn name_of(debug: &str) -> String {

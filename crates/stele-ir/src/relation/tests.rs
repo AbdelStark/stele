@@ -1616,3 +1616,54 @@ fn rejects_over_wide_virtual_even_with_narrow_range() {
     range(&mut r, bad, Width::unsigned(8));
     assert!(matches!(r.validate(), Err(Invalid::Bound { .. })));
 }
+
+/// Every honest column (`MAX_WIDTH_BITS = 30`) is stored at its declared native width
+/// (1, 2 or 4 bytes per element); an out-of-range test value falls back without truncation.
+#[test]
+fn accepts_width_typed_values_storage() {
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/g/2", 2);
+    let cases = [
+        ("s8", Width::signed(8), vec![-128, -1, 0, 127], 1usize),
+        ("u8", Width::unsigned(8), vec![0, 1, 128, 255], 1),
+        ("s16", Width::signed(16), vec![-32768, -129, 128, 32767], 2),
+        ("u16", Width::unsigned(16), vec![0, 256, 32768, 65535], 2),
+        (
+            "s24",
+            Width::signed(24),
+            vec![-(1 << 23), -32769, 32768, (1 << 23) - 1],
+            4,
+        ),
+        (
+            "u30",
+            Width::unsigned(30),
+            vec![0, 65536, 1 << 29, (1 << 30) - 1],
+            4,
+        ),
+    ];
+    let mut ids = Vec::new();
+    for (name, width, _, _) in &cases {
+        ids.push(rel.add_column(name, Kind::Witness(g), *width, 2));
+    }
+    let mut values = Values::new(&rel);
+    let mut expected_bytes = 0usize;
+    for (&id, (_, _, data, elem_bytes)) in ids.iter().zip(&cases) {
+        values.set(&rel, id, data.clone()).expect("set");
+        let slice = values.get(&rel, id).expect("get");
+        assert_eq!(slice.elem_bytes(), *elem_bytes);
+        assert_eq!(slice.byte_len(), 4 * *elem_bytes);
+        assert_eq!(slice.to_vec(), *data);
+        for (i, &v) in data.iter().enumerate() {
+            assert_eq!(slice.at(i), v);
+        }
+        expected_bytes += 4 * *elem_bytes;
+    }
+    assert_eq!(values.storage_bytes(), expected_bytes);
+    // Out-of-range test value retains exact integer without truncation.
+    values
+        .set(&rel, ids[0], vec![-128, 0, 127, 200])
+        .expect("out-of-range fallback");
+    let slice = values.get(&rel, ids[0]).expect("fallback get");
+    assert_eq!(slice.at(3), 200);
+    assert_eq!(slice.elem_bytes(), 8);
+}

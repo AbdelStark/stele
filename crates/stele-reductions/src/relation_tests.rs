@@ -3268,3 +3268,1074 @@ fn accepts_pointwise_virtual_columns_and_rejects_nc_1338_to_nc_1340() {
         );
     }
 }
+
+/// `MatmulSummand` (base-field first round + unexpanded `2^|shared|` eq table) matches
+/// dense extension-field sumcheck bit-for-bit across all `(lhs, rhs)` base/ext variants,
+/// both with and without shared bits, including `summed = 0` and `summed > 0` (E20-01).
+#[test]
+fn matches_reference_matmul_summand_across_base_and_shared_shapes() {
+    use stele_sumcheck::{Dense, DenseTable};
+
+    let base_tbl = |n: usize, seed: i64| -> Vec<M31> {
+        (0..n)
+            .map(|i| M31::from_i64(((i as i64 * 17 + seed * 31) % 97) - 48))
+            .collect()
+    };
+    let ext_tbl = |n: usize, seed: i64| -> Vec<K> {
+        let mut t = Transcript::<K>::new(b"e20-01-ext").expect("t");
+        let base = K::from_i64(seed + 3);
+        (0..n)
+            .map(|i| {
+                let c = t.challenge(ChallengeLabel::RelationPoint).expect("c");
+                c + base * K::from_i64(i as i64)
+            })
+            .collect()
+    };
+    let to_k = |t: &DenseTable<K>| -> Vec<K> {
+        match t {
+            DenseTable::Base(b) => b
+                .iter()
+                .map(|v| K::from_i64(i64::from(v.as_u32())))
+                .collect(),
+            DenseTable::Ext(e) => e.clone(),
+        }
+    };
+
+    // (summed_bits, shared_bits)
+    let shapes = [(3u32, 0u32), (3, 2), (0, 3), (2, 1)];
+    for (summed, shared) in shapes {
+        let nv = summed + shared;
+        let len = 1usize << nv;
+        let eq_small = if shared > 0 {
+            let mut t = Transcript::new(b"e20-01-eq").expect("t");
+            let pt: Vec<K> = (0..shared)
+                .map(|_| t.challenge(ChallengeLabel::RelationPoint).expect("c"))
+                .collect();
+            Some(stele_poly::eq_table(&pt).expect("eq"))
+        } else {
+            None
+        };
+        let eq_full = eq_small.as_ref().map(|e| {
+            let mask = e.len() - 1;
+            (0..len).map(|i| e[i & mask]).collect::<Vec<K>>()
+        });
+        for lhs_base in [true, false] {
+            for rhs_base in [true, false] {
+                let lhs = if lhs_base {
+                    DenseTable::Base(base_tbl(len, 1))
+                } else {
+                    DenseTable::Ext(ext_tbl(len, 1))
+                };
+                let rhs = if rhs_base {
+                    DenseTable::Base(base_tbl(len, 2))
+                } else {
+                    DenseTable::Ext(ext_tbl(len, 2))
+                };
+                let lk = to_k(&lhs);
+                let rk = to_k(&rhs);
+                let claimed: K = (0..len).fold(K::from_i64(0), |acc, i| {
+                    let p = lk[i] * rk[i];
+                    acc + match &eq_full {
+                        Some(e) => e[i] * p,
+                        None => p,
+                    }
+                });
+                let instance = Instance {
+                    id: MATMUL | u64::from(nv),
+                    num_vars: nv,
+                    inputs: (0..2 + u64::from(shared > 0)).collect(),
+                    terms: vec![Term {
+                        coefficient: K::from_i64(1),
+                        factors: if shared > 0 {
+                            vec![0, 1, 2]
+                        } else {
+                            vec![0, 1]
+                        },
+                    }],
+                    claimed_sum: claimed,
+                };
+                let mut ref_tables = Vec::new();
+                if let Some(e) = &eq_full {
+                    ref_tables.push(e.clone());
+                }
+                ref_tables.push(lk);
+                ref_tables.push(rk);
+                let mut t_ref = Transcript::new(b"e20-01-parity").expect("t");
+                let dense = Dense::new(&instance, ref_tables).expect("dense");
+                let ref_proof = stele_sumcheck::prove(&instance, dense, &mut t_ref).expect("ref");
+
+                let mut t_opt = Transcript::new(b"e20-01-parity").expect("t");
+                let mut sc = Vec::new();
+                let summand = MatmulSummand {
+                    rem: len,
+                    eq: eq_small.clone(),
+                    lhs,
+                    rhs,
+                    point: &mut sc,
+                };
+                let opt_proof = stele_sumcheck::prove(&instance, summand, &mut t_opt).expect("opt");
+
+                assert_eq!(opt_proof, ref_proof);
+                assert_eq!(sc.len(), nv as usize);
+                assert_eq!(
+                    t_opt.challenge(ChallengeLabel::RelationPoint).expect("c"),
+                    t_ref.challenge(ChallengeLabel::RelationPoint).expect("c")
+                );
+            }
+        }
+    }
+}
+
+/// RFC-0026 A8: unsplit plans (`B = 30`) produce byte-identical proofs; smaller `B` splits
+/// oversized members along leading domain bits (`block_bits > 0`) and packs members into
+/// ordered `<= 2^B` instances (for both `Range` and selected `Lookup`), verified under the
+/// matching plan bound and rejected under a mismatched bound (`ProofShape`).
+#[test]
+fn accepts_a8_split_lookup_instances_and_matches_unsplit_bytes() {
+    use stele_ir::relation::{Lookup, Range, Table};
+
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/a8/3", 3);
+    let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(2), 3);
+    let y = rel.add_column("y", Kind::Witness(g), Width::unsigned(2), 3);
+    let sel = rel.add_column(
+        "sel",
+        Kind::Public(vec![1, 0, 1, 1, 1, 1, 0, 1]),
+        Width::unsigned(1),
+        3,
+    );
+    let tbl = rel.add_table(Table {
+        name: "pairs".into(),
+        widths: vec![Width::unsigned(2), Width::unsigned(2)],
+        rows: vec![vec![0, 3], vec![1, 2], vec![2, 1], vec![3, 0]],
+    });
+    rel.ranges.push(Range {
+        name: "rx".into(),
+        column: x,
+        width: Width::unsigned(2),
+    });
+    rel.ranges.push(Range {
+        name: "ry".into(),
+        column: y,
+        width: Width::unsigned(2),
+    });
+    rel.lookups.push(Lookup {
+        name: "lxy".into(),
+        vars: 3,
+        selector: Some(Ref::identity(sel, 3)),
+        tuple: vec![Ref::identity(x, 3), Ref::identity(y, 3)],
+        table: tbl,
+    });
+    let mut values = Values::new(&rel);
+    values
+        .set(&rel, x, vec![0, 1, 2, 3, 3, 2, 1, 0])
+        .expect("x");
+    values
+        .set(&rel, y, vec![3, 2, 1, 0, 0, 1, 2, 3])
+        .expect("y");
+    assert_eq!(stele_ir::relation::check(&rel, &values), Ok(()));
+
+    // Unsplit B = 30 matches default `prove` byte-for-byte.
+    let mut t0 = Transcript::new(PUBLIC).expect("t");
+    let p_default = prove(&mut t0, &rel, &values, &[], Sources::CircleAll).expect("default");
+    let mut t1 = Transcript::new(PUBLIC).expect("t");
+    let p_b30 = prove_with_instance_bound(&mut t1, &rel, &values, &[], Sources::CircleAll, 30)
+        .expect("b30");
+    assert_eq!(p_default, p_b30);
+
+    // Split B = 2: `lxy` (8 pos) -> 2 instances of 4; `range_2` (`rx` + `ry` = 16 pos) -> 4 instances of 4.
+    let p = plan_with_bound(&rel, Sources::CircleAll, 2).expect("plan b2");
+    assert_eq!(p.checks.len(), 6);
+    assert!(p.checks.iter().all(|c| c.m <= 2));
+    assert!(p.checks.iter().all(|c| c.members[0].block_bits == 1));
+
+    let mut tp = Transcript::new(PUBLIC).expect("t");
+    let (proof_b2, metrics_b2) =
+        prove_measured_with_instance_bound(&mut tp, &rel, &values, &[], Sources::CircleAll, 2)
+            .expect("prove b2");
+    assert_eq!(metrics_b2.lookup_checks.len(), 6);
+
+    let mut tv = Transcript::new(PUBLIC).expect("t");
+    verify_with_instance_bound(&mut tv, &rel, &[], &proof_b2, Sources::CircleAll, 2)
+        .expect("verify b2");
+
+    // Verifier with wrong plan bound rejects immediately with ProofShape.
+    let mut tv_wrong = Transcript::new(PUBLIC).expect("t");
+    assert_eq!(
+        verify_with_instance_bound(&mut tv_wrong, &rel, &[], &proof_b2, Sources::CircleAll, 30),
+        Err(Error::ProofShape)
+    );
+}
+
+/// RFC-0026 A8 negative control: moving a member value across an instance boundary without
+/// moving its multiplicity is rejected by the receiving instance's root equation (`RootMismatch`).
+#[test]
+fn rejects_a8_member_value_moved_across_instance_boundary_without_multiplicity() {
+    use stele_ir::relation::Range;
+
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/a8ctrl/3", 3);
+    let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(2), 3);
+    rel.ranges.push(Range {
+        name: "rx".into(),
+        column: x,
+        width: Width::unsigned(2),
+    });
+    // Honest split at B = 2:
+    //   instance 0 (block 0): [0, 1, 2, 3] -> counts [1, 1, 1, 1]
+    //   instance 1 (block 1): [3, 2, 1, 0] -> counts [1, 1, 1, 1]
+    // Move value `0` from instance 0 into instance 1 (swapping x[0]=0 with x[4]=3 ->
+    // instance 0 gets [3, 1, 2, 3], instance 1 receives [0, 2, 1, 0]):
+    // global counts across x are unchanged ([2, 2, 2, 2]), instance 0 gets its true counts
+    // [0, 1, 1, 2], while the receiving instance 1 retains the unmoved counts [1, 1, 1, 1].
+    let mut moved = Values::new(&rel);
+    moved
+        .set(&rel, x, vec![3, 1, 2, 3, 0, 2, 1, 0])
+        .expect("moved");
+    assert_eq!(stele_ir::relation::check(&rel, &moved), Ok(()));
+
+    // Honest proof with moved values AND updated per-instance multiplicities verifies cleanly.
+    let mut th = Transcript::new(PUBLIC).expect("t");
+    let honest = prove_with_instance_bound(&mut th, &rel, &moved, &[], Sources::CircleAll, 2)
+        .expect("honest");
+    let mut tvh = Transcript::new(PUBLIC).expect("t");
+    verify_with_instance_bound(&mut tvh, &rel, &[], &honest, Sources::CircleAll, 2)
+        .expect("honest verify");
+
+    // Malicious prover: receiving instance 1 keeps unmoved multiplicity [1, 1, 1, 1].
+    let mut p = plan_with_bound(&rel, Sources::CircleAll, 2).expect("plan b2");
+    assert_eq!(p.checks.len(), 2);
+    p.checks[1].count_override = Some(vec![1, 1, 1, 1]);
+    let mut tf = Transcript::new(PUBLIC).expect("t");
+    let forged = prove_plan(&mut tf, &rel, &p, &moved, &moved, &[], None).expect("forged bytes");
+    let mut tvf = Transcript::new(PUBLIC).expect("t");
+    assert_eq!(
+        verify_with_instance_bound(&mut tvf, &rel, &[], &forged, Sources::CircleAll, 2),
+        Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+    );
+}
+
+/// RFC-0026 A8 non-identity `Ref` and multi-member bucket split: verifies leading-bit
+/// block splitting preserves `Ref` variable maps (transposition + broadcast) across
+/// multiple members packed into one split bucket.
+#[test]
+fn accepts_a8_split_with_non_identity_ref_and_multi_member_bucket() {
+    use stele_ir::relation::{Lookup, Table};
+
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/a8ref/2", 2);
+    // Two 4-entry columns (`log_len = 2`), referenced with a 3-var (`8`-entry) transposed/broadcast Ref.
+    let a = rel.add_column("a", Kind::Witness(g), Width::unsigned(2), 2);
+    let b = rel.add_column("b", Kind::Witness(g), Width::unsigned(2), 2);
+    let tbl = rel.add_table(Table {
+        name: "u2".into(),
+        widths: vec![Width::unsigned(2)],
+        rows: vec![vec![0], vec![1], vec![2], vec![3]],
+    });
+    // `Ref` with swapped + broadcast vars: column bit 0 <- lookup var 2, column bit 1 <- lookup var 0.
+    // Lookup var 1 is ignored (broadcast). When split with B = 2 (leading bit = var 2 fixed),
+    // block 0 fixes var 2 = 0 (column bit 0 = 0) and block 1 fixes var 2 = 1 (column bit 0 = 1).
+    rel.lookups.push(Lookup {
+        name: "la".into(),
+        vars: 3,
+        selector: None,
+        tuple: vec![Ref {
+            column: a,
+            vars: vec![2, 0],
+        }],
+        table: tbl,
+    });
+    // Second 2-var member on `b` with swapped vars `[1, 0]`.
+    rel.lookups.push(Lookup {
+        name: "lb".into(),
+        vars: 2,
+        selector: None,
+        tuple: vec![Ref {
+            column: b,
+            vars: vec![1, 0],
+        }],
+        table: tbl,
+    });
+    let mut values = Values::new(&rel);
+    values.set(&rel, a, vec![0, 1, 2, 3]).expect("a");
+    values.set(&rel, b, vec![3, 2, 1, 0]).expect("b");
+    assert_eq!(stele_ir::relation::check(&rel, &values), Ok(()));
+
+    let p = plan_with_bound(&rel, Sources::CircleAll, 2).expect("plan");
+    assert!(p.checks.iter().all(|c| c.m <= 2));
+    assert_eq!(p.checks.len(), 3); // 2 split blocks for `la` + 1 unsplit for `lb`
+
+    let mut tp = Transcript::new(PUBLIC).expect("t");
+    let proof =
+        prove_with_instance_bound(&mut tp, &rel, &values, &[], Sources::CircleAll, 2).expect("p");
+    let mut tv = Transcript::new(PUBLIC).expect("t");
+    verify_with_instance_bound(&mut tv, &rel, &[], &proof, Sources::CircleAll, 2).expect("v");
+}
+
+// Tests from the E20-01/E20-02 review (agents/reviews/e20-01-e20-02-engine-fast-paths.md, F2 and F4).
+
+/// SplitMix64, for the seeded shapes below.
+struct SeededRng(u64);
+impl SeededRng {
+    fn next(&mut self) -> u64 {
+        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    }
+    fn below(&mut self, n: u64) -> u64 {
+        self.next() % n
+    }
+}
+
+/// The base commit's `MatmulShape::table` (a06fea90^), ported verbatim, sequential.
+fn reference_matmul_table(shape: &MatmulShape, r: &Ref, col: &[i64]) -> Vec<K> {
+    let nv = shape.vars.len();
+    let mut mask = 0usize;
+    let (mut inner, mut outer) = (Vec::new(), Vec::new());
+    let mut eq = vec![K::from_i64(1)];
+    for (j, d) in r.vars.iter().enumerate() {
+        match shape.position(*d) {
+            Some(p) => {
+                mask |= 1 << (nv - 1 - p);
+                inner.push((j, nv - 1 - p));
+            }
+            None => {
+                let x = shape.fixed_at(*d);
+                let low: Vec<K> = eq.iter().map(|w| *w * (K::from_i64(1) - x)).collect();
+                let high: Vec<K> = eq.iter().map(|w| *w * x).collect();
+                eq = [low, high].concat();
+                outer.push(j);
+            }
+        }
+    }
+    let (mut fixed, mut selected) = (0usize, 0usize);
+    for (j, d) in r.vars.iter().enumerate() {
+        if let Some(bit) = Ref::fixed(*d) {
+            fixed |= 1 << j;
+            selected |= usize::from(bit) << j;
+        }
+    }
+    let mut reduced = vec![K::from_i64(0); 1 << nv];
+    for (index, entry) in col.iter().enumerate() {
+        if index & fixed != selected {
+            continue;
+        }
+        let z = inner
+            .iter()
+            .fold(0, |z, (j, to)| z | ((index >> j) & 1) << to);
+        let o = outer
+            .iter()
+            .enumerate()
+            .fold(0, |o, (k, j)| o | ((index >> j) & 1) << k);
+        reduced[z] = reduced[z] + eq[o] * K::from_i64(*entry);
+    }
+    (0..1 << nv).map(|z| reduced[z & mask]).collect()
+}
+
+/// The base commit's `MatmulShape::eq_table`, ported verbatim.
+fn reference_matmul_eq_table(shape: &MatmulShape) -> Vec<K> {
+    let nv = shape.vars.len();
+    (0..1usize << nv)
+        .map(|z| {
+            shape.shared.iter().fold(K::from_i64(1), |acc, d| {
+                let p = shape.position(*d).unwrap_or(0);
+                let x = shape.rho_at(*d);
+                acc * if (z >> (nv - 1 - p)) & 1 == 1 {
+                    x
+                } else {
+                    K::from_i64(1) - x
+                }
+            })
+        })
+        .collect()
+}
+
+/// Random operand shapes (permuted, broadcast, fixed bits, non-shared free bits): the new
+/// operand tables, the unexpanded eq table and the sumcheck bytes equal the base code's.
+#[test]
+fn matches_reference_matmul_tables_of_the_all_extension_engine() {
+    use stele_sumcheck::{Dense, DenseTable};
+    let mut rng = SeededRng(99);
+    let mut draws = Transcript::<K>::new(b"review/matmul").expect("t");
+    let (mut base_tables, mut ext_tables, mut with_eq) = (0, 0, 0);
+    for case in 0..600u64 {
+        let free = rng.below(5) as u8;
+        let summed = rng.below(5) as u8;
+        let domain = free + summed;
+        let operand = |rng: &mut SeededRng| -> (Ref, Vec<i64>) {
+            let mut bits: Vec<u8> = (0..domain).filter(|_| rng.below(4) != 0).collect();
+            for i in (1..bits.len()).rev() {
+                let j = rng.below(i as u64 + 1) as usize;
+                bits.swap(i, j);
+            }
+            for _ in 0..rng.below(3) {
+                let at = rng.below(bits.len() as u64 + 1) as usize;
+                bits.insert(
+                    at,
+                    if rng.below(2) == 0 {
+                        Ref::FIXED_0
+                    } else {
+                        Ref::FIXED_1
+                    },
+                );
+            }
+            let col = (0..1usize << bits.len())
+                .map(|_| rng.below(513) as i64 - 256)
+                .collect();
+            (
+                Ref {
+                    column: ColumnId(0),
+                    vars: bits,
+                },
+                col,
+            )
+        };
+        let (lhs, lcol) = operand(&mut rng);
+        let (rhs, rcol) = operand(&mut rng);
+        let rho: Vec<K> = (0..free)
+            .map(|_| draws.challenge(ChallengeLabel::RelationPoint).expect("c"))
+            .collect();
+        let shape = MatmulShape::from_point(rho, free, summed, &lhs, &rhs);
+        let nv = shape.vars.len();
+        let (old_l, old_r) = (
+            reference_matmul_table(&shape, &lhs, &lcol),
+            reference_matmul_table(&shape, &rhs, &rcol),
+        );
+        let narrow: Vec<i16> = lcol.iter().map(|v| *v as i16).collect();
+        let new_l = shape
+            .table_mixed(&lhs, ColumnSlice::I16(&narrow))
+            .expect("lhs");
+        let new_r = shape
+            .table_mixed(&rhs, ColumnSlice::I64(&rcol))
+            .expect("rhs");
+        let to_k = |t: &DenseTable<K>| -> Vec<K> {
+            match t {
+                DenseTable::Base(b) => b
+                    .iter()
+                    .map(|v| K::from_i64(i64::from(v.as_u32())))
+                    .collect(),
+                DenseTable::Ext(e) => e.clone(),
+            }
+        };
+        assert_eq!(to_k(&new_l), old_l, "case {case} lhs");
+        assert_eq!(to_k(&new_r), old_r, "case {case} rhs");
+        for t in [&new_l, &new_r] {
+            match t {
+                DenseTable::Base(_) => base_tables += 1,
+                DenseTable::Ext(_) => ext_tables += 1,
+            }
+        }
+        let old_eq = reference_matmul_eq_table(&shape);
+        let new_eq = shape.eq_shared().expect("eq");
+        match &new_eq {
+            None => assert!(shape.shared.is_empty()),
+            Some(e) => {
+                with_eq += 1;
+                let mask = e.len() - 1;
+                let expanded: Vec<K> = (0..1usize << nv).map(|z| e[z & mask]).collect();
+                assert_eq!(expanded, old_eq, "case {case} eq");
+            }
+        }
+        let claimed = (0..1usize << nv).fold(K::from_i64(0), |s, z| {
+            s + if shape.shared.is_empty() {
+                old_l[z] * old_r[z]
+            } else {
+                old_eq[z] * old_l[z] * old_r[z]
+            }
+        });
+        let instance = shape.instance(MATMUL | case, claimed);
+        let mut tables = Vec::new();
+        if !shape.shared.is_empty() {
+            tables.push(old_eq);
+        }
+        tables.extend([old_l, old_r]);
+        let mut t_ref = Transcript::new(b"review/matmul/t").expect("t");
+        let reference = stele_sumcheck::prove(
+            &instance,
+            Dense::new(&instance, tables).expect("dense"),
+            &mut t_ref,
+        )
+        .expect("reference");
+        let mut t_opt = Transcript::new(b"review/matmul/t").expect("t");
+        let mut sc = Vec::new();
+        let optimised = stele_sumcheck::prove(
+            &instance,
+            MatmulSummand {
+                rem: 1usize << nv,
+                eq: new_eq,
+                lhs: new_l,
+                rhs: new_r,
+                point: &mut sc,
+            },
+            &mut t_opt,
+        )
+        .expect("optimised");
+        assert_eq!(optimised, reference, "case {case} bytes");
+        assert_eq!(
+            t_opt.challenge(ChallengeLabel::RelationPoint).expect("c"),
+            t_ref.challenge(ChallengeLabel::RelationPoint).expect("c")
+        );
+    }
+    assert!(base_tables > 100 && ext_tables > 100 && with_eq > 100);
+}
+
+fn a8_range_fixture() -> (Relation, ColumnId) {
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/review-a8/3", 3);
+    let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(2), 3);
+    rel.ranges.push(Range {
+        name: "rx".into(),
+        column: x,
+        width: Width::unsigned(2),
+    });
+    (rel, x)
+}
+
+/// A8 block claim point: instance 1's leaves, multiplicities and member values are all
+/// taken from block 0's data while block 1 of the commitment holds an out-of-range value.
+/// A verifier that routed the block claim to `z_low` alone would accept.
+#[test]
+fn rejects_a8_block_claims_served_from_another_block() {
+    let (rel, x) = a8_range_fixture();
+    let mut committed = Values::new(&rel);
+    committed
+        .set(&rel, x, vec![0, 1, 2, 3, 0, 1, 2, 9])
+        .expect("committed");
+    let mut fake = Values::new(&rel);
+    fake.set(&rel, x, vec![0, 1, 2, 3, 0, 1, 2, 3])
+        .expect("fake");
+    let plan = plan_with_bound(&rel, Sources::CircleAll, 2).expect("plan");
+    assert_eq!(plan.checks.len(), 2);
+    let mut t = Transcript::new(PUBLIC).expect("t");
+    let proof = prove_plan(&mut t, &rel, &plan, &committed, &fake, &[], None).expect("bytes");
+    let mut t = Transcript::new(PUBLIC).expect("t");
+    assert_eq!(
+        verify_with_instance_bound(&mut t, &rel, &[], &proof, Sources::CircleAll, 2).err(),
+        Some(Error::Pcs(stele_pcs::Error::ValueMismatch))
+    );
+    // Proved honestly from the commitment, the out-of-range value fails its own instance.
+    let mut t = Transcript::new(PUBLIC).expect("t");
+    let proof = prove_with_instance_bound(&mut t, &rel, &committed, &[], Sources::CircleAll, 2)
+        .expect("bytes");
+    let mut t = Transcript::new(PUBLIC).expect("t");
+    assert_eq!(
+        verify_with_instance_bound(&mut t, &rel, &[], &proof, Sources::CircleAll, 2).err(),
+        Some(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+    );
+}
+
+/// A8 through the segmented (`stele-dev-e2e-v2`) prover and verifier, which the reviewed
+/// commits extend but never run with `B < 30`.
+#[test]
+fn accepts_a8_segmented_split_and_rejects_out_of_range_block_values() {
+    let (rel, x) = a8_range_fixture();
+    let mut values = Values::new(&rel);
+    values
+        .set(&rel, x, vec![3, 1, 2, 3, 0, 2, 1, 0])
+        .expect("x");
+    for set in [
+        Sources::Expander,
+        Sources::CircleAll,
+        Sources::CircleAllGrind,
+    ] {
+        let mut t = Transcript::new(PUBLIC).expect("t");
+        let (v2, _) = prove_segmented_measured_with_instance_bound(
+            &mut t,
+            &rel,
+            |_| Ok(values.clone()),
+            &[],
+            set,
+            2,
+        )
+        .expect("v2");
+        let mut t = Transcript::new(PUBLIC).expect("t");
+        verify_segmented_with_instance_bound(&mut t, &rel, &[], &v2, set, 2).expect("accept");
+        let mut t = Transcript::new(PUBLIC).expect("t");
+        let v1 = prove_with_instance_bound(&mut t, &rel, &values, &[], set, 2).expect("v1");
+        assert_eq!(v2.segments[0].multiplicities, v1.multiplicities);
+        assert_eq!(v2.segments[0].lookups, v1.lookups);
+        assert_eq!(v2.segments[0].openings, v1.openings);
+        // Any other bound is a different plan.
+        for other in [1u8, 3, 30] {
+            let mut t = Transcript::new(PUBLIC).expect("t");
+            let outcome = verify_segmented_with_instance_bound(&mut t, &rel, &[], &v2, set, other);
+            assert!(outcome.is_err());
+        }
+        // An out-of-range value in block 1 fails in the segmented verifier too.
+        let mut bad = Values::new(&rel);
+        bad.set(&rel, x, vec![3, 1, 2, 3, 0, 2, 1, 4]).expect("x");
+        let mut t = Transcript::new(PUBLIC).expect("t");
+        let (forged, _) = prove_segmented_measured_with_instance_bound(
+            &mut t,
+            &rel,
+            |_| Ok(bad.clone()),
+            &[],
+            set,
+            2,
+        )
+        .expect("bytes");
+        let mut t = Transcript::new(PUBLIC).expect("t");
+        assert_eq!(
+            verify_segmented_with_instance_bound(&mut t, &rel, &[], &forged, set, 2).err(),
+            Some(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+        );
+    }
+}
+
+/// The three-segment fixture (weights, carried columns, a matmul) under every small bound.
+#[test]
+fn accepts_a8_three_segments_under_small_instance_bounds() {
+    let (rel, seg_vals, full) = three_segment_fixture();
+    let messages = model_messages(&rel, &full).expect("messages");
+    let sources = Sources::CircleAll;
+    let layouts = model_layout(&rel, sources).expect("layout");
+    let prepared: Vec<_> = layouts
+        .iter()
+        .zip(&messages)
+        .map(|(l, m)| l.sources.prepare(l.id, l.ell, &l.code, m).expect("model"))
+        .collect();
+    let certificates: Vec<_> = prepared
+        .iter()
+        .map(|p| {
+            let (bytes, _) = p.certificate().expect("cert");
+            verify_certificate(*p.source(), &bytes).expect("verify").0
+        })
+        .collect();
+    let model: Vec<_> = prepared.iter().zip(&certificates).collect();
+    let refs: Vec<_> = certificates.iter().collect();
+    let mut t = Transcript::new(PUBLIC).expect("t");
+    let (reference, _) = prove_segmented_measured(
+        &mut t,
+        &rel,
+        |s| Ok(seg_vals[s as usize].clone()),
+        &model,
+        sources,
+    )
+    .expect("default");
+    // Per check: id, size and each member's (size, block bits, block index).
+    type CheckLayout = (u64, u8, Vec<(u8, u8, usize)>);
+    let layout = |bound: u8| -> Vec<CheckLayout> {
+        plan_segmented_with_bound(&rel, sources, bound)
+            .expect("plan")
+            .segments
+            .iter()
+            .flat_map(|s| s.checks.iter())
+            .map(|c| {
+                (
+                    c.id,
+                    c.m,
+                    c.members
+                        .iter()
+                        .map(|m| (m.m, m.block_bits, m.block_index))
+                        .collect(),
+                )
+            })
+            .collect()
+    };
+    for bound in [1u8, 2, 3, 4, 30] {
+        let mut t = Transcript::new(PUBLIC).expect("t");
+        let (proof, _) = prove_segmented_measured_with_instance_bound(
+            &mut t,
+            &rel,
+            |s| Ok(seg_vals[s as usize].clone()),
+            &model,
+            sources,
+            bound,
+        )
+        .expect("prove");
+        let mut t = Transcript::new(PUBLIC).expect("t");
+        verify_segmented_with_instance_bound(&mut t, &rel, &refs, &proof, sources, bound)
+            .expect("accept");
+        // Exactly the unsplit plans keep every byte.
+        assert_eq!(
+            proof == reference,
+            layout(bound) == layout(30),
+            "bound {bound}"
+        );
+        if layout(bound) != layout(30) {
+            let mut t = Transcript::new(PUBLIC).expect("t");
+            assert!(verify_segmented(&mut t, &rel, &refs, &proof, sources).is_err());
+        }
+    }
+}
+
+/// Random lookups and ranges under every bound `1..=6`: each original position is in
+/// exactly one instance, honest proofs verify, one out-of-table value is rejected by a
+/// root equation, and a verifier with another bound never accepts a differently split proof.
+#[test]
+fn matches_reference_a8_split_plans_cover_every_position_once() {
+    let mut rng = SeededRng(41);
+    for case in 0..12u64 {
+        let mut rel = Relation::default();
+        let table = rel.add_table(Table {
+            name: "review/u2".to_string(),
+            widths: vec![Width::unsigned(2)],
+            rows: (0..4).map(|v| vec![v]).collect(),
+        });
+        let mut set: Vec<(ColumnId, Vec<i64>)> = Vec::new();
+        let mut positions = 0usize;
+        for i in 0..2 + rng.below(4) {
+            let n = 1 + rng.below(5) as u8;
+            let g = Kind::Witness(rel.add_group(&alloc::format!("G/review/{case}/{i}"), n));
+            let x = rel.add_column(&alloc::format!("x{i}"), g, Width::unsigned(2), n);
+            let v: Vec<i64> = (0..1usize << n).map(|_| rng.below(4) as i64).collect();
+            rel.ranges.push(Range {
+                name: alloc::format!("r{i}"),
+                column: x,
+                width: Width::unsigned(2),
+            });
+            positions += 1 << n;
+            if rng.below(2) == 0 {
+                // The same column again through a selected lookup with reversed bits.
+                let sel_v: Vec<i64> = (0..1usize << n).map(|_| rng.below(2) as i64).collect();
+                let sel = rel.add_column(
+                    &alloc::format!("sel{i}"),
+                    Kind::Public(sel_v),
+                    Width::unsigned(1),
+                    n,
+                );
+                let reversed = |column| Ref {
+                    column,
+                    vars: (0..n).rev().collect(),
+                };
+                rel.lookups.push(Lookup {
+                    name: alloc::format!("l{i}"),
+                    vars: n,
+                    selector: Some(reversed(sel)),
+                    tuple: vec![reversed(x)],
+                    table,
+                });
+                positions += 1 << n;
+            }
+            set.push((x, v));
+        }
+        assert_eq!(rel.validate(), Ok(()), "case {case}");
+        let mut values = Values::new(&rel);
+        for (id, v) in &set {
+            values.set(&rel, *id, v.clone()).expect("set");
+        }
+        // One out-of-table value somewhere.
+        let (bad_col, bad_v) = &set[rng.below(set.len() as u64) as usize];
+        let mut bad_v = bad_v.clone();
+        let at = rng.below(bad_v.len() as u64) as usize;
+        bad_v[at] = 4 + rng.below(60) as i64;
+        let mut bad = values.clone();
+        bad.set(&rel, *bad_col, bad_v).expect("set");
+        let mut proofs = Vec::new();
+        for bound in 1..=6u8 {
+            let plan = plan_with_bound(&rel, Sources::CircleAll, bound).expect("plan");
+            // Coverage: (tuple column, selector, member-domain position) seen exactly once.
+            let mut seen = alloc::collections::BTreeSet::new();
+            let mut ids = alloc::collections::BTreeSet::new();
+            let mut layout = Vec::new();
+            for check in &plan.checks {
+                assert!(check.m <= bound, "case {case} bound {bound}");
+                assert!(ids.insert(check.id) && ids.len() <= plan.checks.len());
+                let mut total = 0usize;
+                for member in &check.members {
+                    assert!(member.m <= bound);
+                    assert_eq!(member.offset, total);
+                    total += 1 << member.m;
+                    for local in 0..1usize << member.m {
+                        let position = (member.block_index << member.m) | local;
+                        let key = (
+                            member.tuple[0].0.column,
+                            member.selector.as_ref().map(|s| s.column),
+                            position,
+                        );
+                        assert!(seen.insert(key), "position covered twice");
+                    }
+                    layout.push((check.id, member.m, member.block_bits, member.block_index));
+                }
+                assert!(total <= 1 << bound);
+            }
+            assert_eq!(seen.len(), positions, "case {case} bound {bound}");
+            let mut t = Transcript::new(PUBLIC).expect("t");
+            let proof =
+                prove_with_instance_bound(&mut t, &rel, &values, &[], Sources::CircleAll, bound)
+                    .expect("prove");
+            let mut t = Transcript::new(PUBLIC).expect("t");
+            verify_with_instance_bound(&mut t, &rel, &[], &proof, Sources::CircleAll, bound)
+                .expect("accept");
+            let mut t = Transcript::new(PUBLIC).expect("t");
+            let forged =
+                prove_with_instance_bound(&mut t, &rel, &bad, &[], Sources::CircleAll, bound)
+                    .expect("bytes");
+            let mut t = Transcript::new(PUBLIC).expect("t");
+            assert_eq!(
+                verify_with_instance_bound(&mut t, &rel, &[], &forged, Sources::CircleAll, bound)
+                    .err(),
+                Some(Error::Fraction(stele_lookup::fraction::Error::RootMismatch)),
+                "case {case} bound {bound}"
+            );
+            proofs.push((bound, layout, proof));
+        }
+        for (b1, l1, proof) in &proofs {
+            for (b2, l2, _) in &proofs {
+                let mut t = Transcript::new(PUBLIC).expect("t");
+                let outcome =
+                    verify_with_instance_bound(&mut t, &rel, &[], proof, Sources::CircleAll, *b2);
+                if l1 == l2 {
+                    assert!(outcome.is_ok(), "same plan under B={b1} and B={b2}");
+                } else {
+                    // Another split has another instance count: the sections miscount.
+                    assert_eq!(
+                        outcome.err(),
+                        Some(Error::ProofShape),
+                        "B={b1} under B={b2}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// A8 with a virtual tuple member (RFC-0026 A28, RFC-0008 A9): the block claim of a split
+/// `Linear` column is absorbed, reduced at `(bits(block) ‖ z_low)` and bound to its operands.
+#[test]
+fn rejects_a8_out_of_range_sum_of_a_split_virtual_member() {
+    let build = || {
+        let mut rel = Relation::default();
+        let g = rel.add_group("L0/review-a8v/3", 3);
+        let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(2), 3);
+        let y = rel.add_column("y", Kind::Witness(g), Width::unsigned(2), 3);
+        for (name, column) in [("rx", x), ("ry", y)] {
+            rel.ranges.push(Range {
+                name: name.into(),
+                column,
+                width: Width::unsigned(2),
+            });
+        }
+        let v = rel.add_column(
+            "v",
+            Kind::Virtual(Def::Linear {
+                constant: 0,
+                terms: vec![(1, Ref::identity(x, 3)), (1, Ref::identity(y, 3))],
+            }),
+            Width::unsigned(0),
+            3,
+        );
+        // x + y must stay in [0, 4): only the range on the virtual column says so.
+        rel.ranges.push(Range {
+            name: "rv".into(),
+            column: v,
+            width: Width::unsigned(2),
+        });
+        (rel, x, y)
+    };
+    let (rel, x, y) = build();
+    assert_eq!(rel.validate(), Ok(()));
+    let mut honest = Values::new(&rel);
+    honest
+        .set(&rel, x, vec![0, 1, 2, 3, 1, 0, 2, 1])
+        .expect("x");
+    honest
+        .set(&rel, y, vec![3, 2, 1, 0, 1, 3, 0, 2])
+        .expect("y");
+    let mut bad = Values::new(&rel);
+    bad.set(&rel, x, vec![0, 1, 2, 3, 1, 0, 2, 2]).expect("x"); // 2 + 2 = 4 in block 1
+    bad.set(&rel, y, vec![3, 2, 1, 0, 1, 3, 0, 2]).expect("y");
+    for bound in [1u8, 2, 3, 30] {
+        let run = |values: &Values| {
+            let mut t = Transcript::new(PUBLIC).expect("t");
+            let (proof, _) = prove_segmented_measured_with_instance_bound(
+                &mut t,
+                &rel,
+                |_| Ok(values.clone()),
+                &[],
+                Sources::CircleAll,
+                bound,
+            )
+            .expect("bytes");
+            let mut t = Transcript::new(PUBLIC).expect("t");
+            verify_segmented_with_instance_bound(
+                &mut t,
+                &rel,
+                &[],
+                &proof,
+                Sources::CircleAll,
+                bound,
+            )
+            .map(|_| ())
+        };
+        assert_eq!(run(&honest), Ok(()), "bound {bound}");
+        assert_eq!(
+            run(&bad),
+            Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch)),
+            "bound {bound}"
+        );
+    }
+}
+
+// The A8 control through the segmented engine (review F2).
+
+/// The A8 control of RFC-0026 through the segmented verifier, which real proofs use
+/// (`stele-prover` routes every relation with virtual columns to `verify_segmented`).
+#[test]
+fn rejects_a8_member_value_moved_across_instance_boundary_in_the_segmented_engine() {
+    use stele_ir::relation::Range;
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/a8ctrl/3", 3);
+    let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(2), 3);
+    rel.ranges.push(Range {
+        name: "rx".into(),
+        column: x,
+        width: Width::unsigned(2),
+    });
+    let mut moved = Values::new(&rel);
+    moved
+        .set(&rel, x, vec![3, 1, 2, 3, 0, 2, 1, 0])
+        .expect("moved");
+    for set in [
+        Sources::Expander,
+        Sources::CircleAll,
+        Sources::CircleAllGrind,
+    ] {
+        let honest = plan_segmented_with_bound(&rel, set, 2).expect("plan");
+        assert_eq!(honest.segments[0].checks.len(), 2);
+        let run = |plan: &SegmentedPlan| {
+            let mut t = Transcript::new(PUBLIC).expect("t");
+            let (proof, _) = prove_segmented_with_plan(
+                &mut t,
+                &rel,
+                plan,
+                0,
+                |_| Ok(moved.clone()),
+                &[],
+                None,
+                None,
+            )
+            .expect("bytes");
+            let mut t = Transcript::new(PUBLIC).expect("t");
+            verify_segmented_with_instance_bound(&mut t, &rel, &[], &proof, set, 2).map(|_| ())
+        };
+        assert_eq!(run(&honest), Ok(()));
+        // The receiving instance keeps the multiplicities of the unmoved values.
+        let mut forged = plan_segmented_with_bound(&rel, set, 2).expect("plan");
+        forged.segments[0].checks[1].count_override = Some(vec![1, 1, 1, 1]);
+        assert_eq!(
+            run(&forged),
+            Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+        );
+        // The sending instance keeps them instead: its own root equation rejects.
+        let mut forged = plan_segmented_with_bound(&rel, set, 2).expect("plan");
+        forged.segments[0].checks[0].count_override = Some(vec![1, 1, 1, 1]);
+        assert_eq!(
+            run(&forged),
+            Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+        );
+        // Both instances swap their (individually wrong, jointly complete) multiplicities.
+        let mut forged = plan_segmented_with_bound(&rel, set, 2).expect("plan");
+        forged.segments[0].checks[0].count_override = Some(vec![2, 1, 1, 0]);
+        forged.segments[0].checks[1].count_override = Some(vec![0, 1, 1, 2]);
+        assert_eq!(
+            run(&forged),
+            Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+        );
+    }
+}
+
+// Selectors of split lookup members (RFC-0026 A8, §3.3; review F2).
+
+/// A selected lookup into a table smaller than the column's range, cut into blocks.
+/// Unselected positions hold out-of-table values, so each block must read its own part
+/// of the public selector: honest proofs verify, a selected out-of-table value in the
+/// second block is rejected by that instance, and an unselected one is not.
+#[test]
+fn rejects_a8_selected_out_of_table_values_in_split_blocks() {
+    for reversed in [false, true] {
+        let mut rel = Relation::default();
+        let g = rel.add_group("L0/review-a8s/3", 3);
+        let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(2), 3);
+        rel.ranges.push(Range {
+            name: "rx".into(),
+            column: x,
+            width: Width::unsigned(2),
+        });
+        let sel_v = vec![1, 0, 1, 0, 0, 1, 0, 1];
+        let sel = rel.add_column("sel", Kind::Public(sel_v.clone()), Width::unsigned(1), 3);
+        let table = rel.add_table(Table {
+            name: "review/bit".to_string(),
+            widths: vec![Width::unsigned(2)],
+            rows: vec![vec![0], vec![1]],
+        });
+        let r = |column| Ref {
+            column,
+            vars: if reversed {
+                vec![2, 1, 0]
+            } else {
+                vec![0, 1, 2]
+            },
+        };
+        rel.lookups.push(Lookup {
+            name: "bit".to_string(),
+            vars: 3,
+            selector: Some(r(sel)),
+            tuple: vec![r(x)],
+            table,
+        });
+        assert_eq!(rel.validate(), Ok(()));
+        // Selected entries (sel = 1) hold 0/1, the others 2/3.
+        let honest = vec![0, 3, 1, 2, 3, 1, 2, 0];
+        let with = |index: usize, value: i64| {
+            let mut v = honest.clone();
+            v[index] = value;
+            let mut values = Values::new(&rel);
+            values.set(&rel, x, v).expect("x");
+            values
+        };
+        for bound in [1u8, 2, 3] {
+            let v1 = |values: &Values| {
+                let mut t = Transcript::new(PUBLIC).expect("t");
+                let proof =
+                    prove_with_instance_bound(&mut t, &rel, values, &[], Sources::CircleAll, bound)
+                        .expect("bytes");
+                let mut t = Transcript::new(PUBLIC).expect("t");
+                verify_with_instance_bound(&mut t, &rel, &[], &proof, Sources::CircleAll, bound)
+                    .map(|_| ())
+            };
+            let v2 = |values: &Values| {
+                let mut t = Transcript::new(PUBLIC).expect("t");
+                let (proof, _) = prove_segmented_measured_with_instance_bound(
+                    &mut t,
+                    &rel,
+                    |_| Ok(values.clone()),
+                    &[],
+                    Sources::CircleAll,
+                    bound,
+                )
+                .expect("bytes");
+                let mut t = Transcript::new(PUBLIC).expect("t");
+                verify_segmented_with_instance_bound(
+                    &mut t,
+                    &rel,
+                    &[],
+                    &proof,
+                    Sources::CircleAll,
+                    bound,
+                )
+                .map(|_| ())
+            };
+            let root = Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch));
+            for run in [&v1 as &dyn Fn(&Values) -> Result<(), Error>, &v2] {
+                assert_eq!(run(&with(0, 0)), Ok(()), "honest, bound {bound}");
+                // Every selected entry in turn takes an in-range, out-of-table value.
+                for index in (0..8).filter(|i| sel_v[*i] == 1) {
+                    assert_eq!(
+                        run(&with(index, 2)),
+                        root,
+                        "selected {index}, bound {bound}"
+                    );
+                }
+                // Every unselected entry may hold any in-range value.
+                for index in (0..8).filter(|i| sel_v[*i] == 0) {
+                    for value in 0..4 {
+                        assert_eq!(run(&with(index, value)), Ok(()), "unselected {index}");
+                    }
+                }
+            }
+        }
+    }
+}

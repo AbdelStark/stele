@@ -1619,6 +1619,8 @@ def fraction_reductions(root):
                'tests/fixtures/fraction-codec.jsonl', 'src/tree.rs', 'tests/tree.rs',
                'src/leaf_codec.rs', 'tests/leaf_codec.rs', 'tests/fixtures/leaf-codec.jsonl',
                'src/selected.rs', 'tests/selected.rs', 'src/work.rs', 'tests/work.rs',
+               # E20-02 review (F4): randomized parity of the base-field paths.
+               'tests/base_parity.rs',
                'examples/fraction_corpus.rs', 'examples/fraction_bench.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional fraction primitives governed by RFC-0008 A3.\n//!\n'

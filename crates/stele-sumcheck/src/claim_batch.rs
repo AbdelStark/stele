@@ -195,6 +195,90 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
             point,
         ))
     }
+    /// Base-field first-round variant of [`Self::prove_with_point`] (RFC-0006 A5, task E20-01):
+    /// reads `&[M31]` directly in round 0 and folds into a half-sized `Vec<K>`, avoiding a
+    /// full-sized extension-field copy of `table`. Output proof bytes and point are bit-identical.
+    pub fn prove_base_with_point(
+        &self,
+        table: &[stele_field::M31],
+        transcript: &mut Transcript<K>,
+    ) -> Result<(Proof<K>, Vec<K>), Error> {
+        self.validate()?;
+        if !table.len().is_power_of_two() || table.len().trailing_zeros() != self.num_vars {
+            return Err(Error::PublicShape);
+        }
+        let (gamma, mut running) = self.start(transcript)?;
+        let mut rounds = Vec::new();
+        reserve(&mut rounds, self.num_vars as usize)?;
+        let mut point = Vec::new();
+        reserve(&mut point, self.num_vars as usize)?;
+        if self.num_vars == 0 {
+            let mut final_values = Vec::new();
+            reserve(&mut final_values, 1)?;
+            final_values.push(K::from_i64(1).mul_m31(table[0]));
+            self.finish(final_values[0], &point, gamma, running, transcript)?;
+            return Ok((
+                Proof {
+                    rounds,
+                    final_values,
+                },
+                point,
+            ));
+        }
+        let mut coeff = self.coefficient_table(gamma)?;
+        let half = table.len() / 2;
+        let mut values0 = [K::from_i64(0); 3];
+        crate::parallel::sum_ranges(half, &mut values0, |range, out| {
+            out.fill(K::from_i64(0));
+            for col in range {
+                let a0 = table[col];
+                let a1 = table[col + half];
+                let a2 = a1 + (a1 - a0);
+                let c0 = coeff[col];
+                let c1 = coeff[col + half];
+                let c2 = c1 + (c1 - c0);
+                out[0] = out[0] + c0.mul_m31(a0);
+                out[1] = out[1] + c1.mul_m31(a1);
+                out[2] = out[2] + c2.mul_m31(a2);
+            }
+            Ok(())
+        })?;
+        let (r0, next) = round(self.id, 0, &values0, running, transcript)?;
+        let mut round0 = Vec::new();
+        reserve(&mut round0, 3)?;
+        round0.extend_from_slice(&values0);
+        rounds.push(round0);
+        point.push(r0);
+        running = next;
+
+        let folded_table = crate::parallel::fold_base(table, r0)?;
+        crate::parallel::fold(&mut coeff, r0);
+        let mut tables = Vec::new();
+        reserve(&mut tables, 2)?;
+        tables.push(folded_table);
+        tables.push(coeff);
+        let product = self.product(running)?;
+        let mut dense = Dense::from_folded(tables, self.num_vars - 1)?;
+        for index in 1..self.num_vars {
+            let values = dense.round(&product)?;
+            let (r, next) = round(self.id, index, &values, running, transcript)?;
+            dense.fold(r)?;
+            rounds.push(values);
+            point.push(r);
+            running = next;
+        }
+        let mut final_values = Vec::new();
+        reserve(&mut final_values, 1)?;
+        final_values.push(dense.final_values()?[0]);
+        self.finish(final_values[0], &point, gamma, running, transcript)?;
+        Ok((
+            Proof {
+                rounds,
+                final_values,
+            },
+            point,
+        ))
+    }
     /// Reduce to one y(r) obligation, even when A(r)=0; this is not statement acceptance.
     pub fn verify(
         &self,

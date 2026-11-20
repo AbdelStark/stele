@@ -1,6 +1,6 @@
 //! Plain integer checker of RFC-0026 §3.7 and RFC-0028 §2.1: every relation evaluated over Z, no proof.
 
-use super::{ColumnId, Def, Invalid, Kind, Ref, Relation, Values, Violation};
+use super::{ColumnId, ColumnSlice, Def, Invalid, Kind, Ref, Relation, Values, Violation};
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
@@ -96,7 +96,7 @@ impl Gather {
 /// Committed/public columns borrow directly from `Values`/`Relation`; virtual columns
 /// (RFC-0028 §2.1) are computed from their definitions over `Z` (`None` on `i128` overflow).
 enum ColData<'a> {
-    Borrowed(&'a [i64]),
+    Borrowed(ColumnSlice<'a>),
     Computed(Vec<Option<i128>>),
 }
 
@@ -112,7 +112,7 @@ impl<'a> ColData<'a> {
     #[inline]
     fn get(&self, idx: usize) -> Option<i128> {
         match self {
-            ColData::Borrowed(s) => Some(s[idx] as i128),
+            ColData::Borrowed(s) => Some(s.at(idx) as i128),
             ColData::Computed(v) => v[idx],
         }
     }
