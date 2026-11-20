@@ -29,7 +29,7 @@ mod work;
 /// Eq-factored zerocheck and bounded skip, RFC-0006 A3.
 pub mod zerocheck;
 pub use buffers::prove_into;
-pub use dense::Dense;
+pub use dense::{Dense, DenseTable};
 pub use instance::{Instance, Term};
 pub use small::{Small, SmallTable};
 pub use streaming::{Source, Streaming};

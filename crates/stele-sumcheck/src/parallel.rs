@@ -227,6 +227,33 @@ pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
     table.truncate(half);
 }
 
+/// Fold a base-field M31 table into a half-sized extension-field table (RFC-0006 A5, E20-01):
+/// `out[j] = from_m31(t[j]) + challenge · (t[j + half] − t[j])`.
+/// `table.len()` must be a power of two and at least 2.
+pub fn fold_base<K: ChallengeField>(
+    table: &[stele_field::M31],
+    challenge: K,
+) -> Result<Vec<K>, Error> {
+    if !table.len().is_power_of_two() || table.len() < 2 {
+        return Err(Error::PublicShape);
+    }
+    let half = table.len() / 2;
+    let one = K::from_i64(1);
+    let mut out = Vec::new();
+    out.try_reserve_exact(half).map_err(|_| Error::Capacity)?;
+    out.resize(half, K::from_i64(0));
+    let (low, high) = table.split_at(half);
+    for_each_chunk(&mut out, |start, chunk| {
+        for (o, (&a, &b)) in chunk
+            .iter_mut()
+            .zip(low[start..].iter().zip(&high[start..]))
+        {
+            *o = one.mul_m31(a) + challenge.mul_m31(b - a);
+        }
+    });
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -297,5 +324,115 @@ mod tests {
             || Ok::<(), u8>(()),
             || assert!(core::hint::black_box(false), "work"),
         );
+    }
+
+    #[test]
+    fn matches_reference_base_first_round_zerocheck_and_claim_batch() {
+        use crate::{claim_batch::Batch, zerocheck::Zerocheck, Instance, Term};
+        use alloc::vec;
+        use stele_field::M31;
+        use stele_hash::Transcript;
+
+        // 1. fold_base vs fold parity.
+        let m31_tbl: Vec<M31> = (0..1usize << 10)
+            .map(|i| M31::from_i64(i as i64 * 17 - 300))
+            .collect();
+        let mut k_tbl: Vec<QM31> = m31_tbl
+            .iter()
+            .map(|&v| QM31::from_i64(i64::from(v.as_u32())))
+            .collect();
+        let ch = QM31::from_i64(13) + QM31::from_i64(5);
+        let fb = fold_base(&m31_tbl, ch).expect("fold_base");
+        fold(&mut k_tbl, ch);
+        assert_eq!(fb, k_tbl);
+
+        // 2. ClaimBatch::prove_base_with_point vs prove_with_point (num_vars = 0, 1, 9).
+        for nv in [0u32, 1, 9] {
+            let n = 1usize << nv;
+            let raw: Vec<M31> = (0..n).map(|i| M31::from_i64(i as i64 * 7 - 11)).collect();
+            let k_raw: Vec<QM31> = raw
+                .iter()
+                .map(|&v| QM31::from_i64(i64::from(v.as_u32())))
+                .collect();
+            let p1: Vec<QM31> = (0..nv).map(|i| QM31::from_i64(i as i64 + 2)).collect();
+            let p2: Vec<QM31> = (0..nv).map(|i| QM31::from_i64(i as i64 + 5)).collect();
+            let eval = |pt: &[QM31]| {
+                let eq = stele_poly::eq_table(pt).expect("eq");
+                k_raw
+                    .iter()
+                    .zip(eq)
+                    .fold(QM31::from_i64(0), |s, (a, b)| s + *a * b)
+            };
+            let claims = vec![(p1.clone(), eval(&p1)), (p2.clone(), eval(&p2))];
+            let batch = Batch {
+                id: 77,
+                tensor: 3,
+                num_vars: nv,
+                claims: &claims,
+            };
+            let mut t_ref = Transcript::new(b"e20-01/batch").expect("t");
+            let mut t_base = Transcript::new(b"e20-01/batch").expect("t");
+            let ref_res = batch.prove_with_point(k_raw, &mut t_ref).expect("ref");
+            let base_res = batch
+                .prove_base_with_point(&raw, &mut t_base)
+                .expect("base");
+            assert_eq!(base_res, ref_res, "batch nv={nv}");
+        }
+
+        // 3. Zerocheck::prove_base_with_point vs prove_with_point (skip = 0 and 2, nv = 0, 1, 6, 9).
+        for (nv, skip) in [(0u32, 0u8), (1, 0), (6, 0), (6, 2), (9, 0)] {
+            let n = 1usize << nv;
+            let a: Vec<M31> = (0..n).map(|i| M31::from_i64(i as i64 * 3 - 5)).collect();
+            let b: Vec<M31> = (0..n).map(|i| M31::from_i64(i as i64 * 5 + 7)).collect();
+            let c: Vec<M31> = a
+                .iter()
+                .zip(&b)
+                .map(|(&x, &y)| x * x * y + M31::from_i64(2) * x - M31::from_i64(3))
+                .collect();
+            let base_tables = vec![a, b, c];
+            let k_tables: Vec<Vec<QM31>> = base_tables
+                .iter()
+                .map(|t| {
+                    t.iter()
+                        .map(|&v| QM31::from_i64(i64::from(v.as_u32())))
+                        .collect()
+                })
+                .collect();
+            let inst = Instance {
+                id: 88,
+                num_vars: nv,
+                inputs: vec![0, 1, 2],
+                terms: vec![
+                    Term {
+                        coefficient: QM31::from_i64(1),
+                        factors: vec![0, 0, 1],
+                    },
+                    Term {
+                        coefficient: QM31::from_i64(2),
+                        factors: vec![0],
+                    },
+                    Term {
+                        coefficient: QM31::from_i64(-3),
+                        factors: vec![],
+                    },
+                    Term {
+                        coefficient: QM31::from_i64(-1),
+                        factors: vec![2],
+                    },
+                ],
+                claimed_sum: QM31::from_i64(0),
+            };
+            let zc = Zerocheck {
+                instance: &inst,
+                skip,
+            };
+            let mut t_ref = Transcript::new(b"e20-01/zc").expect("t");
+            let mut t_base = Transcript::new(b"e20-01/zc").expect("t");
+            let ref_res = zc.prove_with_point(&k_tables, &mut t_ref).expect("ref");
+            let base_res = zc
+                .prove_base_with_point(&base_tables, &mut t_base)
+                .expect("base");
+            assert_eq!(base_res, ref_res, "zc nv={nv} skip={skip}");
+        }
     }
 }

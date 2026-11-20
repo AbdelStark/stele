@@ -812,7 +812,7 @@ fn check_widened(relation: &Relation, values: &Values, name: &str) -> bool {
         ..range.width
     };
     let column = values.get(relation, range.column).expect("column");
-    check_except(relation, values, &[name]).is_ok() && column.iter().all(|&v| wider.contains(v))
+    check_except(relation, values, &[name]).is_ok() && column.iter().all(|v| wider.contains(v))
 }
 
 /// Every assignment of entry `index` with a different output: `out' = out ± 1, ± 2`,

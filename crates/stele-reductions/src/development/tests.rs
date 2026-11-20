@@ -1073,7 +1073,7 @@ fn row_survey(policy: Policy, mode: Mode) -> Vec<(String, Outcome)> {
     let c = case.conversion.columns.expect("declared");
     let outputs = |v: &Values| {
         let mut o = stele_ir::relation::eval_column(&case.relation, v, c.codes).expect("codes");
-        o.extend_from_slice(v.get(&case.relation, c.scale).expect("scale"));
+        o.extend(v.get(&case.relation, c.scale).expect("scale").iter());
         o
     };
     let lie = |step: RStep, i: usize, delta: i64, frozen: Option<RStep>| Candidate {
@@ -1464,15 +1464,24 @@ fn projection_survey_within(
                     }
                 }
                 // Flip sign and/or bump (w_top, rc0, rc_last) together to kill twos, w*, rho*.
-                let s0 = case.values.get(&case.relation, pcols.sign).expect("s")[x];
-                let w_top_0 = case.values.get(&case.relation, mc.w_top).expect("w_top")[x];
+                let s0 = case
+                    .values
+                    .get(&case.relation, pcols.sign)
+                    .expect("s")
+                    .at(x);
+                let w_top_0 = case
+                    .values
+                    .get(&case.relation, mc.w_top)
+                    .expect("w_top")
+                    .at(x);
                 let rc0_id = mc.rcs[0];
                 let rc_last_id = *mc.rcs.last().expect("rc_last");
-                let rc0_0 = case.values.get(&case.relation, rc0_id).expect("rc0")[x];
+                let rc0_0 = case.values.get(&case.relation, rc0_id).expect("rc0").at(x);
                 let rc1_0 = case
                     .values
                     .get(&case.relation, rc_last_id)
-                    .expect("rc_last")[x];
+                    .expect("rc_last")
+                    .at(x);
                 for dw in [-1i64, 0, 1] {
                     for s_new in [0i64, 1, -1, 2] {
                         for d0 in [-1i64, 0, 1] {
@@ -1508,8 +1517,8 @@ fn projection_survey_within(
                 } = mc.plan.kind
                 {
                     let (v1_id, c0_id) = (mc.head[0], mc.head[1]);
-                    let c0_0 = case.values.get(&case.relation, c0_id).expect("c0")[x];
-                    let v1_0 = case.values.get(&case.relation, v1_id).expect("v1")[x];
+                    let c0_0 = case.values.get(&case.relation, c0_id).expect("c0").at(x);
+                    let v1_0 = case.values.get(&case.relation, v1_id).expect("v1").at(x);
                     let v_val = i128::from(case.honest.sums[0][x]);
                     let v0_0 = v_val - i128::from(rad0) * i128::from(v1_0);
                     let (_, ld, lg, lo) = case.projection.logs();
@@ -1572,10 +1581,11 @@ fn projection_survey_within(
                     } else {
                         mc.head[0]
                     };
-                    let q0_0 = case.values.get(&case.relation, q0_id).expect("q0")[x];
+                    let q0_0 = case.values.get(&case.relation, q0_id).expect("q0").at(x);
                     let b1_id_opt = b1_width.map(|_| mc.head[0]);
-                    let b1_0 = b1_id_opt
-                        .map_or(0, |id| case.values.get(&case.relation, id).expect("b1")[x]);
+                    let b1_0 = b1_id_opt.map_or(0, |id| {
+                        case.values.get(&case.relation, id).expect("b1").at(x)
+                    });
                     for (db1, dq0) in [(0i64, -1i64), (0, 1), (-1, 0), (1, 0)] {
                         if db1 != 0 && b1_id_opt.is_none() {
                             continue;

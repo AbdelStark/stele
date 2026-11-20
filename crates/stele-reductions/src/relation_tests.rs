@@ -3268,3 +3268,120 @@ fn accepts_pointwise_virtual_columns_and_rejects_nc_1338_to_nc_1340() {
         );
     }
 }
+
+/// `MatmulSummand` (base-field first round + unexpanded `2^|shared|` eq table) matches
+/// dense extension-field sumcheck bit-for-bit across all `(lhs, rhs)` base/ext variants,
+/// both with and without shared bits, including `summed = 0` and `summed > 0` (E20-01).
+#[test]
+fn matches_reference_matmul_summand_across_base_and_shared_shapes() {
+    use stele_sumcheck::{Dense, DenseTable};
+
+    let base_tbl = |n: usize, seed: i64| -> Vec<M31> {
+        (0..n)
+            .map(|i| M31::from_i64(((i as i64 * 17 + seed * 31) % 97) - 48))
+            .collect()
+    };
+    let ext_tbl = |n: usize, seed: i64| -> Vec<K> {
+        let mut t = Transcript::<K>::new(b"e20-01-ext").expect("t");
+        let base = K::from_i64(seed + 3);
+        (0..n)
+            .map(|i| {
+                let c = t.challenge(ChallengeLabel::RelationPoint).expect("c");
+                c + base * K::from_i64(i as i64)
+            })
+            .collect()
+    };
+    let to_k = |t: &DenseTable<K>| -> Vec<K> {
+        match t {
+            DenseTable::Base(b) => b
+                .iter()
+                .map(|v| K::from_i64(i64::from(v.as_u32())))
+                .collect(),
+            DenseTable::Ext(e) => e.clone(),
+        }
+    };
+
+    // (summed_bits, shared_bits)
+    let shapes = [(3u32, 0u32), (3, 2), (0, 3), (2, 1)];
+    for (summed, shared) in shapes {
+        let nv = summed + shared;
+        let len = 1usize << nv;
+        let eq_small = if shared > 0 {
+            let mut t = Transcript::new(b"e20-01-eq").expect("t");
+            let pt: Vec<K> = (0..shared)
+                .map(|_| t.challenge(ChallengeLabel::RelationPoint).expect("c"))
+                .collect();
+            Some(stele_poly::eq_table(&pt).expect("eq"))
+        } else {
+            None
+        };
+        let eq_full = eq_small.as_ref().map(|e| {
+            let mask = e.len() - 1;
+            (0..len).map(|i| e[i & mask]).collect::<Vec<K>>()
+        });
+        for lhs_base in [true, false] {
+            for rhs_base in [true, false] {
+                let lhs = if lhs_base {
+                    DenseTable::Base(base_tbl(len, 1))
+                } else {
+                    DenseTable::Ext(ext_tbl(len, 1))
+                };
+                let rhs = if rhs_base {
+                    DenseTable::Base(base_tbl(len, 2))
+                } else {
+                    DenseTable::Ext(ext_tbl(len, 2))
+                };
+                let lk = to_k(&lhs);
+                let rk = to_k(&rhs);
+                let claimed: K = (0..len).fold(K::from_i64(0), |acc, i| {
+                    let p = lk[i] * rk[i];
+                    acc + match &eq_full {
+                        Some(e) => e[i] * p,
+                        None => p,
+                    }
+                });
+                let instance = Instance {
+                    id: MATMUL | u64::from(nv),
+                    num_vars: nv,
+                    inputs: (0..2 + u64::from(shared > 0)).collect(),
+                    terms: vec![Term {
+                        coefficient: K::from_i64(1),
+                        factors: if shared > 0 {
+                            vec![0, 1, 2]
+                        } else {
+                            vec![0, 1]
+                        },
+                    }],
+                    claimed_sum: claimed,
+                };
+                let mut ref_tables = Vec::new();
+                if let Some(e) = &eq_full {
+                    ref_tables.push(e.clone());
+                }
+                ref_tables.push(lk);
+                ref_tables.push(rk);
+                let mut t_ref = Transcript::new(b"e20-01-parity").expect("t");
+                let dense = Dense::new(&instance, ref_tables).expect("dense");
+                let ref_proof = stele_sumcheck::prove(&instance, dense, &mut t_ref).expect("ref");
+
+                let mut t_opt = Transcript::new(b"e20-01-parity").expect("t");
+                let mut sc = Vec::new();
+                let summand = MatmulSummand {
+                    rem: len,
+                    eq: eq_small.clone(),
+                    lhs,
+                    rhs,
+                    point: &mut sc,
+                };
+                let opt_proof = stele_sumcheck::prove(&instance, summand, &mut t_opt).expect("opt");
+
+                assert_eq!(opt_proof, ref_proof);
+                assert_eq!(sc.len(), nv as usize);
+                assert_eq!(
+                    t_opt.challenge(ChallengeLabel::RelationPoint).expect("c"),
+                    t_ref.challenge(ChallengeLabel::RelationPoint).expect("c")
+                );
+            }
+        }
+    }
+}

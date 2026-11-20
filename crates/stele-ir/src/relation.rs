@@ -342,9 +342,245 @@ impl From<Invalid> for Violation {
     }
 }
 
-/// Values of every witness and weight column, indexed by [`ColumnId`].
+/// Width-typed backing storage for one witness or weight column (RFC-0026 §2.1, E20-01).
+/// Every honest column (`MAX_WIDTH_BITS = 30`) fits in 1, 2 or 4 bytes per element;
+/// `I64` is retained only as a non-truncating fallback when a test or control assigns an
+/// out-of-range value outside the declared native width.
+#[derive(Clone, Debug)]
+enum ColumnStorage {
+    I8(Vec<i8>),
+    U8(Vec<u8>),
+    I16(Vec<i16>),
+    U16(Vec<u16>),
+    I32(Vec<i32>),
+    U32(Vec<u32>),
+    I64(Vec<i64>),
+}
+
+impl ColumnStorage {
+    fn pack(width: Width, values: Vec<i64>) -> Self {
+        match (width.signed, width.bits) {
+            (true, 0..=8) => values
+                .iter()
+                .map(|&v| i8::try_from(v))
+                .collect::<Result<Vec<i8>, _>>()
+                .map_or(Self::I64(values), Self::I8),
+            (false, 0..=8) => values
+                .iter()
+                .map(|&v| u8::try_from(v))
+                .collect::<Result<Vec<u8>, _>>()
+                .map_or(Self::I64(values), Self::U8),
+            (true, 9..=16) => values
+                .iter()
+                .map(|&v| i16::try_from(v))
+                .collect::<Result<Vec<i16>, _>>()
+                .map_or(Self::I64(values), Self::I16),
+            (false, 9..=16) => values
+                .iter()
+                .map(|&v| u16::try_from(v))
+                .collect::<Result<Vec<u16>, _>>()
+                .map_or(Self::I64(values), Self::U16),
+            (true, 17..=32) => values
+                .iter()
+                .map(|&v| i32::try_from(v))
+                .collect::<Result<Vec<i32>, _>>()
+                .map_or(Self::I64(values), Self::I32),
+            (false, 17..=32) => values
+                .iter()
+                .map(|&v| u32::try_from(v))
+                .collect::<Result<Vec<u32>, _>>()
+                .map_or(Self::I64(values), Self::U32),
+            _ => Self::I64(values),
+        }
+    }
+
+    fn as_slice(&self) -> ColumnSlice<'_> {
+        match self {
+            Self::I8(v) => ColumnSlice::I8(v),
+            Self::U8(v) => ColumnSlice::U8(v),
+            Self::I16(v) => ColumnSlice::I16(v),
+            Self::U16(v) => ColumnSlice::U16(v),
+            Self::I32(v) => ColumnSlice::I32(v),
+            Self::U32(v) => ColumnSlice::U32(v),
+            Self::I64(v) => ColumnSlice::I64(v),
+        }
+    }
+}
+
+impl PartialEq for ColumnStorage {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
+
+impl Eq for ColumnStorage {}
+
+/// Borrowed view of one column's integer values (RFC-0026 §2.1, E20-01).
+#[derive(Clone, Copy, Debug)]
+pub enum ColumnSlice<'a> {
+    I8(&'a [i8]),
+    U8(&'a [u8]),
+    I16(&'a [i16]),
+    U16(&'a [u16]),
+    I32(&'a [i32]),
+    U32(&'a [u32]),
+    I64(&'a [i64]),
+}
+
+impl<'a> ColumnSlice<'a> {
+    #[inline]
+    pub fn len(self) -> usize {
+        match self {
+            Self::I8(s) => s.len(),
+            Self::U8(s) => s.len(),
+            Self::I16(s) => s.len(),
+            Self::U16(s) => s.len(),
+            Self::I32(s) => s.len(),
+            Self::U32(s) => s.len(),
+            Self::I64(s) => s.len(),
+        }
+    }
+
+    #[inline]
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    /// Bytes stored per element (1, 2, 4 or 8).
+    #[inline]
+    pub fn elem_bytes(self) -> usize {
+        match self {
+            Self::I8(_) | Self::U8(_) => 1,
+            Self::I16(_) | Self::U16(_) => 2,
+            Self::I32(_) | Self::U32(_) => 4,
+            Self::I64(_) => 8,
+        }
+    }
+
+    /// Total element storage bytes of this slice.
+    #[inline]
+    pub fn byte_len(self) -> usize {
+        self.len() * self.elem_bytes()
+    }
+
+    /// Value at `index`, sign- or zero-extended to `i64`.
+    #[inline]
+    pub fn at(self, index: usize) -> i64 {
+        match self {
+            Self::I8(s) => i64::from(s[index]),
+            Self::U8(s) => i64::from(s[index]),
+            Self::I16(s) => i64::from(s[index]),
+            Self::U16(s) => i64::from(s[index]),
+            Self::I32(s) => i64::from(s[index]),
+            Self::U32(s) => i64::from(s[index]),
+            Self::I64(s) => s[index],
+        }
+    }
+
+    /// Checked value at `index`.
+    #[inline]
+    pub fn get(self, index: usize) -> Option<i64> {
+        (index < self.len()).then(|| self.at(index))
+    }
+
+    /// Iterate over values as `i64`.
+    #[inline]
+    pub fn iter(self) -> ColumnIter<'a> {
+        ColumnIter {
+            slice: self,
+            front: 0,
+            back: self.len(),
+        }
+    }
+
+    /// Copy all elements into a `Vec<i64>`.
+    pub fn to_vec(self) -> Vec<i64> {
+        match self {
+            Self::I8(s) => s.iter().map(|&v| i64::from(v)).collect(),
+            Self::U8(s) => s.iter().map(|&v| i64::from(v)).collect(),
+            Self::I16(s) => s.iter().map(|&v| i64::from(v)).collect(),
+            Self::U16(s) => s.iter().map(|&v| i64::from(v)).collect(),
+            Self::I32(s) => s.iter().map(|&v| i64::from(v)).collect(),
+            Self::U32(s) => s.iter().map(|&v| i64::from(v)).collect(),
+            Self::I64(s) => s.to_vec(),
+        }
+    }
+}
+
+impl PartialEq for ColumnSlice<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::I8(a), Self::I8(b)) => a == b,
+            (Self::U8(a), Self::U8(b)) => a == b,
+            (Self::I16(a), Self::I16(b)) => a == b,
+            (Self::U16(a), Self::U16(b)) => a == b,
+            (Self::I32(a), Self::I32(b)) => a == b,
+            (Self::U32(a), Self::U32(b)) => a == b,
+            (Self::I64(a), Self::I64(b)) => a == b,
+            _ => self.len() == other.len() && self.iter().eq(other.iter()),
+        }
+    }
+}
+
+impl Eq for ColumnSlice<'_> {}
+
+/// Iterator over a [`ColumnSlice`] yielding `i64` values.
+#[derive(Clone, Debug)]
+pub struct ColumnIter<'a> {
+    slice: ColumnSlice<'a>,
+    front: usize,
+    back: usize,
+}
+
+impl Iterator for ColumnIter<'_> {
+    type Item = i64;
+
+    #[inline]
+    fn next(&mut self) -> Option<i64> {
+        if self.front < self.back {
+            let v = self.slice.at(self.front);
+            self.front += 1;
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = self.back - self.front;
+        (n, Some(n))
+    }
+}
+
+impl ExactSizeIterator for ColumnIter<'_> {}
+
+impl DoubleEndedIterator for ColumnIter<'_> {
+    #[inline]
+    fn next_back(&mut self) -> Option<i64> {
+        if self.front < self.back {
+            self.back -= 1;
+            Some(self.slice.at(self.back))
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> IntoIterator for ColumnSlice<'a> {
+    type Item = i64;
+    type IntoIter = ColumnIter<'a>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// Values of every witness and weight column, indexed by [`ColumnId`], stored at each
+/// column's declared width (RFC-0026 §2.1, E20-01).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Values(Vec<Option<Vec<i64>>>);
+pub struct Values(Vec<Option<ColumnStorage>>);
 
 impl Values {
     pub fn new(relation: &Relation) -> Self {
@@ -352,6 +588,8 @@ impl Values {
     }
 
     /// Assign a witness or weight column; the length must be exactly `2^log_len`.
+    /// Values are packed at `column.width` (1, 2 or 4 bytes per element for every
+    /// declared width `<= MAX_WIDTH_BITS`).
     pub fn set(
         &mut self,
         relation: &Relation,
@@ -363,16 +601,28 @@ impl Values {
             return Err(Invalid::Column(id));
         }
         self.0.resize(relation.columns.len(), None);
-        self.0[id.0 as usize] = Some(values);
+        self.0[id.0 as usize] = Some(ColumnStorage::pack(column.width, values));
         Ok(())
     }
 
     /// Values of any column: public values come from the relation.
-    pub fn get<'a>(&'a self, relation: &'a Relation, id: ColumnId) -> Option<&'a [i64]> {
+    pub fn get<'a>(&'a self, relation: &'a Relation, id: ColumnId) -> Option<ColumnSlice<'a>> {
         match &relation.column(id)?.kind {
-            Kind::Public(values) => Some(values),
-            _ => self.0.get(id.0 as usize)?.as_deref(),
+            Kind::Public(values) => Some(ColumnSlice::I64(values)),
+            _ => self
+                .0
+                .get(id.0 as usize)?
+                .as_ref()
+                .map(ColumnStorage::as_slice),
         }
+    }
+
+    /// Total element storage bytes held across all assigned columns in this container.
+    pub fn storage_bytes(&self) -> usize {
+        self.0
+            .iter()
+            .filter_map(|slot| slot.as_ref().map(|s| s.as_slice().byte_len()))
+            .sum()
     }
 }
 

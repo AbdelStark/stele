@@ -313,7 +313,7 @@ pub fn columns(
     let column = |id: ColumnId| values.get(relation, id).ok_or(Error::Statement);
     let mut out = Vec::new();
     for id in &layout.committed {
-        out.push(column(*id)?.iter().map(|v| M31::from_i64(*v)).collect());
+        out.push(column(*id)?.iter().map(M31::from_i64).collect());
     }
     let c_d = (<K as stele_pcs::CodeField>::DEGREE as u32).trailing_zeros();
     for (lookup, members) in layout.statement.lookups.iter().zip(&layout.counts) {
@@ -353,7 +353,7 @@ pub fn columns(
                     && col.len() == 1usize << member.vars
                     && r.vars.iter().copied().eq(0..member.vars as u8)
                 {
-                    for &value in *col {
+                    for value in *col {
                         let i = M31::from_i64(value + shift).as_u32() as usize;
                         if i < valid {
                             mult[i] += pad;
@@ -364,13 +364,13 @@ pub fn columns(
             }
             let mut key = Vec::with_capacity(cols.len());
             for x in 0..1u64 << member.vars {
-                if selector.is_some_and(|(r, s)| s[r.index(x)] != 1) {
+                if selector.is_some_and(|(r, s)| s.at(r.index(x)) != 1) {
                     continue;
                 }
                 key.clear();
                 key.extend(
                     cols.iter()
-                        .map(|(col, r, shift)| M31::from_i64(col[r.index(x)] + shift).as_u32()),
+                        .map(|(col, r, shift)| M31::from_i64(col.at(r.index(x)) + shift).as_u32()),
                 );
                 let pos = match &index {
                     Some(sorted) => sorted

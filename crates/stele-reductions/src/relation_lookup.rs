@@ -77,7 +77,7 @@ fn originals(check: &Check, resolved: &ResolvedColumns<'_>) -> Result<Vec<Vec<K>
             let block = &mut x[member.offset..member.offset + (1 << member.m)];
             for_each_chunk(block, |start, chunk| {
                 for (j, v) in chunk.iter_mut().enumerate() {
-                    *v = K::from_i64(col[r.index((start + j) as u64)]) + shift;
+                    *v = K::from_i64(col.at(r.index((start + j) as u64))) + shift;
                 }
             });
         }
@@ -162,7 +162,7 @@ pub(super) fn counts(
                 }
                 let mut k = [0u32; 2];
                 for (k, (r, col, shift)) in k.iter_mut().zip(&xs) {
-                    *k = (M31::from_i64(col[r.index(local as u64)]) + *shift).as_u32();
+                    *k = (M31::from_i64(col.at(r.index(local as u64))) + *shift).as_u32();
                 }
                 // Unmatched tuples stay in the lookup leaves; the roots decide (A5 producer).
                 if let Ok(p) = index.binary_search_by_key(&k, |e| e.0) {
