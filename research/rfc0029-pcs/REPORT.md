@@ -3,7 +3,7 @@
 Governing specifications: [RFC-0029](../../docs/rfcs/RFC-0029-succinct-interleaved-commitments.md)
 §§1–5, [RFC-0010](../../docs/rfcs/RFC-0010-pcs.md) A2/A3/A17,
 [RFC-0012](../../docs/rfcs/RFC-0012-transcript-and-soundness-accounting.md) A10/A20,
-[RFC-0030](../../docs/rfcs/RFC-0030-soundness-floor.md) §3.
+[RFC-0030](../../docs/rfcs/RFC-0030-security-accounting.md) §3.
 Exact-integer script: [check_policy3.py](check_policy3.py) (`python3 research/rfc0029-pcs/check_policy3.py --check`).
 Every query count, proximity cap, and byte total below is derived by exact Python integer and
 `Fraction` arithmetic enforcing the M31 circle coset and column-sampler domain ceiling
