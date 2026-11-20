@@ -4502,11 +4502,14 @@ tasks:
   skill: performance-engineer
   crate: stele-kernels+stele-simd
   lane: E
-  status: ready
+  status: in_progress
+  agent: claude
+  branch: task/E20-03-simd-kernels
   acceptance:
   - operations - dense round, sumcheck fold, small-value partial evaluation (bucketed for int4 and int8), tree level, row encode, Merkle level - behind one trait, each with a scalar reference
   - SIMD equals scalar on 1000 seeded inputs per operation including edge values
   - the engine calls the trait; pinned proof hashes unchanged
+  - 'slice 1 (branch task/E20-03-simd-kernels): QM31 fold, fraction-tree layer round (also used by the base-leaf round), element-wise QM31 product for the all-extension dense round, and base-field transform butterflies, each a stele-simd function with a scalar reference and a 1000-case seeded parity test; AVX2 and AVX-512 (and NEON for the butterflies). Not yet behind one trait; small-value partial evaluation, tree level and Merkle level have no kernel'
 - id: E20-04
   epic: E20
   title: CUDA backend skeleton and parity harness
