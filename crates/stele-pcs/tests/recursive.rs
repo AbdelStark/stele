@@ -6,10 +6,10 @@ use stele_hash::{merkle, AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage,
 use stele_pcs::recursive::{
     level_descriptor, policy3_certified_queries, policy3_fresh_queries, prove_joined_tail,
     verify_certified_level0, verify_certified_opening, verify_certified_registration,
-    verify_fresh_at_point, verify_fresh_claims, verify_fresh_level0_claims, verify_joined_tail,
-    CertifiedModelSource, CertifiedPlan, CertifiedSource, ColumnFunctional, JoinedTailPlan,
-    LevelSpec, PreparedRecursive, RecursiveError, RecursivePlan, RecursiveSource,
-    DEFAULT_TARGET_BITS,
+    verify_fresh_at_point, verify_fresh_claims, verify_fresh_level0_at_point,
+    verify_fresh_level0_claims, verify_joined_tail, CertifiedModelSource, CertifiedPlan,
+    CertifiedSource, ColumnFunctional, JoinedTailPlan, LevelSpec, PreparedRecursive,
+    RecursiveError, RecursivePlan, RecursiveSource, DEFAULT_TARGET_BITS,
 };
 use stele_pcs::{CircleCoeff, Source};
 
@@ -1558,15 +1558,109 @@ fn accepts_joined_multi_source_recursion_and_rejects_composed_tampers() {
             cont_p
         );
 
-        // Determinism check: repeating tail proof on identical state yields byte-identical bytes.
-        let mut tp_det = Transcript::<K>::new(b"e19-04-det").expect("td1");
-        let tail_a = prove_joined_tail(&mut tp_det, 2000, &tail_plan, &pending_p).expect("ta");
-        let mut tp_det2 = Transcript::<K>::new(b"e19-04-det").expect("td2");
-        let tail_b = prove_joined_tail(&mut tp_det2, 2000, &tail_plan, &pending_p).expect("tb");
-        assert_eq!(tail_a, tail_b);
+        // Determinism check: repeating the tail proof from the same transcript prefix yields identical bytes.
+        let mut tv_prefix_a = Transcript::<K>::new(b"e19-04-joined").expect("tpa");
+        let _ = verify_fresh_level0_claims(
+            &mut tv_prefix_a,
+            &src0,
+            1000,
+            l1,
+            &[(&pt0a, v0a), (&pt0b, v0b)],
+            &pr0,
+        )
+        .expect("pa0");
+        let _ =
+            verify_fresh_level0_claims(&mut tv_prefix_a, &src1, 1001, l1, &[(&pt1a, v1a)], &pr1)
+                .expect("pa1");
+        let _ = verify_certified_level0(
+            &mut tv_prefix_a,
+            &cert2,
+            mod2.source(),
+            1002,
+            l1,
+            &rw2,
+            ColumnFunctional::Tensor(&cp2),
+            v2,
+            &pr2,
+        )
+        .expect("pa2");
+        let _ = verify_certified_level0(
+            &mut tv_prefix_a,
+            &cert3,
+            mod3.source(),
+            1003,
+            l1,
+            &rw3,
+            ColumnFunctional::Dense(&cd3),
+            v3,
+            &pr3,
+        )
+        .expect("pa3");
+        let _ = verify_fresh_level0_claims(
+            &mut tv_prefix_a,
+            &src4,
+            1004,
+            l1,
+            &[(&pt4a, v4a), (&pt4b, v4b)],
+            &pr4,
+        )
+        .expect("pa4");
+        let tail_det =
+            prove_joined_tail(&mut tv_prefix_a, 2000, &tail_plan, &pending_p).expect("td");
+        assert_eq!(tail_det, tail_proof);
+
+        // Helper to obtain the exact verifier transcript immediately after Phase A (same-transcript invariant).
+        let replay_phase_a = || {
+            let mut t = Transcript::<K>::new(b"e19-04-joined").expect("tr");
+            let v0 = verify_fresh_level0_claims(
+                &mut t,
+                &src0,
+                1000,
+                l1,
+                &[(&pt0a, v0a), (&pt0b, v0b)],
+                &pr0,
+            )
+            .expect("r0");
+            let v1 = verify_fresh_level0_claims(&mut t, &src1, 1001, l1, &[(&pt1a, v1a)], &pr1)
+                .expect("r1");
+            let v2v = verify_certified_level0(
+                &mut t,
+                &cert2,
+                mod2.source(),
+                1002,
+                l1,
+                &rw2,
+                ColumnFunctional::Tensor(&cp2),
+                v2,
+                &pr2,
+            )
+            .expect("r2");
+            let v3v = verify_certified_level0(
+                &mut t,
+                &cert3,
+                mod3.source(),
+                1003,
+                l1,
+                &rw3,
+                ColumnFunctional::Dense(&cd3),
+                v3,
+                &pr3,
+            )
+            .expect("r3");
+            let v4v = verify_fresh_level0_claims(
+                &mut t,
+                &src4,
+                1004,
+                l1,
+                &[(&pt4a, v4a), (&pt4b, v4b)],
+                &pr4,
+            )
+            .expect("r4");
+            (t, [v0, v1, v2v, v3v, v4v])
+        };
 
         // Composed NC-0631 on joined tail: tamper 1 byte in a level-1 queried column payload -> Merkle(RootMismatch).
-        let mut bad_col = tail_a.clone();
+        let mut bad_col = tail_proof.clone();
         let hlen = tail_plan.header_bytes();
         let sc_bytes = usize::from(tail_plan.effective_level1_ell()) * 3 * (4 * K::DEGREE);
         let root_or_u = if tail_levels.len() > 1 {
@@ -1576,38 +1670,25 @@ fn accepts_joined_multi_source_recursion_and_rejects_composed_tampers() {
         };
         let col_off = hlen + sc_bytes + root_or_u + 1;
         bad_col[col_off] ^= 1;
-        let mut tv_bad_col = Transcript::<K>::new(b"e19-04-det").expect("tbc");
+        let (mut tv_bad_col, pv_col) = replay_phase_a();
         assert_eq!(
-            verify_joined_tail(&mut tv_bad_col, 2000, &tail_plan, &pending_v, &bad_col),
+            verify_joined_tail(&mut tv_bad_col, 2000, &tail_plan, &pv_col, &bad_col),
             Err(RecursiveError::Merkle(merkle::Error::RootMismatch))
         );
 
-        // Composed NC-0632 on final u_L (1-level tail): flip 1 element of u_L -> rejected.
-        if tail_levels.len() == 1 {
-            let mut bad_u = tail_a.clone();
-            let u_off = hlen + sc_bytes;
-            let elem = 4 * K::DEGREE;
-            let orig = K::from_le_bytes(bad_u[u_off..u_off + elem].try_into().ok().expect("slice"))
-                .expect("k");
-            let flipped = orig + K::from_i64(1);
-            bad_u[u_off..u_off + elem].copy_from_slice(flipped.to_le_bytes().as_ref());
-            let mut tv_u = Transcript::<K>::new(b"e19-04-det").expect("tvu");
-            assert!(verify_joined_tail(&mut tv_u, 2000, &tail_plan, &pending_v, &bad_u).is_err());
-        }
-
         // Composed NC-0633 on joined tail header: wrong block count in header -> ProofShape with 0 transcript work.
-        let mut bad_hdr = tail_a.clone();
+        let mut bad_hdr = tail_proof.clone();
         bad_hdr[2] ^= 1;
-        let mut tv_hdr = Transcript::<K>::new(b"e19-04-det").expect("tvh");
+        let (mut tv_hdr, pv_hdr) = replay_phase_a();
         let before = tv_hdr.usage();
         assert_eq!(
-            verify_joined_tail(&mut tv_hdr, 2000, &tail_plan, &pending_v, &bad_hdr),
+            verify_joined_tail(&mut tv_hdr, 2000, &tail_plan, &pv_hdr, &bad_hdr),
             Err(RecursiveError::ProofShape)
         );
         assert_eq!(tv_hdr.usage(), before);
 
         // Composed sumcheck tamper on level-1 joined row sumcheck -> RoundSumMismatch.
-        let mut bad_sc = tail_a.clone();
+        let mut bad_sc = tail_proof.clone();
         let sc_elem_off = hlen;
         let sc_orig = K::from_le_bytes(
             bad_sc[sc_elem_off..sc_elem_off + 4 * K::DEGREE]
@@ -1619,9 +1700,9 @@ fn accepts_joined_multi_source_recursion_and_rejects_composed_tampers() {
         let sc_tampered = sc_orig + K::from_i64(1);
         bad_sc[sc_elem_off..sc_elem_off + 4 * K::DEGREE]
             .copy_from_slice(sc_tampered.to_le_bytes().as_ref());
-        let mut tv_sc = Transcript::<K>::new(b"e19-04-det").expect("tvsc");
+        let (mut tv_sc, pv_sc) = replay_phase_a();
         assert_eq!(
-            verify_joined_tail(&mut tv_sc, 2000, &tail_plan, &pending_v, &bad_sc),
+            verify_joined_tail(&mut tv_sc, 2000, &tail_plan, &pv_sc, &bad_sc),
             Err(RecursiveError::RoundSumMismatch)
         );
 
@@ -1645,7 +1726,8 @@ fn accepts_joined_multi_source_recursion_and_rejects_composed_tampers() {
             Some(RecursiveError::RoundSumMismatch)
         );
 
-        // Composed NC-0635 on certified level-0 closing: wrong-radius certificate -> CertificateContext with 0 transcript work.
+        // Composed NC-0635 on certified level-0 closing:
+        // (a) wrong-radius VerifiedCertifiedSource handle -> CertificateContext with 0 transcript work.
         let p2_wrong = CertifiedPlan::new(
             vec![LevelSpec::new(2, l1_bits, 2)],
             K::DEGREE as u8,
@@ -1677,6 +1759,40 @@ fn accepts_joined_multi_source_recursion_and_rejects_composed_tampers() {
             Some(RecursiveError::CertificateContext)
         );
         assert_eq!(tv_c35.usage(), before_c35);
+
+        // (b) honest VerifiedCertifiedSource handle + wrong-radius level-0 proof (different q_open length!)
+        //     -> CertificateContext (NOT ProofShape!) with 0 transcript work (Finding 1).
+        let mut tp_wrong = Transcript::<K>::new(b"e19-04-c35-wrong").expect("tpw");
+        let (pr2_wrong, _, _) = mod2_wrong
+            .close_certified_level0(
+                &m2,
+                &mut tp_wrong,
+                1002,
+                l1,
+                &rw2,
+                ColumnFunctional::Tensor(&cp2),
+                v2,
+            )
+            .expect("cl2w");
+        assert_ne!(pr2_wrong.len(), pr2.len());
+        let mut tv_c35b = Transcript::<K>::new(b"e19-04-c35-b").expect("tvc35b");
+        let before_c35b = tv_c35b.usage();
+        assert_eq!(
+            verify_certified_level0(
+                &mut tv_c35b,
+                &cert2,
+                mod2.source(),
+                1002,
+                l1,
+                &rw2,
+                ColumnFunctional::Tensor(&cp2),
+                v2,
+                &pr2_wrong,
+            )
+            .err(),
+            Some(RecursiveError::CertificateContext)
+        );
+        assert_eq!(tv_c35b.usage(), before_c35b);
     }
 
     // 1-level tail (L=2 total) in QM31 & OM31, and 2-level tail (L=3 total) in QM31.
@@ -1746,4 +1862,493 @@ fn accepts_joined_multi_source_recursion_and_rejects_composed_tampers() {
         JoinedTailPlan::new(vec![LevelSpec::new(1, 20, 4)], 2, 4, 100),
         Err(RecursiveError::UnsupportedSource)
     );
+
+    // Finding 3a: verify_fresh_level0_claims enforces level-0 prox0/q0 caps BEFORE touching transcript.
+    // At T=120 (cap=15), L=1 RecursivePlan accepts (ell=1, m=2, b=1) because standalone L=1 has no
+    // PcsLevelBeta, but closing level 0 into level 1 draws PcsLevelBeta with q0 > 15 -> UnsupportedSource
+    // with zero transcript mutation.
+    {
+        let p_over = RecursivePlan::new(vec![LevelSpec::new(1, 2, 1)], 4, 120).expect("l1 plan");
+        let msg = seeded_m31(p_over.level0_elements().expect("e"), 7300);
+        let prep = PreparedRecursive::<QM31>::commit(730, p_over, msg).expect("c");
+        let src = prep.source().clone();
+        let pt = seeded_point::<QM31>(3, b"cap-pt");
+        let val = prep.evaluate(&pt).expect("ev");
+        let l1_t = LevelSpec::new(1, 1, 1);
+        let mut tp_c = Transcript::<QM31>::new(b"cap-pre").expect("tpc");
+        let before_p = tp_c.usage();
+        assert_eq!(
+            prep.close_fresh_level0_claims(&mut tp_c, 730, l1_t, &[(&pt, val)])
+                .err(),
+            Some(RecursiveError::UnsupportedSource)
+        );
+        assert_eq!(tp_c.usage(), before_p);
+        let mut tv_c = Transcript::<QM31>::new(b"cap-pre").expect("tvc");
+        let before_v = tv_c.usage();
+        assert_eq!(
+            verify_fresh_level0_claims(&mut tv_c, &src, 730, l1_t, &[(&pt, val)], &[]).err(),
+            Some(RecursiveError::UnsupportedSource)
+        );
+        assert_eq!(tv_c.usage(), before_v);
+    }
+
+    // Finding 2: Non-vacuous joined NC-0630, PcsLevelGamma-only binding control, and non-vacuous
+    // joined NC-0632 (u_L mutated before PcsLevelRoot with honest Merkle queries).
+    {
+        let l0 = LevelSpec::new(2, 4, 2);
+        let l1 = LevelSpec::new(2, 2, 2);
+        let p0 = RecursivePlan::new(vec![l0], 4, DEFAULT_TARGET_BITS).expect("p0");
+        let tail_plan = JoinedTailPlan::new(vec![l1], 2, 4, DEFAULT_TARGET_BITS).expect("tp");
+        let msg0 = seeded_m31(64, 7401);
+        let msg1 = seeded_m31(64, 7402);
+        let (col0_0, tree0_0, desc0_0) = commit_m31_raw(740, l0, &msg0);
+        let (col0_1, tree0_1, desc0_1) = commit_m31_raw(741, l0, &msg1);
+        let src0 = RecursiveSource::<QM31>::new(740, p0.clone(), tree0_0.root()).expect("s0");
+        let src1 = RecursiveSource::<QM31>::new(741, p0.clone(), tree0_1.root()).expect("s1");
+        let prep0 = PreparedRecursive::<QM31>::commit(740, p0.clone(), msg0.clone()).expect("pr0");
+        let prep1 = PreparedRecursive::<QM31>::commit(741, p0.clone(), msg1.clone()).expect("pr1");
+        let pt0 = seeded_point::<QM31>(6, b"j-nc-pt0");
+        let pt1 = seeded_point::<QM31>(6, b"j-nc-pt1");
+        let val0_honest = prep0.evaluate(&pt0).expect("v0");
+        let val1_honest = prep1.evaluate(&pt1).expect("v1");
+        let eq_r0 = stele_poly::eq_table(&pt0[..2]).expect("er0");
+        let eq_c0 = stele_poly::eq_table(&pt0[2..]).expect("ec0");
+        let eq_r1 = stele_poly::eq_table(&pt1[..2]).expect("er1");
+        let eq_c1 = stele_poly::eq_table(&pt1[2..]).expect("ec1");
+        let mut u1_0_honest = vec![QM31::from_i64(0); 16];
+        for (row, &a) in msg0.chunks_exact(16).zip(&eq_r0) {
+            for (dst, &v) in u1_0_honest.iter_mut().zip(row) {
+                *dst = *dst + a.mul_m31(v);
+            }
+        }
+        let mut u1_1_honest = vec![QM31::from_i64(0); 16];
+        for (row, &a) in msg1.chunks_exact(16).zip(&eq_r1) {
+            for (dst, &v) in u1_1_honest.iter_mut().zip(row) {
+                *dst = *dst + a.mul_m31(v);
+            }
+        }
+        let code0 = CircleCoeff::new(4, 2).expect("c0");
+
+        let write_spec = |spec: LevelSpec, out: &mut Vec<u8>| {
+            out.push(spec.ell);
+            out.push(spec.m);
+            out.push(spec.b);
+            out.extend_from_slice(&spec.randomisers.to_le_bytes());
+            out.extend_from_slice(&spec.mask_rows.to_le_bytes());
+        };
+        let col_dot_m31 = |eq: &[QM31], payload: &[u8]| -> QM31 {
+            let mut acc = QM31::from_i64(0);
+            for (chunk, &w) in payload.chunks_exact(4).zip(eq) {
+                let word = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+                acc = acc + w.mul_m31(M31::from_i64(i64::from(word)));
+            }
+            acc
+        };
+        let build_w1 = |eq_col: &[QM31], queried: &[u64], beta: QM31| -> Vec<QM31> {
+            let mut w1 = eq_col.to_vec();
+            let mut bp = beta;
+            for &idx in queried {
+                let mut factors = code0.basis_factors(idx as usize).expect("bf");
+                factors.reverse();
+                let mut btbl = vec![M31::ZERO; 16];
+                btbl[0] = M31::ONE;
+                let mut width = 1usize;
+                for f in factors {
+                    for i in (0..width).rev() {
+                        let parent = btbl[i];
+                        btbl[2 * i] = parent;
+                        btbl[2 * i + 1] = parent * f;
+                    }
+                    width *= 2;
+                }
+                for (dst, &bv) in w1.iter_mut().zip(&btbl) {
+                    *dst = *dst + bp.mul_m31(bv);
+                }
+                bp = bp * beta;
+            }
+            w1
+        };
+
+        // Residual-propagating malicious prover for a 2-block joined recursion (same transcript).
+        let build_joined = |u1_0: &[QM31],
+                            u1_1: &[QM31],
+                            v0_claim: QM31,
+                            v1_claim: QM31,
+                            u2_tweak: Option<(usize, QM31)>,
+                            forge_u2_scalar: bool,
+                            tag: &[u8]|
+         -> (Vec<u8>, Vec<u8>, Vec<u8>, QM31, QM31) {
+            let (col1_0, tree1_0, desc1_0) = commit_ext_raw(740, 1, l1, u1_0);
+            let (col1_1, tree1_1, desc1_1) = commit_ext_raw(741, 1, l1, u1_1);
+            let mut tp = Transcript::<QM31>::new(tag).expect("tp");
+
+            let close_block = |tp: &mut Transcript<QM31>,
+                               opening_id: u64,
+                               src: &RecursiveSource<QM31>,
+                               pt: &[QM31],
+                               eq_r: &[QM31],
+                               eq_c: &[QM31],
+                               v_claim: QM31,
+                               col0: &[u8],
+                               tree0: &merkle::Tree,
+                               desc0: merkle::Descriptor,
+                               root1: [u8; 32]|
+             -> (Vec<u8>, Vec<QM31>, QM31, QM31) {
+                let mut stmt = Vec::new();
+                stmt.extend_from_slice(b"stele/pcs-joined-l0/v1");
+                stmt.extend_from_slice(&opening_id.to_le_bytes());
+                stmt.extend_from_slice(&src.bytes().expect("sb"));
+                write_spec(l1, &mut stmt);
+                for x in pt {
+                    stmt.extend_from_slice(x.to_le_bytes().as_ref());
+                }
+                stmt.extend_from_slice(v_claim.to_le_bytes().as_ref());
+                tp.absorb(AbsorbLabel::Opening, &stmt).expect("ab");
+
+                let mut pr = Vec::new();
+                pr.push(4);
+                pr.push(1);
+                write_spec(l0, &mut pr);
+                write_spec(l1, &mut pr);
+                pr.extend_from_slice(&root1);
+                tp.absorb(AbsorbLabel::PcsLevelRoot, &root1).expect("r1");
+                let rs = pr.len();
+                let mut queried = Vec::new();
+                let mut ys = Vec::new();
+                for _ in 0..p0.queries()[0] {
+                    let idx = tp.opening_column(desc0.count).expect("oc");
+                    let w = desc0.width as usize;
+                    append_col(col0, tree0, w, idx, &mut pr);
+                    ys.push(col_dot_m31(
+                        eq_r,
+                        &col0[idx as usize * w..(idx as usize + 1) * w],
+                    ));
+                    queried.push(idx);
+                }
+                tp.absorb(AbsorbLabel::OpeningColumns, &pr[rs..])
+                    .expect("oc2");
+                let beta = tp.challenge(ChallengeLabel::PcsLevelBeta).expect("beta");
+                let mut claim = v_claim;
+                let mut bp = beta;
+                for &y in &ys {
+                    claim = claim + bp * y;
+                    bp = bp * beta;
+                }
+                let w1 = build_w1(eq_c, &queried, beta);
+                (pr, w1, beta, claim)
+            };
+
+            let (pr0, w1_0, beta0, claim0) = close_block(
+                &mut tp,
+                800,
+                &src0,
+                &pt0,
+                &eq_r0,
+                &eq_c0,
+                v0_claim,
+                &col0_0,
+                &tree0_0,
+                desc0_0,
+                tree1_0.root(),
+            );
+            let (pr1, w1_1, beta1, claim1) = close_block(
+                &mut tp,
+                801,
+                &src1,
+                &pt1,
+                &eq_r1,
+                &eq_c1,
+                v1_claim,
+                &col0_1,
+                &tree0_1,
+                desc0_1,
+                tree1_1.root(),
+            );
+
+            // Actual residuals per block (`claim_s - <w1_s, u1_s>`).
+            let dot0: QM31 = w1_0
+                .iter()
+                .zip(u1_0)
+                .fold(QM31::from_i64(0), |a, (&w, &u)| a + w * u);
+            let dot1: QM31 = w1_1
+                .iter()
+                .zip(u1_1)
+                .fold(QM31::from_i64(0), |a, (&w, &u)| a + w * u);
+            let res0 = claim0 - dot0;
+            let res1 = claim1 - dot1;
+
+            // Joined tail statement absorption.
+            let mut tail_hdr = Vec::new();
+            tail_hdr.push(4);
+            tail_hdr.push(3);
+            tail_hdr.extend_from_slice(&2u16.to_le_bytes());
+            tail_hdr.push(1);
+            write_spec(l1, &mut tail_hdr);
+
+            let mut tstmt = Vec::new();
+            tstmt.extend_from_slice(b"stele/pcs-joined-tail/v1");
+            tstmt.extend_from_slice(&900u64.to_le_bytes());
+            tstmt.push(4);
+            tstmt.extend_from_slice(&DEFAULT_TARGET_BITS.to_le_bytes());
+            tstmt.extend_from_slice(&tail_hdr);
+            for (sid, oid, r1, beta, cl) in [
+                (740u64, 800u64, tree1_0.root(), beta0, claim0),
+                (741u64, 801u64, tree1_1.root(), beta1, claim1),
+            ] {
+                tstmt.extend_from_slice(&sid.to_le_bytes());
+                tstmt.extend_from_slice(&oid.to_le_bytes());
+                tstmt.extend_from_slice(&r1);
+                tstmt.extend_from_slice(beta.to_le_bytes().as_ref());
+                tstmt.extend_from_slice(cl.to_le_bytes().as_ref());
+            }
+            tp.absorb(AbsorbLabel::Opening, &tstmt).expect("ts");
+
+            let gamma = tp.challenge(ChallengeLabel::PcsLevelGamma).expect("gam");
+            let combined = claim0 + gamma * claim1;
+            let mut delta = res0 + gamma * res1;
+
+            let mut inst = Vec::new();
+            inst.extend_from_slice(&900u64.to_le_bytes());
+            inst.push(1);
+            inst.push(3);
+            inst.push(2);
+            inst.extend_from_slice(combined.to_le_bytes().as_ref());
+            tp.absorb(AbsorbLabel::Instance, &inst).expect("inst");
+
+            let mut out = tail_hdr;
+            let one = QM31::from_i64(1);
+            let two = QM31::from_i64(2);
+            let inv2 = M31::from_i64(1 << 30);
+            let mut cur_w = Vec::with_capacity(32);
+            cur_w.extend_from_slice(&w1_0);
+            for &w in &w1_1 {
+                cur_w.push(gamma * w);
+            }
+            let mut cur_m = Vec::with_capacity(32);
+            cur_m.extend_from_slice(u1_0);
+            cur_m.extend_from_slice(u1_1);
+            let mut rows = 8usize;
+            let cols = 4usize;
+            for rnd in 0..3u32 {
+                let half = rows / 2;
+                let stride = half * cols;
+                let (w_lo, w_hi) = cur_w.split_at(stride);
+                let (m_lo, m_hi) = cur_m.split_at(stride);
+                let (mut y0, mut y1, mut y2) =
+                    (QM31::from_i64(0), QM31::from_i64(0), QM31::from_i64(0));
+                for i in 0..stride {
+                    let (w0, w1v, m0, m1) = (w_lo[i], w_hi[i], m_lo[i], m_hi[i]);
+                    y0 = y0 + w0 * m0;
+                    y1 = y1 + w1v * m1;
+                    y2 = y2 + (w1v + w1v - w0) * (m1 + m1 - m0);
+                }
+                let vals = [y0 + delta, y1, y2];
+                for v in vals {
+                    out.extend_from_slice(v.to_le_bytes().as_ref());
+                }
+                let mut rbuf = Vec::new();
+                rbuf.extend_from_slice(&900u64.to_le_bytes());
+                rbuf.extend_from_slice(&rnd.to_le_bytes());
+                for v in vals {
+                    rbuf.extend_from_slice(v.to_le_bytes().as_ref());
+                }
+                tp.absorb(AbsorbLabel::Round, &rbuf).expect("rnd");
+                let r = tp.challenge(ChallengeLabel::Sumcheck).expect("r");
+                let _ = interp2(vals, r);
+                delta = delta * (((r - one) * (r - two)).mul_m31(inv2));
+                let mut nw = Vec::with_capacity(stride);
+                let mut nm = Vec::with_capacity(stride);
+                for i in 0..stride {
+                    nw.push(w_lo[i] + r * (w_hi[i] - w_lo[i]));
+                    nm.push(m_lo[i] + r * (m_hi[i] - m_lo[i]));
+                }
+                cur_w = nw;
+                cur_m = nm;
+                rows = half;
+            }
+
+            let mut u2 = cur_m;
+            if forge_u2_scalar && delta != QM31::from_i64(0) {
+                let (k, wk) = cur_w
+                    .iter()
+                    .enumerate()
+                    .find(|&(_, &w)| w != QM31::from_i64(0))
+                    .expect("nonzero w");
+                u2[k] = u2[k] + delta * wk.inverse().expect("inv");
+            }
+            if let Some((idx, add)) = u2_tweak {
+                u2[idx] = u2[idx] + add;
+            }
+            let us = out.len();
+            for v in &u2 {
+                out.extend_from_slice(v.to_le_bytes().as_ref());
+            }
+            tp.absorb(AbsorbLabel::PcsLevelRoot, &out[us..])
+                .expect("ul");
+            let rs = out.len();
+            for _ in 0..tail_plan.queries()[0] {
+                let q = tp.opening_column(desc1_0.count).expect("q");
+                append_col(&col1_0, &tree1_0, desc1_0.width as usize, q, &mut out);
+                append_col(&col1_1, &tree1_1, desc1_1.width as usize, q, &mut out);
+            }
+            tp.absorb(AbsorbLabel::OpeningColumns, &out[rs..])
+                .expect("oc");
+            (pr0, pr1, out, res0, res1)
+        };
+
+        let verify_joined = |pr0: &[u8],
+                             pr1: &[u8],
+                             tail: &[u8],
+                             v0_claim: QM31,
+                             v1_claim: QM31,
+                             tag: &[u8]|
+         -> Result<(), RecursiveError> {
+            let mut tv = Transcript::<QM31>::new(tag).expect("tv");
+            let vp0 = verify_fresh_level0_at_point(&mut tv, &src0, 800, l1, &pt0, v0_claim, pr0)?;
+            let vp1 = verify_fresh_level0_at_point(&mut tv, &src1, 801, l1, &pt1, v1_claim, pr1)?;
+            let _ = verify_joined_tail(&mut tv, 900, &tail_plan, &[vp0, vp1], tail)?;
+            Ok(())
+        };
+
+        // (a) Non-vacuity baseline: uncorrupted inputs MUST accept!
+        let (pr0_ok, pr1_ok, tail_ok, r0_ok, r1_ok) = build_joined(
+            &u1_0_honest,
+            &u1_1_honest,
+            val0_honest,
+            val1_honest,
+            None,
+            true,
+            b"j-nc-honest",
+        );
+        assert_eq!(r0_ok, QM31::from_i64(0));
+        assert_eq!(r1_ok, QM31::from_i64(0));
+        assert_eq!(
+            verify_joined(
+                &pr0_ok,
+                &pr1_ok,
+                &tail_ok,
+                val0_honest,
+                val1_honest,
+                b"j-nc-honest"
+            ),
+            Ok(())
+        );
+
+        // (b) Non-vacuous joined NC-0632: mutate u_L[0] += 1 BEFORE PcsLevelRoot with valid Merkle paths
+        //     -> exact ColumnMismatch!
+        let (pr0_32, pr1_32, tail_32, _, _) = build_joined(
+            &u1_0_honest,
+            &u1_1_honest,
+            val0_honest,
+            val1_honest,
+            Some((0, QM31::from_i64(1))),
+            false,
+            b"j-nc-0632",
+        );
+        assert_eq!(
+            verify_joined(
+                &pr0_32,
+                &pr1_32,
+                &tail_32,
+                val0_honest,
+                val1_honest,
+                b"j-nc-0632"
+            ),
+            Err(RecursiveError::ColumnMismatch)
+        );
+
+        // (c) Non-vacuous joined NC-0630: single-entry tamper on block 0's u_1[3] += 1!
+        let mut u1_0_bad = u1_0_honest.clone();
+        u1_0_bad[3] = u1_0_bad[3] + QM31::from_i64(1);
+        let (pr0_30c, pr1_30c, tail_30c, _, _) = build_joined(
+            &u1_0_bad,
+            &u1_1_honest,
+            val0_honest,
+            val1_honest,
+            None,
+            true,
+            b"j-nc-0630-col",
+        );
+        assert_eq!(
+            verify_joined(
+                &pr0_30c,
+                &pr1_30c,
+                &tail_30c,
+                val0_honest,
+                val1_honest,
+                b"j-nc-0630-col",
+            ),
+            Err(RecursiveError::ColumnMismatch)
+        );
+        let (pr0_30v, pr1_30v, tail_30v, _, _) = build_joined(
+            &u1_0_bad,
+            &u1_1_honest,
+            val0_honest,
+            val1_honest,
+            None,
+            false,
+            b"j-nc-0630-val",
+        );
+        assert_eq!(
+            verify_joined(
+                &pr0_30v,
+                &pr1_30v,
+                &tail_30v,
+                val0_honest,
+                val1_honest,
+                b"j-nc-0630-val",
+            ),
+            Err(RecursiveError::ValueMismatch)
+        );
+
+        // (d) PcsLevelGamma-ONLY binding control: opposite residuals (+1 on block 0, -1 on block 1)
+        //     with honest u_1 trees so ALL level-0 column checks pass AND unweighted sum
+        //     res0 + res1 == 0 identically; ONLY PcsLevelGamma catches the forgery!
+        let v0_plus = val0_honest + QM31::from_i64(1);
+        let v1_minus = val1_honest - QM31::from_i64(1);
+        let (pr0_gc, pr1_gc, tail_gc, r0_gc, r1_gc) = build_joined(
+            &u1_0_honest,
+            &u1_1_honest,
+            v0_plus,
+            v1_minus,
+            None,
+            true,
+            b"j-nc-gamma-col",
+        );
+        assert_eq!(r0_gc, QM31::from_i64(1));
+        assert_eq!(r1_gc, QM31::from_i64(-1));
+        assert_eq!(r0_gc + r1_gc, QM31::from_i64(0));
+        assert_eq!(
+            verify_joined(
+                &pr0_gc,
+                &pr1_gc,
+                &tail_gc,
+                v0_plus,
+                v1_minus,
+                b"j-nc-gamma-col"
+            ),
+            Err(RecursiveError::ColumnMismatch)
+        );
+        let (pr0_gv, pr1_gv, tail_gv, r0_gv, r1_gv) = build_joined(
+            &u1_0_honest,
+            &u1_1_honest,
+            v0_plus,
+            v1_minus,
+            None,
+            false,
+            b"j-nc-gamma-val",
+        );
+        assert_eq!(r0_gv + r1_gv, QM31::from_i64(0));
+        assert_eq!(
+            verify_joined(
+                &pr0_gv,
+                &pr1_gv,
+                &tail_gv,
+                v0_plus,
+                v1_minus,
+                b"j-nc-gamma-val"
+            ),
+            Err(RecursiveError::ValueMismatch)
+        );
+    }
 }

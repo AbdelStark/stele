@@ -3579,10 +3579,12 @@ fn absorb_joined_level0_certified_statement<K: ChallengeField>(
 /// Holds only the committed `u_1` matrix (never the level-0 matrix or codeword; RFC-0029 §2).
 pub struct PendingLevel1Prover<K: ChallengeField> {
     source_id: u64,
+    opening_id: u64,
     target_bits: u16,
     l1_spec: LevelSpec,
     u1: Vec<K>,
     w1: Vec<K>,
+    beta: K,
     claim: K,
     committed: CommittedLevel,
     commit_usage: HashUsage,
@@ -3592,6 +3594,11 @@ impl<K: ChallengeField> PendingLevel1Prover<K> {
     /// Original level-0 source id (used to domain-separate level-1 Merkle leaves).
     pub fn source_id(&self) -> u64 {
         self.source_id
+    }
+
+    /// Level-0 opening id bound to this pending level-1 source.
+    pub fn opening_id(&self) -> u64 {
+        self.opening_id
     }
 
     /// Target security bits `T`.
@@ -3607,6 +3614,11 @@ impl<K: ChallengeField> PendingLevel1Prover<K> {
     /// Merkle root of this pending level-1 source `u_1`.
     pub fn root_1(&self) -> merkle::Digest {
         self.committed.root()
+    }
+
+    /// Level-0 consistency batching challenge `beta` (`PcsLevelBeta`).
+    pub fn beta(&self) -> K {
+        self.beta
     }
 
     /// Combined level-1 scalar claim `v_1 = v_0 + Σ β^j y_j`.
@@ -3630,9 +3642,11 @@ impl<K: ChallengeField> PendingLevel1Prover<K> {
 /// [`verify_fresh_level0_claims`], or [`verify_certified_level0`].
 pub struct PendingLevel1Verifier<K: ChallengeField> {
     source_id: u64,
+    opening_id: u64,
     target_bits: u16,
     l1_spec: LevelSpec,
     root_1: merkle::Digest,
+    beta: K,
     claim: K,
     terms: Vec<WeightTerm<K>>,
     level0_ledger: LevelLedger,
@@ -3645,6 +3659,16 @@ impl<K: ChallengeField> PendingLevel1Verifier<K> {
     /// Original level-0 source id.
     pub fn source_id(&self) -> u64 {
         self.source_id
+    }
+
+    /// Level-0 opening id bound to this pending level-1 source.
+    pub fn opening_id(&self) -> u64 {
+        self.opening_id
+    }
+
+    /// Level-0 consistency batching challenge `beta` (`PcsLevelBeta`).
+    pub fn beta(&self) -> K {
+        self.beta
     }
 
     /// Target security bits `T`.
@@ -3801,10 +3825,12 @@ impl<K: ChallengeField> PreparedRecursive<K> {
             proof,
             PendingLevel1Prover {
                 source_id,
+                opening_id,
                 target_bits,
                 l1_spec: l1,
                 u1,
                 w1,
+                beta,
                 claim,
                 committed: committed_u1,
                 commit_usage,
@@ -3834,6 +3860,15 @@ impl<K: ChallengeField> PreparedRecursive<K> {
             return Err(RecursiveError::MessageShape);
         }
         let cap = field_cap(self.source.plan.ext_degree, self.source.plan.target_bits)?;
+        let q0 = self.source.plan.queries[0];
+        let (_, _, _, e0) = circle_coeff_params(l0.m, l0.b)?;
+        let prox0 = 2u64
+            .checked_mul(u64::from(l0.ell))
+            .and_then(|v| v.checked_mul(e0.checked_add(1)?))
+            .ok_or(RecursiveError::UnsupportedSource)?;
+        if !BigUint::fits_cap(prox0, &cap) || !BigUint::fits_cap(u64::from(q0), &cap) {
+            return Err(RecursiveError::UnsupportedSource);
+        }
         if claims.len() > 1 && !BigUint::fits_cap((claims.len() - 1) as u64, &cap) {
             return Err(RecursiveError::UnsupportedSource);
         }
@@ -4030,9 +4065,11 @@ where
 
     Ok(PendingLevel1Verifier {
         source_id: source.id,
+        opening_id,
         target_bits: plan.target_bits,
         l1_spec: l1,
         root_1,
+        beta,
         claim,
         terms,
         level0_ledger,
@@ -4086,6 +4123,15 @@ where
         return Err(RecursiveError::MessageShape);
     }
     let cap = field_cap(source.plan.ext_degree, source.plan.target_bits)?;
+    let q0 = source.plan.queries[0];
+    let (_, _, _, e0) = circle_coeff_params(l0.m, l0.b)?;
+    let prox0 = 2u64
+        .checked_mul(u64::from(l0.ell))
+        .and_then(|v| v.checked_mul(e0.checked_add(1)?))
+        .ok_or(RecursiveError::UnsupportedSource)?;
+    if !BigUint::fits_cap(prox0, &cap) || !BigUint::fits_cap(u64::from(q0), &cap) {
+        return Err(RecursiveError::UnsupportedSource);
+    }
     if claims.len() > 1 && !BigUint::fits_cap((claims.len() - 1) as u64, &cap) {
         return Err(RecursiveError::UnsupportedSource);
     }
@@ -4315,10 +4361,12 @@ impl<K: ChallengeField> CertifiedModelSource<K> {
             proof,
             PendingLevel1Prover {
                 source_id: self.source.id,
+                opening_id,
                 target_bits: plan.target_bits,
                 l1_spec: l1,
                 u1,
                 w1,
+                beta,
                 claim,
                 committed: committed_u1,
                 commit_usage,
@@ -4382,11 +4430,9 @@ where
     };
     init_term.pad_msb_zeros(pad_bits)?;
 
-    let expected_len = certified_level0_proof_size(plan, l1)?;
-    if proof.len() != expected_len {
-        return Err(RecursiveError::ProofShape);
-    }
-    if proof[0] != RECURSIVE_VERSION || proof[1] != JOINED_CERT_L0_TAG {
+    // Validate tag and certified radius BEFORE length so a wrong-radius proof returns
+    // CertificateContext (NC-0635) even when its q_open-dependent length differs.
+    if proof.len() < 24 || proof[0] != RECURSIVE_VERSION || proof[1] != JOINED_CERT_L0_TAG {
         return Err(RecursiveError::ProofShape);
     }
     let proof_radius = u64::from_le_bytes([
@@ -4394,6 +4440,10 @@ where
     ]);
     if proof_radius != plan.certified_radius() {
         return Err(RecursiveError::CertificateContext);
+    }
+    let expected_len = certified_level0_proof_size(plan, l1)?;
+    if proof.len() != expected_len {
+        return Err(RecursiveError::ProofShape);
     }
     check_level_spec(&proof[10..17], l0)?;
     check_level_spec(&proof[17..24], l1)?;
@@ -4492,9 +4542,11 @@ where
 
     Ok(PendingLevel1Verifier {
         source_id: expected.id,
+        opening_id,
         target_bits: plan.target_bits,
         l1_spec: l1,
         root_1,
+        beta,
         claim,
         terms,
         level0_ledger,
@@ -4707,10 +4759,10 @@ fn absorb_joined_tail_statement<K: ChallengeField>(
     t: &mut Transcript<K>,
     tail_opening_id: u64,
     plan: &JoinedTailPlan,
-    blocks: &[(u64, merkle::Digest, K)],
+    blocks: &[(u64, u64, merkle::Digest, K, K)],
 ) -> Result<(), RecursiveError> {
     let elem = 4 * K::DEGREE;
-    let per_block = add_usize(8 + 32, elem)?;
+    let per_block = add_usize(8 + 8 + 32, mul_usize(2, elem)?)?;
     let total = add_usize(
         add_usize(JOINED_TAIL_DOMAIN.len() + 8 + 3, plan.header_bytes())?,
         mul_usize(blocks.len(), per_block)?,
@@ -4721,9 +4773,11 @@ fn absorb_joined_tail_statement<K: ChallengeField>(
     buf.push(plan.ext_degree);
     buf.extend_from_slice(&plan.target_bits.to_le_bytes());
     plan.write_header(&mut buf);
-    for &(source_id, root_1, claim) in blocks {
+    for &(source_id, opening_id, root_1, beta, claim) in blocks {
         buf.extend_from_slice(&source_id.to_le_bytes());
+        buf.extend_from_slice(&opening_id.to_le_bytes());
         buf.extend_from_slice(&root_1);
+        buf.extend_from_slice(beta.to_le_bytes().as_ref());
         buf.extend_from_slice(claim.to_le_bytes().as_ref());
     }
     t.absorb(AbsorbLabel::Opening, &buf)?;
@@ -4772,6 +4826,12 @@ impl<K: ChallengeField> VerifiedJoinedTail<K> {
 
 /// Prove the single joined recursion tail from level 1 to `L - 1` across `pending` level-1
 /// sources (segments and/or certified model sources; RFC-0029 §2).
+///
+/// # Security Invariant
+/// Every element of `pending` MUST have been closed on this same `Transcript` `t` (absorbing its
+/// level-0 opening statement, `PcsLevelRoot`, `OpeningColumns`, and `PcsLevelBeta` before this
+/// call) so that `PcsLevelGamma` and every subsequent level-1 challenge depend on every block's
+/// root and queries (strong Fiat–Shamir, RFC-0029 §2).
 pub fn prove_joined_tail<K: ChallengeField>(
     t: &mut Transcript<K>,
     tail_opening_id: u64,
@@ -4794,7 +4854,7 @@ where
 
     let mut meta = reserve_vec(k)?;
     for p in pending {
-        meta.push((p.source_id, p.root_1(), p.claim));
+        meta.push((p.source_id, p.opening_id, p.root_1(), p.beta, p.claim));
     }
     absorb_joined_tail_statement(t, tail_opening_id, plan, &meta)?;
 
@@ -4944,6 +5004,10 @@ where
 
 /// Verify the single joined recursion tail from level 1 to `L - 1` across `pending` opaque
 /// [`PendingLevel1Verifier`] sources (RFC-0029 §§2, 4, 5).
+///
+/// # Security Invariant
+/// Every element of `pending` MUST have been produced by verifying its level-0 closing proof on
+/// this same `Transcript` `t` before calling `verify_joined_tail` (strong Fiat–Shamir, RFC-0029 §2).
 pub fn verify_joined_tail<K: ChallengeField>(
     t: &mut Transcript<K>,
     tail_opening_id: u64,
@@ -4970,7 +5034,7 @@ where
 
     let mut meta = reserve_vec(k)?;
     for p in pending {
-        meta.push((p.source_id, p.root_1, p.claim));
+        meta.push((p.source_id, p.opening_id, p.root_1, p.beta, p.claim));
     }
     absorb_joined_tail_statement(t, tail_opening_id, plan, &meta)?;
 
