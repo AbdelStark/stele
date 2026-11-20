@@ -165,7 +165,9 @@ impl Backend {
 mod kernels;
 #[cfg(target_arch = "aarch64")]
 mod neon;
+mod slices;
 #[cfg(test)]
 mod tests;
 #[cfg(target_arch = "x86_64")]
 mod x86;
+pub use slices::{fold, fold_reference};

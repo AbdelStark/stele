@@ -135,3 +135,60 @@ fn rejects_invalid_lazy_limb_in_every_position() {
         [0; 16]
     );
 }
+
+fn element(state: &mut u64, edge: bool) -> stele_field::QM31 {
+    use stele_field::{CM31, M31, QM31};
+    const EDGES: [u32; 4] = [0, 1, P - 1, P - 2];
+    let mut limb = || {
+        let raw = next(state);
+        M31::from_canonical(if edge {
+            EDGES[(raw & 3) as usize]
+        } else {
+            raw % P
+        })
+        .expect("canonical")
+    };
+    QM31(CM31(limb(), limb()), CM31(limb(), limb()))
+}
+
+#[test]
+fn matches_reference_qm31_fold_on_seeded_and_edge_tables() {
+    let backends = backends();
+    let mut seed = 0x5354_454c_4500_0020;
+    // 1000 seeded tables: every length across a vector boundary, with edge limbs and
+    // edge challenges in a quarter of them.
+    for case in 0..1000usize {
+        let n = case % 41;
+        let edge = case % 4 == 0;
+        let lo: Vec<_> = (0..n).map(|_| element(&mut seed, edge)).collect();
+        let hi: Vec<_> = (0..n).map(|_| element(&mut seed, edge)).collect();
+        let c = element(&mut seed, case % 8 == 0);
+        let mut expected = lo.clone();
+        crate::fold_reference(&mut expected, &hi, c);
+        for backend in &backends {
+            let mut folded = lo.clone();
+            backend.fold(&mut folded, &hi, c).expect("available");
+            assert_eq!(folded, expected, "{backend:?} case {case}");
+        }
+        let mut folded = lo.clone();
+        crate::fold(&mut folded, &hi, c);
+        assert_eq!(folded, expected, "detected backend, case {case}");
+    }
+    // A longer low half than high half folds the common prefix only.
+    let lo: Vec<_> = (0..9).map(|_| element(&mut seed, false)).collect();
+    let hi: Vec<_> = (0..5).map(|_| element(&mut seed, false)).collect();
+    let c = element(&mut seed, false);
+    let mut expected = lo.clone();
+    crate::fold_reference(&mut expected, &hi, c);
+    for backend in &backends {
+        let mut folded = lo.clone();
+        backend.fold(&mut folded, &hi, c).expect("available");
+        assert_eq!(folded, expected);
+        assert_eq!(folded[5..], lo[5..]);
+    }
+    for backend in [Backend::Neon, Backend::Avx2, Backend::Avx512] {
+        if !backend.available() {
+            assert!(backend.fold(&mut [], &[], c).is_err());
+        }
+    }
+}

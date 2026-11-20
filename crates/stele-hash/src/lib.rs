@@ -413,14 +413,38 @@ mod sealed {
 /// let transcript = Transcript::<M31>::new(b"public");
 /// ```
 /// `Send + Sync` lets dense provers split work across threads (RFC-0006 A1 prover only).
-pub trait ChallengeField: sealed::Target + stele_field::Field + Send + Sync {}
+pub trait ChallengeField: sealed::Target + stele_field::Field + Send + Sync {
+    /// `values` as QM31 elements when `Self` is QM31, `None` for every other field: the
+    /// entry to kernels written for that field (RFC-0003 §6, `stele-simd`).
+    fn qm31_slice(_values: &[Self]) -> Option<&[QM31]> {
+        None
+    }
+    /// [`Self::qm31_slice`], mutable.
+    fn qm31_slice_mut(_values: &mut [Self]) -> Option<&mut [QM31]> {
+        None
+    }
+    /// `self` as a QM31 element when `Self` is QM31.
+    fn qm31(self) -> Option<QM31> {
+        None
+    }
+}
 impl sealed::Target for QM31 {
     const DEGREE: usize = 4;
     fn from_limbs(l: [M31; 8]) -> Self {
         Self(stele_field::CM31(l[0], l[1]), stele_field::CM31(l[2], l[3]))
     }
 }
-impl ChallengeField for QM31 {}
+impl ChallengeField for QM31 {
+    fn qm31_slice(values: &[Self]) -> Option<&[QM31]> {
+        Some(values)
+    }
+    fn qm31_slice_mut(values: &mut [Self]) -> Option<&mut [QM31]> {
+        Some(values)
+    }
+    fn qm31(self) -> Option<QM31> {
+        Some(self)
+    }
+}
 impl sealed::Target for OM31 {
     const DEGREE: usize = 8;
     fn from_limbs(l: [M31; 8]) -> Self {

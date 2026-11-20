@@ -8,6 +8,8 @@ macro_rules! tower {
     ($name:ident, $base:ty, $bytes:expr, $nr:expr, $frob:expr, $mul:expr, $doc:literal) => {
         #[doc = $doc]
         #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+        // The limbs in basis order with no padding (RFC-0003 §6 kernels read them in place).
+        #[repr(C)]
         pub struct $name(
             /// Constant coefficient.
             pub $base,
