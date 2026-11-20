@@ -159,16 +159,33 @@ impl<'a> Data<'a> {
         for j in 0..r.rows {
             // RFC-0004 A15: A' = sum_i s_k(i)*q_i*w_i (|A'| < 2^51), then one rounding.
             let (dot, product) = if scales.len() > 1 {
-                let dot: i64 = row
-                    .codes()
-                    .iter()
-                    .enumerate()
-                    .map(|(k, x)| {
-                        i64::from(scales[k / g])
-                            * i64::from(*x)
-                            * i64::from(self.code(ordinal, j * r.columns + k))
-                    })
-                    .sum();
+                let dot: i64 = if r.bits == 8 {
+                    // The same sum, one int32 dot per group (|dot| < 2^28, as in `dot`).
+                    let w = &r.raw[j * r.columns..(j + 1) * r.columns];
+                    row.codes()
+                        .chunks(g)
+                        .zip(w.chunks(g))
+                        .zip(scales)
+                        .map(|((x, w), s)| {
+                            let part: i32 = x
+                                .iter()
+                                .zip(w)
+                                .map(|(x, w)| i32::from(*x) * i32::from(*w as i8))
+                                .sum();
+                            i64::from(*s) * i64::from(part)
+                        })
+                        .sum()
+                } else {
+                    row.codes()
+                        .iter()
+                        .enumerate()
+                        .map(|(k, x)| {
+                            i64::from(scales[k / g])
+                                * i64::from(*x)
+                                * i64::from(self.code(ordinal, j * r.columns + k))
+                        })
+                        .sum()
+                };
                 let dot = i128::from(dot);
                 (dot, dot * i128::from(scale.mantissas()[j]))
             } else {
