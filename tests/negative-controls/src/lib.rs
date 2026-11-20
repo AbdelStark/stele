@@ -1156,6 +1156,12 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "CertificateContext",
         run: || pcs_recursive::run(635),
     },
+    catalog::RegisteredControl {
+        id: 636,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "EqMismatch",
+        run: || pcs_recursive::run(636),
+    },
 ];
 
 /// A one-value mutation applied to an honest witness, proof or configuration.

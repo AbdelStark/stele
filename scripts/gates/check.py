@@ -41,6 +41,9 @@ REQUIRED_DEVELOPMENT_DIGESTS = (
     ('L0', 'one-layer', 16, 'CircleAllGrind', 5),
     ('L1', 'eight-layer', 64, 'CircleAll', 3),
     ('L1', 'eight-layer', 64, 'CircleAllGrind', 5),
+    # RFC-0026 A29: the joined recursion of profile byte 6.
+    ('L0', 'one-layer', 16, 'CircleRecursive', 6),
+    ('L1', 'eight-layer', 64, 'CircleRecursive', 6),
 )
 
 

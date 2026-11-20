@@ -1355,7 +1355,8 @@ circle code, and migration of evaluation-form model sources (RFC-0029 §8) · Q4
 data-parallel lookup instances: shared challenges, one tree reduction, per-instance
 roots and multiplicities (RFC-0030 §7) · Q50 the challenge field of the commitment
 rounds and the per-round form of the proximity bound (RFC-0029 §8) · Q51 a reduction
-of the multiplicity sources' prefix-mask functional to a point claim (RFC-0029 §8).
+of the multiplicity sources' prefix-mask functional to a point claim (RFC-0029 §8;
+resolved for the development tier by RFC-0029 A1 and RFC-0026 A29 item 3).
 
 Q12, Q27, Q29, Q31 and Q33 are restated by RFC-0030, RFC-0029, RFC-0013 A3, RFC-0028
 and RFC-0027 §2 respectively; each stays open until its RFC is Accepted.

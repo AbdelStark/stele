@@ -45,6 +45,28 @@
       "fnv1a_64": "0dccbffc2d07efc5",
       "sha256": "b7f8b744461a77f16f726809f80cd3348f8e3c1ed012850b089aa5e208c6115c",
       "amendment": "RFC-0026 A28"
+    },
+    {
+      "rung": "L0",
+      "case": "one-layer",
+      "t": 16,
+      "sources": "CircleRecursive",
+      "profile_byte": 6,
+      "proof_bytes": 1367574,
+      "fnv1a_64": "4a0044e19fc4b8c0",
+      "sha256": "b2437e140bf6bf2f48d6195cb8266e27b65cb15ef1d6bdaa61099df53e6368f3",
+      "amendment": "RFC-0026 A29"
+    },
+    {
+      "rung": "L1",
+      "case": "eight-layer",
+      "t": 64,
+      "sources": "CircleRecursive",
+      "profile_byte": 6,
+      "proof_bytes": 3269153,
+      "fnv1a_64": "9f66a65e844fbd11",
+      "sha256": "05eab03b4cf25e9bca033b9c230d90a264e5785c9b695fda0f8730197f5aea3f",
+      "amendment": "RFC-0026 A29"
     }
   ]
 }

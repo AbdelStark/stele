@@ -1,5 +1,6 @@
 //! RFC-0029 §6, RFC-0010 A17 — executable negative controls NC-0630..0634 through the actual
-//! recursive opening verifiers (`verify_fresh_at_point` and `verify_fresh_claims`).
+//! recursive opening verifiers (`verify_fresh_at_point` and `verify_fresh_claims`), NC-0635
+//! through the certified ones, and NC-0636 (RFC-0026 A29) through `relation::verify_recursive`.
 #![forbid(unsafe_code)]
 
 use stele_field::{Field, Inverse, Serialize, M31, QM31};
@@ -800,6 +801,68 @@ fn nc_0635() -> Result<(), String> {
 }
 
 /// Dispatch NC-0630..0635 through the actual recursive opening verifiers.
+/// NC-0636 (RFC-0026 A29 item 3, RFC-0029 Q51): the `eq` final of a multiplicity prefix
+/// sumcheck against the closed form of the row mask, through `relation::verify_recursive`.
+/// The 3-row table is read only under an all-zero selector, so its multiplicities are
+/// zero and the sumcheck accepts any `eq` final: only the mask check binds it.
+fn nc_0636() -> Result<(), String> {
+    use stele_reductions::relation::{prove_recursive_measured, verify_recursive, Error, K};
+    use stele_reductions::stele_ir::relation::{
+        Kind, Lookup, Range, Ref, Relation, Table, Values, Width,
+    };
+    let mut rel = Relation::default();
+    let group = Kind::Witness(rel.add_group("w", 3));
+    let x = rel.add_column("x", group, Width::unsigned(3), 3);
+    rel.ranges.push(Range {
+        name: "r_x".into(),
+        column: x,
+        width: Width::unsigned(3),
+    });
+    let off = rel.add_column("off", Kind::Public(vec![0; 8]), Width::unsigned(1), 3);
+    let table = rel.add_table(Table {
+        name: "small3".into(),
+        widths: vec![Width::unsigned(3)],
+        rows: vec![vec![0], vec![1], vec![2]],
+    });
+    rel.lookups.push(Lookup {
+        name: "lu_small3".into(),
+        vars: 3,
+        selector: Some(Ref::identity(off, 3)),
+        tuple: vec![Ref::identity(x, 3)],
+        table,
+    });
+    let mut values = Values::default();
+    values
+        .set(&rel, x, vec![0, 1, 2, 3, 4, 5, 6, 7])
+        .map_err(dbg_err)?;
+    let mut t = Transcript::<K>::new(b"nc-0636").map_err(dbg_err)?;
+    let mut witness = Some(values);
+    let (proof, _) = prove_recursive_measured(
+        &mut t,
+        &rel,
+        |_| witness.take().ok_or(Error::Unsupported),
+        &[],
+    )
+    .map_err(dbg_err)?;
+    let verify = |proof: &stele_reductions::relation::ProofV2| {
+        let mut t = Transcript::<K>::new(b"nc-0636").map_err(Error::from)?;
+        verify_recursive(&mut t, &rel, &[], proof)
+    };
+    verify(&proof).map_err(|e| format!("honest proof rejected: {e:?}"))?;
+    // The table's lookup section ends with the prefix sumcheck's finals `[eq, mu]`.
+    let mut bad = proof.clone();
+    let section = &mut bad.segments[0].lookups[MASKED_SECTION];
+    let eq_final = section.len() - 32;
+    section[eq_final] ^= 1;
+    match verify(&bad) {
+        Err(Error::EqMismatch) => Ok(()),
+        other => Err(format!("expected EqMismatch, got {other:?}")),
+    }
+}
+
+/// The lookup section of NC-0636's table: checks are in first-use order, tables first.
+const MASKED_SECTION: usize = 0;
+
 pub fn run(id: u16) -> Result<(), String> {
     match id {
         630 => nc_0630(),
@@ -808,6 +871,7 @@ pub fn run(id: u16) -> Result<(), String> {
         633 => nc_0633(),
         634 => nc_0634(),
         635 => nc_0635(),
+        636 => nc_0636(),
         _ => Err(format!("unknown recursive PCS control NC-{id:04}")),
     }
 }

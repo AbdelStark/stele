@@ -364,7 +364,8 @@ Mirrored as numbered questions in RFC-0019, where each track states its kill cri
 - Q48: the identity of the coefficient-form circle code.
 - Q49: data-parallel lookup instances with shared challenges.
 - Q50: the challenge field of the commitment rounds; the per-round proximity bound.
-- Q51: multiplicity-source openings under the recursive scheme.
+- Q51: multiplicity-source openings under the recursive scheme (resolved for the
+  development tier by RFC-0026 A29).
 - Q12, restated by RFC-0030: the theorem and constants for the Fiat–Shamir step.
 
 **Machine learning**

@@ -66,7 +66,7 @@ impl<'a> RecursiveModelSource<'a> {
 
 /// Exact `O(k)` multilinear extension of `f(x) = eq(z, x) * [x < t]` evaluated at `r`
 /// (both `z` and `r` MSB-first of length `k`, `0 <= t <= 2^k`; resolves RFC-0029 Q51).
-pub fn eq_prefix_mle(z: &[K], t: usize, r: &[K]) -> K {
+pub(crate) fn eq_prefix_mle(z: &[K], t: usize, r: &[K]) -> K {
     debug_assert_eq!(z.len(), r.len());
     let k = z.len();
     let one = K::from_i64(1);
@@ -1424,6 +1424,15 @@ pub fn verify_recursive(
     if proof.segments.len() != plan.segments.len() {
         return Err(Error::ProofShape);
     }
+    // A segment without a witness stack has no opening section (as RFC-0026 A27's verifier).
+    if plan
+        .segments
+        .iter()
+        .zip(&proof.segments)
+        .any(|(seg, p)| seg.witness_plan.is_none() && !p.openings.is_empty())
+    {
+        return Err(Error::ProofShape);
+    }
 
     let l1_spec = plan.tail_levels[0];
     let mut ledger = Ledger::default();
@@ -1506,26 +1515,19 @@ pub fn verify_recursive(
             };
             let reduction = z.verify(&zp, t)?;
             let name = alloc::format!("s{s}/identities/{m}");
-            if lambdas.len() > 1 {
-                ledger.add(
-                    Line::Rlc,
-                    &name,
-                    lambdas.len() as u64 - 1,
-                    lambdas.len() as u64 - 1,
-                );
+            // RFC-0012 A16: the lambda draw charges n; one SC entry per phase, as A27.
+            let lambdas = lambdas.len() as u64;
+            ledger.add(Line::Rlc, &name, lambdas, lambdas);
+            let [weights, skip, tail] = reduction.sc;
+            for (numerator, round) in [
+                (weights.numerator, weights.numerator),
+                (skip.numerator, skip.numerator),
+                (tail.numerator, u64::from(tail.degree)),
+            ] {
+                if numerator > 0 {
+                    ledger.add(Line::Sc, &name, numerator, round);
+                }
             }
-            ledger.add(
-                Line::Sc,
-                &name,
-                reduction.sc[0].numerator,
-                reduction.sc[0].numerator,
-            );
-            ledger.add(
-                Line::Sc,
-                &name,
-                reduction.sc[2].numerator,
-                u64::from(reduction.sc[2].degree),
-            );
             for (r, claim) in inputs.iter().zip(reduction.claims) {
                 claims.push(r, &claim.point, claim.value);
             }
@@ -1971,28 +1973,51 @@ mod tests {
     #[test]
     fn matches_reference_eq_prefix_mle_all_prefixes() {
         let mut t = Transcript::<K>::new(b"stele/test/eq-prefix-mle").expect("t");
-        for k in 1..=6usize {
-            let z: Vec<K> = (0..k)
-                .map(|_| t.challenge(ChallengeLabel::RelationPoint).expect("z"))
-                .collect();
-            let r: Vec<K> = (0..k)
-                .map(|_| t.challenge(ChallengeLabel::RelationPoint).expect("r"))
-                .collect();
-            let eq_z = parallel::eq_table(&z).expect("eq_z");
-            let eq_r = parallel::eq_table(&r).expect("eq_r");
+        let mut point = |k: usize| -> Vec<K> {
+            (0..k)
+                .map(|_| t.challenge(ChallengeLabel::RelationPoint).expect("point"))
+                .collect()
+        };
+        let reference = |z: &[K], prefix: usize, r: &[K]| {
+            let eq_z = parallel::eq_table(z).expect("eq_z");
+            let eq_r = parallel::eq_table(r).expect("eq_r");
+            eq_z[..prefix]
+                .iter()
+                .zip(&eq_r[..prefix])
+                .fold(K::from_i64(0), |acc, (&a, &b)| acc + a * b)
+        };
+        // Every prefix for small k.
+        for k in 0..=6usize {
+            let (z, r) = (point(k), point(k));
             for prefix in 0..=(1usize << k) {
-                let expected = eq_z[..prefix]
-                    .iter()
-                    .zip(&eq_r[..prefix])
-                    .fold(K::from_i64(0), |acc, (&a, &b)| acc + a * b);
-                let got = eq_prefix_mle(&z, prefix, &r);
-                assert_eq!(got, expected, "k={k} prefix={prefix}");
+                assert_eq!(
+                    eq_prefix_mle(&z, prefix, &r),
+                    reference(&z, prefix, &r),
+                    "k={k} prefix={prefix}"
+                );
             }
+        }
+        // 10^4 random (k, t, z, r).
+        let mut state = 0x5354_454c_u64;
+        for _ in 0..10_000 {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            let k = 1 + (state >> 60) as usize % 8;
+            let prefix = (state >> 20) as usize % ((1 << k) + 1);
+            let (z, r) = (point(k), point(k));
+            assert_eq!(
+                eq_prefix_mle(&z, prefix, &r),
+                reference(&z, prefix, &r),
+                "k={k} prefix={prefix}"
+            );
         }
     }
 
-    /// Two-segment relation with carried boundary, virtual Linear/Contraction/Pointwise columns,
-    /// weight matrix, power-of-two Range, and non-power-of-two Lookup (Q51 prefix mask).
+    /// Two-segment relation with a carried boundary, virtual Linear and Pointwise columns, two
+    /// weight columns, power-of-two ranges and two non-power-of-two tables (Q51 prefix mask),
+    /// one of them read under an all-zero selector. No matmul or public-column claim: the
+    /// one-layer window of `stele-prover` covers those.
     fn composed_fixture() -> (Relation, Vec<Values>, Values) {
         let mut rel = Relation::default();
         let g0 = Kind::Witness(rel.add_group_in("s0/w", 3, 0));
@@ -2001,6 +2026,14 @@ mod tests {
         rel.ranges.push(Range {
             name: "r_w".into(),
             column: w_col,
+            width: Width::signed(4),
+        });
+        // 128 further weights: the model source is large enough for a certified radius above
+        // one, which the composed NC-0635 needs.
+        let w_wide = rel.add_column("W/wide", Kind::Weight, Width::signed(4), 7);
+        rel.ranges.push(Range {
+            name: "r_w_wide".into(),
+            column: w_wide,
             width: Width::signed(4),
         });
         let x0 = rel.add_column("s0/x", g0.clone(), Width::unsigned(3), 3);
@@ -2028,6 +2061,22 @@ mod tests {
             selector: None,
             tuple: vec![Ref::identity(x0, 3)],
             table: tbl,
+        });
+        // A second non-power-of-two table (t = 3 < 4), read only under an all-zero public
+        // selector: its multiplicities are zero, so the prefix sumcheck accepts any `eq` final
+        // and only the closed-form mask check binds it (NC-0636).
+        let off = rel.add_column("s0/off", Kind::Public(vec![0; 8]), Width::unsigned(1), 3);
+        let unread = rel.add_table(Table {
+            name: "small3".into(),
+            widths: vec![Width::unsigned(3)],
+            rows: vec![vec![0], vec![1], vec![2]],
+        });
+        rel.lookups.push(Lookup {
+            name: "lu_small3".into(),
+            vars: 3,
+            selector: Some(Ref::identity(off, 3)),
+            tuple: vec![Ref::identity(x0, 3)],
+            table: unread,
         });
         let v_lin = rel.add_virtual(
             "s0/v_lin",
@@ -2103,6 +2152,7 @@ mod tests {
         });
 
         let w_vals = vec![1, -1, 2, 0, 1, -2, 3, -1];
+        let w_wide_vals: Vec<i64> = (0..128).map(|i| (i * 5 + 3) % 16 - 8).collect();
         let x0_vals = vec![0, 1, 2, 3, 4, 2, 1, 0];
         let c0_vals: Vec<i64> = x0_vals.iter().map(|&v| v + 1).collect();
         let y1_vals: Vec<i64> = c0_vals.iter().zip(&w_vals).map(|(&c, &w)| c * w).collect();
@@ -2110,6 +2160,9 @@ mod tests {
 
         let mut all_vals = Values::default();
         all_vals.set(&rel, w_col, w_vals.clone()).expect("w");
+        all_vals
+            .set(&rel, w_wide, w_wide_vals.clone())
+            .expect("w wide");
         all_vals.set(&rel, x0, x0_vals.clone()).expect("x0");
         all_vals.set(&rel, c0, c0_vals.clone()).expect("c0");
         all_vals.set(&rel, y1, y1_vals.clone()).expect("y1");
@@ -2118,11 +2171,17 @@ mod tests {
 
         let mut s0_vals = Values::default();
         s0_vals.set(&rel, w_col, w_vals.clone()).expect("s0 w");
+        s0_vals
+            .set(&rel, w_wide, w_wide_vals.clone())
+            .expect("s0 w wide");
         s0_vals.set(&rel, x0, x0_vals).expect("s0 x0");
         s0_vals.set(&rel, c0, c0_vals.clone()).expect("s0 c0");
 
         let mut s1_vals = Values::default();
         s1_vals.set(&rel, w_col, w_vals).expect("s1 w");
+        s1_vals
+            .set(&rel, w_wide, w_wide_vals.clone())
+            .expect("s1 w wide");
         s1_vals.set(&rel, c0, c0_vals).expect("s1 c0");
         s1_vals.set(&rel, y1, y1_vals).expect("s1 y1");
         s1_vals.set(&rel, z1, z1_vals).expect("s1 z1");
@@ -2131,7 +2190,7 @@ mod tests {
     }
 
     #[test]
-    fn accepts_composed_joined_recursion_determinism_and_rejects_nc_0630_to_0635() {
+    fn accepts_composed_joined_recursion_and_rejects_nc_0631_and_nc_0633_to_0636() {
         let (rel, seg_vals, all_vals) = composed_fixture();
         let model_sources = recursive_model_sources(&rel, &all_vals).expect("model register");
         let layouts = recursive_model_layout(&rel).expect("layouts");
@@ -2173,43 +2232,64 @@ mod tests {
         assert_eq!(ledger.pcs_sources, 5);
         assert!(ledger.entries.iter().any(|e| e.line == Line::Rlc));
 
-        // NC-0630 / NC-0631 on composed proof: flip one byte inside segment-0 witness level-0 opening
-        // (hits either Merkle RootMismatch or ColumnMismatch in the joined tail).
+        // NC-0630 and NC-0632 need a forging prover: every level root and `u_L` are absorbed
+        // before the column indices are drawn, so a changed byte moves the indices and ends
+        // in a Merkle mismatch. They run on the joined recursion in `stele-pcs`
+        // (`accepts_joined_multi_source_recursion_and_rejects_composed_tampers`).
+        let root_mismatch = |proof: &ProofV2| {
+            let mut tv = Transcript::<K>::new(b"stele/test/e19-04-composed").expect("tv");
+            matches!(
+                verify_recursive(&mut tv, &rel, &verified_models, proof).err(),
+                Some(Error::Recursive(RecursiveError::Merkle(
+                    stele_hash::merkle::Error::RootMismatch
+                )))
+            )
+        };
+        // NC-0631 on the composed proof: a Merkle sibling of segment 0's witness level-0 close.
         let mut bad_l0 = proof1.clone();
         let last = bad_l0.segments[0].openings[0].len() - 1;
         bad_l0.segments[0].openings[0][last] ^= 1;
-        let mut tv = Transcript::<K>::new(b"stele/test/e19-04-composed").expect("tv");
-        assert!(matches!(
-            verify_recursive(&mut tv, &rel, &verified_models, &bad_l0).err(),
-            Some(Error::Recursive(
-                RecursiveError::Merkle(_) | RecursiveError::ColumnMismatch
-            ))
-        ));
+        assert!(root_mismatch(&bad_l0));
 
-        // NC-0632 on composed proof: tamper the joined tail section (Merkle/ColumnMismatch/ValueMismatch).
+        // NC-0631 in the joined tail: a Merkle sibling of its last level.
         let mut bad_tail = proof1.clone();
         let tail_idx = bad_tail.model_openings.len() - 1;
         let tail_len = bad_tail.model_openings[tail_idx].len();
         bad_tail.model_openings[tail_idx][tail_len - 16] ^= 1;
-        let mut tv = Transcript::<K>::new(b"stele/test/e19-04-composed").expect("tv");
-        assert!(matches!(
-            verify_recursive(&mut tv, &rel, &verified_models, &bad_tail).err(),
-            Some(Error::Recursive(
-                RecursiveError::Merkle(_)
-                    | RecursiveError::ValueMismatch
-                    | RecursiveError::ColumnMismatch
-                    | RecursiveError::NoncanonicalField
-            ))
-        ));
+        assert!(root_mismatch(&bad_tail));
 
-        // Q51 prefix-mask binding control: tamper the non-power-of-two lookup's prefix-mask sumcheck.
+        // The multiplicity evaluation of `small5` (last final of its prefix sumcheck): the
+        // sumcheck's own final check rejects it.
+        let plan = plan_recursive(&rel).expect("plan");
+        let section = |t: usize| {
+            plan.segments[0]
+                .checks
+                .iter()
+                .position(|c| c.t == t)
+                .expect("check")
+        };
         let mut bad_prefix = proof1.clone();
-        let lu0_last = bad_prefix.segments[0].lookups[0].len() - 1;
-        bad_prefix.segments[0].lookups[0][lu0_last] ^= 1;
+        let lookup = &mut bad_prefix.segments[0].lookups[section(5)];
+        *lookup.last_mut().expect("section") ^= 1;
         let mut tv = Transcript::<K>::new(b"stele/test/e19-04-composed").expect("tv");
         assert!(matches!(
             verify_recursive(&mut tv, &rel, &verified_models, &bad_prefix).err(),
-            Some(Error::Sumcheck(_) | Error::EqMismatch | Error::NoncanonicalField)
+            Some(Error::Sumcheck(
+                stele_sumcheck::Error::FinalEvaluationMismatch
+            ))
+        ));
+
+        // NC-0636, the Q51 mask binding: one bit of the `eq` final of `small3`'s prefix
+        // sumcheck. Its multiplicities are zero, so the sumcheck accepts any `eq` final and
+        // the closed-form mask is the only check that rejects it.
+        let mut bad_mask = proof1.clone();
+        let lookup = &mut bad_mask.segments[0].lookups[section(3)];
+        let eq_final = lookup.len() - 32;
+        lookup[eq_final] ^= 1;
+        let mut tv = Transcript::<K>::new(b"stele/test/e19-04-composed").expect("tv");
+        assert!(matches!(
+            verify_recursive(&mut tv, &rel, &verified_models, &bad_mask).err(),
+            Some(Error::EqMismatch)
         ));
 
         // NC-0633 on composed proof: truncate joined tail section header -> ProofShape.
@@ -2227,34 +2307,28 @@ mod tests {
         let mut tv = Transcript::<K>::new(b"stele/test/e19-04-composed").expect("tv");
         assert!(matches!(
             verify_recursive(&mut tv, &rel, &verified_models, &bad_batch).err(),
-            Some(Error::Sumcheck(_) | Error::NoncanonicalField)
+            Some(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch))
         ));
 
-        // NC-0635 on composed proof: model certificate registered for a different radius rejects.
-        let wrong_radius = layouts[0].plan.certified_radius().saturating_sub(1);
-        if wrong_radius >= 1 {
-            if let Ok(other_plan) = CertifiedPlan::new(
-                layouts[0].plan.levels().to_vec(),
-                EXT_DEGREE,
-                TARGET_BITS,
-                wrong_radius,
-            ) {
-                let other_src = CertifiedModelSource::<K>::register(
-                    layouts[0].id,
-                    other_plan,
-                    &model_sources[0].message,
-                )
-                .expect("other cert");
-                assert_eq!(
-                    verify_recursive_model(
-                        &layouts[0],
-                        other_src.source().root(),
-                        other_src.certificate_proof(),
-                    )
-                    .err(),
-                    Some(Error::Recursive(RecursiveError::CertificateContext))
-                );
-            }
-        }
+        // NC-0635 on the composed proof: a model certificate registered at another radius.
+        let (k, layout) = layouts
+            .iter()
+            .enumerate()
+            .find(|(_, l)| l.plan.certified_radius() >= 2)
+            .expect("a certified radius above one");
+        let other_plan = CertifiedPlan::new(
+            layout.plan.levels().to_vec(),
+            EXT_DEGREE,
+            TARGET_BITS,
+            layout.plan.certified_radius() - 1,
+        )
+        .expect("plan at another radius");
+        let other =
+            CertifiedModelSource::<K>::register(layout.id, other_plan, &model_sources[k].message)
+                .expect("other certificate");
+        assert!(matches!(
+            verify_recursive_model(layout, other.source().root(), other.certificate_proof()).err(),
+            Some(Error::Recursive(RecursiveError::CertificateContext))
+        ));
     }
 }

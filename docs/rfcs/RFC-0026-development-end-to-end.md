@@ -2808,6 +2808,24 @@ Task: E19-04. Decision: ADR-154.
    `verify_joined_tail` (`tail_opening_id = (1 << 62) | (12 << 48)`) combines all pending blocks with
    `PcsLevelGamma` and is emitted as the final section of `model_openings`.
 5. **Soundness and controls.** Every RLC, SC, LU, and Policy-3 PCS line (including
-   `PcsLevelBeta` and `PcsLevelGamma`) is recorded in the verifier `Ledger`. Determinism
-   and composed `NC-0630..0635` controls run through the actual verifier (`E19-04`).
+   `PcsLevelBeta` and `PcsLevelGamma`) is recorded in the verifier `Ledger`; the identity
+   lambda draw charges `n` as in A27 (RFC-0012 A16). Through `relation::verify_recursive`
+   on the composed proof: `NC-0631` (a Merkle sibling of a level-0 close and of the joined
+   tail), `NC-0633` (tail length), `NC-0634` (a claim-batch round), `NC-0635` (a
+   registration certificate at another radius) and `NC-0636`, the mask binding of item 3:
+   one bit of the `eq` final of a prefix sumcheck whose multiplicities are zero is rejected
+   with `EqMismatch`. `NC-0630` and `NC-0632` need a forging prover, because every level
+   root and `u_L` are absorbed before the column indices are drawn; they run on the joined
+   recursion at the commitment level (`stele-pcs`, task E19-04). The catalogue's NC-13xx
+   development controls run under profile bytes 3 and 5; running them under byte 6 is a
+   condition of promotion (E21-09).
+5a. **Step 1 and the lookup statement under byte 6.** Step 1 absorbs the relation digest
+   under `relation/statement`, then one `relation/roots` frame that holds, for each model
+   source in plan order, its certified source context and its registration certificate
+   identifier (A5 absorbs roots there; the context contains the root). The lookup statement
+   of each check keeps A5's bytes, multiplicity layout fields included: under byte 6 they
+   are plan-derived constants and name no committed source. The multiplicity bundle that
+   follows names the `mu_stack` source context, which contains its root, so `(beta, alpha)`
+   are drawn after the committed multiplicities. A segment without a witness stack has no
+   opening section; a non-empty one is `ProofShape`.
 6. **Affected tasks.** E19-04, E18-09.

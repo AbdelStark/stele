@@ -36,7 +36,7 @@ mod lookup;
 mod recursive;
 pub use codec::{digest, encode};
 pub use recursive::{
-    eq_prefix_mle, prove_recursive_measured, recursive_model_layout, recursive_model_layout_for,
+    prove_recursive_measured, recursive_model_layout, recursive_model_layout_for,
     recursive_model_sources, verify_recursive, verify_recursive_model, RecursiveModelLayout,
     RecursiveModelSource,
 };
@@ -980,7 +980,8 @@ fn plan_with_bound(
     sources: Sources,
     instance_bound: u8,
 ) -> Result<Plan, Error> {
-    if instance_bound == 0 || instance_bound > 30 {
+    // A29's source set has its own planner and verifier (`relation::recursive`).
+    if instance_bound == 0 || instance_bound > 30 || sources == Sources::CircleRecursive {
         return Err(Error::Unsupported);
     }
     relation.validate().map_err(Error::StatementMismatch)?;
@@ -3441,6 +3442,10 @@ fn plan_segmented_with_bound(
     sources: Sources,
     instance_bound: u8,
 ) -> Result<SegmentedPlan, Error> {
+    // A29's source set has its own planner and verifier (`relation::recursive`).
+    if sources == Sources::CircleRecursive {
+        return Err(Error::Unsupported);
+    }
     relation.validate().map_err(Error::StatementMismatch)?;
     // RFC-0028 §2.1: all three virtual kinds (`Linear`, `Pointwise`, `Contraction`) are admitted;
     // contractions must fit their sumcheck variables (`shared + summed`) within `MAX_VARS`.

@@ -840,6 +840,21 @@ fn dumps_development_digests() {
             Sources::CircleAllGrind,
             "CircleAllGrind",
         ),
+        // RFC-0026 A29: the joined recursion of profile byte 6.
+        (
+            "L0",
+            "one-layer",
+            16usize,
+            Sources::CircleRecursive,
+            "CircleRecursive",
+        ),
+        (
+            "L1",
+            "eight-layer",
+            64usize,
+            Sources::CircleRecursive,
+            "CircleRecursive",
+        ),
     ] {
         let case = load(name);
         let mut executor = case.executor(&case.artifact);
@@ -2763,59 +2778,56 @@ fn accepts_recursive_profile_6_unsegmented_and_segmented_and_rejects_tampers() {
             report2.engine.lookup_positions
         );
 
-        // Composed NC-0630/0631: tamper segment-0 witness level-0 opening.
+        // NC-0630 and NC-0632 need a forging prover (every level root and `u_L` are absorbed
+        // before the column indices are drawn) and run on the joined recursion in `stele-pcs`.
+        let engine = |bytes: &[u8]| match verify(&public, &statement, bytes) {
+            Err(Error::Engine(e)) => Some(e),
+            _ => None,
+        };
+        use stele_reductions::relation::Error as Engine;
+        use stele_reductions::stele_pcs::recursive::RecursiveError;
+        let root_mismatch = Engine::Recursive(RecursiveError::Merkle(
+            stele_reductions::stele_hash::merkle::Error::RootMismatch,
+        ));
+
+        // NC-0631 on the composed proof: a Merkle sibling of segment 0's witness level-0 close.
         let mut bad_l0 = decoded_v2.clone();
         let last = bad_l0.segments[0].openings[0].len() - 1;
         bad_l0.segments[0].openings[0][last] ^= 1;
-        assert!(matches!(
-            verify(&public, &statement, &bad_l0.encode()).err(),
-            Some(Error::Engine(stele_reductions::relation::Error::Recursive(
-                _
-            )))
-        ));
+        assert_eq!(engine(&bad_l0.encode()), Some(root_mismatch.clone()));
 
-        // Composed NC-0632: tamper joined tail section.
+        // NC-0631 in the joined tail: a Merkle sibling of its last level.
         let mut bad_tail = decoded_v2.clone();
         let tail_idx = bad_tail.model_openings.len() - 1;
         let tail_last = bad_tail.model_openings[tail_idx].len() - 16;
         bad_tail.model_openings[tail_idx][tail_last] ^= 1;
-        assert!(matches!(
-            verify(&public, &statement, &bad_tail.encode()).err(),
-            Some(Error::Engine(stele_reductions::relation::Error::Recursive(
-                _
-            )))
-        ));
+        assert_eq!(engine(&bad_tail.encode()), Some(root_mismatch));
 
-        // Composed NC-0633: truncate joined tail section.
+        // NC-0633: the joined tail one byte short.
         let mut bad_shape = decoded_v2.clone();
         bad_shape.model_openings[tail_idx].pop();
-        assert!(matches!(
-            verify(&public, &statement, &bad_shape.encode()).err(),
-            Some(Error::Engine(stele_reductions::relation::Error::Recursive(
-                stele_reductions::stele_pcs::recursive::RecursiveError::ProofShape
-            )))
-        ));
+        assert_eq!(
+            engine(&bad_shape.encode()),
+            Some(Engine::Recursive(RecursiveError::ProofShape))
+        );
 
-        // Composed NC-0634: tamper segment-0 claim_batch round.
+        // NC-0634: one round value of segment 0's claim batch.
         let mut bad_batch = decoded_v2.clone();
         bad_batch.segments[0].openings[0][0] ^= 1;
-        assert!(matches!(
-            verify(&public, &statement, &bad_batch.encode()).err(),
-            Some(Error::Engine(
-                stele_reductions::relation::Error::Sumcheck(_)
-                    | stele_reductions::relation::Error::NoncanonicalField
-            ))
-        ));
+        assert_eq!(
+            engine(&bad_batch.encode()).map(|e| format!("{e:?}")),
+            Some("Sumcheck(RoundSumMismatch)".into())
+        );
 
-        // Composed NC-0635: tamper model registration certificate.
+        // NC-0635: the registration certificate names another radius (bytes 1..9).
         let mut bad_pub = public.clone();
-        bad_pub.commitment[0].1[0] ^= 1;
-        assert!(matches!(
+        bad_pub.commitment[0].1[1] ^= 1;
+        assert_eq!(
             verify(&bad_pub, &statement, &proof).err(),
-            Some(Error::Engine(stele_reductions::relation::Error::Recursive(
-                _
+            Some(Error::Engine(Engine::Recursive(
+                RecursiveError::CertificateContext
             )))
-        ));
+        );
 
         // Profile byte mismatch rejects.
         let mut wrong_profile = public.clone();
