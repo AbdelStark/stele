@@ -126,3 +126,13 @@ Rungs with no record: L2b, L3b, L3c, L4, L5, L6.
   means the record does not carry the counter.
 - λ is `none` for every development-profile record (RFC-0026 §1.2).
 - Rows on different devices or thread counts are not a comparison (Workflow 04).
+
+## Static Accounting Baselines (RFC-0027 §3, E22-01)
+
+| Target rung | Model / Window | T | Committed cells | Cells/token | Lookup positions | Lookups/token | Top module (cells/tok) | Top module (lookups/tok) | Ledger |
+|---|---|---|---|---|---|---|---|---|---|
+| L1 | synthetic-8layer | 64 | 15,618,112 | 244,033 | 15,027,520 | 234,805 | attention (59,072) | attention (51,328) | [e22-01-static-accounting-l1](ledger/e22-01-static-accounting-l1.json) @ `4a41fe0` |
+| L2a | stories42m | 64 | 216,058,944 | 3,375,921 | 268,933,440 | 4,202,085 | head (787,456) | head (984,064) | [e22-01-static-accounting-l2a](ledger/e22-01-static-accounting-l2a.json) @ `4a41fe0` |
+| L2b | stories42m | 1024 | 5,170,381,824 | 5,049,201 | 4,820,997,120 | 4,708,005 | attention (1,901,056) | attention (1,687,936) | [e22-01-static-accounting-l2b](ledger/e22-01-static-accounting-l2b.json) @ `4a41fe0` |
+| L3a | Llama-3.1-8B-Instruct | 64 | 5,331,956,672 | 83,311,823 | 13,815,824,896 | 215,872,264 | up (13,008,896) | up (45,514,752) | [e22-01-static-accounting-l3a](ledger/e22-01-static-accounting-l3a.json) @ `4a41fe0` |
+| L3b | Llama-3.1-8B-Instruct | 1024 | 119,896,488,960 | 117,086,415 | 119,742,930,944 | 116,936,456 | attention (39,755,776) | attention (36,083,712) | [e22-01-static-accounting-l3b](ledger/e22-01-static-accounting-l3b.json) @ `4a41fe0` |
