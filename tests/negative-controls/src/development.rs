@@ -1813,12 +1813,178 @@ pub fn run_segments(id: u32) -> Result<(), String> {
     }
 }
 
+/// RFC-0028 §6 (task E18-02): Linear virtual-column controls through the actual
+/// `relation::verify_segmented` verifier:
+/// - NC-1337: +1 on one operand evaluation sent for a `Linear` virtual column reduction
+///   rejects with `LinearMismatch`.
+/// - NC-1338: proving with a virtual column's values differing from its definition at one
+///   index rejects at its reduction (`LinearMismatch`).
+pub fn run_virtual_linear(id: u32) -> Result<(), String> {
+    use stele_field::{Field, Serialize};
+    use stele_reductions::relation::{self, verify_segmented, Sources};
+    use stele_reductions::stele_hash::Transcript;
+    use stele_reductions::stele_ir::relation::{
+        Def, Identity, Kind, Range, Ref, Relation, Term as IdentityTerm, Values, Width,
+    };
+
+    const PUBLIC: &[u8] = b"stele/nc/e18-02/virtual-linear/v1";
+    let mut rel = Relation::default();
+    let g = rel.add_group_in("nc/w", 2, 0);
+    let lo = rel.add_column("nc/lo", Kind::Witness(g), Width::unsigned(8), 2);
+    let hi = rel.add_column("nc/hi", Kind::Witness(g), Width::unsigned(4), 2);
+    let bias = rel.add_column(
+        "nc/bias",
+        Kind::Public(vec![1, 2, 3, 4]),
+        Width::unsigned(4),
+        2,
+    );
+    let out = rel.add_column("nc/out", Kind::Witness(g), Width::unsigned(13), 2);
+    for (name, col, width) in [
+        ("r_lo", lo, Width::unsigned(8)),
+        ("r_hi", hi, Width::unsigned(4)),
+        ("r_out", out, Width::unsigned(13)),
+    ] {
+        rel.ranges.push(Range {
+            name: name.into(),
+            column: col,
+            width,
+        });
+    }
+    let virt = rel.add_virtual(
+        "nc/v",
+        Def::Linear {
+            constant: 0,
+            terms: vec![
+                (1, Ref::identity(lo, 2)),
+                (256, Ref::identity(hi, 2)),
+                (1, Ref::identity(bias, 2)),
+            ],
+        },
+        2,
+    );
+    rel.identities.push(Identity {
+        name: "nc/eq".into(),
+        vars: 2,
+        terms: vec![
+            IdentityTerm {
+                coeff: 1,
+                factors: vec![Ref::identity(out, 2)],
+            },
+            IdentityTerm {
+                coeff: -1,
+                factors: vec![Ref::identity(virt, 2)],
+            },
+        ],
+    });
+    rel.validate().map_err(|e| format!("validate: {e:?}"))?;
+
+    let mut honest_vals = Values::new(&rel);
+    honest_vals
+        .set(&rel, lo, vec![10, 20, 30, 40])
+        .map_err(|e| format!("lo: {e:?}"))?;
+    honest_vals
+        .set(&rel, hi, vec![1, 2, 0, 3])
+        .map_err(|e| format!("hi: {e:?}"))?;
+    honest_vals
+        .set(&rel, out, vec![267, 534, 33, 812])
+        .map_err(|e| format!("out: {e:?}"))?;
+
+    let sources = Sources::CircleAll;
+    let mut tp = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+    let honest =
+        relation::prove_segmented(&mut tp, &rel, |_| Ok(honest_vals.clone()), &[], sources)
+            .map_err(|e| format!("honest prove: {e:?}"))?;
+    let mut tv = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+    verify_segmented(&mut tv, &rel, &[], &honest, sources)
+        .map_err(|e| format!("honest verify failed: {e:?}"))?;
+
+    match id {
+        1337 => {
+            let mut tampered = honest;
+            let sec = tampered
+                .segments
+                .get_mut(0)
+                .and_then(|s| s.reductions.get_mut(0))
+                .ok_or("missing Linear reduction section")?;
+            if sec.len() < 16 {
+                return Err("short Linear reduction section".into());
+            }
+            let orig = relation::K::from_le_bytes(sec[..16].try_into().map_err(|_| "16")?)
+                .ok_or("noncanonical K")?;
+            sec[..16].copy_from_slice(&(orig + relation::K::from_i64(1)).to_le_bytes());
+            let mut tv = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            match verify_segmented(&mut tv, &rel, &[], &tampered, sources) {
+                Err(relation::Error::LinearMismatch(c)) if c == virt => Ok(()),
+                other => Err(format!(
+                    "NC-1337: expected LinearMismatch({virt:?}), got {other:?}"
+                )),
+            }
+        }
+        #[cfg(feature = "controls")]
+        1338 => {
+            let mut forged_vals = honest_vals;
+            forged_vals
+                .set(&rel, out, vec![268, 534, 33, 812])
+                .map_err(|e| format!("forged out: {e:?}"))?;
+            // Direct NC-1338: forged virtual table with honest operand evaluations rejects at
+            // the Step 2.4 Linear check (`LinearMismatch`).
+            let mut tp = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            let forged_direct = relation::prove_segmented_forged_virtual(
+                &mut tp,
+                &rel,
+                |_| Ok(forged_vals.clone()),
+                &[],
+                sources,
+                virt,
+                0,
+                None,
+            )
+            .map_err(|e| format!("forged direct prove: {e:?}"))?;
+            let mut tv = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            match verify_segmented(&mut tv, &rel, &[], &forged_direct, sources) {
+                Err(relation::Error::LinearMismatch(c)) if c == virt => {}
+                other => {
+                    return Err(format!(
+                        "NC-1338 direct: expected LinearMismatch({virt:?}), got {other:?}"
+                    ));
+                }
+            }
+            // Adaptive NC-1338: compensate public operand 2 (`bias`) so Step 2.4 Linear check
+            // passes and pushes the forged evaluation onto `bias`; verifier must reject
+            // downstream with `PublicMismatch(bias)`.
+            let mut tp = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            let forged_adaptive = relation::prove_segmented_forged_virtual(
+                &mut tp,
+                &rel,
+                |_| Ok(forged_vals.clone()),
+                &[],
+                sources,
+                virt,
+                0,
+                Some(2),
+            )
+            .map_err(|e| format!("forged adaptive prove: {e:?}"))?;
+            let mut tv = Transcript::new(PUBLIC).map_err(|e| format!("t: {e:?}"))?;
+            match verify_segmented(&mut tv, &rel, &[], &forged_adaptive, sources) {
+                Err(relation::Error::PublicMismatch(c)) if c == bias => Ok(()),
+                other => Err(format!(
+                    "NC-1338 adaptive: expected PublicMismatch({bias:?}), got {other:?}"
+                )),
+            }
+        }
+        _ => Err(format!("unknown virtual linear control {id}")),
+    }
+}
+
 #[cfg(test)]
 #[test]
-fn rejects_nc_1335_to_nc_1336_segments() {
+fn rejects_nc_1335_to_nc_1338_segments_and_virtual_linear() {
     for id in [1335, 1336] {
         assert_eq!(run_segments(id), Ok(()), "NC-{id}");
     }
+    assert_eq!(run_virtual_linear(1337), Ok(()), "NC-1337");
+    #[cfg(feature = "controls")]
+    assert_eq!(run_virtual_linear(1338), Ok(()), "NC-1338");
 }
 
 /// E8-02f1b (controls only): forged one-layer byte-5 windows (T = 16) for the independent

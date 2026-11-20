@@ -10,12 +10,12 @@
 //! possibly shifted by `-width.min()` (RFC-0026 §3.4), so the selected-product claims
 //! are routed to RFC-0026 §4 step 7 instead of being opened here (RFC-0008 A2
 //! as amended for RFC-0026; every root is fixed before the first lookup draw).
-use super::{column, put, Check, Claims, Error, Ledger, Line, Reader, K};
+use super::{put, Check, Claims, Error, Ledger, Line, Reader, ResolvedColumns, K};
 use crate::lookup::{functionals, phase};
 use alloc::vec::Vec;
 use stele_field::{Field, Serialize, M31};
 use stele_hash::{AbsorbLabel, ChallengeLabel, Transcript};
-use stele_ir::relation::{Relation, Values};
+use stele_ir::relation::Relation;
 use stele_lookup::fraction::{self, LeafDescriptor, SelectedProduct};
 use stele_pcs::{verify_opening, Functional, PreparedSource, Source, VerifiedCertificate};
 use stele_sumcheck::parallel::{for_each_chunk, sum_ranges};
@@ -68,11 +68,11 @@ fn sigma(check: &Check, relation: &Relation) -> Vec<K> {
 
 /// Concatenated tuple column `i`: on each member block,
 /// `x_i(local) = column(ref.index(local)) + offset`; zero on the padding.
-fn originals(check: &Check, relation: &Relation, values: &Values) -> Result<Vec<Vec<K>>, Error> {
+fn originals(check: &Check, resolved: &ResolvedColumns<'_>) -> Result<Vec<Vec<K>>, Error> {
     let mut out = alloc::vec![alloc::vec![K::from_i64(0); 1 << check.m]; check.c];
     for member in &check.members {
         for (x, (r, offset)) in out.iter_mut().zip(&member.tuple) {
-            let col = column(relation, values, r.column)?;
+            let col = resolved.get(r.column)?;
             let shift = K::from_i64(*offset);
             let block = &mut x[member.offset..member.offset + (1 << member.m)];
             for_each_chunk(block, |start, chunk| {
@@ -128,7 +128,7 @@ fn compress(row: &[K], beta: K) -> K {
 pub(super) fn counts(
     check: &Check,
     relation: &Relation,
-    values: &Values,
+    resolved: &ResolvedColumns<'_>,
 ) -> Result<Vec<i64>, Error> {
     let key = |row: &[i64]| -> [u32; 2] {
         let mut key = [0; 2];
@@ -150,11 +150,7 @@ pub(super) fn counts(
     for member in &check.members {
         let mut xs = Vec::new();
         for (r, offset) in &member.tuple {
-            xs.push((
-                r,
-                column(relation, values, r.column)?,
-                M31::from_i64(*offset),
-            ));
+            xs.push((r, resolved.get(r.column)?, M31::from_i64(*offset)));
         }
         // Each position's table row is found in parallel and counted in order below.
         let mut rows = alloc::vec![usize::MAX; 1 << member.m];
@@ -352,21 +348,58 @@ fn route(check: &Check, z: &[K], members: &[K], claims: &mut Claims) {
     }
 }
 
+/// RFC-0026 A28 item 2: when a lookup check reads a virtual column, absorb each virtual
+/// member evaluation value into the transcript as it is sent (`AbsorbLabel::Final`;
+/// RFC-0028 §1.4 introduces no new transcript label). No-op when no member reads a virtual
+/// column, preserving pre-A28 proof bytes bit-identically.
+pub(super) fn absorb_virtual_members(
+    t: &mut Transcript<K>,
+    check: &Check,
+    relation: &Relation,
+    members: &[K],
+) -> Result<(), Error> {
+    let mut payload = Vec::new();
+    for (m_idx, (member, vals)) in check
+        .members
+        .iter()
+        .zip(members.chunks_exact(check.c))
+        .enumerate()
+    {
+        for (slot, ((r, _), val)) in member.tuple.iter().zip(vals).enumerate() {
+            if matches!(
+                relation.columns[r.column.0 as usize].kind,
+                stele_ir::relation::Kind::Virtual(_)
+            ) {
+                if payload.is_empty() {
+                    payload.extend_from_slice(&check.id.to_le_bytes());
+                }
+                payload.extend_from_slice(&(m_idx as u32).to_le_bytes());
+                payload.push(slot as u8);
+                payload.extend_from_slice(&val.to_le_bytes());
+            }
+        }
+    }
+    if !payload.is_empty() {
+        t.absorb(AbsorbLabel::Final, &payload)?;
+    }
+    Ok(())
+}
+
 /// Produce one lookup section; never checks the verifier's equations itself.
-/// `counts` is [`counts`] of `(check, relation, values)`, made once in step 3.
+/// `counts` is [`counts`] of `(check, relation, resolved)`, made once in step 3.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn prove(
     t: &mut Transcript<K>,
     check: &Check,
     relation: &Relation,
-    values: &Values,
+    resolved: &ResolvedColumns<'_>,
     counts: &[i64],
     mu: (&PreparedSource<'_, K>, &VerifiedCertificate<K>),
     out: &mut Vec<u8>,
     claims: &mut Claims,
 ) -> Result<(), Error> {
     let p = start(t, check, mu.1, Nonce::Prove(out))?;
-    let xs = originals(check, relation, values)?;
+    let xs = originals(check, resolved)?;
     let sigma = sigma(check, relation);
     let one = K::from_i64(1);
     // compress(row) without the row: the same Horner fold over the tuple columns.
@@ -418,9 +451,11 @@ pub(super) fn prove(
     let mut members = split(check, &xs, &selected.point)?;
     #[cfg(test)]
     if let Some(other) = &check.split {
-        members = split(check, &originals(check, relation, other)?, &selected.point)?;
+        let other_resolved = ResolvedColumns::borrowed(relation, other);
+        members = split(check, &originals(check, &other_resolved)?, &selected.point)?;
     }
     put(out, &members);
+    absorb_virtual_members(t, check, relation, &members)?;
     route(check, &selected.point, &members, claims);
     let pieces =
         functionals::pieces(mu.0.source(), &table.point, check.t).map_err(Error::Lookup)?;
@@ -478,6 +513,7 @@ pub(super) fn verify(
         .map_err(FRACTION)?;
     let members = reader.ks(check.members.len() * check.c)?;
     check_members(check, &selected, &members)?;
+    absorb_virtual_members(t, check, relation, &members)?;
     route(check, &selected.point, &members, claims);
     let source: &Source<K> = mu.record().source();
     let pieces = functionals::pieces(source, &table.point, check.t).map_err(Error::Lookup)?;

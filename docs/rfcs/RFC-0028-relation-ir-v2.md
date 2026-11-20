@@ -240,6 +240,14 @@ verifier.
 
 ## 8. Amendment log
 
+- **E18-02 implementation note (`Linear` reductions, `NC-1337..1338`):** For a
+  `Def::Linear` virtual column (which has no sumcheck of its own), `NC-1337` (+1 on one
+  sent operand evaluation) and direct `NC-1338` (forged virtual column values with honest
+  operand evaluations) reject with `LinearMismatch` at the Step 2.4 `Linear` check; an
+  adaptive `NC-1338` prover that compensates a sent operand evaluation to pass the `Linear`
+  check rejects at that operand's downstream discharge (`PublicMismatch`, `Sumcheck`, or
+  `Pcs`). `NC-1338` against `Pointwise`/`Contraction` sumcheck reductions (E18-03/E18-04)
+  rejects with `RoundSumMismatch` or `FinalEvaluationMismatch`.
 - **Acceptance (development tier, ADR-150, task E18-01):** Accepted for the development
   tier (RFC-0027 §2) together with companion amendments RFC-0008 A9, RFC-0026 A27/A28,
   and RFC-0012 A19. Segment controls `NC-1335..1336` are executed under RFC-0026 A27;
