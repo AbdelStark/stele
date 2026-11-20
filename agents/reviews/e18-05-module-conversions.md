@@ -57,3 +57,14 @@ Bet B1 (`docs/plan.md` §2) kill criterion (`< 4x` on L2) is recorded in `ADR-15
   4. `prove_segmented_forged` is strictly gated behind `#[cfg(feature = "controls")]`; `verify_segmented` is unchanged; all negative controls remain non-vacuous.
   5. All L1/L2a/L2b/L3a/L3b static accounting numbers in `ADR-151`, `bench/scoreboard.md`, and §2 above match `bench/ledger/e18-05-static-accounting-*.json` verbatim; zero `unsafe`, zero floats, zero Draft RFC refs in `.rs`.
   6. Non-blocking nits addressed: added `*summed > MAX_VARS` defensive guard in `stele-ir::column_magnitude_cached` and updated the `rmsnorm.rs` / Row 2 doc comments (`Es` multiple of `OUT_RADIX = 12`, `S_pq` row-domain byte limbs, virtual `Jg` limbs). The remaining `Chain::declare_virtual` `def_bound` heuristic note is harmless because `Relation::validate()` independently enforces exact static bounds.
+
+## 5. Integration fixes after the full suite and the parity gate
+
+The targeted runs of §3 did not include the whole workspace suite or the CPU/CUDA parity gate. Run on Linux (32 threads) and on one H100, they found four stale references, fixed in this change. No protocol byte moves beyond what the conversion itself moves.
+
+1. **Weight reads on L0** (`crates/stele-cli/tests/stages.rs`): the count is 5. Materialising the virtual matmul accumulators is a physical weight pass, and INV-7 reports it.
+2. **Static accounting against a live run** (`crates/stele-prover/src/accounting.rs`): the L1 comparison reads `bench/ledger/e18-05-dev-synthetic-8layer-24t.json`, a run of this tree on the 24-thread reference class (Slurm job 7240). Committed cells (8,369,600), lookup positions (12,534,720) and all 21 per-check counters equal the static report. The `gated` attribution assertion counts committed columns, since no `Compose` remains there.
+3. **Standalone RmsNorm fixture** (`crates/stele-reductions/tests/dev_modules.rs`): the input column is disciplined by a range, or by 16-bit limbs and a compose when it is wide, as in the in-crate tests.
+4. **CPU half of the parity corpus** (`tests/parity/cpu-reference.json` and its copy under `research/gpu-gating/proof-corpus/`): the conversion changes the dev-zk relation, so all 50 reference proofs change (2,360,978 to 2,353,914 bytes each). Model identities and public bundles are unchanged. The manifest is re-recorded from this tree (Slurm job 7215, 16 CPUs; SHA-256 `357505bd55ce0ffe1c152cf36634ab6e7bb322ae00394b7c1cd9ef5ef467b23a`). The top of the stack reproduces the same 50 rows (job 7216).
+
+On L1 the prove time on the 24-thread class is 14.3 s (15.1 s, 14.9 s and 15.3 s in an earlier job), against 12.20 s in `e17-01-dev-synthetic-8layer-24t` before the conversion: fewer committed cells (1.87x), more reduction work. The engine tasks that follow (`E20-01`, `E20-02`) take that back.

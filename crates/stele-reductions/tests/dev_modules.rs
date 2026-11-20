@@ -6,7 +6,7 @@ use stele_cqis::execution::capture::{Norm, Quantised};
 use stele_cqis::execution::Executor;
 use stele_cqis::functions::Descriptor;
 use stele_cqis::model::{ArtifactLayout, Model, Preparation, Role, Scales};
-use stele_ir::relation::{check, Kind, Module, Relation, Values, Width};
+use stele_ir::relation::{check, Compose, Kind, Module, Range, Relation, Values, Width};
 use stele_reductions::development::embedding::{Embedding, EmbeddingCapture, EmbeddingPlan};
 use stele_reductions::development::rmsnorm::{RmsNorm, RmsNormPlan, RmsNormRow};
 
@@ -188,6 +188,35 @@ fn accepts_executor_embedding_and_rmsnorm_on_family_one_fixtures() {
             let log = (tokens.len() * d.next_power_of_two()).trailing_zeros() as u8;
             let group = relation.add_group("L0/residual", log);
             let x = relation.add_column("R", Kind::Witness(group), Width::signed(xbits), log);
+            // The carried input is disciplined by its producer; here by a range, or by
+            // 16-bit limbs when it is wide (RFC-0028 §2.2).
+            let limbs = (xbits > 16).then(|| {
+                let lo =
+                    relation.add_column("R/lo", Kind::Witness(group), Width::unsigned(16), log);
+                let hi = relation.add_column(
+                    "R/hi",
+                    Kind::Witness(group),
+                    Width::signed(xbits - 16),
+                    log,
+                );
+                relation.composes.push(Compose {
+                    name: "R/compose".into(),
+                    column: x,
+                    limbs: vec![(lo, 0), (hi, 16)],
+                });
+                (lo, hi)
+            });
+            let ranged = match limbs {
+                Some((lo, hi)) => vec![(lo, Width::unsigned(16)), (hi, Width::signed(xbits - 16))],
+                None => vec![(x, Width::signed(xbits))],
+            };
+            for (column, width) in ranged {
+                relation.ranges.push(Range {
+                    name: format!("R/range/{}", column.0),
+                    column,
+                    width,
+                });
+            }
             let plan = RmsNormPlan {
                 descriptor,
                 gains,
@@ -201,7 +230,14 @@ fn accepts_executor_embedding_and_rmsnorm_on_family_one_fixtures() {
                 .iter()
                 .map(|r| r.input.iter().map(|&v| i64::from(v)).collect())
                 .collect();
-            values.set(&relation, x, padded(&input, d)).expect("input");
+            let input = padded(&input, d);
+            if let Some((lo, hi)) = limbs {
+                let low = input.iter().map(|&v| v.rem_euclid(1 << 16)).collect();
+                let high = input.iter().map(|&v| v.div_euclid(1 << 16)).collect();
+                values.set(&relation, lo, low).expect("R/lo");
+                values.set(&relation, hi, high).expect("R/hi");
+            }
+            values.set(&relation, x, input).expect("input");
             module
                 .assign(&relation, &rows, &mut values)
                 .expect("assign");

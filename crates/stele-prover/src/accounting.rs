@@ -630,7 +630,8 @@ mod tests {
         assert_eq!(acc.lookup_positions, report.engine.lookup_positions);
         assert_eq!(acc.lookups_by_check, report.engine.lookup_checks);
 
-        // Exact parity with the pinned E17-01 L1 ledger (`eight-layer`, T = 64, checked 0..64).
+        // Exact parity with the live L1 ledger at the RFC-0028 commit rule (`eight-layer`,
+        // T = 64, checked 0..64; task E18-05).
         let eight = cases
             .iter()
             .find(|c| c["name"] == "eight-layer")
@@ -639,9 +640,9 @@ mod tests {
         let s8 = Scales::decode(&m8, span(eight, "scales")).expect("scales8");
         let v8 = extract_vectors_from_artifact(&m8, span(eight, "artifact")).expect("vecs8");
         let acc8 = account_model(&m8, &s8, Some(&v8), 64, 0..64).expect("acc8");
-        // Verify exact totals match `bench/ledger/e17-01-dev-synthetic-8layer-24t.json`.
+        // Verify exact totals match `bench/ledger/e18-05-dev-synthetic-8layer-24t.json`.
         let l1_ledger: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../bench/ledger/e17-01-dev-synthetic-8layer-24t.json"
+            "../../../bench/ledger/e18-05-dev-synthetic-8layer-24t.json"
         ))
         .expect("l1 ledger");
         let kc = &l1_ledger["kernel_counters"];
@@ -653,7 +654,7 @@ mod tests {
             acc8.lookup_positions,
             kc["lookup_positions"].as_u64().expect("lookup_positions")
         );
-        // Also verify every per-check counter matches E17-01 in exact check order and count.
+        // Also verify every per-check counter matches that run in exact check order and count.
         let kc_check_count = kc
             .as_object()
             .expect("kc object")
@@ -695,21 +696,23 @@ mod tests {
             assert_eq!(
                 Some(*pos),
                 kc[&key].as_u64(),
-                "mismatch on E17-01 check counter {key}"
+                "mismatch on L1 check counter {key}"
             );
         }
         // Prefix checked window (checked.end < length -> next = None) is accepted (F3).
         let acc_prefix = account_model(&m8, &s8, Some(&v8), 64, 4..32).expect("prefix checked");
         assert_eq!(acc_prefix.tokens, 64);
         assert!(acc_prefix.committed_cells > 0);
-        // Compose attribution: GatedProduct's `L{l}/gated/up` belongs to `gated`, not `up` (F4).
+        // Attribution: GatedProduct's `L{l}/gated/*` columns belong to `gated`, not `up` (F4).
+        // Its limb recombinations are virtual columns (task E18-05), so no Compose remains.
         assert_eq!(acc8.by_module["up"].composes, 0);
-        assert!(acc8.by_module["gated"].composes >= 8);
-        assert!(acc8.by_module.contains_key("gated_row"));
         assert_eq!(
             acc8.by_module["gated"].composes + acc8.by_module["gated_row"].composes,
-            24
+            0
         );
+        // RFC-0026 §5 row 9 commits `up_high`, `carry` and `activation` per layer.
+        assert_eq!(acc8.by_module["gated"].witness_columns, 24);
+        assert!(acc8.by_module.contains_key("gated_row"));
         // Artifact header and length validation rejects wrong magic, short header,
         // wrong record count, or truncated slice (N2/F3).
         let mut bad_magic = a_raw.to_vec();
