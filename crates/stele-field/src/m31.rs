@@ -76,8 +76,15 @@ impl M31 {
 impl Field for M31 {
     const MODULUS: u32 = (1 << 31) - 1;
 
+    #[inline]
     fn from_i64(value: i64) -> Self {
-        Self(value.rem_euclid(i64::from(Self::MODULUS)) as u32)
+        // Inside (-p, p) the residue needs one conditional add, not a division.
+        let p = i64::from(Self::MODULUS);
+        if -p < value && value < p {
+            Self((value + ((value >> 63) & p)) as u32)
+        } else {
+            Self(value.rem_euclid(p) as u32)
+        }
     }
 
     fn to_i64_signed(self) -> Option<i64> {
