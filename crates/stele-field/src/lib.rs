@@ -31,6 +31,8 @@ pub trait Serialize: Sized {
 /// Scalar kernel contract (RFC-0003 §6).
 pub trait Field:
     Copy
+    + Send
+    + Sync
     + Add<Output = Self>
     + Sub<Output = Self>
     + Mul<Output = Self>

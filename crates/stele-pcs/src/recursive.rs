@@ -2696,8 +2696,12 @@ fn absorb_certified_opening_statement<K: ChallengeField>(
     Ok(())
 }
 
-/// Recompute ONLY `queried` level-0 columns from `message` by streaming one row at a time
-/// into a single reusable `N_0`-element buffer (full `R_0 × N_0` codeword is NEVER resident).
+/// Rows per recompute task: at most `rows / RECOMPUTE_BLOCK` row buffers are resident.
+const RECOMPUTE_BLOCK: usize = 128;
+
+/// Recompute ONLY `queried` level-0 columns from `message`, one row at a time into a
+/// reusable `N_0`-element buffer per block of rows (the full `R_0 × N_0` codeword is NEVER
+/// resident). Blocks run on the work pool; every byte has one writer.
 fn recompute_queried_columns(
     spec: LevelSpec,
     message: &[M31],
@@ -2714,17 +2718,54 @@ fn recompute_queried_columns(
     let payloads_len = mul_usize(queried.len(), col_width)?;
     let mut payloads = reserve_vec(payloads_len)?;
     payloads.resize(payloads_len, 0u8);
-    let mut row_buf = reserve_vec::<M31>(n)?;
-    for (r, row) in message.chunks_exact(cols).enumerate() {
-        code.encode_into(row, &mut row_buf)?;
-        let row_off = r * 4;
-        for (q_idx, &col_idx) in queried.iter().enumerate() {
-            let j = usize::try_from(col_idx).map_err(|_| RecursiveError::Capacity)?;
-            let dst = q_idx * col_width + row_off;
-            payloads[dst..dst + 4].copy_from_slice(&row_buf[j].to_le_bytes());
+    let mut columns = reserve_vec(queried.len())?;
+    for &col_idx in queried {
+        columns.push(usize::try_from(col_idx).map_err(|_| RecursiveError::Capacity)?);
+    }
+    // Each block of rows owns its 4-byte slots of every queried column.
+    let block_count = rows.div_ceil(RECOMPUTE_BLOCK);
+    let mut blocks: Vec<Vec<&mut [u8]>> = reserve_vec(block_count)?;
+    for _ in 0..block_count {
+        blocks.push(reserve_vec(queried.len())?);
+    }
+    if col_width > 0 {
+        for column in payloads.chunks_mut(col_width) {
+            for (block, piece) in blocks
+                .iter_mut()
+                .zip(column.chunks_mut(RECOMPUTE_BLOCK * 4))
+            {
+                block.push(piece);
+            }
         }
     }
-    let peak_bytes = add_usize(mul_usize(row_buf.capacity(), 4)?, payloads.capacity())?;
+    let fill = |(mut outs, block): (Vec<&mut [u8]>, &[M31])| -> Result<(), RecursiveError> {
+        let mut row_buf = reserve_vec::<M31>(n)?;
+        for (r, row) in block.chunks_exact(cols).enumerate() {
+            code.encode_into(row, &mut row_buf)?;
+            for (out, &j) in outs.iter_mut().zip(&columns) {
+                out[r * 4..r * 4 + 4].copy_from_slice(&row_buf[j].to_le_bytes());
+            }
+        }
+        Ok(())
+    };
+    let block_len = mul_usize(RECOMPUTE_BLOCK, cols)?.max(1);
+    #[cfg(feature = "std")]
+    let resident = {
+        blocks
+            .into_par_iter()
+            .zip(message.par_chunks(block_len))
+            .try_for_each(fill)?;
+        rayon::current_num_threads().min(block_count)
+    };
+    #[cfg(not(feature = "std"))]
+    let resident = {
+        blocks
+            .into_iter()
+            .zip(message.chunks(block_len))
+            .try_for_each(fill)?;
+        1
+    };
+    let peak_bytes = add_usize(mul_usize(mul_usize(resident, n)?, 4)?, payloads.capacity())?;
     Ok((payloads, peak_bytes))
 }
 

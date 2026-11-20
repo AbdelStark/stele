@@ -5,6 +5,8 @@
 
 extern crate alloc;
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use rayon::prelude::*;
 use stele_field::{Field, M31};
 mod encoder;
 mod measurement;
@@ -372,6 +374,13 @@ fn bit_reverse<K>(values: &mut [K], log: u32) {
     }
 }
 
+/// A forward transform of at least this many values splits its butterflies on the work pool.
+#[cfg(feature = "std")]
+const PARALLEL_LEN: usize = 1 << 16;
+/// Values per butterfly task.
+#[cfg(feature = "std")]
+const PARALLEL_GRAIN: usize = 1 << 12;
+
 fn transform_recorded<K: Field>(
     values: &mut [K],
     inverse: bool,
@@ -413,7 +422,7 @@ fn transform_recorded<K: Field>(
         bit_reverse(values, log);
         for level in levels.iter().rev() {
             let width = 2 * level.len();
-            for block in values.chunks_exact_mut(width) {
+            let butterflies = |block: &mut [K]| {
                 block[level.len()..].reverse();
                 for (j, twiddle) in level.iter().enumerate() {
                     let opposite = width - 1 - j;
@@ -422,7 +431,34 @@ fn transform_recorded<K: Field>(
                     block[j] = a + b;
                     block[opposite] = a - b;
                 }
+            };
+            // Blocks, and the pairs of one block, are independent: any split gives the
+            // same values as the loop.
+            #[cfg(feature = "std")]
+            if values.len() >= PARALLEL_LEN {
+                if width <= PARALLEL_GRAIN {
+                    values
+                        .par_chunks_exact_mut(width)
+                        .with_min_len(PARALLEL_GRAIN / width)
+                        .for_each(butterflies);
+                } else {
+                    for block in values.chunks_exact_mut(width) {
+                        let (low, high) = block.split_at_mut(level.len());
+                        low.par_iter_mut()
+                            .zip(high.par_iter_mut())
+                            .zip(level.par_iter())
+                            .with_min_len(PARALLEL_GRAIN)
+                            .for_each(|((a, b), twiddle)| {
+                                let (x, y) = (*a, b.mul_m31(*twiddle));
+                                *a = x + y;
+                                *b = x - y;
+                            });
+                        high.reverse();
+                    }
+                }
+                continue;
             }
+            values.chunks_exact_mut(width).for_each(butterflies);
         }
     }
     measured.release(level_bytes);
@@ -465,6 +501,39 @@ mod tests {
             multiply(generator_power(1 << 30), generator_power(1 << 30)),
             (M31::ONE, M31::ZERO)
         );
+    }
+
+    /// A row long enough for the work-pool split (`N = 2^17`) against the independent
+    /// basis-factor formula, in both split regimes.
+    #[test]
+    fn matches_reference_basis_factors_on_a_long_row() {
+        let m = 15u32;
+        let coeffs: Vec<M31> = (0..1i64 << m)
+            .map(|i| M31::from_i64((i * 7919 + 13) % 100_003 - 50_000))
+            .collect();
+        let cc = CircleCoeff::new(m, 2).expect("circle coeff");
+        let cw = cc.encode(&coeffs).expect("encode");
+        assert_eq!(cw.len(), 1 << 17);
+        for j in [
+            0usize,
+            1,
+            4095,
+            4096,
+            65_535,
+            65_536,
+            100_003,
+            (1 << 17) - 1,
+        ] {
+            let factors = cc.basis_factors(j).expect("factors");
+            let mut dot = M31::ZERO;
+            for (idx, &coeff) in coeffs.iter().enumerate() {
+                let g = (0..m as usize)
+                    .filter(|k| (idx >> k) & 1 == 1)
+                    .fold(M31::ONE, |g, k| g * factors[k]);
+                dot = dot + coeff * g;
+            }
+            assert_eq!(dot, cw[j], "col={j}");
+        }
     }
 
     /// RFC-0029 §1.2 / E19-03: `CircleCoeff` encodes a coefficient row identically to
