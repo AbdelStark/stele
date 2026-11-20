@@ -4575,3 +4575,35 @@ Key choices:
   `prove_window` drops `Executor` immediately after `capture`.
 - Registered `NC-1335` and `NC-1336` in the negative-control catalogue; deterministic
   across repeated runs and thread counts. No security level or profile promotion granted.
+
+## ADR-149 — Gate M1 first light on Llama-3.1-8B-Instruct (E22-04)
+
+Gate M1 (RFC-0027 §4, task E22-04) requires proving and verifying rung L3a — a real prompt
+and its greedy continuation on `Meta-Llama-3.1-8B-Instruct` at window length `T = 64` —
+through the `stele prove-dev` / `stele verify-dev` CLI under the development profile on a
+single CPU host within `512 GB` RAM, with statement tampers rejected on that proof and a
+validated ledger with stage times and counters.
+
+Recorded Gate M1 completion at the development tier in
+[`bench/ledger/e22-04-dev-llama31-8b-64t.json`](../../bench/ledger/e22-04-dev-llama31-8b-64t.json)
+(reviewed in [E22-04 review](../reviews/e22-04-m1-llama31-8b.md)). Key facts:
+- Prepared `Meta-Llama-3.1-8B-Instruct` (32 layers, `d = 4096`, `hidden = 14336`, 32 query
+  heads / 8 KV heads, `head_width = 128`, `V = 128256`, int8 weights, int16 gains, int24
+  wide residuals under RFC-0004 A14, A15 grouped rows of 128) with pinned SHA-256 digests
+  (`cqis_id = 07b05976df2ffb906c917dc12d1b3dcab4038641346b1dc5727e9e164055dc72`,
+  `model = 4e5b37100afa5fb3e16d4754591ae04cd633c19629794a97a5e0842784c4db16`).
+- Verified full-step greedy parity against an independent Python integer oracle on the
+  23-token prompt and 41-token greedy continuation (`T = 64`, checked `22..64`,
+  `next = 41328`) before proving.
+- Proved with `--dev-profile 3` (`CircleAll`) and `--segment-layers 1` (RFC-0026 A25/A26/A27)
+  on one 112-thread CPU allocation (`x86_64 Intel(R) Xeon(R) Platinum 8480CL`) in `8904.22 s`
+  at `421.9 GB` (`392.9 GiB <= 512 GiB`) peak RSS, producing a `415,769,000`-byte proof
+  (`5,331,956,672` committed cells / `83,311,823` per token, `13,815,824,896` lookup
+  positions / `215,872,264` per token, `35` weight reads).
+- Verified `YES` via `stele verify-dev` in `1336.66 s` (`38.0 GB` peak RSS) and rejected all
+  four supplied-proof statement tampers (`next`, `token`, `weight`, `gain`) via
+  `rejects_tampers_on_a_supplied_proof` on the exact L3a bundle and proof. Controls
+  `NC-1300..1310` and `NC-1335..1336` remain covered through the development verifier in
+  `tests/negative-controls`.
+- No security level, soundness admission, or profile promotion is claimed (development tier
+  only, RFC-0026 §1.2, RFC-0027 §2).
