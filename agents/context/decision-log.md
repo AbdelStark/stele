@@ -4902,3 +4902,45 @@ Consequences:
 - The single trait of E20-03's first acceptance line is not built; the task stays in
   progress.
 
+## ADR-158 — Accept RFC-0026 A30: under profile byte 6 a lookup check above `2^25` positions has its own instance bound (task E20-26)
+
+Context: A8 splits a lookup check only above `2^30` positions. A check is padded to a
+power of two and the prover builds its fraction trees whole. L2a's largest check holds
+74,202,368 positions and was padded to `2^27`: 45% of its leaves were padding, and its
+trees were the prover's peak memory. Gate M2 caps the L2a proof at 4 MB and peak RSS at
+4 GB.
+
+Decision:
+- **Accept A30 at the development tier** (RFC-0027 §2). Under profile byte 6 a check of
+  `N` positions, `m = ceil(log2 N)`, takes the bound `B_c = min(B, max(F, m - 2))` with
+  the split floor `F = 25`. A check of at most `2^25` positions is unchanged; a larger
+  one has at most four instances up to `m = B + 2`.
+- **Byte 6 only.** The independent review found that the rule on every profile would
+  change byte-5 plans, which A15 §6.3 fixes at one instance per check and the
+  independent replay of `stele-verifier` derives by itself. Bytes 0 to 5 keep A8's `B`.
+- **The floor is set by L2a's proof budget.** At `F = 25` the L2a proof is 3,971,461
+  bytes, 28,539 below Gate M2's 4 MB; at `F = 24` it is 4,025,565. A change of the L2a
+  relation that moves a check across `2^25` positions, or adds an instance, moves the
+  proof size, and `F` is then decided again by an amendment: every proof with a check
+  above the floor changes with it.
+- **Alternatives.** `max(F, m - 1)` halves the added bytes and leaves the largest
+  instance at `2^26`; it was probed and not recorded in a ledger. A tree builder that
+  skips an all-padding suffix would remove the padding with no new byte; it would not
+  lower the largest real tree and is not built. The form whose bytes do not grow with
+  the instance count is task `E20-09`.
+- **Lanes (RFC-0027 §5).** The task is in lane E and edits the relation engine, which
+  lane P owns; its branch sits on the branch of E18-11 and E20-25. One independent
+  review covers it (`agents/reviews/e20-26-check-instance-bound.md`, two passes,
+  ACCEPT).
+
+Consequences:
+- On L2a under byte 6 one check becomes three instances. Ledgers `e20-26-*` against
+  `e18-11-*` on the reference class: prove 26.39 s against 28.09 s, and 21.84 s against
+  23.06 s with malloc on huge pages; peak RSS 8.9 GiB against 10.7 GiB; proof 3,971,461
+  bytes against 3,927,613.
+- The L2a proof under byte 6 has new bytes (SHA-256 `511a4e8b…4fa5`); its public input
+  is unchanged. The six pinned L0 and L1 digests reproduce.
+- Proof bytes on L2b and L3 shapes grow by an estimated 0.5 to 0.7 MB (review record);
+  they are not measured.
+- No security level or profile promotion is granted.
+

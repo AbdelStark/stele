@@ -740,8 +740,9 @@ fn rejects_tampers_on_a_supplied_proof() {
         rejects("gain", &gain, &statement),
         Error::Engine(_)
     ));
-    // RFC-0026 A8, A30: one member value of every lookup instance, so the instances of a
-    // split check are among them. A section ends with its member values, 16 bytes each.
+    // RFC-0026 A8, A30: the last value of every lookup section, so the instances of a
+    // split check are among them. Under byte 6 a section ends with its member values, or
+    // with a prefix sumcheck when its table is not a power of two.
     if let container::Decoded::V2(honest) = container::decode_any(&proof).expect("container") {
         let clock = Instant::now();
         let mut sections = 0;
@@ -750,15 +751,21 @@ fn rejects_tampers_on_a_supplied_proof() {
                 let mut bad = honest.clone();
                 bad.segments[s].lookups[j][section.len() - 16] ^= 1;
                 let error = verify(&public, &statement, &bad.encode());
+                let reason = format!("{error:?}");
                 assert!(
-                    matches!(error, Err(Error::Engine(_))),
-                    "segment {s} lookup {j}: {error:?}"
+                    if public.sources == Sources::CircleRecursive {
+                        reason == "Err(Engine(MemberSumMismatch))"
+                            || reason == "Err(Engine(Sumcheck(FinalEvaluationMismatch)))"
+                    } else {
+                        matches!(error, Err(Error::Engine(_)))
+                    },
+                    "segment {s} lookup {j}: {reason}"
                 );
                 sections += 1;
             }
         }
         eprintln!(
-            "lookup member values: {sections} instances, each refused by the engine, in {} ms",
+            "last value of each lookup section: {sections} sections, each refused, in {} ms",
             clock.elapsed().as_millis()
         );
     }

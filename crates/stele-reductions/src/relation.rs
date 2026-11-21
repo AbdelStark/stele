@@ -693,6 +693,8 @@ pub(crate) struct Check {
     /// A14: the `(β, α)` round's grinding bits, from the expected context only;
     /// 0 (no nonce) outside `Sources::CircleAllGrind`.
     grind: u8,
+    /// `Some(j)` for instance `j` of a split check (A8), whose name ends in `/inst<j>`.
+    instance: Option<usize>,
     /// Test-only malicious-prover seam: added to the committed count of row 0.
     #[cfg(test)]
     skew: i64,
@@ -879,6 +881,7 @@ fn check(
         k,
         layout,
         grind,
+        instance: None,
         #[cfg(test)]
         skew: 0,
         #[cfg(any(test, feature = "controls"))]
@@ -982,7 +985,7 @@ fn build_a8_checks(
             } else {
                 base_name.clone()
             };
-            checks.push(check(
+            let mut instance = check(
                 id_base | idx,
                 source_base + idx,
                 name,
@@ -990,7 +993,9 @@ fn build_a8_checks(
                 t,
                 entries.clone(),
                 sources,
-            )?);
+            )?;
+            instance.instance = multi.then_some(inst_idx);
+            checks.push(instance);
         }
     }
     Ok(checks)

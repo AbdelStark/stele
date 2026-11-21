@@ -2833,12 +2833,13 @@ Task: E19-04. Decision: ADR-154.
 
 ### A30 — Under profile byte 6 a lookup check above `2^25` positions has its own instance bound
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task: E20-26.
+Status: Accepted (development tier, RFC-0027 §2; task E20-26). Decision: ADR-158.
+Review: [instance bound of a check](../../agents/reviews/e20-26-check-instance-bound.md).
 Motivation: A8 splits a check only above `2^B = 2^30` positions. A check is padded to a
 power of two and the prover builds its fraction trees whole. The largest check of L2a
 (`range_8`, 74,202,368 positions) is padded to `2^27`, so 45% of its leaves are padding.
 On L2a under byte 6, with the rule against without it (ledgers `e20-26-*` against
-`e18-11-*`, 24-thread reference class): prove 26.40 s against 28.10 s, the lookup stage
+`e18-11-*`, 24-thread reference class): prove 26.39 s against 28.09 s, the lookup stage
 8.13 s against 9.70 s, prover peak RSS 8.9 GiB against 10.7 GiB.
 
 Replacement text, A8, sentence "The plan fixes an instance bound `B` (30 in the
@@ -2854,7 +2855,7 @@ Replacement text, A8, Control, sentence "At `B = 30` only a check above `2^30` p
 splits, and no test builds one.":
 
 > "At `B = 30` a check splits above `2^30` positions, and under profile byte 6 above
-> `2^25` (A30). No test builds a check that large."
+> `2^25` (A30). No test proves a check that large; two tests plan one."
 
 Scope: the rule is in the recursive plan of A29 only. The plain and segmented plans of
 bytes 0 to 5 keep A8's `B`: A15 §6.3 fixes one instance per check there, and the
@@ -2885,7 +2886,8 @@ count.
 Controls: NC-1341 (A8), a member value moved across an instance boundary. It runs under
 `B = 2`, where `B_c = B`. No binding is added. The joined recursion proves cut members
 under plan bounds 1 to 6 and rejects four tampers of them
-(`rejects_tampers_of_split_checks_under_small_bounds`). The L2a ledger job changes one
-member value of every lookup instance of the proof, the three of the split check among
-them.
+(`rejects_tampers_of_split_checks_under_small_bounds`). The ledger job's control
+changes the last value of every lookup section of the proof. On L2a that is a member
+value in 20 of the 23 sections, the three of the split check among them, and a prefix
+sumcheck final in three. The `e20-26-*` ledgers were recorded before this control.
 Affected tasks: E20-26, E20-09. Promotion to `standard`: not granted (Workflow 10).

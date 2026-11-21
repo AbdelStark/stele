@@ -305,5 +305,179 @@ Design questions:
 - `max(F, m - 1)` was probed and not recorded in a ledger, so no figure is given for it.
 - A tree builder that skips an all-padding suffix is the alternative without new bytes. It would not lower the largest real tree, and is not built.
 
-The resolution is sent back to the same reviewer; its second record is appended below
-when it returns.
+The resolution was sent back to the same reviewer; its second record follows.
+
+## Second pass
+
+- **Audited commit:** `c4907fe6` on `task/E20-26-check-instance-bound`, as `git diff aa00db2b c4907fe6`. The three commits between `34a73902` and `aa00db2b` belong to other tasks and are outside this pass. Line numbers are those of `c4907fe6`.
+- **Reviewer:** the same independent agent; did not write the change
+- **Verdict:** **ACCEPT** at the development tier (five LOW findings, none blocking; F10 is corrected before the status line changes)
+
+### Summary
+
+F1 is closed. Under profile bytes 0 to 5 the engine plans what A8 planned and what the independent replay derives, at every size up to `2^30` positions per check. The instruments that showed the break in the first pass now pass. F2, F3, F4 and F8 are closed. F5, F6 and F7 are closed but for F10, F14 and F13. F9 waits for acceptance, as it should. The record above the Resolution reads as the text I returned; I read it through and did not compare it by machine.
+
+Five LOW findings follow (F10 to F14). F10 is four figures of A30 that are not the cited ledgers' figures. It belongs in the commit that appends this section, because Accepted text is not edited in place. The others fit the same commit or the task record.
+
+Evidence labels are those of the first pass. **[ran, arm64]** is the same Apple M4 Max on a detached worktree of `c4907fe6` with no changed file. The host was less loaded (load 3 to 35); its times are still not evidence. **[ran, arm64, instrument]** is a scratch copy of `c4907fe6` with one of:
+
+- the first pass's review tests, rewritten per profile;
+- a public view of the plain and segmented plans, to compare them with `stele_verifier::plan`;
+- the floor lowered to 3, or set to 24 for one L2a proof;
+- two tests in the prover's test file that present a proof under another profile's or another segmentation's public file;
+- 31 mutants;
+- the proof editor.
+
+### 1. F1: bytes 0 to 5 against the replay [read; ran, arm64; ran, arm64, instrument]
+
+- `build_a8_checks` takes a check's own bound only when `sources == Sources::CircleRecursive` (`relation.rs:914`). That value reaches it from `plan_recursive_with_bound` alone, as a literal (`relation_recursive.rs:506`). `plan_with_bound` and `plan_segmented_with_bound` refuse it (`relation.rs:1011`, `3468`).
+- On 600 random relations of one or two segments, the engine's plain and segmented plans under `Expander`, `Circle`, `CircleAll` and `CircleAllGrind` equal `Plan::derive` and `SegmentedPlan::derive`. They agree in identifier, bits, arity, rows, `k`, multiplicity identifier and each member's column, size and offset; under byte 5 also in grinding bits and multiplicity row exponent.
+- That is 1,592 checks, 634 of them above `2^25` positions, the largest of exactly `2^30`. No member is cut and no check is split.
+- Above `2^30` positions (43 relations) the replay answers `Unsupported` and the engine splits by A8. That difference is older than A30 and unchanged.
+- The E8-02f1 replay passes at `c4907fe6`. It also passes with the floor lowered to 3, where at `34a73902` it answered `ProofShape`. With the floor at 3 the negative-control suite passes whole (149 tests, NC-1325 among them), and so does the static accounting parity test.
+
+### 2. What the scoping opens [read; ran, arm64, instrument]
+
+Nothing I could find.
+
+- The source set that selects the rule is the one that selects the engine (`crates/stele-prover/src/development.rs:779`, `1038`). It is in the public input, which the transcript absorbs first and the container header's digest covers.
+- With the floor at 3, byte 6 splits and bytes 3 and 5 do not. Each one-layer proof of bytes 3, 5 and 6, unsegmented and segmented, presented under each other profile's public file with the header restamped, is rejected (24 cases). Between bytes 3 and 5 the reason is `Sumcheck(RoundSumMismatch)`. Between byte 6 and the others it is `ProofShape`, `Recursive(ProofShape)` or `Commitment(ProofShape)`. Without the restamp the committed test already has `StatementMismatch`.
+- Under byte 6 the unsegmented proof under the segmented public file, and the reverse, give `ProofShape`.
+- The rule is per segment under byte 6 and absent in both segments under the four other sets. With the floor at 3 the byte-6 window has 75 instances unsegmented, and 60 and 75 in its two segments, with 14 to 28 placed blocks. Its committed tampers pass.
+
+### 3. Mutants against the committed tests [ran, arm64, instrument]
+
+Against the 60 tests of the relation engine; survivors also against all 319 tests of `stele-reductions`.
+
+| Mutant | Result |
+|---|---|
+| the ten of `check_bound` | killed |
+| `N` is the largest member; the first member; halved; the number of members; a check's bound carries to the checks after it; tables keep `B` | killed by `matches_reference_bound_of_each_check_from_the_sum_of_its_members` |
+| `N` doubled; instances packed to `B`; members cut at `B`; ranges keep `B` | killed by one or both plan tests |
+| the rule under every profile; under byte 3 or byte 5 as well as 6; under no profile | killed |
+| wrapping sum | survives; equal unless a check holds `2^64` positions |
+| the rule under byte 0 as well as 6; under byte 2; under both | **survive** (F11) |
+| `verify_for_stack` skips the member sum | killed, by `rejects_tampers_of_split_checks_under_small_bounds` alone |
+| the weight-read counter without the block; instances not summed under the name | survive the relation-engine tests: no test reads either counter (F13) |
+
+### 4. The lifted tests [read; ran, arm64]
+
+- `rejects_tampers_of_split_checks_under_small_bounds` is my test with the bound as an argument. At each bound from 1 to 6 it asserts cut members, the honest proof, and a rejection by a verifier at each other bound. It asserts `MemberSumMismatch` for one member value of a later block and `Fraction(RootMismatch)` for the out-of-range weight. It asserts a rejection for two swapped sections, and that some bound had such a pair. Nothing was dropped.
+- It is the only committed test of the crate that fails when the byte-6 verifier skips the member sum.
+- The supplied-proof control on my L2a proof at `c4907fe6` refuses all 23 sections. By section: 20 `MemberSumMismatch`, the three of `range_8` among them, and three `Sumcheck(FinalEvaluationMismatch)` (F12).
+
+### 5. A30 against the tree [read; ran, arm64; ran, arm64, instrument]
+
+- The replacement texts, the scope, the soundness note and the byte statements say what the code and my runs show.
+- L2a at `c4907fe6`: 3,971,461 bytes, the SHA-256 of the first pass and of the `e20-26` ledgers, 40,455 rounds. With the floor at 24: 4,025,565 bytes, by a run of mine too.
+- The ledger pair is on one rung, host class and thread count, at adjacent commits (`ff75b89e`, `34a73902`). Byte 6's proof is the same at `34a73902` and `c4907fe6`.
+- In both L2a pairs the change is in the lookup stage (1.57 s and 1.19 s less), and every other stage agrees within 0.15 s. The L1 pair, whose proofs are identical, differs by 1.01 s spread over every stage: that is the spread of one run.
+- Not what the tree shows: F10, F12, F14.
+
+### 6. Bytes and decisions outside byte 6 [read; ran, arm64, instrument]
+
+- Against `aa00db2b` the diff takes the plans of bytes 0 to 5 above `2^25` positions back to A8's. That is the resolution.
+- Against `ff75b89e`, the commit below A30, nothing there changes. The plain and segmented planners under the four sets equal a planner written from A3 and A8 alone on 400 random relations (349 checks between `2^25` and `2^30` positions, 333 above). The recursive planner equals A8 with A30's bound.
+- With the floor at 3, the four pinned proofs of bytes 3 and 5 keep their SHA-256 and the two of byte 6 change. The pinned one-layer and eight-layer windows of bytes 0, 2, 3 and 5 keep their digests.
+- The other hunks are counters, two private entry points that the public ones call with the profile's bound, tests and text.
+
+### Findings of the first pass
+
+| Finding | Status | Note |
+|---|---|---|
+| F1 (BLOCKING) | Closed | item 1 |
+| F2 | Closed | the note names each instance's lines; its L2a counts are those my run at `c4907fe6` repeats |
+| F3 | Closed | six of the seven are killed; the seventh cannot differ in practice. The Resolution names four; U2 and U5 fail the test too |
+| F4 | Closed | item 4 |
+| F5 | Closed but for F10 | ledgers in the tree; floor 24 by two runs |
+| F6 | Closed but for F14 | title, `N`, segment, named floor, reach, A8's note, "keeps its bytes", the rejecting check |
+| F7 | Closed on the windows' names; F13 | L2a: 21 counters, equal in name, index and value to `e18-05-static-accounting-l2a.json` |
+| F8 | Closed | comments read; the counter reads `block \| x` (`relation_recursive.rs:917`) |
+| F9 | Open until acceptance, as intended | A30 is a Draft at `c4907fe6` |
+
+### Findings
+
+#### F10 — LOW (INV-14): four figures of A30's motivation are not the cited ledgers'
+
+`RFC-0026-development-end-to-end.md:2841-2842`, against `e20-26-dev-stories42m-t64-byte6-24t.json` and `e18-11-dev-stories42m-t64-byte6-24t.json`:
+
+| A30 | Ledger |
+|---|---|
+| prove 26.40 s | `prover_time_ns` 26,390,000,000 |
+| prove 28.10 s | 28,090,000,000 |
+| peak RSS 9.3 GB | `prove_peak_rss_bytes` 9,541,603,328 (9.5 GB in `bench/scoreboard.md`) |
+| peak RSS 11.2 GB | 11,480,322,048 (11.5 GB) |
+| lookup stage 8.13 s, 9.70 s | 8,129,106,903 and 9,698,939,022: these match |
+
+Correct the four before the status line changes.
+
+#### F11 — LOW: the unsplit plans are asserted for bytes 3 and 5 only
+
+- `relation_recursive.rs:2437`. A planner that applies the rule under `Expander`, under `Circle`, or under both, as well as under byte 6, passes all 319 tests.
+- With the loop over the four sets the test passes at `c4907fe6` and fails for each of the three [ran, arm64, instrument].
+
+#### F12 — LOW: the supplied-proof control asserts any engine error, and the byte it flips is not always in a member value
+
+- `crates/stele-prover/tests/development.rs:743-763`; A30 at `2888-2890`; the Resolution's F4 row.
+- L2a under byte 6: 20 of the 23 sections end with member values. Those of `rsqrt_q`, `range/0..=126` and `exp_q/direct`, whose tables are not a power of two, end with a prefix sumcheck, and the reason there is `Sumcheck(FinalEvaluationMismatch)`.
+- Under bytes 0 to 5 a v2 section ends with a multiplicity opening. On the byte-5 one-layer window, four sections tried give `Pcs(Merkle(RootMismatch))`.
+- A wrong reason is possible: a limb equal to `p − 1` becomes `p` and fails decoding, once in `2^31` per section. The assertion accepts that, as it accepts any engine error.
+- The `e20-26-*` ledgers were recorded at `34a73902`, before this control, and hold four controls. `bench/dev_e2e.py` counts the lines with "rejected with", so the new line will not reach a ledger.
+- Requested: under byte 6 assert `MemberSumMismatch` or `Sumcheck(FinalEvaluationMismatch)`. In A30 say "the last value of every lookup section", and that the ledgers predate the control.
+
+#### F13 — LOW: the counter merge can join different checks, and no test reads the counters this commit changes
+
+- `relation_recursive.rs:798-809`. Inputs [ran, arm64, instrument]:
+  - two different tables both named `t` give one counter;
+  - tables `u` and `u/inst0` give one counter `u`;
+  - a table named `range_2` beside 2-bit ranges gives one counter.
+- Before this commit the recursive prover listed each apart. Totals are unchanged.
+- The static accounting keeps such checks apart (`accepts_distinct_checks_for_duplicate_table_names_and_range_collision`), so "as the static accounting has them" holds for the windows' names only.
+- With the merge removed, or with F8's counter fix reverted, the relation-engine tests pass.
+- Suggested: merge by the check, which `build_a8_checks` knows, not by its name.
+
+#### F14 — LOW: one sentence of the second replacement text
+
+- `2857`: "No test builds a check that large." Two committed tests plan checks above `2^25` positions; none proves one. The L2a ledger job does, under byte 6.
+
+Not a finding: `enumerates_every_round_of_the_eight_layer_window` (ignored) fails with 28,447 rounds against a pinned 11,687, as the record of E20-03 notes at `c2db66aa`. It has no part in this change.
+
+### What I ran
+
+arm64, at `c4907fe6`, no file changed:
+
+- `cargo fmt --check`; `cargo clippy -D warnings` on `stele-reductions` and `stele-prover`.
+- `cargo test -p stele-reductions --all-features`: 319 pass (208 library, 84 integration, 27 doc).
+- `cargo test -p stele-negative-controls --all-features`: 149 pass. `cargo test --release -p stele-prover --all-features`: 28 pass.
+- `scripts/gates/digest.sh`; the E8-02f1 replay; the gates `rfc-status`, `glossary-lint`, `docs-links`, `ledger-validate`, `rust-policy`; `test_task_graph.py`, `test_scoreboard.py`, `bench/scoreboard.py --check`.
+- L2a at byte 6: `prove-dev`, `verify-dev`, `rejects_tampers_on_a_supplied_proof`; 23 edited proofs; four edited byte-5 one-layer proofs.
+
+arm64, instrumented:
+
+- Four review tests in `stele-reductions`; the plan comparison with the replay.
+- 28 mutants of the planner against the 60 relation-engine tests, the four survivors against all 319; three mutants of the recursive path; the extended loop of F11 against three mutants.
+- Floor 3: the `stele-prover` suite with the two crossing tests; six eight-layer windows; the six pinned proofs; the E8-02f1 replay; the negative-control suite.
+- Floor 24: L2a prove and verify.
+
+### Not checked
+
+- The three commits between `34a73902` and `aa00db2b`.
+- x86, and the job logs behind the ledgers (each ledger is the last of three runs).
+- L2a under bytes 0 to 5, a segmented L2a, L2b and L3.
+- `cargo test --workspace`, `scripts/gates/native.sh` as a whole, `scripts/ci_tests.py`; CUDA, SIMD parity, the dev-zk provers.
+- A comparison by machine of the first pass's text with the text I returned.
+
+I tried to break it by planning 600 random relations of up to `2^30` positions per check under bytes 0 to 5 against the replay's own planner; by lowering the floor so that every byte-6 window splits and presenting each proof under another profile's and another segmentation's public file; by 31 mutants; and by flipping the control's byte in every lookup section of the L2a proof. The replay derived the engine's plan in every case and accepted its windows, the engine refused every crossed and edited proof, and the committed tests rejected 25 of the 31 mutants. The six that pass are a wrapping sum that cannot wrap, the rule under bytes 0 and 2 (F11), and two counters (F13).
+
+## Resolution of the second pass
+
+By the author, in the commit that appends the second pass and accepts A30.
+
+| Finding | Status | Change |
+|---|---|---|
+| F9 | Resolved | A30 is Accepted at the development tier with ADR-158 and a link to this record; RFC-0000 lists it. ADR-158 records that a lane E task edits lane P's relation engine and sits on E18-11 and E20-25. |
+| F10 | Resolved | A30 gives the ledgers' figures: prove 26.39 s against 28.09 s, peak RSS 8.9 GiB against 10.7 GiB. The correction was made while A30 was a Draft. |
+| F11 | Resolved | The plan test asserts the unsplit plans under `Expander`, `Circle`, `CircleAll` and `CircleAllGrind`. The rule applied also under byte 0, or also under byte 2, fails it. |
+| F12 | Resolved | Under byte 6 the supplied-proof control accepts `MemberSumMismatch` or `Sumcheck(FinalEvaluationMismatch)` only. A30 says "the last value of every lookup section", gives the 20 and 3 of L2a, and says that the `e20-26-*` ledgers predate the control. |
+| F13 | Resolved in part | The recursive prover sums the instances of a split check by the plan (`Check::instance`), not by name, so two checks of one name stay apart. `rejects_tampers_of_split_checks_under_small_bounds` asserts that the position counters and the weight elements read are the same under every bound; a prover that does not sum the instances fails it. The weight-read counter without the block still passes: the fixture has no selected member on a weight column that is cut. |
+| F14 | Resolved | The sentence reads "No test proves a check that large; two tests plan one." |

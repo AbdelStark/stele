@@ -795,17 +795,17 @@ where
             .sum(),
         ..Metrics::default()
     };
-    // One counter per check, as the static accounting has: the instances of a split
-    // check (`name/inst<j>`, A8) are summed under its name.
+    // One counter per check of a segment: the instances of a split check (A8), which
+    // follow one another, are summed under its name.
     for check in plan.segments.iter().flat_map(|seg| &seg.checks) {
         let positions: u64 = check.members.iter().map(|m| 1u64 << m.m).sum();
-        let name = match check.name.rsplit_once("/inst") {
-            Some((name, j)) if !j.is_empty() && j.bytes().all(|b| b.is_ascii_digit()) => name,
-            _ => &check.name,
-        };
-        match metrics.lookup_checks.iter_mut().find(|(n, _)| n == name) {
-            Some((_, total)) => *total = total.saturating_add(positions),
-            None => metrics.lookup_checks.push((name.into(), positions)),
+        match (check.instance, metrics.lookup_checks.last_mut()) {
+            (Some(j), Some((_, total))) if j > 0 => *total = total.saturating_add(positions),
+            (Some(_), _) => {
+                let name = check.name.strip_suffix("/inst0").unwrap_or(&check.name);
+                metrics.lookup_checks.push((name.into(), positions));
+            }
+            (None, _) => metrics.lookup_checks.push((check.name.clone(), positions)),
         }
     }
     metrics.lookup_positions = metrics.lookup_checks.iter().map(|(_, p)| *p).sum();
@@ -2434,7 +2434,12 @@ mod tests {
             ]
         );
         let unsplit = ["ta 26 [(0, 26, 0)]", "tb 28 [(1, 27, 0), (2, 27, 0)]"];
-        for sources in [Sources::CircleAll, Sources::CircleAllGrind] {
+        for sources in [
+            Sources::Expander,
+            Sources::Circle,
+            Sources::CircleAll,
+            Sources::CircleAllGrind,
+        ] {
             let plain = plan(&rel, sources).expect("plan");
             assert_eq!(instances(&plain.checks), unsplit, "{sources:?}");
             let segmented = plan_segmented(&rel, sources).expect("plan");
@@ -2506,7 +2511,7 @@ mod tests {
                 .collect();
             let mut t = Transcript::<K>::new(b"stele/test/review-a30").expect("t");
             let mut segs = seg_vals.to_vec();
-            let (proof, _) = prove_recursive_with_bound(
+            let (proof, metrics) = prove_recursive_with_bound(
                 &mut t,
                 &rel,
                 |s| Ok(core::mem::take(&mut segs[s as usize])),
@@ -2514,7 +2519,13 @@ mod tests {
                 bound,
             )
             .expect("prove");
-            (proof, verified)
+            // What the prover counts does not depend on the split.
+            let counted = (
+                metrics.lookup_checks,
+                metrics.lookup_positions,
+                metrics.weight_elements_read,
+            );
+            (proof, verified, counted)
         };
         let verify_under = |bound: u8, verified: &[VerifiedCertifiedSource<K>], proof: &ProofV2| {
             let mut t = Transcript::<K>::new(b"stele/test/review-a30").expect("t");
@@ -2531,13 +2542,14 @@ mod tests {
             v.set(&rel, w_wide, wide.clone()).expect("bad seg");
         }
         let mut swaps = 0;
-        let (reference, verified) = run(DEFAULT_INSTANCE_BOUND, &seg_vals, &all_vals);
+        let (reference, verified, unsplit) = run(DEFAULT_INSTANCE_BOUND, &seg_vals, &all_vals);
         assert_eq!(
             verify_under(DEFAULT_INSTANCE_BOUND, &verified, &reference),
             Ok(())
         );
         for bound in [1u8, 2, 3, 4, 5, 6] {
-            let (proof, verified) = run(bound, &seg_vals, &all_vals);
+            let (proof, verified, counted) = run(bound, &seg_vals, &all_vals);
+            assert_eq!(counted, unsplit, "bound {bound}");
             let plan = plan_recursive_with_bound(&rel, bound).expect("plan");
             let checks0 = &plan.segments[0].checks;
             let blocks: usize = plan
@@ -2594,7 +2606,7 @@ mod tests {
                 swaps += 1;
             }
             // The out-of-range weight sits in block `100 >> bound` of its member.
-            let (forged, forged_model) = run(bound, &bad_segs, &bad_all);
+            let (forged, forged_model, _) = run(bound, &bad_segs, &bad_all);
             assert_eq!(
                 verify_under(bound, &forged_model, &forged),
                 Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch)),
@@ -2602,7 +2614,7 @@ mod tests {
             );
         }
         // At the default bound the same forged witness fails its one unsplit instance.
-        let (forged, forged_model) = run(DEFAULT_INSTANCE_BOUND, &bad_segs, &bad_all);
+        let (forged, forged_model, _) = run(DEFAULT_INSTANCE_BOUND, &bad_segs, &bad_all);
         assert_eq!(
             verify_under(DEFAULT_INSTANCE_BOUND, &forged_model, &forged),
             Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
