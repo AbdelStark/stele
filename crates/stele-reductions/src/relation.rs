@@ -649,7 +649,7 @@ impl Stack {
 }
 
 /// Default lookup instance domain bound `B` (RFC-0026 A8): 2^30 positions per instance.
-pub const DEFAULT_INSTANCE_BOUND: u8 = 30;
+pub const DEFAULT_INSTANCE_BOUND: u8 = 26;
 
 /// One lookup or range inside its table's batched A5 statement (RFC-0026 A3, A8).
 pub(crate) struct Member {
