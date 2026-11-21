@@ -740,6 +740,28 @@ fn rejects_tampers_on_a_supplied_proof() {
         rejects("gain", &gain, &statement),
         Error::Engine(_)
     ));
+    // RFC-0026 A8, A30: one member value of every lookup instance, so the instances of a
+    // split check are among them. A section ends with its member values, 16 bytes each.
+    if let container::Decoded::V2(honest) = container::decode_any(&proof).expect("container") {
+        let clock = Instant::now();
+        let mut sections = 0;
+        for (s, segment) in honest.segments.iter().enumerate() {
+            for (j, section) in segment.lookups.iter().enumerate() {
+                let mut bad = honest.clone();
+                bad.segments[s].lookups[j][section.len() - 16] ^= 1;
+                let error = verify(&public, &statement, &bad.encode());
+                assert!(
+                    matches!(error, Err(Error::Engine(_))),
+                    "segment {s} lookup {j}: {error:?}"
+                );
+                sections += 1;
+            }
+        }
+        eprintln!(
+            "lookup member values: {sections} instances, each refused by the engine, in {} ms",
+            clock.elapsed().as_millis()
+        );
+    }
 }
 
 /// E16-18: time the model commitment alone (RFC-0026 §2.2), which `prove-dev` recomputes

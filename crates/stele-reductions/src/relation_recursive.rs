@@ -351,6 +351,7 @@ struct RecursiveEnginePlan {
     tail_levels: Vec<LevelSpec>,
 }
 
+#[cfg(test)]
 fn plan_recursive(relation: &Relation) -> Result<RecursiveEnginePlan, Error> {
     plan_recursive_with_bound(relation, DEFAULT_INSTANCE_BOUND)
 }
@@ -742,15 +743,31 @@ fn verify_fresh_close(
 pub fn prove_recursive_measured<F, V>(
     t: &mut Transcript<K>,
     relation: &Relation,
-    mut segment_values: F,
+    segment_values: F,
     model: &[RecursiveModelSource<'_>],
 ) -> Result<(ProofV2, Metrics), Error>
 where
     F: FnMut(u32) -> Result<V, Error>,
     V: Borrow<Values>,
 {
+    prove_recursive_with_bound(t, relation, segment_values, model, DEFAULT_INSTANCE_BOUND)
+}
+
+/// [`prove_recursive_measured`] under plan bound `B = instance_bound`. Only the engine's
+/// tests pass another bound than the profile's (ADR-155).
+fn prove_recursive_with_bound<F, V>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    mut segment_values: F,
+    model: &[RecursiveModelSource<'_>],
+    instance_bound: u8,
+) -> Result<(ProofV2, Metrics), Error>
+where
+    F: FnMut(u32) -> Result<V, Error>,
+    V: Borrow<Values>,
+{
     let plan_timer = Stopwatch::start();
-    let plan = plan_recursive(relation)?;
+    let plan = plan_recursive_with_bound(relation, instance_bound)?;
     let plan_ns = plan_timer.elapsed_ns();
 
     if model.len() != plan.model.len() {
@@ -776,18 +793,21 @@ where
             .iter()
             .filter_map(|seg| seg.witness_plan.as_ref().map(|_| 1u64 << seg.witness_bits))
             .sum(),
-        lookup_checks: plan
-            .segments
-            .iter()
-            .flat_map(|seg| {
-                seg.checks.iter().map(|c| {
-                    let pos: u64 = c.members.iter().map(|m| 1u64 << m.m).sum();
-                    (c.name.clone(), pos)
-                })
-            })
-            .collect(),
         ..Metrics::default()
     };
+    // One counter per check, as the static accounting has: the instances of a split
+    // check (`name/inst<j>`, A8) are summed under its name.
+    for check in plan.segments.iter().flat_map(|seg| &seg.checks) {
+        let positions: u64 = check.members.iter().map(|m| 1u64 << m.m).sum();
+        let name = match check.name.rsplit_once("/inst") {
+            Some((name, j)) if !j.is_empty() && j.bytes().all(|b| b.is_ascii_digit()) => name,
+            _ => &check.name,
+        };
+        match metrics.lookup_checks.iter_mut().find(|(n, _)| n == name) {
+            Some((_, total)) => *total = total.saturating_add(positions),
+            None => metrics.lookup_checks.push((name.into(), positions)),
+        }
+    }
     metrics.lookup_positions = metrics.lookup_checks.iter().map(|(_, p)| *p).sum();
 
     let mut weight_index = vec![None; relation.columns.len()];
@@ -893,11 +913,13 @@ where
         // Count weight reads for multiplicity counting.
         for check in &seg.checks {
             let member_selected = |member: &Member| -> u64 {
+                // A cut member's selector is read at its block (A8).
+                let block = (member.block_index as u64) << member.m;
                 match &member.selector {
                     None => 1u64 << member.m,
                     Some(r) => match &relation.columns[r.column.0 as usize].kind {
                         Kind::Public(v) => (0..1u64 << member.m)
-                            .filter(|&x| v[r.index(x)] != 0)
+                            .filter(|&x| v[r.index(block | x)] != 0)
                             .count() as u64,
                         _ => 0,
                     },
@@ -1417,7 +1439,19 @@ pub fn verify_recursive(
     model: &[VerifiedCertifiedSource<K>],
     proof: &ProofV2,
 ) -> Result<Ledger, Error> {
-    let plan = plan_recursive(relation)?;
+    verify_recursive_with_bound(t, relation, model, proof, DEFAULT_INSTANCE_BOUND)
+}
+
+/// [`verify_recursive`] under plan bound `B = instance_bound` (see
+/// [`prove_recursive_with_bound`]).
+fn verify_recursive_with_bound(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    model: &[VerifiedCertifiedSource<K>],
+    proof: &ProofV2,
+    instance_bound: u8,
+) -> Result<Ledger, Error> {
+    let plan = plan_recursive_with_bound(relation, instance_bound)?;
     if model.len() != plan.model.len() {
         return Err(Error::Weights);
     }
@@ -2335,5 +2369,244 @@ mod tests {
             verify_recursive_model(layout, other.source().root(), other.certificate_proof()).err(),
             Some(Error::Recursive(RecursiveError::CertificateContext))
         ));
+    }
+
+    /// One line per instance: name, bits, and each member's column, bits and block.
+    fn instances(checks: &[Check]) -> Vec<String> {
+        checks
+            .iter()
+            .map(|c| {
+                let members: Vec<(u32, u8, usize)> = c
+                    .members
+                    .iter()
+                    .map(|m| (m.tuple[0].0.column.0, m.m, m.block_index))
+                    .collect();
+                alloc::format!("{} {} {members:?}", c.name, c.m)
+            })
+            .collect()
+    }
+
+    /// RFC-0026 A30 in a plan (review F3): `N` is the sum of a check's members, each check
+    /// has its own bound, and a table follows the rule as a range does. `ta` is read by one
+    /// lookup of `2^26` positions: two blocks of `2^25`. `tb`, after it, is read by two
+    /// lookups of `2^27` positions: `N = 2^28`, `B_c = 26`, four blocks of `2^26`. The other
+    /// profiles keep one instance per check (A8, A15 §6.3).
+    #[test]
+    fn matches_reference_bound_of_each_check_from_the_sum_of_its_members() {
+        let mut rel = Relation::default();
+        let g = Kind::Witness(rel.add_group("G/a30/sum", 1));
+        for (name, sizes) in [("ta", &[26u8][..]), ("tb", &[27, 27])] {
+            let table = rel.add_table(Table {
+                name: name.into(),
+                widths: vec![Width::unsigned(2)],
+                rows: (0..4).map(|v| vec![v]).collect(),
+            });
+            for (i, &vars) in sizes.iter().enumerate() {
+                let x = rel.add_column(
+                    &alloc::format!("{name}/x{i}"),
+                    g.clone(),
+                    Width::unsigned(2),
+                    1,
+                );
+                rel.lookups.push(Lookup {
+                    name: alloc::format!("{name}/l{i}"),
+                    vars,
+                    selector: None,
+                    tuple: vec![Ref {
+                        column: x,
+                        vars: vec![0],
+                    }],
+                    table,
+                });
+            }
+        }
+        assert_eq!(rel.validate(), Ok(()));
+        let recursive = plan_recursive(&rel).expect("plan");
+        assert_eq!(
+            instances(&recursive.segments[0].checks),
+            [
+                "ta/inst0 25 [(0, 25, 0)]",
+                "ta/inst1 25 [(0, 25, 1)]",
+                "tb/inst0 26 [(1, 26, 0)]",
+                "tb/inst1 26 [(1, 26, 1)]",
+                "tb/inst2 26 [(2, 26, 0)]",
+                "tb/inst3 26 [(2, 26, 1)]",
+            ]
+        );
+        let unsplit = ["ta 26 [(0, 26, 0)]", "tb 28 [(1, 27, 0), (2, 27, 0)]"];
+        for sources in [Sources::CircleAll, Sources::CircleAllGrind] {
+            let plain = plan(&rel, sources).expect("plan");
+            assert_eq!(instances(&plain.checks), unsplit, "{sources:?}");
+            let segmented = plan_segmented(&rel, sources).expect("plan");
+            assert_eq!(
+                instances(&segmented.segments[0].checks),
+                unsplit,
+                "{sources:?}"
+            );
+        }
+    }
+
+    /// RFC-0026 A30 on ranges of 8 bits over `2^26 + 2^22 + 2^21 + 2^19` positions: three
+    /// instances of `2^25`, `2^25` and `2^23` positions, the first two the blocks of the
+    /// largest member. L2a's largest check has these instance sizes, without a cut member.
+    /// A check of `2^25` positions stays one instance under its unsplit name.
+    #[test]
+    fn matches_reference_split_of_a_check_above_the_floor() {
+        let mut rel = Relation::default();
+        for (i, n) in [26u8, 22, 21, 19].into_iter().enumerate() {
+            let g = Kind::Witness(rel.add_group(&alloc::format!("G/a30/{i}"), n));
+            let x = rel.add_column(&alloc::format!("x{i}"), g, Width::unsigned(8), n);
+            rel.ranges.push(Range {
+                name: alloc::format!("r{i}"),
+                column: x,
+                width: Width::unsigned(8),
+            });
+        }
+        let g = Kind::Witness(rel.add_group("G/a30/whole", 25));
+        let y = rel.add_column("y", g, Width::unsigned(4), 25);
+        rel.ranges.push(Range {
+            name: "whole".into(),
+            column: y,
+            width: Width::unsigned(4),
+        });
+        assert_eq!(rel.validate(), Ok(()));
+        let plan = plan_recursive(&rel).expect("plan");
+        assert_eq!(
+            instances(&plan.segments[0].checks),
+            [
+                "range_8/inst0 25 [(0, 25, 0)]",
+                "range_8/inst1 25 [(0, 25, 1)]",
+                "range_8/inst2 23 [(1, 22, 0), (2, 21, 0), (3, 19, 0)]",
+                "range_4 25 [(4, 25, 0)]",
+            ]
+        );
+    }
+
+    /// The joined recursion on split checks (review F4): under plan bounds 1 to 6 the
+    /// composed fixture has cut members. The honest proof verifies; a verifier under another
+    /// bound, one member value of a later block, two swapped sections of one length and a
+    /// weight outside its range in a later block are each rejected.
+    #[test]
+    fn rejects_tampers_of_split_checks_under_small_bounds() {
+        let (rel, seg_vals, all_vals) = composed_fixture();
+        let layouts = recursive_model_layout(&rel).expect("layouts");
+        let run = |bound: u8, seg_vals: &[Values], all_vals: &Values| {
+            let model_sources = recursive_model_sources(&rel, all_vals).expect("model register");
+            let verified: Vec<VerifiedCertifiedSource<K>> = model_sources
+                .iter()
+                .zip(&layouts)
+                .map(|(m, l)| {
+                    verify_recursive_model(
+                        l,
+                        m.prepared.source().root(),
+                        m.prepared.certificate_proof(),
+                    )
+                    .expect("cert")
+                })
+                .collect();
+            let mut t = Transcript::<K>::new(b"stele/test/review-a30").expect("t");
+            let mut segs = seg_vals.to_vec();
+            let (proof, _) = prove_recursive_with_bound(
+                &mut t,
+                &rel,
+                |s| Ok(core::mem::take(&mut segs[s as usize])),
+                &model_sources,
+                bound,
+            )
+            .expect("prove");
+            (proof, verified)
+        };
+        let verify_under = |bound: u8, verified: &[VerifiedCertifiedSource<K>], proof: &ProofV2| {
+            let mut t = Transcript::<K>::new(b"stele/test/review-a30").expect("t");
+            verify_recursive_with_bound(&mut t, &rel, verified, proof, bound).map(|_| ())
+        };
+        // An out-of-range weight (100 in a signed 4-bit column) at index 100 of `W/wide`.
+        let w_wide = ColumnId(1);
+        let mut wide: Vec<i64> = (0..128).map(|i| (i * 5 + 3) % 16 - 8).collect();
+        wide[100] = 100;
+        let mut bad_all = all_vals.clone();
+        bad_all.set(&rel, w_wide, wide.clone()).expect("bad all");
+        let mut bad_segs = seg_vals.clone();
+        for v in &mut bad_segs {
+            v.set(&rel, w_wide, wide.clone()).expect("bad seg");
+        }
+        let mut swaps = 0;
+        let (reference, verified) = run(DEFAULT_INSTANCE_BOUND, &seg_vals, &all_vals);
+        assert_eq!(
+            verify_under(DEFAULT_INSTANCE_BOUND, &verified, &reference),
+            Ok(())
+        );
+        for bound in [1u8, 2, 3, 4, 5, 6] {
+            let (proof, verified) = run(bound, &seg_vals, &all_vals);
+            let plan = plan_recursive_with_bound(&rel, bound).expect("plan");
+            let checks0 = &plan.segments[0].checks;
+            let blocks: usize = plan
+                .segments
+                .iter()
+                .flat_map(|s| s.checks.iter())
+                .flat_map(|c| c.members.iter())
+                .filter(|m| m.block_bits > 0)
+                .count();
+            assert!(blocks > 0, "bound {bound}");
+            assert!(proof != reference);
+            assert_eq!(
+                verify_under(bound, &verified, &proof),
+                Ok(()),
+                "bound {bound}"
+            );
+            // Another bound is another plan.
+            for other in [1u8, 2, 3, 4, 5, 6, 30] {
+                if other != bound {
+                    let outcome = verify_under(other, &verified, &proof);
+                    assert!(outcome.is_err(), "bound {bound} under {other}");
+                }
+            }
+            // One member value of an instance that starts with a later block of a range.
+            let j = checks0
+                .iter()
+                .position(|c| c.t == 1 << c.k && c.members[0].block_index >= 1)
+                .expect("a later block");
+            let mut bad = proof.clone();
+            let section = &mut bad.segments[0].lookups[j];
+            let at = section.len() - 16 * checks0[j].c * checks0[j].members.len();
+            section[at] ^= 1;
+            assert_eq!(
+                verify_under(bound, &verified, &bad),
+                Err(Error::MemberSumMismatch),
+                "bound {bound}"
+            );
+            // Two instances of one check with sections of one length, swapped.
+            let pair = (0..checks0.len() - 1).find(|&i| {
+                checks0[i].t == checks0[i + 1].t
+                    && checks0[i].m == checks0[i + 1].m
+                    && checks0[i].members.len() == checks0[i + 1].members.len()
+                    && checks0[i].members[0].block_bits > 0
+                    && checks0[i + 1].members[0].block_bits > 0
+                    && proof.segments[0].lookups[i].len() == proof.segments[0].lookups[i + 1].len()
+            });
+            if let Some(i) = pair {
+                let mut bad = proof.clone();
+                bad.segments[0].lookups.swap(i, i + 1);
+                assert!(
+                    verify_under(bound, &verified, &bad).is_err(),
+                    "bound {bound}"
+                );
+                swaps += 1;
+            }
+            // The out-of-range weight sits in block `100 >> bound` of its member.
+            let (forged, forged_model) = run(bound, &bad_segs, &bad_all);
+            assert_eq!(
+                verify_under(bound, &forged_model, &forged),
+                Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch)),
+                "bound {bound}"
+            );
+        }
+        // At the default bound the same forged witness fails its one unsplit instance.
+        let (forged, forged_model) = run(DEFAULT_INSTANCE_BOUND, &bad_segs, &bad_all);
+        assert_eq!(
+            verify_under(DEFAULT_INSTANCE_BOUND, &forged_model, &forged),
+            Err(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+        );
+        assert!(swaps > 0, "no bound had two sections of one length to swap");
     }
 }
