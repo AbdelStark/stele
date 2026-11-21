@@ -298,6 +298,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "stele-field",
+ "stele-simd",
 ]
 
 [[package]]

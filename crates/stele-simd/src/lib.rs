@@ -171,6 +171,7 @@ mod tests;
 #[cfg(target_arch = "x86_64")]
 mod x86;
 pub use slices::{
-    accelerated, butterflies, butterflies_reference, fold, fold_reference, layer_round,
-    layer_round_reference, mul_assign, mul_assign_reference, LayerTables,
+    accelerated, butterflies, butterflies_reference, dot_i8, dot_i8_reference, fold,
+    fold_reference, layer_round, layer_round_reference, mul_assign, mul_assign_reference,
+    LayerTables,
 };

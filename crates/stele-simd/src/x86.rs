@@ -248,3 +248,59 @@ x86_backend!(
     |x: i64, y: i64| _mm512_set_epi64(y, x, y, x, y, x, y, x),
     |r: __m512i, s: __m512i| _mm512_mask_blend_epi64(0b1010_1010, r, s)
 );
+
+/// Exact int8 dot products (RFC-0014 §2 `recompute_layer_int8`): bytes are sign-extended
+/// to 16 bits and multiplied in pairs into 32-bit lanes, which add with wrap-around like
+/// the reference. A pair of products of sign-extended bytes is at most `2·2^14`, so
+/// `madd` never saturates.
+pub(crate) mod dot {
+    use core::arch::x86_64::*;
+
+    /// The wrapping sum of `x[j]·w[j]` over the first `done` bytes (returned), 16 at a time.
+    #[target_feature(enable = "avx2")]
+    pub(crate) unsafe fn avx2(x: *const i8, w: *const u8, n: usize) -> (i32, usize) {
+        let done = n / 16 * 16;
+        let mut lanes = [0i32; 8];
+        // SAFETY: RFC-0003 §6: the caller enables the feature and supplies `n` bytes
+        // behind each pointer; each load covers 16 bytes below `done <= n`.
+        unsafe {
+            let mut acc = _mm256_setzero_si256();
+            let mut i = 0;
+            while i < done {
+                let a = _mm256_cvtepi8_epi16(_mm_loadu_si128(x.add(i).cast()));
+                let b = _mm256_cvtepi8_epi16(_mm_loadu_si128(w.add(i).cast()));
+                acc = _mm256_add_epi32(acc, _mm256_madd_epi16(a, b));
+                i += 16;
+            }
+            _mm256_storeu_si256(lanes.as_mut_ptr().cast(), acc);
+        }
+        (
+            lanes.iter().fold(0i32, |sum, lane| sum.wrapping_add(*lane)),
+            done,
+        )
+    }
+
+    /// As [`avx2`], 32 bytes at a time.
+    #[target_feature(enable = "avx512f,avx512bw")]
+    pub(crate) unsafe fn avx512(x: *const i8, w: *const u8, n: usize) -> (i32, usize) {
+        let done = n / 32 * 32;
+        let mut lanes = [0i32; 16];
+        // SAFETY: RFC-0003 §6: the caller enables the features and supplies `n` bytes
+        // behind each pointer; each load covers 32 bytes below `done <= n`.
+        unsafe {
+            let mut acc = _mm512_setzero_si512();
+            let mut i = 0;
+            while i < done {
+                let a = _mm512_cvtepi8_epi16(_mm256_loadu_si256(x.add(i).cast()));
+                let b = _mm512_cvtepi8_epi16(_mm256_loadu_si256(w.add(i).cast()));
+                acc = _mm512_add_epi32(acc, _mm512_madd_epi16(a, b));
+                i += 32;
+            }
+            _mm512_storeu_si512(lanes.as_mut_ptr().cast(), acc);
+        }
+        (
+            lanes.iter().fold(0i32, |sum, lane| sum.wrapping_add(*lane)),
+            done,
+        )
+    }
+}

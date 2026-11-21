@@ -289,3 +289,18 @@ constructor and derives the two openings, their order and all functionals.
 This composition uses the existing field-only crate interfaces. The scalar
 reference, default feature graph and independent verifier remain as specified
 in A10–A14.
+
+### A16 — The reference forward may use the int8 dot kernel
+
+Status: Accepted (development tier under RFC-0027 §2). Task E20-03. Decision: ADR-157.
+
+The dependency list of `stele-cqis` becomes `[field, simd]`. Its reference forward
+(RFC-0025 §2.5, RFC-0004 A15) may compute the exact int32 dot product of a row of int8
+codes with a row of int8 weights through `stele_simd::dot_i8`, the CPU form of RFC-0014
+§2's `recompute_layer_int8`. The kernel returns the value of its scalar reference
+`dot_i8_reference` for every input (two's-complement addition is associative), and the
+executor's width bound (`|dot| < 2^28`) makes that value the integer dot product. No
+other item of `stele-simd` is imported, no numerics change, and CQIS records, Model
+identities and proof bytes are unchanged. `deny.toml` allows the edge. Affected tasks:
+E20-03, E22-10.
+

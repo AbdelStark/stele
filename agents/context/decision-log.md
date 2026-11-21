@@ -4863,3 +4863,33 @@ Consequences:
   with 2^11 and with 2^13 was slower on L2a, mostly in the reductions stage; it is a
   probe, not a ledger.
 
+## ADR-157 — Host kernels with scalar references; `stele-cqis` may import the int8 dot kernel (RFC-0020 A16, task E20-03)
+
+Context: on the 24-thread reference class the L2a prover's time is field multiplications
+in the lookup, reduction and opening stages and int8 dot products in the reference
+forward. Probes on a Sapphire Rapids node show hand-written AVX-512 kernels at three to
+six times the scalar loops per core. RFC-0014 §1 makes the CPU and SIMD prover the
+reference for CUDA and requires byte identity (INV-3). `deny.toml` (RFC-0020 §2) lets only
+`stele-code` and `stele-poly` import `stele-simd`.
+
+Decision:
+- **Kernels are functions of `stele-simd` with a scalar reference each.** A kernel
+  `k` has `k_reference`; every backend returns the reference's limbs, and a seeded
+  1000-case parity test with edge values pins that. The sumcheck and lookup provers
+  reach the kernels through `stele_poly::kernels`, the edge RFC-0020 already allows.
+- **Layout.** `M31` is `repr(transparent)` and the tower types `repr(C)`, so a slice of
+  field elements is a slice of canonical `u32` limbs. Kernels write only canonical limbs.
+- **Accept RFC-0020 A16 at the development tier:** `stele-cqis` may import
+  `stele_simd::dot_i8` for the reference forward's exact int8 dot products.
+- **No NEON kernel for QM31 products**: one product per 64-bit lane gives no gain over
+  the scalar multiplier. NEON has the base-field butterflies.
+
+Consequences:
+- Proof and public bytes are unchanged: the pinned L0 and L1 digests and the L2a digests
+  reproduce on an AVX-512 host and on arm64.
+- CI runs the AVX2 kernels (`STELE_REQUIRE_SIMD=avx2`). AVX-512 runs only on the
+  self-hosted Sapphire Rapids node, outside CI, until a job there executes the parity
+  tests: an open item of E20-03.
+- The single trait of E20-03's first acceptance line is not built; the task stays in
+  progress.
+

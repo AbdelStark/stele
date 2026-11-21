@@ -213,14 +213,7 @@ impl<'a> Data<'a> {
                         .chunks(g)
                         .zip(w.chunks(g))
                         .zip(scales)
-                        .map(|((x, w), s)| {
-                            let part: i32 = x
-                                .iter()
-                                .zip(w)
-                                .map(|(x, w)| i32::from(*x) * i32::from(*w as i8))
-                                .sum();
-                            i64::from(*s) * i64::from(part)
-                        })
+                        .map(|((x, w), s)| i64::from(*s) * i64::from(stele_simd::dot_i8(x, w)))
                         .sum()
                 } else {
                     row.codes()
@@ -266,11 +259,7 @@ impl<'a> Data<'a> {
         {
             // Accepted width <=16384 and symmetric int8 operands give |dot|<2^28.
             let dot: i32 = if r.bits == 8 {
-                row.codes()
-                    .iter()
-                    .zip(&r.raw[j * r.columns..(j + 1) * r.columns])
-                    .map(|(x, w)| i32::from(*x) * i32::from(*w as i8))
-                    .sum()
+                stele_simd::dot_i8(row.codes(), &r.raw[j * r.columns..(j + 1) * r.columns])
             } else {
                 row.codes()
                     .iter()

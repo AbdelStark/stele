@@ -7,6 +7,8 @@ description = "Stele — stele-cqis (see RFC-0004)"
 
 [dependencies]
 stele-field = { path = "../stele-field" }
+# The exact int8 dot kernel of the reference forward (RFC-0020 A16).
+stele-simd = { path = "../stele-simd" }
 blake3 = { version = "=1.8.7", default-features = false }
 sha2 = { version = "=0.11.1", default-features = false }
 

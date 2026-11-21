@@ -304,3 +304,42 @@ fn matches_reference_qm31_products_on_seeded_and_edge_slices() {
         assert_eq!(product, expected);
     }
 }
+
+#[test]
+fn matches_reference_int8_dot_on_seeded_and_edge_bytes() {
+    let backends = backends();
+    let mut seed = 0x5354_454c_4500_0024;
+    const EDGES: [u8; 6] = [0x80, 0x81, 0x7f, 0x00, 0x01, 0xff];
+    // 1000 seeded rows: every length across both vector widths, edge bytes in a quarter.
+    for case in 0..1000usize {
+        let n = case % 131;
+        let mut bytes = |edge: bool| -> Vec<u8> {
+            (0..n)
+                .map(|_| {
+                    let raw = next(&mut seed);
+                    if edge {
+                        EDGES[(raw % 6) as usize]
+                    } else {
+                        raw as u8
+                    }
+                })
+                .collect()
+        };
+        let x: Vec<i8> = bytes(case % 4 == 0).into_iter().map(|b| b as i8).collect();
+        let w = bytes(case % 8 == 0);
+        let expected = crate::dot_i8_reference(&x, &w);
+        for backend in &backends {
+            assert_eq!(
+                backend.dot_i8(&x, &w).expect("available"),
+                expected,
+                "{backend:?} case {case}"
+            );
+        }
+        assert_eq!(crate::dot_i8(&x, &w), expected);
+    }
+    // The extreme row: every product is (-128)·(-128), 2^16 of them, exactly 2^30.
+    let (x, w) = (vec![-128i8; 1 << 16], vec![0x80u8; 1 << 16]);
+    for backend in &backends {
+        assert_eq!(backend.dot_i8(&x, &w).expect("available"), 1 << 30);
+    }
+}

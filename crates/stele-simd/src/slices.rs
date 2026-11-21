@@ -273,3 +273,50 @@ pub fn mul_assign(a: &mut [QM31], b: &[QM31]) {
         mul_assign_reference(a, b);
     }
 }
+
+/// The reference int8 dot product: the wrapping `i32` sum of `x[j]·w[j]` over the first
+/// `min` of the lengths, with each byte of `w` read as a two's-complement `i8`. Callers
+/// bound the length so that the sum is exact (RFC-0004 A15: below `2^28`).
+pub fn dot_i8_reference(x: &[i8], w: &[u8]) -> i32 {
+    x.iter().zip(w).fold(0i32, |sum, (x, w)| {
+        sum.wrapping_add(i32::from(*x) * i32::from(*w as i8))
+    })
+}
+
+impl Backend {
+    /// [`dot_i8_reference`] on this backend. AVX-512 needs the byte and word extension
+    /// as well and falls back to the AVX2 kernel without it; NEON runs the reference.
+    pub fn dot_i8(self, x: &[i8], w: &[u8]) -> Result<i32, UnsupportedBackend> {
+        if !self.available() {
+            return Err(UnsupportedBackend);
+        }
+        let n = x.len().min(w.len());
+        let (x, w) = (&x[..n], &w[..n]);
+        #[allow(unused_mut)]
+        let (mut sum, mut done) = (0i32, 0);
+        #[cfg(target_arch = "x86_64")]
+        if matches!(self, Self::Avx2 | Self::Avx512) {
+            // SAFETY: RFC-0003 §6. AVX2 is implied by either backend's availability check
+            // above (an AVX-512 host has AVX2), and the wider kernel runs only when the
+            // byte and word extension is detected too. Both slices have `n` bytes.
+            (sum, done) = unsafe {
+                if self == Self::Avx512 && std::arch::is_x86_feature_detected!("avx512bw") {
+                    crate::x86::dot::avx512(x.as_ptr(), w.as_ptr(), n)
+                } else if std::arch::is_x86_feature_detected!("avx2") {
+                    crate::x86::dot::avx2(x.as_ptr(), w.as_ptr(), n)
+                } else {
+                    (0, 0)
+                }
+            };
+        }
+        Ok(sum.wrapping_add(dot_i8_reference(&x[done..], &w[done..])))
+    }
+}
+
+/// [`dot_i8_reference`] on the widest backend of this host.
+pub fn dot_i8(x: &[i8], w: &[u8]) -> i32 {
+    match Backend::detect().dot_i8(x, w) {
+        Ok(sum) => sum,
+        Err(_) => dot_i8_reference(x, w),
+    }
+}
