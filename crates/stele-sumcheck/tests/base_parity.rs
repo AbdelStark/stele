@@ -264,15 +264,24 @@ fn batch_base_matches<K: ChallengeField + Eq + core::fmt::Debug>() {
     let mut rng = Rng(23);
     let mut ext = Ext::<K>::new(b"review/batch");
     let mut cases = 0;
-    for nv in 0..=13u32 {
+    // 16 and 17 variables: blocks at and above the size where a claim's own sums and fill
+    // run on the pool, with short prefixes so that such blocks occur, and forty claims so
+    // that small blocks fall in several windows, nested in the large ones and disjoint.
+    for nv in (0..=13u32).chain([16, 17]) {
         let n = 1usize << nv;
-        for count in [1usize, 2, 5] {
+        for count in if nv > 13 { [1usize, 5, 40] } else { [1, 2, 5] } {
             let base: Vec<M31> = (0..n).map(|_| rng.m31()).collect();
             let reference: Vec<K> = base.iter().map(|v| embed::<K>(*v)).collect();
             let mut claims: Vec<(Vec<K>, K)> = Vec::new();
             for j in 0..count {
                 // Boolean prefixes of every length, fully Boolean points and duplicates.
-                let prefix = rng.below(u64::from(nv) + 1) as usize;
+                let prefix = if nv > 13 && j % 4 == 0 {
+                    j / 4 % 3
+                } else if nv > 13 {
+                    rng.below(9) as usize
+                } else {
+                    rng.below(u64::from(nv) + 1) as usize
+                };
                 let point: Vec<K> = if j > 0 && rng.below(4) == 0 {
                     claims[0].0.clone()
                 } else {
@@ -315,7 +324,7 @@ fn batch_base_matches<K: ChallengeField + Eq + core::fmt::Debug>() {
             cases += 1;
         }
     }
-    assert!(cases == 42);
+    assert!(cases == 48);
 }
 
 #[test]

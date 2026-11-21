@@ -4520,11 +4520,14 @@ tasks:
   skill: performance-engineer
   crate: stele-sumcheck+stele-reductions
   lane: E
-  status: ready
+  status: in_progress
+  agent: claude
+  branch: task/E20-26-check-instance-bound
   acceptance:
   - a zerocheck and a claim batch keep eq(point, .) factored through the first round, so neither builds a dense extension table of the full domain before its first fold
   - a matmul operand with a non-shared free bit is read from base storage in round 0
   - pinned L0 and L1 proof hashes unchanged; peak RSS and prove time on L2a before and after in ledgers
+  - 'slice 1 (branch task/E20-26-check-instance-bound): the claim batch over a base-field table keeps each claim''s eq factors through round 0 and builds the folded coefficient table at half size. The zerocheck and the matmul operand lines are open'
 - id: E20-25
   epic: E20
   title: The verifier evaluates a lookup selector from the members, without the domain vector

@@ -130,6 +130,44 @@ pub fn for_each_chunk_weighted<T: Send>(
     fill(0, out);
 }
 
+/// `f(i, block_i)` for disjoint blocks of `data`, each one task on the pool. `blocks`
+/// lists `(begin, len)` in ascending order without overlap; anything else is
+/// `PublicShape`. The blocks are disjoint, so the result does not depend on the split;
+/// the error returned is the first in block order.
+pub fn for_each_block<T: Send>(
+    data: &mut [T],
+    blocks: &[(usize, usize)],
+    f: impl Fn(usize, &mut [T]) -> Result<(), Error> + Sync,
+) -> Result<(), Error> {
+    let mut parts = Vec::new();
+    parts
+        .try_reserve_exact(blocks.len())
+        .map_err(|_| Error::Capacity)?;
+    let (mut rest, mut cursor) = (data, 0usize);
+    for &(begin, len) in blocks {
+        let skip = begin.checked_sub(cursor).ok_or(Error::PublicShape)?;
+        if skip > rest.len() || len > rest.len() - skip {
+            return Err(Error::PublicShape);
+        }
+        let (block, tail) = rest.split_at_mut(skip).1.split_at_mut(len);
+        parts.push(block);
+        (rest, cursor) = (tail, begin + len);
+    }
+    #[cfg(feature = "std")]
+    if parts.len() > 1 {
+        let done: Vec<Result<(), Error>> = parts
+            .into_par_iter()
+            .enumerate()
+            .map(|(i, block)| f(i, block))
+            .collect();
+        return done.into_iter().collect();
+    }
+    parts
+        .into_iter()
+        .enumerate()
+        .try_for_each(|(i, block)| f(i, block))
+}
+
 /// The table `[at(0), .., at(len - 1)]`, every entry written once on the pool. A zero fill
 /// followed by [`for_each_chunk`] touches the whole table on the calling thread first;
 /// this does not. Entries are independent, so the table does not depend on the split.

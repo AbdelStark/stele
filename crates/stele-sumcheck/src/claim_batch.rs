@@ -6,6 +6,50 @@ use crate::{
 };
 use alloc::vec::Vec;
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, Transcript};
+/// The leading Boolean prefix of a point: its length and the block index it selects.
+fn boolean_prefix<K: ChallengeField + Eq>(point: &[K]) -> (usize, usize) {
+    let (zero, one) = (K::from_i64(0), K::from_i64(1));
+    let (mut prefix, mut start) = (0, 0);
+    for x in point {
+        if *x != zero && *x != one {
+            break;
+        }
+        start = 2 * start + usize::from(*x == one);
+        prefix += 1;
+    }
+    (prefix, start)
+}
+/// `out += weight · eq(point, ·)`. A leading Boolean prefix selects a contiguous block;
+/// overlapping blocks accumulate.
+fn add_eq<K: ChallengeField + Eq>(out: &mut [K], point: &[K], weight: K) -> Result<(), Error> {
+    let (prefix, start) = boolean_prefix(point);
+    let suffix = crate::parallel::eq_table_scaled(&point[prefix..], weight)?;
+    // A2: start < 2^prefix and suffix.len() = 2^(m-prefix), so the block fits.
+    let begin = start * suffix.len();
+    let block = &mut out[begin..begin + suffix.len()];
+    crate::parallel::for_each_chunk(block, |offset, chunk| {
+        for (target, value) in chunk.iter_mut().zip(&suffix[offset..]) {
+            *target = *target + *value;
+        }
+    });
+    Ok(())
+}
+/// Blocks below this many entries are summed and filled on one thread: with many claims
+/// the claims are the parallel items, and a task per 256 entries costs more than its work.
+const SERIAL_BLOCK: usize = 1 << 15;
+/// A claim's coefficient once its leading coordinate `z0` is set aside:
+/// `weight · eq(point, ·)` on the block of `2^point.len()` entries at `begin`.
+struct Piece<'a, K> {
+    begin: usize,
+    point: &'a [K],
+    z0: K,
+    weight: K,
+}
+impl<K> Piece<'_, K> {
+    fn len(&self) -> usize {
+        1 << self.point.len()
+    }
+}
 /// Verifier-owned claims. The caller must derive the virtual role from its verified plan;
 /// committed tensors use PCS functional openings, never a proof-supplied routing flag.
 pub struct Batch<'a, K> {
@@ -59,29 +103,131 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
     pub fn coefficient_table(&self, gamma: K) -> Result<Vec<K>, Error> {
         self.validate()?;
         let n = 1usize.checked_shl(self.num_vars).ok_or(Error::Capacity)?;
-        let (zero, one) = (K::from_i64(0), K::from_i64(1));
-        let mut out = crate::parallel::build(n, |_| zero)?;
-        let mut weight = one;
+        let mut out = crate::parallel::build(n, |_| K::from_i64(0))?;
+        let mut weight = K::from_i64(1);
         for (z, _) in self.claims {
-            let (mut prefix, mut start) = (0, 0);
-            for x in z {
-                if *x != zero && *x != one {
-                    break;
-                }
-                start = 2 * start + usize::from(*x == one);
-                prefix += 1;
-            }
-            let suffix = crate::parallel::eq_table_scaled(&z[prefix..], weight)?;
-            // A2: start < 2^prefix and suffix.len() = 2^(m-prefix), so the block fits.
-            let begin = start * suffix.len();
-            let block = &mut out[begin..begin + suffix.len()];
-            crate::parallel::for_each_chunk(block, |offset, chunk| {
-                for (target, value) in chunk.iter_mut().zip(&suffix[offset..]) {
-                    *target = *target + *value;
-                }
+            add_eq(&mut out, z, weight)?;
+            weight = weight * gamma;
+        }
+        Ok(out)
+    }
+    /// Each claim's coefficient over the domain without its leading coordinate.
+    fn pieces(&self, gamma: K) -> Result<Vec<Piece<'_, K>>, Error> {
+        let mut out = Vec::new();
+        reserve(&mut out, self.claims.len())?;
+        let mut weight = K::from_i64(1);
+        for (z, _) in self.claims {
+            let (prefix, start) = boolean_prefix(&z[1..]);
+            let point = &z[1 + prefix..];
+            out.push(Piece {
+                begin: start << point.len(),
+                point,
+                z0: z[0],
+                weight,
             });
             weight = weight * gamma;
         }
+        Ok(out)
+    }
+    /// The three values of round 0 over a base-field table, with each claim's coefficient
+    /// kept as its factors (RFC-0006 A2, A5; task E20-24), so no extension table of the
+    /// full domain is built. Claim `j` contributes `γ^j · eq(z_0, X) · (P + X·(Q − P))`,
+    /// where `P` and `Q` are the sums of `eq(z', ·)` against its block of the lower and of
+    /// the upper half of `table`.
+    fn round0_base(
+        &self,
+        table: &[stele_field::M31],
+        pieces: &[Piece<'_, K>],
+    ) -> Result<[K; 3], Error> {
+        let half = table.len() / 2;
+        let (zero, one) = (K::from_i64(0), K::from_i64(1));
+        let sums = crate::parallel::map(pieces.len(), |j| -> Result<[K; 2], Error> {
+            let piece = &pieces[j];
+            let low = &table[piece.begin..piece.begin + piece.len()];
+            let high = &table[half + piece.begin..half + piece.begin + piece.len()];
+            let mut sums = [zero; 2];
+            if piece.len() < SERIAL_BLOCK {
+                let eq = stele_poly::eq_table(piece.point).map_err(|_| Error::Capacity)?;
+                for ((e, a), b) in eq.iter().zip(low).zip(high) {
+                    sums[0] = sums[0] + e.mul_m31(*a);
+                    sums[1] = sums[1] + e.mul_m31(*b);
+                }
+            } else {
+                let eq = crate::parallel::eq_table(piece.point)?;
+                crate::parallel::sum_ranges(eq.len(), &mut sums, |range, out| {
+                    out.fill(zero);
+                    for i in range {
+                        out[0] = out[0] + eq[i].mul_m31(low[i]);
+                        out[1] = out[1] + eq[i].mul_m31(high[i]);
+                    }
+                    Ok(())
+                })?;
+            }
+            Ok(sums)
+        });
+        let mut values = [zero; 3];
+        for (piece, sums) in pieces.iter().zip(sums) {
+            let ([p, q], z0, w) = (sums?, piece.z0, piece.weight);
+            values[0] = values[0] + w * (one - z0) * p;
+            values[1] = values[1] + w * z0 * q;
+            values[2] = values[2] + w * (z0 + z0 + z0 - one) * (q + q - p);
+        }
+        Ok(values)
+    }
+    /// [`Self::coefficient_table`] with its leading coordinate bound to `r0`, built at
+    /// half the size: claim `j` weighs `γ^j · eq(z_0, r0)` over its other coordinates.
+    /// A large block is filled on the pool. A small one lies inside one aligned window of
+    /// `SERIAL_BLOCK` entries, and the windows are disjoint tasks.
+    fn folded_coefficient_table(&self, pieces: &[Piece<'_, K>], r0: K) -> Result<Vec<K>, Error> {
+        let one = K::from_i64(1);
+        let weight =
+            |piece: &Piece<'_, K>| piece.weight * ((one - piece.z0) * (one - r0) + piece.z0 * r0);
+        let n = 1usize
+            .checked_shl(self.num_vars - 1)
+            .ok_or(Error::Capacity)?;
+        let mut out = crate::parallel::build(n, |_| K::from_i64(0))?;
+        let mut small = Vec::new();
+        reserve(&mut small, pieces.len())?;
+        for (j, piece) in pieces.iter().enumerate() {
+            if piece.len() < SERIAL_BLOCK {
+                small.push(j);
+                continue;
+            }
+            let eq = crate::parallel::eq_table_scaled(piece.point, weight(piece))?;
+            let target = &mut out[piece.begin..piece.begin + piece.len()];
+            crate::parallel::for_each_chunk(target, |offset, chunk| {
+                for (t, e) in chunk.iter_mut().zip(&eq[offset..]) {
+                    *t = *t + *e;
+                }
+            });
+        }
+        small.sort_by_key(|&j| pieces[j].begin);
+        let mut windows: Vec<(usize, usize)> = Vec::new();
+        reserve(&mut windows, small.len())?;
+        // `members[g]` is the range of `small` inside window `g`.
+        let mut members: Vec<core::ops::Range<usize>> = Vec::new();
+        reserve(&mut members, small.len())?;
+        for (at, &j) in small.iter().enumerate() {
+            let begin = pieces[j].begin / SERIAL_BLOCK * SERIAL_BLOCK;
+            match (windows.last(), members.last_mut()) {
+                (Some(&(last, _)), Some(inside)) if last == begin => inside.end = at + 1,
+                _ => {
+                    windows.push((begin, SERIAL_BLOCK.min(n - begin)));
+                    members.push(at..at + 1);
+                }
+            }
+        }
+        crate::parallel::for_each_block(&mut out, &windows, |g, window| {
+            for &j in &small[members[g].clone()] {
+                let (piece, weight) = (&pieces[j], weight(&pieces[j]));
+                let eq = stele_poly::eq_table(piece.point).map_err(|_| Error::Capacity)?;
+                let target = &mut window[piece.begin - windows[g].0..][..piece.len()];
+                for (t, e) in target.iter_mut().zip(eq) {
+                    *t = *t + e * weight;
+                }
+            }
+            Ok(())
+        })?;
         Ok(out)
     }
     /// Direct verifier evaluation in O(t*(m+1)); no coefficient table or final A value.
@@ -223,24 +369,8 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
                 point,
             ));
         }
-        let mut coeff = self.coefficient_table(gamma)?;
-        let half = table.len() / 2;
-        let mut values0 = [K::from_i64(0); 3];
-        crate::parallel::sum_ranges(half, &mut values0, |range, out| {
-            out.fill(K::from_i64(0));
-            for col in range {
-                let a0 = table[col];
-                let a1 = table[col + half];
-                let a2 = a1 + (a1 - a0);
-                let c0 = coeff[col];
-                let c1 = coeff[col + half];
-                let c2 = c1 + (c1 - c0);
-                out[0] = out[0] + c0.mul_m31(a0);
-                out[1] = out[1] + c1.mul_m31(a1);
-                out[2] = out[2] + c2.mul_m31(a2);
-            }
-            Ok(())
-        })?;
+        let pieces = self.pieces(gamma)?;
+        let values0 = self.round0_base(table, &pieces)?;
         let (r0, next) = round(self.id, 0, &values0, running, transcript)?;
         let mut round0 = Vec::new();
         reserve(&mut round0, 3)?;
@@ -250,7 +380,7 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         running = next;
 
         let folded_table = crate::parallel::fold_base(table, r0)?;
-        crate::parallel::fold(&mut coeff, r0);
+        let coeff = self.folded_coefficient_table(&pieces, r0)?;
         let mut tables = Vec::new();
         reserve(&mut tables, 2)?;
         tables.push(folded_table);
