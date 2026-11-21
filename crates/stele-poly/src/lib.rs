@@ -9,6 +9,13 @@ extern crate alloc;
 use alloc::vec::Vec;
 use stele_field::Field;
 
+/// Host kernels over QM31 slices (RFC-0003 §6, RFC-0014 §2), each equal to its scalar
+/// reference in `stele-simd`. This crate is their entry for the sumcheck and lookup
+/// provers.
+pub mod kernels {
+    pub use stele_simd::{accelerated, fold, layer_round, mul_assign};
+}
+
 /// Invalid polynomial input or a table too large to allocate.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {

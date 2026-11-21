@@ -245,13 +245,12 @@ pub fn eq_table_scaled<K: ChallengeField>(point: &[K], scale: K) -> Result<Vec<K
     Ok(out)
 }
 
-/// `a[j] *= b[j]`, through the host's kernel when the field is QM31 and `std` is on: the
-/// elements of the loop either way.
+/// `a[j] *= b[j]`, through the host's kernel when the field is QM31: the elements of the
+/// loop either way.
 pub fn mul_assign<K: ChallengeField>(a: &mut [K], b: &[K]) {
-    #[cfg(feature = "std")]
     if let Some(b) = K::qm31_slice(b) {
         if let Some(a) = K::qm31_slice_mut(a) {
-            stele_simd::mul_assign(a, b);
+            stele_poly::kernels::mul_assign(a, b);
             return;
         }
     }
@@ -263,44 +262,32 @@ pub fn mul_assign<K: ChallengeField>(a: &mut [K], b: &[K]) {
 /// Whether [`layer_round_kernel`] runs a host kernel for `K`, and not the reference loop:
 /// a caller whose operands are not tables copies them into tables only then.
 pub fn layer_kernel_available<K: ChallengeField>() -> bool {
-    #[cfg(feature = "std")]
-    {
-        K::from_qm31(stele_field::QM31::ZERO).is_some() && stele_simd::accelerated()
-    }
-    #[cfg(not(feature = "std"))]
-    false
+    K::from_qm31(stele_field::QM31::ZERO).is_some() && stele_poly::kernels::accelerated()
 }
 
 /// The three partial sums of a fraction-tree layer round with unit weights over `range`
 /// (`stele_simd::layer_round_reference`: `e[x]·t` for `t = q1·(p0 + γ·q0) + p1·q0` at `x`,
-/// at `x + half` and of their differences), from the host's kernel when the field is QM31
-/// and `std` is on. `None` otherwise: the caller runs its own loop.
+/// at `x + half` and of their differences), from the host's kernel when the field is QM31.
+/// `None` otherwise: the caller runs its own loop.
 pub fn layer_round_kernel<K: ChallengeField>(
     tables: [&[K]; 4],
     suffix: &[K],
     gamma: K,
     range: core::ops::Range<usize>,
 ) -> Option<[K; 3]> {
-    #[cfg(feature = "std")]
-    {
-        let tables = [
-            K::qm31_slice(tables[0])?,
-            K::qm31_slice(tables[1])?,
-            K::qm31_slice(tables[2])?,
-            K::qm31_slice(tables[3])?,
-        ];
-        let sums = stele_simd::layer_round(tables, K::qm31_slice(suffix)?, gamma.qm31()?, range);
-        Some([
-            K::from_qm31(sums[0])?,
-            K::from_qm31(sums[1])?,
-            K::from_qm31(sums[2])?,
-        ])
-    }
-    #[cfg(not(feature = "std"))]
-    {
-        let _ = (tables, suffix, gamma, range);
-        None
-    }
+    let tables = [
+        K::qm31_slice(tables[0])?,
+        K::qm31_slice(tables[1])?,
+        K::qm31_slice(tables[2])?,
+        K::qm31_slice(tables[3])?,
+    ];
+    let sums =
+        stele_poly::kernels::layer_round(tables, K::qm31_slice(suffix)?, gamma.qm31()?, range);
+    Some([
+        K::from_qm31(sums[0])?,
+        K::from_qm31(sums[1])?,
+        K::from_qm31(sums[2])?,
+    ])
 }
 
 /// Fix the leading coordinate: `t[j] += r·(t[j + half] − t[j])`, then halve.
@@ -312,10 +299,9 @@ pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
         let (low, high) = table.split_at_mut(half);
         let apply = |low: &mut [K], high: &[K]| {
             // QM31 tables take the host's kernel: the limbs of this loop (stele-simd).
-            #[cfg(feature = "std")]
             if let (Some(c), Some(high)) = (challenge.qm31(), K::qm31_slice(high)) {
                 if let Some(low) = K::qm31_slice_mut(low) {
-                    stele_simd::fold(low, high, c);
+                    stele_poly::kernels::fold(low, high, c);
                     return;
                 }
             }
