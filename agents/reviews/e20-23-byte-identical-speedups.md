@@ -610,7 +610,7 @@ By the author, in the commit that appends the second pass.
 
 | Finding | Status | Change |
 |---|---|---|
-| S1 | Resolved | `rows_in_blocks` chooses the worker count and calls `rows_on(rows, workers, row)`. `matches_reference_rows_at_every_worker_count_and_returns_the_first_failing_row` compares it with the loop for 0 to 101 rows at 1, 2, 3 and 7 workers, and expects the lower row's error from two failing rows in different blocks. A split that fills nothing and one whose later blocks start a row early both fail it. |
+| S1 | Resolved | `rows_in_blocks` chooses the worker count and calls `rows_on(rows, workers, row)`. `matches_reference_rows_at_every_worker_count_and_returns_the_first_failing_row` compares it with the loop for seven row counts from 0 to 101 at 1, 2, 3 and 7 workers, and expects the lower row's error from two failing rows in different blocks. A split that fills nothing and one whose later blocks start a row early both fail it. |
 | S2 | Resolved | The reviewer's test of `join_all` is committed (`rejects_with_the_first_error_in_worker_order_and_re_raises_a_panic`). A `join_all` that keeps the last error and one that drops the panic both fail it. |
 | S3 | Resolved | The reference test of `mle_base` draws its points from a transcript, every limb, and runs in QM31 and OM31. |
 | F4, remarks | Resolved in the table above | The RSS columns are headed GiB, which is what they hold, and the Mac row has its verifier RSS. The first bullet says which host has the "before" proof. The message of `6072316e` states a verifier RSS of 3.6 GB that no ledger has; the ledger pair is 2.76 to 0.69 GiB. The message is left, because rewriting it would change the audited hashes. |
@@ -623,5 +623,75 @@ The ignored test `enumerates_every_round_of_the_eight_layer_window` had gone sta
 E18-05: it is re-pinned in a commit of its own (28,447 rounds; floors `2^-99.8` and
 `2^-99.6`).
 
-The tests are sent back to the reviewer of the second pass for its confirmation, which
-is appended below when it returns.
+The tests were sent back to the reviewer of the second pass. Its confirmation follows;
+one phrase of the table above is reworded as it asks.
+
+## Confirmation of the second pass
+
+- **Audited commits:** `1a48638c`, `c2f232a7` and `909ef102`, the three local commits above `c2db66aa`. Line numbers are those of `909ef102`. They were not pushed when I looked, so CI had not run on them.
+- **Reviewer:** the reviewer of the second pass; did not write the change.
+- **Verdict:** **APPROVE.**
+
+### What I ran
+
+I ran everything here myself at `909ef102`, in my own detached worktree and target directory, on aarch64 macOS with 16 CPUs. A mutant is one changed line, applied only when its pattern occurs exactly once and restored with git. Each mutant's log shows the crate recompiled, and the worktree was clean afterwards.
+
+- `cargo test -p stele-cqis --all-features`: 169 passed. That is the 167 of the second pass and the two new tests.
+- `cargo test -p stele-cqis` without `std`: 167 passed. It compiles the `cfg(not(feature = "std"))` lines of `rows_in_blocks` and `rows_on`. Neither build prints a warning.
+- `cargo test -p stele-lookup --all-features`: 26 passed.
+- The ten mutants of the table below, against the unit tests of the crate they change.
+- The ignored test `enumerates_every_round_of_the_eight_layer_window`, from the release test binary built at `c2db66aa`, before the re-pin.
+- `rustfmt --check` on the four changed Rust files, and `ledger-validate`, `rust-policy`, `rfc-status`, `glossary-lint` and `docs-links`: all exit 0.
+- The six rows of the ledger table, recomputed from the ledger files.
+
+| Mutant | Where | At `909ef102` |
+|---|---|---|
+| M-rows0: the spawned closure panics | `data.rs:76` | fails `matches_reference_rows_at_every_worker_count_and_returns_the_first_failing_row` |
+| M-rows1: later blocks start one row early | `data.rs:76` | fails the same test, at 2 rows and 2 workers |
+| The split fills nothing | `data.rs:76` | fails the same test, at 1 row and 2 workers |
+| The `rows > 0` guard removed | `data.rs:70` | fails the same test: `chunks_mut(0)` panics at line 75 |
+| M-join: the last error is kept | `lib.rs:34` | fails `rejects_with_the_first_error_in_worker_order_and_re_raises_a_panic`, and the rows test |
+| M-join2: the panic is dropped | `lib.rs:39-41` | fails the join test: `[Panic, Ok]` returns `Ok(())` |
+| M-mle1 and M-mle2 | `selected.rs:231`, `228` | fail `matches_reference_dense_sum_for_the_split_base_extension` |
+| M-mle3: only the base limb of the leading weight is used | `selected.rs:231` | fails it; passes the test of `c2db66aa` |
+| M-mle4: only the base limb of a trailing weight is used, for an entry 1 | `selected.rs:226` | fails it; passes the test of `c2db66aa` |
+
+M-rows0, M-rows1, M-join, M-join2, M-mle1 and M-mle2 are the definitions of the second pass. The two row patterns lost their leading indentation, which the fix changed. M-mle3 and M-mle4 are new: they are right on base-field points and wrong on extension points.
+
+### S1 to S3
+
+| Finding | Status | Evidence |
+|---|---|---|
+| S1 (MEDIUM) | Closed | M-rows0 and M-rows1 fail a committed test. CI runs it: the test module needs `std`, and CI runs `cargo test --workspace --all-features` (`.github/workflows/ci.yml:70`) [read]. |
+| S2 (LOW) | Closed | M-join and M-join2 fail a committed test. Its nine cases are the nine of the second reviewer's test, and the worker panics through an `expect` (`lib.rs:75`). The expected result of a case does not depend on timing; the delays only make an earlier worker finish later. |
+| S3 (LOW) | Closed | `selected.rs:558` draws each coordinate with `Transcript::challenge`, which samples every limb (`stele-hash/src/lib.rs:661-662`, `417-431`) [read]. Lines 579-580 run the test in QM31 and in OM31. M-mle3 and M-mle4 pass the earlier test and fail this one. |
+
+**The production path through `rows_on`** [read: the diff of `c2f232a7`]. `rows_in_blocks` (`data.rs:36-53`) keeps the threshold and the worker choice word for word: `crate::workers().min(rows / 64)` when `rows·columns ≥ 2^22`, otherwise 1, and 1 without `std`. `rows_on` (`data.rs:56-86`) is the earlier body. Its one new condition is `rows > 0` (line 70). From `rows_in_blocks`, more than one worker means `rows / 64 ≥ 2`, so that condition is always true there. Production takes the same branch, with the same `per`, the same blocks, the same join order and the same first error. Without `std` it is the loop, as before.
+
+Lines 41-46, which choose the count, stay outside the new test. They choose a schedule only: `rows_on` returns the same rows at 1, 2, 3 and 7 workers, with more workers than rows included.
+
+**The `rows = 0` case.** It is meaningful for `rows_on` and dead for production. With the guard of line 70 removed, the test panics in `chunks_mut(0)` at 0 rows and 2 workers, so that case is what pins the guard. `rows_in_blocks` never passes more than one worker with fewer than 128 rows, so production cannot reach it.
+
+**The Resolution table.** It says what the tree shows, with one loose phrase. "For 0 to 101 rows" is seven row counts: 0, 1, 2, 6, 7, 100 and 101 (`data.rs:396`). The rest holds:
+
+- The two failing rows, 30 and 90 of 101, are in different blocks at 2, 3 and 7 workers.
+- "A split that fills nothing" and "later blocks start a row early" both fail the test; so does a `join_all` that keeps the last error, and one that drops the panic.
+- The 24 numbers of the ledger table equal the ledger files to two decimals, with the RSS in GiB and the Mac row's verifier RSS at 1.06.
+- The second pass is appended verbatim: it equals my section file.
+
+**`1a48638c`.** The binary built before the re-pin fails the ignored test with `(28447, "LU range_16", 104425, 102229)` against the earlier `(11687, "LU range_16", 104425, 102066)`. That is the Expander row of the re-pin exactly. The unit is 1/1024 bit, so the two pinned floors are 99.83 and 99.59 bits, the 2^-99.8 and 2^-99.6 of the comment and of the Resolution. Both remain short of 100 bits, as the test's own comment says. The commit changes the expectation of an ignored test and nothing else.
+
+### Not checked
+
+- The CircleAll row of the re-pin (101,983). The earlier binary stops at its first failed assertion.
+- `cargo test --workspace`, clippy, `check.py native`, the digest gate and the release prover and CLI tests at `909ef102`. The code delta since `c2db66aa` is `rows_on` and three tests, and `rows_in_blocks` keeps its signature.
+- The OM31 half of the new `mle_base` test by a mutant of its own. The mutants fail in QM31 first.
+- Everything the second pass lists as not checked.
+
+### Verdict
+
+**APPROVE.**
+
+I tried to break it by a split that panics, starts a row early or fills nothing; by removing the `rows > 0` guard; by a join that keeps the last error or drops a panic; and by a selector evaluation that drops a factor, miscounts an entry or uses base limbs only. The controls `matches_reference_rows_at_every_worker_count_and_returns_the_first_failing_row`, `rejects_with_the_first_error_in_worker_order_and_re_raises_a_panic` and `matches_reference_dense_sum_for_the_split_base_extension` rejected each one.
+
+This closes the second pass. The approval is of the tree at `909ef102`. It does not stand in for the CI run that the three commits have not had.
