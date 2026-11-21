@@ -4275,6 +4275,7 @@ tasks:
   branch: task/E18-11-check-beside-engine
   acceptance:
   - for an unsegmented relation the plain check runs beside the segmented and the recursive engine and decides; a false witness ends in Check under the default sources and under the joined recursion
+  - the checker holds a computed column in 32-bit entries when every entry fits and in its checked form otherwise; both read back as the definition's values
   - public and proof bytes unchanged on L0, L1 and L2a; L2a prove time and peak RSS before and after in ledgers
 - id: E19-01
   epic: E19
@@ -4507,6 +4508,26 @@ tasks:
   - a zerocheck and a claim batch keep eq(point, .) factored through the first round, so neither builds a dense extension table of the full domain before its first fold
   - a matmul operand with a non-shared free bit is read from base storage in round 0
   - pinned L0 and L1 proof hashes unchanged; peak RSS and prove time on L2a before and after in ledgers
+- id: E20-25
+  epic: E20
+  title: The verifier evaluates a lookup selector from the members, without the domain vector
+  depends:
+  - E20-02
+  rfc:
+  - RFC-0008 A3
+  - RFC-0026 §3.3
+  - RFC-0026 A8
+  skill: verifier-engineer
+  crate: stele-lookup+stele-reductions
+  lane: E
+  status: in_progress
+  agent: claude
+  branch: task/E18-11-check-beside-engine
+  acceptance:
+  - the verifier of a lookup check computes the selector's multilinear extension from the members (block weight, absent selector, public selector summed over the domain bits its reference reads) and builds no vector of the check's domain
+  - a reference test compares it with the extension of the selector vector on random relations with absent, natural, permuted and narrower selectors under every instance bound 1..=6; a selector entry other than 0 or 1 is refused as before
+  - the selected product accepts and rejects the same proofs from the extension as from the entries
+  - proof bytes unchanged; verify time and verifier peak RSS on L2a before and after in ledgers
 - id: E20-03
   epic: E20
   title: Backend trait with CPU reference and SIMD
