@@ -5111,6 +5111,23 @@ tasks:
   - RFC-0030 (Draft) uses c·(N + t) − 1 for the pair round and caps c = 2 checks at N + t ≤ 2^23 (≤ 2^22 positions with a 2^16-row table)
   - the cap is asserted at its boundaries for c = 1 and c = 2 (study.py --check); no plan validator enforces it yet (E21-04)
   - study.py --check asserts the grind receipts and that LU range_8 is the worst Policy 1 round
+- id: E21-11
+  epic: E21
+  title: The CLI asks glibc for transparent huge pages
+  depends: []
+  rfc:
+  - RFC-0018 A2
+  - RFC-0027 §3
+  skill: performance-engineer
+  crate: stele-cli+bench
+  lane: V
+  status: in_progress
+  agent: claude
+  branch: task/E20-26-check-instance-bound
+  acceptance:
+  - on Linux with glibc the stele CLI replaces itself once with GLIBC_TUNABLES=glibc.malloc.hugetlb=1 when the variable is unset; a set variable is kept and a failed exec changes nothing
+  - the CLI tests pass on Linux; public and proof bytes unchanged
+  - L2a prove and verify time on the reference class with and without the variable preset, in ledgers; the ledger note states the default
 - id: E21-09
   epic: E21
   title: Promote the lean protocol to standard
