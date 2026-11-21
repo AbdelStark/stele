@@ -376,8 +376,18 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
                 point,
             ));
         }
+        let big = self.num_vars >= 22;
+        let mut laps = crate::parallel::Laps::start();
         let pieces = self.pieces(gamma)?;
+        if big {
+            let small = pieces.iter().filter(|p| p.serial(pieces.len())).count();
+            let cells: usize = pieces.iter().map(|p| p.len()).sum();
+            extern crate std;
+            std::eprintln!("probe batch nv={} claims={} serial_pieces={} piece_cells={} largest={}", self.num_vars, pieces.len(), small, cells, pieces.iter().map(|p| p.len()).max().unwrap_or(0));
+            laps.lap("probe/batch pieces");
+        }
         let values0 = self.round0_base(table, &pieces)?;
+        if big { laps.lap("probe/batch round0"); }
         let (r0, next) = round(self.id, 0, &values0, running, transcript)?;
         let mut round0 = Vec::new();
         reserve(&mut round0, 3)?;
@@ -387,7 +397,9 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         running = next;
 
         let folded_table = crate::parallel::fold_base(table, r0)?;
+        if big { laps.lap("probe/batch fold_base"); }
         let coeff = self.folded_coefficient_table(&pieces, r0)?;
+        if big { laps.lap("probe/batch folded_coeff"); }
         let mut tables = Vec::new();
         reserve(&mut tables, 2)?;
         tables.push(folded_table);
@@ -406,6 +418,7 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         reserve(&mut final_values, 1)?;
         final_values.push(dense.final_values()?[0]);
         self.finish(final_values[0], &point, gamma, running, transcript)?;
+        if big { laps.lap("probe/batch rest"); }
         Ok((
             Proof {
                 rounds,
