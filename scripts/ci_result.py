@@ -10,7 +10,8 @@ def accepts(needs):
         if any(needs[job]['result'] != 'success' for job in ('plan', 'native', 'native-union')):
             return False
         scope = needs['plan']['outputs']
-        for job, name in (('table-parity', 'tables'), ('research', 'research'), ('gpu-parity', 'gpu')):
+        for job, name in (('table-parity', 'tables'), ('simd-neon', 'tables'), ('research', 'research'),
+                          ('gpu-parity', 'gpu')):
             required = scope[name]
             if required not in ('true', 'false'):
                 return False
