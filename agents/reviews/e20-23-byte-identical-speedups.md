@@ -377,20 +377,251 @@ Recorded at `1b1676eb`, the parent of the commit that adds them. "Before" is the
 tip (`01076e86`). Reference class: Xeon Platinum 8480CL, 24 allocated CPUs (12 physical
 cores), singleton runs, profile byte 6. `bench/ledger/<name>.json`.
 
-| Rung | Ledger | Prove s | Verify s | Peak RSS GB | Verify RSS GB |
+| Rung | Ledger | Prove s | Verify s | Peak RSS GiB | Verify RSS GiB |
 |---|---|---|---|---|---|
 | L1 | `e19-04-dev-synthetic-8layer-byte6-24t` (before) | 17.32 | 1.05 | 2.08 | 0.14 |
 | L1 | `e22-10-dev-synthetic-8layer-byte6-24t` | 7.69 | 0.55 | 1.98 | 0.07 |
 | L2a | `e19-04-dev-stories42m-t64-byte6-24t` (before) | 117.79 | 11.35 | 13.99 | 2.76 |
 | L2a | `e22-10-dev-stories42m-t64-byte6-24t` | 36.33 | 2.05 | 12.67 | 0.69 |
 | L2a | `e22-10-dev-stories42m-t64-byte6-24t-hugepages` | 31.85 | 1.57 | 12.56 | 0.70 |
-| L2a | `e22-10-dev-stories42m-t64-byte6-mac` (arm64, 16 threads) | 23.53 | 1.13 | 18.14 | — |
+| L2a | `e22-10-dev-stories42m-t64-byte6-mac` (arm64, 16 threads) | 23.53 | 1.13 | 18.14 | 1.06 |
 
 - The L2a proof is 3,927,613 bytes with SHA-256 `afb3581b…67cb` and the public input
-  `8da645cd…44b3` in every one of these ledgers, before and after, on both hosts.
+  `8da645cd…44b3` in every one of these ledgers: before on the reference class, after
+  on both hosts.
 - The huge-page ledger sets `GLIBC_TUNABLES=glibc.malloc.hugetlb=1` for prover and
   verifier; its host context says so. Nothing else differs from the ledger above it.
 - Against Gate M2's L2a lines on the reference class: prove 36.33 s against 10 s and
-  peak RSS 12.67 GB against 4 GB are not met; proof size is met; verify is 2.05 s
-  against 2 s, and 1.57 s with huge pages.
+  peak RSS 12.67 GiB (13.60 GB) against 4 GB are not met; proof size is met; verify is
+  2.05 s against 2 s, and 1.57 s with huge pages.
 
+## Second pass
+
+- **Audited commits:** `6cdb64dd` (the resolution) against F1 to F8; the six commits added after the first audited head, `d5162dca`, `63279d01`, `6072316e`, `b736dda9`, `c2665837` and `fd9ba1bb`; `1b1676eb`; and `c2db66aa`, which changes no file under `crates/` or `scripts/`. Line numbers are those of `c2db66aa`. "Base" is `7634d170`, the parent of the first commit of the stack; its tree equals that of `3937483f`.
+- **Reviewer:** independent `soundness-auditor` agent; did not write the change.
+- **How this record was made:** two reviewers ran the experiments and neither finished. The first stalled at the earlier head `a844135d`. The second audited `c2db66aa` and stopped before its last step. I wrote this record from their logs and scripts, re-ran what their built binaries could confirm, and read the code the conclusions rest on. I built nothing and ran no mutant of my own.
+- **Verdict:** **CHANGES REQUESTED**, for S1.
+
+### Summary
+
+The claim held in every run. No proof byte, public byte or verifier decision differs between the base and the tip on any input that was run, at 1, 2, 3, 5 and 8 threads on arm64, and the ledgers record the same L1 and L2a digests on x86_64 at 24 threads. F1 to F7 are closed and F8 is recorded.
+
+One gap of the kind F2 named is open on the commit added last. No committed test runs the split branch of `rows_in_blocks`, and two mutants of it pass (S1, MEDIUM). Two LOW items follow it.
+
+### Evidence labels
+
+- **[ran by the previous reviewer, arm64, `<log>`]**: the second reviewer, at `c2db66aa`, in detached worktrees that each log header reports clean (`dirty=0`). Host: aarch64 macOS, 16 CPUs. `<log>` is a file of its scratch directory `review-perf3/`. "digest step N" is step N of its command record `previous-reviewer-digest.txt`, for results that have no log file.
+- **[ran by the first stalled reviewer at `a844135d`, arm64, `<log>`]**: in `review-perf2/`. `a844135d` is the earlier hash of the resolution commit. It differs from `c2db66aa` in code by `crates/stele-cqis/src/execution/data.rs`, which is commit `1b1676eb`, and by two lines of `scripts/gates/check.py` that came with the rebase [read: `git diff --stat a844135d c2db66aa`]. Its results carry over to every other file by inference, and say nothing about `1b1676eb`.
+- **[re-ran, arm64]**: by me, with the test binaries and the two release `stele` binaries the second reviewer built from its clean worktrees of `c2db66aa` and `7634d170`.
+- **[read]**: by reading the code, or the output of a `git` or `grep` query.
+
+Both scratch directories are outside the repository and are not kept.
+
+### What was run
+
+**Bytes and decisions, base against tip**
+
+| Check | Threads | Result | Label |
+|---|---|---|---|
+| Six pinned L0 and L1 proofs, `scripts/gates/digest.sh` | tip 1, 3, 8 | pass | [ran by the previous reviewer, arm64, `logs/digest-gate-t1.log`, `-t3.log`, `-t8.log`] |
+| `stele prove-dev`, 15 flag combinations on three L0 fixtures | base 3; tip 8, 1 | same exit code, verdict lines, `public.bin` and `proof.bin` in 15 of 15; 9 write a proof, 6 are refused identically | [ran by the previous reviewer, arm64, `e2e.log`] |
+| `stele verify-dev` on 8 of those windows | base 2; tip 8 | each accepts the other's proof; 560 one-byte tampers: same last line 560, accepted 0 | [ran by the previous reviewer, arm64, `e2e.log`] |
+| L1 at bytes 6, 5 and 3 | base 3; tip 8, 3, 1 | identical; byte 6 equals the ledger's proof and public SHA-256; each verifier accepts the other's proof | [ran by the previous reviewer, arm64, `l1.log`] |
+| L2a (stories42M, T = 64, byte 6) | tip 8, 3, 1 | proof and public SHA-256 equal the ledgers'; the base and the tip verifier accept; 32 tampers: same last line 32, accepted 0 | [ran by the previous reviewer, arm64, `l2a.log`] |
+| Three L0 windows: bytes 3 and 6, and the grouped fixture | base 4; tip 5, 2 | `proof.bin` and `public.bin` equal across the three runs and equal the previous reviewer's base files; each verifier accepts the other's proof; 15 one-byte tampers: same last line 15, accepted 0 | [re-ran, arm64] |
+
+The range changes neither `tests/digests/development.json` nor any fixture. The only data files it adds are four ledgers [read: `git diff --stat 7634d170 c2db66aa`].
+
+**Suites at the tip** [ran by the previous reviewer, arm64, `suites-final.log`]
+
+- `stele-cqis` 167, without `std` and with it at 1, 3 and 8 threads.
+- `stele-lookup` 26 at 1, 3 and 8 threads.
+- `stele-sumcheck` 52, and 59 with `std` at 1, 3 and 8 threads.
+- `stele-pcs` 55, without `std` and with it at 1, 3 and 8 threads.
+- `stele-ir` 42 and `stele-code` 35, each with and without `std`.
+- `stele-field` 22, `stele-poly` 5, `stele-hash` 30, `stele-verifier` 78.
+- `stele-reductions --features std` 293 (6 ignored) at 3 and 8 threads.
+
+**Gates** [ran by the previous reviewer, arm64, `gates.log`]: `fmt`; `native` (`check.py native`, 41 gate lines, 149 tests passed, 4 ignored); the `stele-prover` release tests at 3 and 8 threads (25 passed, 13 ignored); the `stele-cli` release tests (9 passed, 1 ignored); `nostd`; `clippy` with no warning line. All exit 0. `ledger-validate`, `rust-policy`, `rfc-status` (2,077 references), `glossary-lint` and `docs-links` exit 0 [ran by the previous reviewer, arm64, digest step 164].
+
+**Mutants** [ran by the previous reviewer, arm64, `mutants.log`]: 29 runs, one changed line each, in a clean worktree with no auditor test in it. The runner applies a mutant only when its pattern occurs exactly once, and the two logs I opened, of M-rows0 and M-join2, show the crate recompiled [read: `scripts/mutants.sh`, `logs/mutant-M-rows0.log`, `logs/mutant-M-join2.log`].
+
+- Killed, 23: M1, M3, M4, M-rot (with and without `std`), M-hist, M-F1, M-F5; M-eq, M-build, M-fold, M-tree1, M-tree2, M-tree3; M-row, M-basis (with and without `std`); M-mle1, M-mle2; M-fill; M-rows-seq; M-rope; M-chain.
+- SURVIVE, 6: M-rows0 and M-rows1 (S1); M-join and M-join2 (S2); M-mle1-roundtrip and M-mle2-roundtrip (S3).
+
+**Instrumented runs in the scratch copy** [ran by the previous reviewer, arm64, `batch2.log`]
+
+- `join_all` on Ok, Err and panicking workers in 9 orders and delays (`logs/audit-join.log`).
+- The kernel and the plain checker on operands past 2^128, in the test profile and in release (`logs/audit-f1.log`, `logs/audit-f1-release.log`).
+- `peak_codeword_bytes` of the E19-05 shape with the pool at 1, 2 and 8 threads and without it.
+- Every projection of two rows or more forced to split (threshold 1, at most rows / 2 workers): the `stele-cqis` tests and the six pinned proofs at 3 and 8 threads, then the same with M-rows1.
+- M-mle1 against the release prover tests.
+- The auditor's own reference test for `mle_base` did not compile: it used `std::println!` and `vec!` in a `no_std` crate (`logs/audit-mle-t1.log`). The three `exit=101` lines of `batch2.log` are that. It gave no evidence.
+
+**The first stalled reviewer, at `a844135d`**
+
+- Digest-printing tests of `stele-code`, `stele-pcs`, `stele-sumcheck`, `stele-lookup` and the plain checker, on base and tip, without the pool and with it at 1, 2, 7 and 16 threads: identical in 10 of 10, 10 of 10, 10 of 10, 8 of 8 and 4 of 4 runs [`differential.log`]. The second reviewer repeated the base side at `7634d170` and got the same four digests [ran by the previous reviewer, arm64, `differential-base.log`]. The tip side was not repeated at `c2db66aa`.
+- Errors and panics injected into the rotation workers, and live row buffers counted in `recompute_queried_columns` [`faults-buffers.log`].
+- Each of the 23 commits up to `a844135d` builds without a warning and passes the 7 pinned L0 windows [`per-commit.log`]. Those are the hashes before the rebase.
+- M-join and M-join2 survive there too [`mutants-own.log`].
+
+**[re-ran, arm64] from the tip's test binaries.** All pass.
+
+- `stele-ir`, filter `contract`: 4 tests, in both builds.
+- `stele-cqis`, filter `rotary`: 4 tests. `matches_reference_rows_across_block_and_round_boundaries` also at `RAYON_NUM_THREADS=1` and in the build without `std`.
+- `stele-reductions`: `matches_reference_range_multiplicities_past_one_histogram_piece`.
+- `stele-pcs`: `matches_reference_row_and_basis_combinations_across_block_sizes`, in both builds.
+- `stele-lookup`: `matches_reference_dense_sum_for_the_split_base_extension`.
+
+### F1 to F8 at `c2db66aa`
+
+| Finding | Status | Evidence |
+|---|---|---|
+| F1 (BLOCKING) | Closed | `contract.rs:81-86` multiplies with `checked_mul` twice and returns `None` [read]. The test has `[i64::MIN; 4]` at `summed = 2` (`contract.rs:260-271`) and passes [re-ran, arm64]. M-F1 fails `rejects_sums_past_i64_and_indices_past_the_column` [ran by the previous reviewer, arm64, `mutants.log`]. On a validated relation with operands 2^40, 2^62 and `i64::MIN` the checker answers `Err(Range { "a range", 0 })`, or `"c range"` when the virtual column's range is declared first, in the test profile and in release. That is the "Before" row of the first record's table. The kernel returns `None` on four inputs past 2^125 [ran by the previous reviewer, arm64, `batch2.log`]. |
+| F2 (a), (b) | Closed | M1 and M3 fail `matches_reference_tree_for_every_group_boundary`; M4 fails `matches_reference_selected_product_and_rejects_the_same_selectors` [ran by the previous reviewer, arm64, `mutants.log`]. `tests/base_parity.rs:54-74`, `153-155`: `m = 0..=9`, every `b`, `c = 1..=3` [read]. |
+| F2 (c) | Closed | `tests/base_parity.rs:90-94` compares `build_levels` and `prove_built` with `prove` for every `(m, b)` [read]. |
+| F2 (d) | Closed | M-rot fails `matches_reference_rows_across_block_and_round_boundaries` with and without `std` [ran by the previous reviewer, arm64, `mutants.log`]. Lengths 1, 63, 64, 65, 129 and 200 at 1, 2 and 3 blocks per round [read: `rotary/tests.rs:192-202`]. Passes [re-ran, arm64]. |
+| F2 (e) | Closed | M-hist fails `matches_reference_range_multiplicities_past_one_histogram_piece` [ran by the previous reviewer, arm64, `mutants.log`]. Passes [re-ran, arm64]. |
+| F3 (MEDIUM) | Closed | `recursive.rs:2854` reports `(block_count + 1)·N_0·4 + payloads`, and `current_num_threads` no longer occurs in the file [read]. The E19-05 shape reports 105,472 B at 1, 2 and 8 threads and without the pool [ran by the previous reviewer, arm64, `batch2.log`]. Live row buffers never exceeded the reported count in 15 combinations of shape and thread count, the nested case included (5 live, 8 reported) [ran by the first stalled reviewer at `a844135d`, arm64, `faults-buffers.log`]. The field's comment says so (`recursive.rs:2695-2697`) [read]. |
+| F4 (MEDIUM) | Closed, with three remarks | Six ledgers under `bench/ledger/` [read: the JSON]. "Before" is at `01076e86`, which differs from the base in no code file. "After" is at `1b1676eb`, which differs from `c2db66aa` in no file under `crates/` or `scripts/` [read: `git diff --stat`]. Each pair has the same rung, the same device (Xeon Platinum 8480CL) and 24 threads, which answers Workflow 03 question 5. Proof and public SHA-256 are equal before and after at L1 and at L2a, and equal on the arm64 ledger. The previous reviewer reproduced the L2a digests on arm64 [`l2a.log`]. Remarks below the table. |
+| F5 (LOW) | Closed | `contract.rs:91-100` also requires that no higher index bit reads a summed bit [read]. M-F5 fails `matches_reference_definition_when_a_higher_index_bit_reads_a_summed_bit` [ran by the previous reviewer, arm64, `mutants.log`]. Passes [re-ran, arm64]. |
+| F6 (LOW) | Closed in behaviour; its test is S2 | `lib.rs:28-43` joins every worker, re-raises the first panic, otherwise returns the first error in worker order [read]. Nine orders of Ok, Err and panic behave so [ran by the previous reviewer, arm64, `logs/audit-join.log`]. Through the rotation with injected faults, the first error in position order comes back, at one worker too, and a panic is re-raised in each order [ran by the first stalled reviewer at `a844135d`, arm64, `faults-buffers.log`]. `lib.rs:16-23` caps the worker count by `RAYON_NUM_THREADS`; nothing under `crates/*/src` sizes the pool another way [read: grep for `ThreadPoolBuilder`, `num_threads(`]. `rotary.rs:235-242` allocates `min(workers, blocks)` buffers [read]. |
+| F7 (LOW) | Closed | `selected.rs:409-420`: an extension selector takes `self.prove`. The comment at `398-401` describes it [read]. |
+| F8 (LOW) | Recorded | ADR-156 is at `agents/context/decision-log.md:4829` [read]. For the integrator. |
+
+Remarks on F4:
+
+- The "before" L2a proof exists on the reference class only. "The same bytes before and after on two hosts" is before on one host and after on two.
+- The RSS columns of the ledger table hold GiB under a GB header: 13,604,892,672 B is 13.60 GB and 12.67 GiB. The Mac row shows "—" for verify RSS where the ledger has 1,142,276,096 B [ran by the previous reviewer, arm64, digest step 176].
+- The message of `6072316e` says verifier peak RSS on L2a falls from 3.6 GB to 1.1 GB. The reference-class pair is 2.76 to 0.69 GiB and the Mac ledger has 1.06 GiB after. No ledger has the 3.6.
+
+### The added commits
+
+| Commit | Who runs it | Mutants | What I read |
+|---|---|---|---|
+| `d5162dca` tables written once on the pool | prover and, by item 4 of the first record, the verifier (`parallel::eq_table`) | M-eq, M-build, M-fold, M-tree1 to M-tree3 killed | message, new functions and callers only |
+| `63279d01` level-0 row and basis combinations | prover: both callers are `close_fresh_level0_at_point` and `close_certified_level0` | M-row, M-basis (with and without `std`) killed | message, new functions and callers only |
+| `6072316e` split selector evaluation | prover and verifier | M-mle1, M-mle2 killed by the unit test | `selected.rs:208-237` and its test |
+| `b736dda9` rotation coefficients per position on the pool | prover and verifier | M-rope killed, 6 tests fail | the diff |
+| `c2665837` tables in blocks | prover and verifier | M-fill killed, 4 tests fail | `fixed.rs:46-76`, `gaussian.rs:142-167`, `gaussian_exact.rs:126` |
+| `fd9ba1bb` carry chain factors resolved once | prover (it assigns the carry columns) | M-chain killed | the diff |
+| `1b1676eb` projection rows in blocks | prover: `verify` (`stele-prover/src/development.rs:1004`) builds no `Executor` | M-rows-seq killed; M-rows0, M-rows1 survive | `data.rs:28-73`, `243-262`, and the diff |
+
+What holds by reading:
+
+- **`mle_base` (`selected.rs:208-237`).** Entry `j = hi·2^|low| + lo` is weighted by `eq(point[..split], hi)·eq(point[split..], lo)`, which is `eq(point, j)` with the leading coordinate first. With no variable both tables are `[1]`. Sums and products are exact.
+- **Tables (`fixed.rs:46-76`).** The exponential rows take no state. An activation block's state is a `Gaussian` whose cached normalizer is `normalizer(bits + 8)`, a function of the precision alone (`gaussian.rs:149-154`), and the exact interval reads it only where it requires it (`gaussian_exact.rs:126`). A block that starts with an empty cache computes the same rows. The table bytes equal the pinned fixtures at 1, 3 and 8 workers [ran by the previous reviewer, arm64, `suites-final.log`].
+- **Rotation coefficients (`b736dda9`).** One task per position, collected in position order; `Rotation::coefficient` makes its own generator per call (`rotary.rs:196`).
+- **Carry chain (`fd9ba1bb`).** The same products through `Indexer`, which the first pass covered. A missing column is still reported in position, term and factor order.
+- **`rows_in_blocks` (`data.rs:36-73`).** Block `b` is rows `b·per` to `min((b + 1)·per, rows)`. Every slot has one writer. `join_all` returns the error of the lowest failing block, whose loop stops at its lowest failing row.
+
+### Findings of this pass
+
+#### S1 — MEDIUM (`1b1676eb`; Workflow 01 step 4): no committed test runs the split of `rows_in_blocks`
+
+`crates/stele-cqis/src/execution/data.rs:56-67`. The branch runs when `rows·columns ≥ 2^22` (line 51), `rows ≥ 128` (line 52) and more than one worker is available.
+
+- **Mutants** [ran by the previous reviewer, arm64, `mutants.log`]. M-rows0 replaces the spawned closure of line 62 by a panic. M-rows1 starts every later block one row early. Both pass `cargo test -p stele-cqis --features std`, 167 tests. M-rows-seq breaks line 45, which both paths share, and is killed. So the suite runs the loop and never the split.
+- **The rest of the repository.** The previous reviewer's last step was M-rows0 against `cargo test --workspace --all-features` and the six pinned proofs. It did not run. By reading, I found no committed input that reaches the branch:
+  - A matrix of 2^22 int8 cells is at least 4 MB. The tracked files of 4 MB or more are two `stele-cqis` fixtures, whose suite does not reach the branch, and one archive that only a Python script opens [read: `git ls-tree -r -l c2db66aa`, grep].
+  - The 32,000-id case of `stele-reductions/src/argmax/tests.rs:401` declares a relation and runs no executor [read].
+  - A model built in memory by a test outside `stele-cqis` is not excluded.
+- **The code is right wherever it ran.**
+  - With the threshold forced to 1 in the scratch copy, every `stele-cqis` test passes at 3 and 8 threads and the six pinned proofs match. M-rows1 under the same forcing fails `matches_reference_prefill_capture_and_rederives_every_column` on the accumulator, and the producer of the pinned proofs exits 101 [ran by the previous reviewer, arm64, `batch2.log`].
+  - The L2a proof at 8 and 3 threads has the ledger's digest [ran by the previous reviewer, arm64, `l2a.log`]. Its head has 32,000 rows, which is above the threshold for any width of 132 columns or more. So those two runs took the split and the 1-thread run took the loop. This is inference from the code and the shape, not an instrumented run.
+- **Effect of a wrong block.** The executor is not on the verifier's path, so no false statement can follow. By the forced M-rows1 run the capture's accumulator stops matching its reference. I infer that the plain checker would then refuse the witness and the prover would stop. That would happen on large models and multi-thread hosts only, which is where the committed tests cannot look.
+- **Why MEDIUM.** It is the gap F2 (d) and (e) named, on a commit added after that finding. Workflow 01 step 4 asks for a `matches_reference_*` test when a scalar path exists.
+- **Requested.** A unit test of `rows_in_blocks` against its own loop. Give the function a worker-count parameter, as `Rotation::data_digest_with` has, so that the test does not depend on the runner's CPU count or on `RAYON_NUM_THREADS`. Cases: a row count that is not a multiple of the worker count, at 1, 2, 3 and 7 workers; and two failing rows in different blocks with different errors, expecting the lower row's.
+
+#### S2 — LOW (`6cdb64dd`, the fix of F6): `join_all` has no test
+
+`crates/stele-cqis/src/lib.rs:28-43`.
+
+- M-join makes line 34 keep the last error instead of the first. M-join2 makes lines 39-41 drop the panic payload instead of re-raising it. Both pass the `stele-cqis` suite [ran by the previous reviewer, arm64, `mutants.log`; and by the first stalled reviewer at `a844135d`, `mutants-own.log`].
+- The behaviour at the tip is the documented one (F6 above).
+- Under M-join2 the three callers would go on with a block left as it was. `data_digest_with` would hash the buffer (`rotary.rs:266-268`); `fill_rows` and `rows_in_blocks` would return zero-filled rows. So the re-raise is what keeps a worker panic from becoming a wrong digest, table or output. This is by reading; it was not run.
+- **Requested.** A test of `join_all` on three workers with an error and a panic in each order. The second reviewer's is in its scratch directory (`audit-tests/audit_join.rs.inc`).
+
+#### S3 — LOW (`6072316e`; verifier code): the reference test of `mle_base` draws its points from the base field
+
+`crates/stele-lookup/src/selected.rs:555`. Each coordinate is `QM31::from_i64(a) * QM31::from_i64(b)`, the product of two embedded integers, so it lies in M31. Both `eq` tables then hold base-field elements. The test (line 544) checks `weight.mul_m31(value)` (line 228) and `high[hi] * inner` (line 231) on base-field weights only, and in QM31 only.
+
+- What the test does establish: the index split and the order of the two tables, at 0, 3, 12 and 15 variables, on entries 0, 1 and arbitrary. M-mle1 and M-mle2 fail it [ran by the previous reviewer, arm64, `mutants.log`].
+- Extension points are covered end to end only. M-mle1 fails 9 of 11 release prover tests with `SelectorMismatch` [ran by the previous reviewer, arm64, `batch2.log`]. The base verifier, which evaluates the dense sum, and the tip verifier agree on every honest and tampered file of the table above.
+- M-mle1-roundtrip and M-mle2-roundtrip pass the crate's integration tests. Those tests stay at 9 variables or fewer (`tests/base_parity.rs:54`, `153`), where the leading table is `[1]`, and I infer that their selectors are Boolean.
+- **Requested.** Draw all four limbs of each coordinate, and run the same loop in OM31.
+- I ran no mutant for this. It is from reading the test.
+
+#### Notes that are not findings
+
+- **Which error a doubly failing projection returns.** `data.rs:243-253` now computes every row's `scaled_sum` before the first row's capture push and `output` (lines 254-261). Before `1b1676eb`, row `j`'s push and `output` ran before row `j + 1`'s `scaled_sum`. If row `i` fails in `output` and a later row fails in `scaled_sum`, the later row's error is now returned. Both are refusals, and the CLI prints `NO: Witness` for either. The quotient check of `scaled_sum` (`numerics.rs:115`) and `signed` (`numerics.rs:30-33`) both return `Error::Range`. I built no input where the kinds differ. This does not depend on the thread count [read].
+- **An environment read on the verifier's path.** `workers()` reads `RAYON_NUM_THREADS` under the tables and the rotation digest, which the development-tier verifier regenerates. It chooses a schedule only: the suite and the pinned proofs are the same at 1, 3 and 8. The first record's statement that the added lines read no environment no longer holds.
+- **`scope.spawn` panics when the OS refuses a thread** (`data.rs:62`, `fixed.rs:69`, `rotary.rs:258`). `Builder::spawn_scoped` returns the error, and the block could then run inline. By reading the standard library's documentation; not run.
+
+### Review checklist, for the commits of this pass
+
+- **RFC section of each new public item:** one new public item, `stele_sumcheck::parallel::build` (`d5162dca`), RFC-0006 A1 by the commit message. I did not read its doc comment. `rfc-status` passes.
+- **Challenges:** no `absorb`, `challenge`, label or grind call is added, removed or moved in non-test code across `7634d170..c2db66aa`. The one added `challenge(` line is in a unit test [ran by the previous reviewer, arm64, digest step 226].
+- **Claims:** none added or moved in the diffs I read. `mle_base` returns the value the dense sum returned.
+- **New bindings:** none.
+- **Ledger and accounting:** no line changes; `check.py native` passes.
+- **Bound certificate:** no new instance.
+- **Padding and masks:** unchanged in the diffs I read.
+- **Determinism:** the lines added since `fdc70f17` contain no hash map, clock, float, `unsafe`, atomic or lock, and one environment read, in `workers()` [ran by the previous reviewer, arm64, digest step 183]. Every reduction I read is an exact sum.
+- **Parity:** CPU proofs are equal on arm64 (the reviewers' runs) and on x86_64 (the author's ledgers). `stele-simd`, `stele-gpu`, `stele-kernels`, `stele-py` and `stele-verifier` have no changed file [ran by the previous reviewer, arm64, digest step 239]. The SIMD and CUDA gates were not run.
+- **Cost model:** the ledgers of F4.
+- **Verifier:** `stele-verifier` is untouched. The development-tier verifier runs `mle_base`, the rotation coefficients, the tables and `join_all`, and by item 4 of the first record `parallel::eq_table`. New panic sites on that path: a re-raised worker panic, and `scope.spawn`.
+- **Glossary:** `glossary-lint` passes at the tip.
+- **Tier:** development; nothing claims more.
+- **Commit rule:** no column added or reclassified in the diffs I read.
+- **Plain checker:** `stele-ir` 42 and `stele-reductions` 293 pass. The near-miss of F1 decides as it did before the stack.
+- **Segments:** unchanged.
+- **Proof bytes:** unchanged, against pins and fixtures the range does not touch.
+- **Ladder:** L0 and L1 through the pins and the CLI; L2a through the ledgers and the previous reviewer's three runs. Each ledger pair is on the same rung, host class and thread count.
+
+### Not checked
+
+- M-rows0 and M-rows1 against the CI test set, and M-rows0 against the six pinned proofs. That was the previous reviewer's last step and it did not run.
+- The tip side of the digest differential at `c2db66aa`. It carries over from `a844135d` by inference.
+- `d5162dca` and `63279d01` line by line, and which callers of `parallel::eq_table` are on the verifier's path at the tip. Their evidence is the mutants, the suites at three thread counts, the differential and the proofs.
+- An x86 host by a reviewer. Every reviewer run is arm64. The x86_64 evidence is the author's ledgers.
+- `cargo test --workspace`, the examples, the `stele-simd` parity, the CUDA gate, `cargo deny`, `stele-controls --coverage`.
+- Per-commit builds at the hashes after the rebase.
+- Byte identity of dev-zk proofs, which draw fresh seeds.
+- The ignored tests: 13 in `stele-prover`, 6 in `stele-reductions`. The main checkout carries an uncommitted edit of `crates/stele-prover/tests/development.rs`, the expected summary of the ignored test `enumerates_every_round_of_the_eight_layer_window` (11,687 rounds to 28,447). The range does not touch that file, and I did not run the test at either expectation.
+- What the ledger field `plan_digest` covers. It differs between the Mac ledger and the reference-class ledgers, while the proof and public digests agree.
+- Whether `b736dda9` changes which error a rotation with two different faults returns, as the first note describes for `1b1676eb`.
+- The pull request's CI status, the RFC texts behind the citations, and big-endian and 32-bit hosts.
+- The times and RSS figures of the ledgers, beyond reading them.
+
+### Verdict
+
+**CHANGES REQUESTED.**
+
+The reviewers before me and I tried to break it by proving the pinned and L1 windows at 1, 2, 3, 5 and 8 threads against the base binary, and the L2a window at 1, 3 and 8 threads against the digest of the base's ledger; by 29 mutant runs over the resolved findings and every new split; by forcing every projection to split; by 607 one-byte tampers through the base and the tip verifier; and by injecting errors and panics into the rotation workers. The pinned digests, the reference tests named above and the verifier's header, Merkle, sumcheck, fraction and statement checks rejected everything that reached them.
+
+Two changes reached no committed control. A wrong block boundary in `rows_in_blocks` passes every test that was run at the shipped threshold (S1). A `join_all` that keeps the last error or swallows a panic passes the `stele-cqis` suite (S2). Workflow 03 allows approval only with a control that rejected the attempt, and for `1b1676eb` there is none in the repository.
+
+S1 holds the verdict. S2 and S3 are one small test each, and I ask for them in the same commit. With a committed test that kills M-rows0 and M-rows1, nothing in this record stands against approval.
+
+## Resolution of the second pass
+
+By the author, in the commit that appends the second pass.
+
+| Finding | Status | Change |
+|---|---|---|
+| S1 | Resolved | `rows_in_blocks` chooses the worker count and calls `rows_on(rows, workers, row)`. `matches_reference_rows_at_every_worker_count_and_returns_the_first_failing_row` compares it with the loop for 0 to 101 rows at 1, 2, 3 and 7 workers, and expects the lower row's error from two failing rows in different blocks. A split that fills nothing and one whose later blocks start a row early both fail it. |
+| S2 | Resolved | The reviewer's test of `join_all` is committed (`rejects_with_the_first_error_in_worker_order_and_re_raises_a_panic`). A `join_all` that keeps the last error and one that drops the panic both fail it. |
+| S3 | Resolved | The reference test of `mle_base` draws its points from a transcript, every limb, and runs in QM31 and OM31. |
+| F4, remarks | Resolved in the table above | The RSS columns are headed GiB, which is what they hold, and the Mac row has its verifier RSS. The first bullet says which host has the "before" proof. The message of `6072316e` states a verifier RSS of 3.6 GB that no ledger has; the ledger pair is 2.76 to 0.69 GiB. The message is left, because rewriting it would change the audited hashes. |
+
+Notes of the second pass, left as they are: the order of two different errors in one
+projection, the environment read of `workers()` on the verifier's path, and the panic of
+`scope.spawn` when the OS refuses a thread.
+
+The ignored test `enumerates_every_round_of_the_eight_layer_window` had gone stale with
+E18-05: it is re-pinned in a commit of its own (28,447 rounds; floors `2^-99.8` and
+`2^-99.6`).
+
+The tests are sent back to the reviewer of the second pass for its confirmation, which
+is appended below when it returns.
