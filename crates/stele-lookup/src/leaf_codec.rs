@@ -3,7 +3,7 @@
 mod selected;
 use super::{read_values, reserve, Descriptor, Error};
 use alloc::vec::Vec;
-pub use selected::{LeafReduction, SelectedProduct};
+pub use selected::{LeafReduction, SelectedProduct, SelectorAt};
 use stele_hash::ChallengeField;
 use stele_sumcheck::Proof;
 

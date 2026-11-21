@@ -224,6 +224,50 @@ fn selected_parity<K: ChallengeField + Eq + core::fmt::Debug>() {
                     .expect("verify");
                 assert_eq!(verified, reference.1);
                 assert_eq!(t_v.challenge(ChallengeLabel::Sumcheck).expect("c"), next);
+                // The verifier given only the selector's extension decides the same. It
+                // refuses to prove, and rejects an extension that differs at the incoming
+                // point or only at the final one.
+                let at = |z: &[K]| {
+                    let weights = stele_poly::eq_table(z).map_err(|_| Error::Capacity)?;
+                    Ok(sigma_k
+                        .iter()
+                        .zip(&weights)
+                        .fold(K::from_i64(0), |sum, (s, w)| sum + *s * *w))
+                };
+                let mut t_e = Transcript::<K>::new(b"review/sel/t").expect("t");
+                let evaluated = SelectedProduct::new_evaluated(shape, &original, &at, alpha, beta)
+                    .expect("new_evaluated");
+                assert_eq!(
+                    evaluated.verify(&reference.0, &mut t_e).expect("verify"),
+                    reference.1
+                );
+                assert_eq!(t_e.challenge(ChallengeLabel::Sumcheck).expect("c"), next);
+                let mut t_p = Transcript::<K>::new(b"review/sel/t").expect("t");
+                assert_eq!(
+                    evaluated.prove_base(&xs, &mut t_p).err(),
+                    Some(Error::SourceShape)
+                );
+                let shifted = |z: &[K]| at(z).map(|v| v + one);
+                assert_eq!(
+                    SelectedProduct::new_evaluated(shape, &original, &shifted, alpha, beta).err(),
+                    Some(Error::SelectorMismatch)
+                );
+                let late = |z: &[K]| {
+                    at(z).map(|v| {
+                        if z == original.point.as_slice() {
+                            v
+                        } else {
+                            v + one
+                        }
+                    })
+                };
+                let mut t_l = Transcript::<K>::new(b"review/sel/t").expect("t");
+                let refused = SelectedProduct::new_evaluated(shape, &original, &late, alpha, beta)
+                    .expect("the incoming point agrees")
+                    .verify(&reference.0, &mut t_l)
+                    .err();
+                // Without a round the final point is the incoming one.
+                assert_eq!(refused, (m > 0).then_some(Error::SelectorMismatch));
                 cases += 1;
             }
         }

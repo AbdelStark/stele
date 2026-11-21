@@ -3961,6 +3961,107 @@ fn accepts_a8_three_segments_under_small_instance_bounds() {
     }
 }
 
+/// The verifier's selector extension (`lookup::sigma_at`) against the vector the provers
+/// build (`lookup::sigma_base`), at random points: absent, natural, permuted and narrower
+/// public selectors, under every instance bound `1..=6`, where a selector also reads the
+/// bits of its block. An entry other than 0 or 1 is `Selector`, as it is for the vector.
+#[test]
+fn matches_reference_selector_extension_of_the_selector_vector() {
+    use stele_lookup::fraction;
+    let mut rng = SeededRng(457);
+    let mut draw = Transcript::<K>::new(b"test/selector-extension").expect("t");
+    let mut point = |m: u8| -> Vec<K> {
+        (0..m)
+            .map(|_| draw.challenge(ChallengeLabel::Sumcheck).expect("c"))
+            .collect()
+    };
+    // Members with an absent, natural, permuted and narrower selector.
+    let mut shapes = [0usize; 4];
+    for case in 0..24u64 {
+        let mut rel = Relation::default();
+        let table = rel.add_table(Table {
+            name: "test/u2".to_string(),
+            widths: vec![Width::unsigned(2)],
+            rows: (0..4).map(|v| vec![v]).collect(),
+        });
+        let mut selectors = Vec::new();
+        for i in 0..2 + rng.below(4) {
+            let n = 1 + rng.below(6) as u8;
+            let g = Kind::Witness(rel.add_group(&alloc::format!("G/test/{case}/{i}"), n));
+            let x = rel.add_column(&alloc::format!("x{i}"), g, Width::unsigned(2), n);
+            rel.ranges.push(Range {
+                name: alloc::format!("r{i}"),
+                column: x,
+                width: Width::unsigned(2),
+            });
+            let shape = rng.below(4) as usize;
+            shapes[shape] += 1;
+            let selector = (shape > 0).then(|| {
+                let mut vars: Vec<u8> = (0..n).collect();
+                if shape > 1 {
+                    for j in (1..vars.len()).rev() {
+                        vars.swap(j, rng.below(j as u64 + 1) as usize);
+                    }
+                }
+                if shape == 3 {
+                    vars.truncate(rng.below(u64::from(n)) as usize);
+                }
+                let entries = (0..1usize << vars.len())
+                    .map(|_| rng.below(2) as i64)
+                    .collect();
+                let column = rel.add_column(
+                    &alloc::format!("sel{i}"),
+                    Kind::Public(entries),
+                    Width::unsigned(1),
+                    vars.len() as u8,
+                );
+                selectors.push(column);
+                Ref { column, vars }
+            });
+            rel.lookups.push(Lookup {
+                name: alloc::format!("l{i}"),
+                vars: n,
+                selector,
+                tuple: vec![Ref::identity(x, n)],
+                table,
+            });
+        }
+        assert_eq!(rel.validate(), Ok(()), "case {case}");
+        for bound in 1..=6u8 {
+            let plan = plan_with_bound(&rel, Sources::CircleAll, bound).expect("plan");
+            for check in &plan.checks {
+                let z = point(check.m);
+                let weights = stele_poly::eq_table(&z).expect("eq");
+                let expected = lookup::sigma_base(check, &rel)
+                    .iter()
+                    .zip(&weights)
+                    .fold(K::from_i64(0), |sum, (s, w)| sum + w.mul_m31(*s));
+                assert_eq!(
+                    lookup::sigma_at(check, &rel, &z),
+                    Ok(expected),
+                    "case {case} bound {bound} check {}",
+                    check.name
+                );
+            }
+        }
+        if let Some(column) = selectors.first() {
+            let plan = plan_with_bound(&rel, Sources::CircleAll, 6).expect("plan");
+            if let Kind::Public(entries) = &mut rel.columns[column.0 as usize].kind {
+                entries[0] = 2;
+            }
+            let refused = plan
+                .checks
+                .iter()
+                .filter(|check| {
+                    lookup::sigma_at(check, &rel, &point(check.m)) == Err(fraction::Error::Selector)
+                })
+                .count();
+            assert_eq!(refused, 1, "case {case}");
+        }
+    }
+    assert!(shapes.iter().all(|&n| n > 8), "{shapes:?}");
+}
+
 /// Random lookups and ranges under every bound `1..=6`: each original position is in
 /// exactly one instance, honest proofs verify, one out-of-table value is rejected by a
 /// root equation, and a verifier with another bound never accepts a differently split proof.

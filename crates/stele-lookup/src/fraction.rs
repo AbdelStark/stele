@@ -2,7 +2,7 @@
 //! No private source authentication or lookup membership follows.
 #[path = "leaf_codec.rs"]
 mod leaf_codec;
-pub use leaf_codec::{LeafDescriptor, LeafReduction, SelectedProduct};
+pub use leaf_codec::{LeafDescriptor, LeafReduction, SelectedProduct, SelectorAt};
 #[path = "tree.rs"]
 mod tree;
 use alloc::vec::Vec;
