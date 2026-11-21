@@ -4277,6 +4277,23 @@ tasks:
   - for an unsegmented relation the plain check runs beside the segmented and the recursive engine and decides; a false witness ends in Check under the default sources and under the joined recursion
   - the checker holds a computed column in 32-bit entries when every entry fits and in its checked form otherwise; both read back as the definition's values
   - public and proof bytes unchanged on L0, L1 and L2a; L2a prove time and peak RSS before and after in ledgers
+- id: E18-12
+  epic: E18
+  title: The model commitment beside the executor's serial passes
+  depends:
+  - E18-06
+  rfc:
+  - RFC-0026 §1.1
+  - RFC-0018 A2
+  skill: performance-engineer
+  crate: stele-prover
+  lane: P
+  status: in_progress
+  agent: claude
+  branch: task/E20-26-check-instance-bound
+  acceptance:
+  - prove-dev commits the model beside the generation, next-token and capture passes of the executor; the executor reads the Artifact in place, so no second copy of the weights is alive
+  - public and proof bytes unchanged; L2a prove time before and after in ledgers, and the ledger note names the stages that overlap
 - id: E19-01
   epic: E19
   title: Parameter script and size model; RFC-0029 accepted for the development tier

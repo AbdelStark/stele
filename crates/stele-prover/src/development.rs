@@ -1327,46 +1327,11 @@ fn prove_window_sources_measured(
     let witness_pre_timer = relation::Stopwatch::start();
     let mut executor =
         Executor::new(&m, &p, &s, artifact, &id, 1 << 36).map_err(|_| Error::Witness)?;
-    // The last generated position's logits, kept so `next` needs no second forward pass.
-    let mut last_logits = None;
-    if statement.tokens.len() < length {
-        let whole = statement.end as usize == statement.tokens.len();
-        let (mut cache, mut logits) = (None, Vec::new());
-        for i in 0..length {
-            if i == statement.tokens.len() {
-                let max = logits.iter().max().ok_or(Error::Witness)?;
-                let y = logits.iter().position(|v| v == max).ok_or(Error::Witness)?;
-                statement.tokens.push(y as u32);
-            }
-            let (step, next) = executor
-                .step(statement.tokens[i], cache.as_ref())
-                .map_err(|_| Error::Witness)?;
-            logits = step.logits().to_vec();
-            cache = Some(next);
-        }
-        if whole {
-            statement.end = length as u32;
-        }
-        last_logits = Some(logits);
-    }
-    if statement.next.is_none() && statement.end as usize == statement.tokens.len() {
-        let last = match last_logits {
-            Some(logits) => logits,
-            None => executor
-                .full(&statement.tokens)
-                .map_err(|_| Error::Witness)?
-                .logits()
-                .last()
-                .ok_or(Error::Witness)?
-                .clone(),
-        };
-        let max = last.iter().max().ok_or(Error::Witness)?;
-        statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
-    }
     if let Some(window) = zk {
         if segment_layers > 0 {
             return Err(Error::StatementMismatch);
         }
+        complete_statement(&mut executor, &mut statement, length)?;
         let weights = Weights::from_artifact_sources(&m, artifact, sources)?;
         laps.lap("witness/decode_extend_weights");
         // E12-27: the 1-D records are committed weights; the public input names
@@ -1425,20 +1390,33 @@ fn prove_window_sources_measured(
         };
         return Ok((public, statement, proof, Report::default()));
     }
-    // Capture before dropping the executor so its weight buffers never overlap
-    // with `Weights::stacked` and `Committed::prepared` (task E18-06).
-    let capture = executor
-        .capture(&statement.tokens)
-        .map_err(|_| Error::Witness)?;
-    drop(executor);
-    let witness_pre_ns = witness_pre_timer.elapsed_ns();
     // E17-01: model commitment (Artifact weight decode + PCS commit) timed in process.
     let model_commit_timer = relation::Stopwatch::start();
     let weights = Weights::from_artifact_sources(&m, artifact, sources)?;
     laps.lap("witness/decode_extend_weights");
-    let committed = Committed::new(&weights)?;
-    let model_commitment_ns = model_commit_timer.elapsed_ns();
-    laps.lap("dev/model_sources");
+    // The model commitment reads the weights and nothing of the executor, so it runs
+    // beside the executor's passes, which are serial. The executor reads the Artifact in
+    // place: no second copy of the weights is alive with `Weights::stacked` and
+    // `Committed::prepared` (task E18-06).
+    let ((capture, witness_pre_ns), (committed, model_commitment_ns)) = parallel::join(
+        || {
+            let capture =
+                complete_statement(&mut executor, &mut statement, length).and_then(|()| {
+                    executor
+                        .capture(&statement.tokens)
+                        .map_err(|_| Error::Witness)
+                });
+            (capture, witness_pre_timer.elapsed_ns())
+        },
+        || {
+            let committed = Committed::new(&weights);
+            (committed, model_commit_timer.elapsed_ns())
+        },
+    );
+    let capture = capture?;
+    drop(executor);
+    let committed = committed?;
+    laps.lap("witness/executor_passes (beside dev/model_sources)");
     let public = Public {
         model: model.to_vec(),
         scales: scales.to_vec(),
@@ -1453,6 +1431,52 @@ fn prove_window_sources_measured(
     report.model_commitment_ns = model_commitment_ns;
     report.witness_ns = report.witness_ns.saturating_add(witness_pre_ns);
     Ok((public, statement, proof, report))
+}
+
+/// Complete `statement` to `length` tokens with the greedy continuation, and give it its
+/// next token when it ends at its last token (RFC-0026 §1.1).
+fn complete_statement(
+    executor: &mut Executor<'_>,
+    statement: &mut Statement,
+    length: usize,
+) -> Result<(), Error> {
+    // The last generated position's logits, kept so `next` needs no second forward pass.
+    let mut last_logits = None;
+    if statement.tokens.len() < length {
+        let whole = statement.end as usize == statement.tokens.len();
+        let (mut cache, mut logits) = (None, Vec::new());
+        for i in 0..length {
+            if i == statement.tokens.len() {
+                let max = logits.iter().max().ok_or(Error::Witness)?;
+                let y = logits.iter().position(|v| v == max).ok_or(Error::Witness)?;
+                statement.tokens.push(y as u32);
+            }
+            let (step, next) = executor
+                .step(statement.tokens[i], cache.as_ref())
+                .map_err(|_| Error::Witness)?;
+            logits = step.logits().to_vec();
+            cache = Some(next);
+        }
+        if whole {
+            statement.end = length as u32;
+        }
+        last_logits = Some(logits);
+    }
+    if statement.next.is_none() && statement.end as usize == statement.tokens.len() {
+        let last = match last_logits {
+            Some(logits) => logits,
+            None => executor
+                .full(&statement.tokens)
+                .map_err(|_| Error::Witness)?
+                .logits()
+                .last()
+                .ok_or(Error::Witness)?
+                .clone(),
+        };
+        let max = last.iter().max().ok_or(Error::Witness)?;
+        statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
+    }
+    Ok(())
 }
 
 /// The Artifact identity the executor expects: BLAKE3 of its canonical bytes.
