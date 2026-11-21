@@ -522,7 +522,7 @@ struct BaseLeafSummand<'a, K: ChallengeField + Eq> {
     point: &'a mut Vec<K>,
 }
 
-/// Leaf pairs copied into tables per kernel call of the base-leaf round: 32 KiB of QM31.
+/// Leaf pairs copied into tables per kernel call of the base-leaf round: 16 KiB of QM31.
 const LEAF_BLOCK: usize = 128;
 
 /// Whether `i` is [`layer`]'s polynomial `left·p0·q1·eq + right·p1·q0·eq + γ·q0·q1·eq`: a
@@ -568,7 +568,7 @@ impl<K: ChallengeField + Eq> Summand<K> for BaseLeafSummand<'_, K> {
         // embedded selectors. Where the host has a kernel, blocks of leaves are copied
         // into short tables for it: the same sums.
         let blocks =
-            left == one && right == one && stele_sumcheck::parallel::layer_kernel_available::<K>();
+            left == one && right == one && stele_sumcheck::parallel::kernels_available::<K>();
         let mut sums = [K::from_i64(0); 3];
         stele_sumcheck::parallel::sum_ranges(half, &mut sums, |range, out| {
             if blocks {

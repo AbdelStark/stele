@@ -1,12 +1,14 @@
 //! Kernels over slices of QM31 elements (RFC-0003 §§2,6; RFC-0014 §2 `sumcheck_round`
 //! fold). Each has a scalar reference, and every backend writes that reference's limbs.
 use crate::{Backend, UnsupportedBackend};
-use stele_field::{M31, QM31};
+use stele_field::{CM31, M31, QM31};
 
 // `M31` is `repr(transparent)` over its canonical `u32` limb.
 const _: () = assert!(core::mem::size_of::<M31>() == 4 && core::mem::align_of::<M31>() == 4);
 // `QM31` is `repr(C)` over `repr(transparent)` limbs: four `u32` in basis order.
 const _: () = assert!(core::mem::size_of::<QM31>() == 16 && core::mem::align_of::<QM31>() == 4);
+// The order itself: each level's second coefficient follows its first.
+const _: () = assert!(core::mem::offset_of!(CM31, 1) == 4 && core::mem::offset_of!(QM31, 1) == 8);
 
 /// The reference fold: `lo[j] += c·(hi[j] − lo[j])`, the first `min(lo.len(), hi.len())`
 /// entries.

@@ -235,7 +235,7 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
             return Ok(());
         }
         // All tables are extension-field `Ext`.
-        if parallel::layer_kernel_available::<K>() {
+        if parallel::kernels_available::<K>() {
             // Where the host has kernels, the same sum by blocks of columns: each term's
             // product runs element-wise over the block. Field arithmetic is exact, so the
             // round values are those of the loop below.

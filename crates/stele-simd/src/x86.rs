@@ -44,7 +44,7 @@ macro_rules! x86_backend {
             }
             kernels!($feature, $width, $v);
 
-            /// Two Mersenne folds of 64-bit lanes: at most `p + 4` for any input.
+            /// Two Mersenne folds of 64-bit lanes: at most `p + 3` for any input.
             #[target_feature(enable=$feature)]
             unsafe fn fold2(v: $v) -> $v {
                 let mask = $dup64(i64::from(P));
@@ -158,7 +158,8 @@ macro_rules! x86_backend {
                 let mut out = [[0u32; 4]; 3];
                 // SAFETY: RFC-0003 §6: the caller enables the feature and supplies `2·half`
                 // elements behind each table pointer and `half` behind `e`, with
-                // `end <= half`; each load covers `per` whole elements below those bounds.
+                // `start <= end <= half` (a reversed range would wrap `done`); each load
+                // covers `per` whole elements below those bounds.
                 unsafe {
                     let g = splat(gamma);
                     let zero = $dup32(0);
