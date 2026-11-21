@@ -95,6 +95,7 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual(scope.scopes([b'crates/stele-simd/src/x86.rs']),
                          dict(gpu=True, tables=True, research=False, research_selection='none'))
         self.assertFalse(scope.scopes([b'crates/stele-sumcheck/src/parallel.rs'])['gpu'])
+        self.assertTrue(scope.scopes([b'rust-toolchain.toml'])['gpu'])
 
     def test_matches_reference_git_changes(self):
         with tempfile.TemporaryDirectory() as directory:

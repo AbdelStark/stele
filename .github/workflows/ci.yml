@@ -152,6 +152,8 @@ jobs:
         env:
           STELE_REQUIRE_SIMD: neon
         run: cargo test -p stele-simd --release --locked -- --nocapture
+      - name: Kernel call sites on arm64
+        run: cargo test -p stele-sumcheck -p stele-lookup -p stele-code --all-features --locked
   research:
     needs: plan
     if: needs.plan.outputs.research == 'true'

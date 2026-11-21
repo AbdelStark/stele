@@ -101,6 +101,9 @@ class ReadinessTests(unittest.TestCase):
         for name, backends in (('simd-neon', 'neon'), ('gpu-parity', 'avx2,avx512')):
             self.assertIn('STELE_REQUIRE_SIMD: ' + backends + '\n'
                           '        run: cargo test -p stele-simd --release --locked -- --nocapture', jobs[name])
+            self.assertEqual(jobs[name].count('if:'), 1, 'only the job is conditional, no step is')
+        self.assertIn('run: cargo test -p stele-sumcheck -p stele-lookup -p stele-code --all-features --locked\n',
+                      jobs['simd-neon'])
         self.assertEqual(jobs['native'].count('if:'), 1)
         self.assertIn("- if: steps.cargo-deny.outputs.cache-hit != 'true'\n"
                       '        run: cargo install cargo-deny --version 0.20.2 --locked', jobs['native'])
