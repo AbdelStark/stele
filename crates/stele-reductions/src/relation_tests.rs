@@ -3961,6 +3961,81 @@ fn accepts_a8_three_segments_under_small_instance_bounds() {
     }
 }
 
+/// RFC-0026 A30: a check's bound is `min(B, max(25, m − 2))`. At most `2^25` positions
+/// are one instance, a larger check has at most four up to `m = B + 2`, and a plan bound
+/// below the floor, as the split tests pass, is kept.
+#[test]
+fn matches_reference_instance_bound_of_a_check() {
+    for (bound, positions, expected) in [
+        (30u8, 0u64, 25u8),
+        (30, 1, 25),
+        (30, 1 << 25, 25),
+        (30, (1 << 25) + 1, 25),
+        (30, 74_202_368, 25),
+        (30, 1 << 27, 25),
+        (30, (1 << 27) + 1, 26),
+        (30, 1 << 31, 29),
+        (30, 1 << 32, 30),
+        (30, (1 << 32) + 1, 30),
+        (30, u64::MAX, 30),
+        (26, 1 << 30, 26),
+        (6, 1 << 27, 6),
+        (2, 9, 2),
+    ] {
+        assert_eq!(
+            check_bound(bound, positions),
+            expected,
+            "{bound} {positions}"
+        );
+    }
+}
+
+/// RFC-0026 A30 in a plan: ranges of 8 bits over `2^26 + 2^22 + 2^21 + 2^19` positions, the
+/// shape of L2a's largest check, are three instances of `2^25`, `2^25` and `2^23`
+/// positions, the first two the blocks of the largest member. A check of `2^25` positions
+/// stays one instance under its unsplit name.
+#[test]
+fn matches_reference_split_of_a_check_above_the_floor() {
+    let mut rel = Relation::default();
+    for (i, n) in [26u8, 22, 21, 19].into_iter().enumerate() {
+        let g = Kind::Witness(rel.add_group(&alloc::format!("G/a30/{i}"), n));
+        let x = rel.add_column(&alloc::format!("x{i}"), g, Width::unsigned(8), n);
+        rel.ranges.push(Range {
+            name: alloc::format!("r{i}"),
+            column: x,
+            width: Width::unsigned(8),
+        });
+    }
+    let g = Kind::Witness(rel.add_group("G/a30/whole", 25));
+    let y = rel.add_column("y", g, Width::unsigned(4), 25);
+    rel.ranges.push(Range {
+        name: "whole".to_string(),
+        column: y,
+        width: Width::unsigned(4),
+    });
+    assert_eq!(rel.validate(), Ok(()));
+    let plan = plan(&rel, Sources::CircleAll).expect("plan");
+    // One line per instance: name, domain bits, and each member's bits and block index.
+    let shape: Vec<String> = plan
+        .checks
+        .iter()
+        .map(|c| {
+            let members: Vec<(u8, usize)> =
+                c.members.iter().map(|m| (m.m, m.block_index)).collect();
+            alloc::format!("{} {} {members:?}", c.name, c.m)
+        })
+        .collect();
+    assert_eq!(
+        shape,
+        [
+            "range_8/inst0 25 [(25, 0)]",
+            "range_8/inst1 25 [(25, 1)]",
+            "range_8/inst2 23 [(22, 0), (21, 0), (19, 0)]",
+            "range_4 25 [(25, 0)]",
+        ]
+    );
+}
+
 /// The verifier's selector extension (`lookup::sigma_at`) against the vector the provers
 /// build (`lookup::sigma_base`), at random points: absent, natural, permuted and narrower
 /// public selectors, under every instance bound `1..=6`, where a selector also reads the

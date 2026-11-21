@@ -651,6 +651,18 @@ impl Stack {
 /// Default lookup instance domain bound `B` (RFC-0026 A8): 2^30 positions per instance.
 pub const DEFAULT_INSTANCE_BOUND: u8 = 30;
 
+/// RFC-0026 A30: a check above `2^25` positions is split even when it fits `2^B`.
+pub const SPLIT_FLOOR: u8 = 25;
+
+/// The instance bound of one check (RFC-0026 A8 as amended by A30): `min(B, max(25, m − 2))`
+/// for a check whose members hold `positions` in all and `m = ceil(log2 positions)`. So a
+/// check of at most `2^25` positions is one instance, and a larger one has at most four
+/// instances up to `m = B + 2`.
+fn check_bound(instance_bound: u8, positions: u64) -> u8 {
+    let m = (u64::BITS - positions.max(1).wrapping_sub(1).leading_zeros()) as u8;
+    instance_bound.min(SPLIT_FLOOR.max(m.saturating_sub(2)))
+}
+
 /// One lookup or range inside its table's batched A5 statement (RFC-0026 A3, A8).
 pub(crate) struct Member {
     m: u8,
@@ -877,8 +889,9 @@ fn check(
     })
 }
 
-/// Build RFC-0026 A3 & A8 check instances for `targets` under domain bound `B = instance_bound`.
-/// Unsplit targets (`total <= 2^B`) keep identical ids, source ids and names.
+/// Build RFC-0026 A3 & A8 check instances for `targets` under domain bound `B = instance_bound`,
+/// each check at its own bound ([`check_bound`], A30).
+/// Unsplit targets (`total <= 2^B` and `<= 2^25`) keep identical ids, source ids and names.
 fn build_a8_checks(
     targets: Vec<(Target, Vec<Member>)>,
     relation: &Relation,
@@ -891,9 +904,14 @@ fn build_a8_checks(
     if instance_bound == 0 || instance_bound > 30 {
         return Err(Error::Unsupported);
     }
-    let cap = 1usize << instance_bound;
     let mut checks = Vec::new();
     for (target, raw_members) in targets {
+        // RFC-0026 A30: the bound of this check, at most the plan's.
+        let positions = raw_members.iter().fold(0u64, |n, member| {
+            n.saturating_add(1u64.checked_shl(u32::from(member.m)).unwrap_or(u64::MAX))
+        });
+        let instance_bound = check_bound(instance_bound, positions);
+        let cap = 1usize << instance_bound;
         let (base_name, t, entries) = match target {
             Target::Table(table) => {
                 let table = &relation.tables[table as usize];

@@ -4528,6 +4528,25 @@ tasks:
   - a reference test compares it with the extension of the selector vector on random relations with absent, natural, permuted and narrower selectors under every instance bound 1..=6; a selector entry other than 0 or 1 is refused as before
   - the selected product accepts and rejects the same proofs from the extension as from the entries
   - proof bytes unchanged; verify time and verifier peak RSS on L2a before and after in ledgers
+- id: E20-26
+  epic: E20
+  title: A lookup check above 2^25 positions is split into at most four instances (RFC-0026 A30)
+  depends:
+  - E20-02
+  rfc:
+  - RFC-0026 A30
+  - RFC-0026 A8
+  - RFC-0008 A5
+  skill: sumcheck-prover-engineer
+  crate: stele-reductions
+  lane: E
+  status: in_progress
+  agent: claude
+  branch: task/E20-26-check-instance-bound
+  acceptance:
+  - RFC-0026 A30 is Accepted at the development tier with an independent review and an ADR; the planner gives each check the bound min(B, max(25, m - 2)) in the plain, segmented and recursive plans
+  - a check of at most 2^25 positions keeps its bytes - the pinned L0 and L1 digests reproduce; a plan with the shape of L2a's largest check has three instances
+  - L2a proves and verifies with the split check, its statement tampers are rejected, and the proof stays within 4 MB; prove time, lookup stage time, peak RSS and proof bytes before and after in ledgers
 - id: E20-03
   epic: E20
   title: Backend trait with CPU reference and SIMD

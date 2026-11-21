@@ -2830,3 +2830,37 @@ Task: E19-04. Decision: ADR-154.
    are drawn after the committed multiplicities. A segment without a witness stack has no
    opening section; a non-empty one is `ProofShape`.
 6. **Affected tasks.** E19-04, E18-09.
+
+### A30 — A lookup check above `2^25` positions is split into at most four instances
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task: E20-26.
+Motivation: A8 splits a check only above `2^B = 2^30` positions. A check is padded to a
+power of two and the prover builds its fraction trees whole. The largest check of L2a
+(`range_8`, 74,202,368 positions) is padded to `2^27`: 45% of its leaves are padding, and
+its trees are the prover's peak memory. Smaller instances also run faster, because their
+tables are smaller. The measurements are in the ledgers of task E20-26.
+
+Replacement text, A8, sentence "The plan fixes an instance bound `B` (30 in the
+development profile).":
+
+> "The plan fixes an instance bound `B` (30 in the development profile). A check whose
+> members hold `N` positions in all, with `m = ceil(log2 N)`, has its own bound
+> `B_c = min(B, max(25, m - 2))`, and `B_c` takes the place of `B` in the rest of this
+> paragraph."
+
+Soundness: no round is added, removed or changed. A check of at most `2^25` positions has
+`B_c >= m`, stays one instance and keeps its bytes, so every proof whose checks are that
+small is unchanged. A larger check has at most four instances up to `m = B + 2`, and A8's
+count above that. Each instance is an independent RFC-0008 A5 statement with its own
+draws, LU record and tree lines, exactly as in A8. `B_c` is a function of the relation
+alone, so the verifier derives it; a proof split under another rule has another shape
+and is rejected.
+Cells, lookups, bytes: witness cells and lookup positions are unchanged. Each added
+instance has its own multiplicity vector of the table's size and its own pair of trees.
+On L2a one check becomes three instances and the proof grows from 3,927,613 to 3,971,461
+bytes. The floor of 25 is the lowest that keeps that proof within Gate M2's 4 MB. Proof
+bytes on L3 shapes are not measured; task E20-09 owns the form whose bytes do not grow
+with the instance count.
+Controls: NC-1341 (A8), a member value moved across an instance boundary. It runs under
+`B = 2`, where `B_c = B`. No binding is added.
+Affected tasks: E20-26, E20-09. Promotion to `standard`: not granted (Workflow 10).
