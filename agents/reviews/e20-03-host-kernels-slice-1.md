@@ -251,9 +251,9 @@ count" where the reviewer used a word `glossary-lint` rejects.
 | F1 | Resolved | The review's tests are committed as `crates/stele-simd/tests/kernels.rs` and `tests/dot.rs`: a reversed range, a range past the half, a table one element short at a half of 8, and unequal lengths with each operand the shortest. Mutants S1, S2, S3, S8 and T2 each fail one of them. |
 | F2 | Resolved in part | CI executes each backend on a host that has it. A hosted arm64 job (`simd-neon`) requires NEON. The dedicated Sapphire Rapids node (`gpu-parity`) requires AVX2 and AVX-512 and is now selected by a change under `crates/stele-simd`. Still open, as a line of E20-03: a call site follows its host's backend, so the pinned digests run through one kernel set per host until the trait lets a test choose. |
 | F3 | Resolved | `crates/stele-sumcheck/tests/kernel_parity.rs` runs the dense round against a loop on the default pool and on a three-thread pool, up to 13 variables. `crates/stele-lookup/tests/base_parity.rs` (`large_trees`) runs trees of 2^3 to 2^14 leaves through the three provers, also on three threads. `parallel::with_threads` pins the pool size. Mutants D1 and L1 fail them at 8 and at 4 threads. |
-| F4 | Resolved | ADR-157 no longer states a multiplier. Reference-class ledgers of the final tip are added with the second record. |
+| F4 | Resolved | ADR-157 no longer states a multiplier. The reference-class ledgers are listed under "Ledgers" below. |
 | F5 | Resolved | A16 links this record. The task record lists the dot kernel. ADR-157 records the call sites in lanes C and N and the CI change in lane B, which this review covers (RFC-0027 §5). |
-| F6 | Resolved | `kernels.rs` multiplies every pair of elements with limbs from seven edge values (5,764,801 pairs, all limbs `p − 1` included) and 4·10^6 random pairs, per backend and operand order. `dot.rs` has rows whose sum leaves `i32`. Mutant T3 fails it. |
+| F6 | Resolved | `kernels.rs` multiplies every pair of elements with limbs from seven edge values (5,764,801 pairs, all limbs `p − 1` included) per backend and operand order, and 4·10^6 random pairs per backend. `dot.rs` has rows whose sum leaves `i32`. Mutant T3 fails it. |
 | F7 | Resolved | The SAFETY comment names `start <= end`. `offset_of!` pins the limb order of `CM31` and `QM31`. The fold bound reads `p + 3` and the leaf block 16 KiB. `layer_kernel_available` is `kernels_available`. |
 | F8 | Recorded | The seven intermediate commits that fail `cargo deny check bans` are left as audited: rewriting them would orphan the hashes this record cites. The tip passes. `stele-simd` stays a `std` crate under three `no_std` crates, as it was under `stele-code` and `stele-poly` on `main`; a bare-metal build is an open line of E20-03. |
 
@@ -275,8 +275,172 @@ Two notes of the record, outside the findings:
 
 - The kernel entry per small butterfly block is left as it is; no measurement asks for
   a change.
-- `enumerates_every_round_of_the_eight_layer_window` went stale with E18-05. It is
-  re-pinned on the branch of tasks E18-10 to E22-11, not here.
+- `enumerates_every_round_of_the_eight_layer_window` went stale with E18-05. It is not
+  changed here: its re-pin is a change for pull request 482, to be pushed with that
+  pull request's second review record.
 
 The three commits are sent back to the same reviewer; its second record is appended
 below when it returns.
+
+## Second pass
+
+- **Audited commits:** `3bd59dea` (tests, comments, assertions, `parallel::with_threads`), `040fbfc7` (CI) and `deb502bc` (records), above `520762ee` on `task/E20-03-simd-kernels`. `deb502bc` was the tip on origin when the pass began and when it ended. The eleven commits of the first pass keep their hashes. Line numbers are those of `deb502bc`.
+- **Reviewer:** the same independent `soundness-auditor` agent; did not write the change
+- **Verdict:** **APPROVE** (three LOW findings, none blocking)
+
+### Summary
+
+F1, F3, F4, F5, F6 and F7 are closed. With no review file installed, each of the eleven mutants of the first pass fails a committed test, and so do fifteen new ones. The three commits change no proof byte, no verifier decision and no unsafe code. F2 and F8 stay open in part on the task record, which is acceptable for slice 1.
+
+Three LOW findings follow (F9 to F11). F9 asks for one small test and F10 for four sentences; both fit the commit that appends this section.
+
+Evidence labels are those of the first pass. **[x86]** is `h100-sxm-8-0`, Slurm jobs 7591, 7592, 7593, 7595, 7597 and 7601: 8 CPUs, a fresh clone of `deb502bc` each. **[arm]** is the same Apple M4 Max, on `git archive` exports of `deb502bc` with fresh build directories.
+
+### 1. The lift against the review's files [read; arm; x86]
+
+- **Nothing lost.** `tests/kernels.rs`, `tests/dot.rs`, `tests/kernel_parity.rs` and the `large_trees` module differ from the review's files in test names, formatting, removed digest prints, two redundant casts, one unused `mut`, and one index loop rewritten as `enumerate().take(end).skip(start)`. Every case, edge value, length, bound and assertion is present.
+- **Added.** The dense rounds and the large trees run a second time inside `with_threads(3, …)`.
+- **Not lifted.** The review's `stele-code` test (177 codewords against the generic loop and the definition). No finding asked for it, and the crates' own tests kill the three mutants I tried on that call site (item 2).
+- **`with_threads` moves the split.** With `std`, `sum_ranges` over 4,096 columns hands out 16 ranges of 256 on the ambient pool and 12 ranges of 342 (the last 334) inside `with_threads(3, …)`. That holds on x86 at 4 and 8 ambient threads and on arm64 at 4 and 16. Over 16,384 columns the three-thread ranges are 1,366 long. Up to 2,048 columns the three-thread split equals the ambient one. Without `std` there is one range, and `with_threads` is `f()`.
+
+### 2. Mutants against the committed tests only [x86 unless marked]
+
+No review file was installed. `stele-simd` ran in the test profile and in release with AVX2 and AVX-512 required. The call sites ran the `stele-sumcheck` and `stele-lookup` suites with all features at 1, 4 and 8 ambient threads. The unmutated tree passes 15 tests of `stele-simd` and 90 of the two suites.
+
+The eleven of the first pass, all killed:
+
+| Mutant | Line | Killed by |
+|---|---|---|
+| S1, S2, S3: each clause of the layer bounds test | `slices.rs:114-116` | `matches_reference_definition_of_the_layer_round_and_rejects_ranges_outside_the_tables` |
+| S5, S6: no canonical step on `s1`, on `r0` | `x86.rs:89`, `88` | five and four tests, `tests::matches_reference_qm31_products_on_seeded_and_edge_slices` among them |
+| S8: `twiddles` not clamped | `slices.rs:201` | `matches_reference_definition_of_the_butterflies_on_every_edge_triple_and_random_rows`, also on NEON [arm] |
+| T1: dot weights zero-extended | `x86.rs:272` | both dot tests |
+| T2: dot `w` not clamped. T3: saturating lane sum | `slices.rs:295`, `x86.rs:279` | `matches_reference_exact_sum_of_the_int8_dot_and_its_wrap` |
+| D1: dense round adds stale sums | `dense.rs:282` | the dense three-thread test and `large_trees`, at 1, 4 and 8 threads |
+| L1: first block's suffix for every leaf block | `tree.rs:597` | `large_trees`, at 1, 4 and 8 threads |
+
+New ones:
+
+| Mutant | Line | Result |
+|---|---|---|
+| `mul_assign` operand not clamped | `slices.rs:248` | killed by the random-pairs product test |
+| `fold` operand not clamped | `slices.rs:28` | killed by `tests::matches_reference_qm31_fold_on_seeded_and_edge_tables` |
+| wide dot weights zero-extended | `x86.rs:296` | killed by both dot tests |
+| layer kernel given `0..range.end` | `tree.rs:281` | killed by `large_trees` alone, at 1, 4 and 8 threads, and on arm64 |
+| dense block loaded from `range.start` | `dense.rs:261` | killed by nine tests |
+| scalar dense loop evaluates the steps | `dense.rs:313` | killed by 22 tests, 13 of them OM31; killed on arm64 too |
+| scalar leaf loop takes `p0a` for `p0b` | `tree.rs:615` | killed by three tests; killed on arm64 too |
+| generic fold loop adds `b + a` | `parallel.rs:329` | killed [arm] |
+| generic butterflies loop, the one verifiers run, writes `y − x` | `stele-code/src/lib.rs:442` | killed by five `stele-code` tests and by `stele-pcs` [arm] |
+| pool butterflies without the reverse; with twiddle chunks of half the grain | `lib.rs:468`, `466` | killed with `std` [arm] |
+| NEON `canonical` compares with `p + 1`; NEON `mul` shifts the low lanes by 32 | `neon.rs:18`, `35` | killed by five tests each, with the command of `simd-neon` [arm] |
+| butterflies kernel reads the first twiddles for every vector; the tail reads them from index 0 | `src/kernels.rs:53`, `slices.rs:223` | killed by three tests each, with the command of `simd-neon` [arm] |
+| `with_threads` made `f()` | `parallel.rs:173-176` | **survives**, alone and with D1 (F9) |
+| `MIN_CHUNK = 2^11` | `parallel.rs:43` | passes alone, as it should; **D1 survives with it** (F9) |
+
+One sentence of the first pass was too broad: it said the scalar loops of `Dense` and `BaseLeafSummand` never run on an x86 runner. On x86 the dense loop runs for OM31, and the leaf loop for OM31 and for weights other than one. That is how the two loop mutants die there.
+
+### 3. The CI change [read; arm]
+
+- **It fails closed at job level.** `ci_result.py` accepts `success` for a selected job and `skipped` for an unselected one, for `simd-neon` as for `gpu-parity`. A selected job that is skipped, failed or cancelled fails `gates` (checked by calling `accepts`). `test_ci_readiness.py` runs every combination of the scopes and forbids `continue-on-error`.
+- **Not at step level.** With `if: false` added to the two SIMD steps, each job would report `success`, and `python3 scripts/ci_tests.py` still passes all 141 tests (F11).
+- **The AVX-512 step** (`ci.yml:184-187`) is an unconditional step of `gpu-parity`, after the CUDA gate. A host without a required backend fails it: the `backends()` helper of each of the crate's three test binaries asserts `STELE_REQUIRE_SIMD`.
+- **Selection.** `simd-neon` runs for a change under `stele-simd`, `stele-field`, `stele-poly` or `stele-cqis`, or of the workspace manifest, the lockfile, the toolchain file, `.cargo` or the workflow. `gpu-parity` now also runs for a change under `stele-simd`. Every file that holds kernel code selects both.
+- **Not selected for AVX-512:** `stele-field`, the toolchain, the manifests and the workflow (F11). The hosted AVX2 step (`ci.yml:78-81`) runs on every change, and both x86 kernel sets are one macro body (`x86.rs:206`, `229`).
+- **Not yet executed.** The branch has no pull request, so the changed workflow has never run. I ran its two commands by hand: `STELE_REQUIRE_SIMD=neon` passes on arm64 macOS, and `avx2,avx512` on the Sapphire Rapids node.
+- `python3 scripts/ci_tests.py` passes.
+
+### 4. The Resolution against the tree
+
+- **F1, F3, F5, F7:** the rows state what the tree shows. The mutant table matches the log of job 7587 and reproduces at `deb502bc`. D1 and L1 die at one ambient thread as well. "28 test binaries" is right.
+- **F4:** the multiplier is gone. The row's second sentence is a promise (F10).
+- **F6:** accurate but for one phrase (F10).
+- **F2:** accurate as a description of the workflow. The open part is on the task record (`graph.yaml:4513`), where the first pass said it could stay.
+- **F8:** accurate. The seven commits cannot be repaired without rewriting audited hashes, and the tip passes `cargo deny check bans` [arm]. The `std` edge is an open line (`graph.yaml:4514`).
+- Both open parts are acceptable for an approval of slice 1.
+- The record above the Resolution is the text I returned, apart from the two disclosed lines [diffed].
+
+### 5. Proof bytes, verifier decisions, memory safety
+
+- **Source changes** are comments, a rename (`kernels_available`), one compile-time assertion of two limb offsets, and `with_threads`, which only tests call. No manifest, lockfile or pinned digest moved. No verifier code is touched.
+- **Proofs.** The six pinned L0 and L1 proofs reproduce by SHA-256 at `deb502bc` on arm64, and on x86 on AVX-512, forced to AVX2 and forced to the scalar references.
+- **Suites.** Eleven crates, all features: 477 tests pass on arm64 and on x86 in the three modes. The `stele-prover` development tests (25) pass on both hosts.
+- **Gates.** `scripts/gates/native.sh` passes on arm64, with the pinned digests, the accounting gate and the 149 tests of `stele-negative-controls`.
+- **Memory.** No new `unsafe`. AddressSanitizer reports nothing on the crate's tests, `kernel_parity` and `base_parity`, on x86 with AVX2 and AVX-512 required and on arm64. A control over-read aborts on both.
+
+### Findings
+
+#### F9 — LOW: the three-thread runs rest on a premise that nothing checks
+
+- F3's kill needs a pool range that is not a whole number of blocks. The tests get one from three conditions at once: `with_threads(3, …)`, `MIN_CHUNK = 2^8`, and a round of at least 4,096 columns. In `kernel_parity.rs` only the first round of the ten 13-variable instances is that large.
+- **The helper.** With `with_threads` reduced to `f()`, all 90 tests pass at 1, 4 and 8 ambient threads, and D1 passes with it. A pool that cannot be built takes the same path (`parallel.rs:175`).
+- **The grain.** With `MIN_CHUNK = 2^11`, the three-thread split of 4,096 columns is two ranges of 2,048, and D1 passes all 90 tests. At `2^9` the ranges are already 512 long [arm, probe].
+- **The feature.** Without `std`, D1 passes `cargo test -p stele-sumcheck` (55 tests). CI runs the workspace with all features (`ci.yml:70`), so CI kills it.
+- Such ranges occur at 3, 5, 6, 12 or 24 threads (first pass, F3). At 1, 4 and 8 threads nothing else committed sees them.
+- Requested, not blocking: under `std`, assert inside `with_threads(3, …)` that `sum_ranges` over the tests' largest round (4,096 columns) hands out a range whose length is not a multiple of 64. A 22-line test file doing that passes at the tip and fails with the helper reduced and with the grain raised [arm].
+
+#### F10 — LOW: four sentences say more than the repository shows
+
+- **Resolution, F4 row:** "Reference-class ledgers of the final tip are added with the second record." Nothing under `bench/` cites a commit of the slice. ADR-157's sentence that the L2a digests reproduce on both hosts rests on those ledgers too. Land them in the commit that appends this section, or drop the sentence.
+- **Resolution, second note:** the stale test "is re-pinned on the branch of tasks E18-10 to E22-11". The head of that branch on origin (`c2db66aa`, pull request 482) still pins 11,687 at `development.rs:259`. The re-pin is not pushed.
+- **ADR-157** (`decision-log.md:4889-4890`): "No other change is open on those files." Pull request 482, the base of this stack, is open on `stele-code/src/lib.rs`, `stele-cqis/Cargo.toml` and `stele-cqis/src/execution/data.rs`. Say that the stack sits on it.
+- **Resolution, F6 row:** "per backend and operand order" holds for the edge pairs. The 4·10^6 random pairs run in one order (`tests/kernels.rs:176-180`).
+
+#### F11 — LOW: what the CI change leaves out
+
+- **Scope.** A change of toolchain, workspace manifest, lockfile or workflow selects `simd-neon` but not the AVX-512 step (`ci_scope.py:60-68`).
+- **Step-level skip.** `test_ci_readiness.py:101-103` pins the text of the two steps, not the absence of a step-level `if:`. The test already counts `if:` in `native` and `native-union` (lines 104-107). The same count for `simd-neon` and `gpu-parity` closes it.
+- **Call sites on arm64.** Both steps run `stele-simd` alone, so no call site and no pinned proof runs on arm64 in CI. That is the open F2 line. One more command in `simd-neon`, the L0 window of `ci.yml:72` or the `stele-sumcheck`, `stele-lookup` and `stele-code` suites, would put the NEON and scalar kernel set end to end in CI before the trait exists.
+
+### What I ran
+
+x86, at `deb502bc`, jobs named `stele-ledger` with `--dependency=singleton`:
+
+- 7591: fmt; clippy `-D warnings` on eight crates; `stele-simd` in both profiles; twelve mutants.
+- 7592, 7593, 7597: the two suites at 1, 4 and 8 ambient threads, and `stele-sumcheck` without `std`; ten mutant sets.
+- 7595: the split probe; eleven crates' suites in three modes; the six pinned proofs in three modes; the development tests.
+- 7601: AddressSanitizer (nightly 2025-07-13) with its control.
+
+arm64, at `deb502bc`:
+
+- fmt; clippy; `cargo deny check bans`; the `--no-default-features` check; eleven crates with all features (477 tests); `stele-sumcheck` and `stele-simd` with default features (70).
+- `python3 scripts/ci_tests.py`, also on a workflow with both SIMD steps skipped; `scripts/gates/native.sh`; `rfc-status`, `docs-links`, `glossary-lint`, `rust-policy`, `ledger-validate`.
+- The development tests; the `simd-neon` command; the split probe, also at `MIN_CHUNK` 2^9, 2^10 and 2^11; fourteen mutants; AddressSanitizer.
+- A line diff of the record against the text I returned.
+
+### Not checked
+
+- A run of the changed workflow on GitHub: the hosted arm64 runner, the AVX-512 step on the dedicated node, and the CUDA gate before it.
+- `stele-reductions` and the eight-layer windows at `deb502bc`. `cargo test --workspace` on x86.
+- L2a, ledgers, performance, and pull request 482 beyond its file list.
+- As in the first pass: a CPU that picks AVX2 by itself, AVX-512F without BW, AMD, other aarch64 cores.
+
+I tried to break it by applying the eleven mutants of the first pass and fifteen new ones with no review file installed, by forcing the committed suites and the pinned proofs through the scalar references, AVX2 and AVX-512, by running the committed tests under AddressSanitizer on both hosts, and by disabling the three-thread pool. The committed tests rejected every mutant of a kernel, a bounds check or a call site, and the pinned L0/L1 digests held in every mode. Only the disabled pool went unnoticed (F9).
+
+## Resolution of the second pass
+
+By the author, in the commit that appends the second pass.
+
+| Finding | Status | Change |
+|---|---|---|
+| F9 | Resolved | The reviewer's test is committed as `crates/stele-sumcheck/tests/split_shape.rs`: inside `with_threads(3, …)` a sum over 4,096 columns must hand out a range that is not a multiple of 64. It fails with the helper reduced to `f()` and with the grain raised to 2^11. |
+| F10 | Resolved | The four sentences are corrected in this commit: the ledgers are listed below, the stale test's re-pin is stated as a change for pull request 482, ADR-157 says that the stack sits on pull request 482, and the random pairs are per backend. |
+| F11 | Resolved in part | `test_ci_readiness.py` counts the `if:` of `simd-neon` and `gpu-parity`: one each, the job's. A change of `rust-toolchain.toml` selects the AVX-512 step. `simd-neon` also runs the `stele-sumcheck`, `stele-lookup` and `stele-code` suites, so the NEON and scalar kernels run through their call sites on arm64. Left as it is: a lockfile, manifest or workflow change does not select the dedicated node; the hosted AVX2 step runs on every change, and both x86 kernel sets are one macro body. |
+
+## Ledgers
+
+On the 24-thread reference class (`h100-sxm-8-0`, 24 allocated CPUs, profile byte 6), at
+`deb502bc`, the last of three runs each. "Before" is the base of this stack (`1b1676eb`,
+ledgers `e22-10-*`).
+
+| Rung | Ledger | Prove | Before | Verify | Peak RSS | Before |
+|---|---|---|---|---|---|---|
+| L1 | `e20-03-dev-synthetic-8layer-byte6-24t` | 7.03 s | 7.69 s | 0.54 s | 2.0 GB | |
+| L2a | `e20-03-dev-stories42m-t64-byte6-24t` | 30.11 s | 36.33 s | 2.04 s | 10.7 GB | 12.7 GB |
+| L2a, malloc on huge pages | `e20-03-dev-stories42m-t64-byte6-24t-hugepages` | 25.76 s | 31.85 s | 1.57 s | 10.6 GB | 12.6 GB |
+
+- The L2a proof is the same 3,927,613 bytes as before the stack (SHA-256 `afb3581b…67cb`),
+  in all three runs of both jobs; the L1 proof is the same in its three runs.
+- The peak RSS gain is the freed tree levels (`520762ee`), not the kernels.
+- No arm64 ledger is recorded for this stack. The L2a digest was reproduced on arm64 at
+  `520762ee`, before the test and record commits, which change no prover code.

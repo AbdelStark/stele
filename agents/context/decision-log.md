@@ -4886,8 +4886,10 @@ Decision:
   the scalar multiplier. NEON has the base-field butterflies.
 - **Call sites in other lanes (RFC-0027 §5).** "The engine calls the trait" needs the
   kernels called from `stele-code` and through the downcast hooks of `stele-hash`
-  (lane C) and from `stele-cqis` (lane N); review F2 needs the CI change (lane B). No
-  other change is open on those files, and the one independent review covers them.
+  (lane C) and from `stele-cqis` (lane N); review F2 needs the CI change (lane B). The
+  stack sits on pull request 482, which is open on `stele-code/src/lib.rs`,
+  `stele-cqis/Cargo.toml` and `stele-cqis/src/execution/data.rs`, and merges after it;
+  no other change is open on those files. The one independent review covers them.
 
 Consequences:
 - Proof and public bytes are unchanged: the pinned L0 and L1 digests and the L2a digests
