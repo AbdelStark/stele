@@ -241,10 +241,10 @@ fn pair(t: &mut Transcript<K>, grind: u8, nonce: Nonce<'_, '_>) -> Result<(K, K)
     Ok((beta, alpha))
 }
 
-fn start(
+fn start_with_mu(
     t: &mut Transcript<K>,
     check: &Check,
-    mu: &VerifiedCertificate<K>,
+    mu_binding: &[u8],
     nonce: Nonce<'_, '_>,
 ) -> Result<Phase, Error> {
     t.absorb(AbsorbLabel::LookupStatement, &statement(check))?;
@@ -253,8 +253,7 @@ fn start(
     bundle.extend_from_slice(&check.id.to_le_bytes());
     bundle.push(1);
     bundle.push(0);
-    bundle.extend_from_slice(&mu.record().source().bytes());
-    bundle.extend_from_slice(&mu.record().id());
+    bundle.extend_from_slice(mu_binding);
     t.absorb(AbsorbLabel::LookupMultiplicities, &bundle)?;
     t.absorb(AbsorbLabel::LookupRepetition, &phase(check.id, 0, 0))?;
     let (beta, alpha) = pair(t, check.grind, nonce)?;
@@ -270,6 +269,18 @@ fn start(
         beta,
         alpha,
     })
+}
+
+fn start(
+    t: &mut Transcript<K>,
+    check: &Check,
+    mu: &VerifiedCertificate<K>,
+    nonce: Nonce<'_, '_>,
+) -> Result<Phase, Error> {
+    let mut mu_binding = Vec::new();
+    mu_binding.extend_from_slice(&mu.record().source().bytes());
+    mu_binding.extend_from_slice(&mu.record().id());
+    start_with_mu(t, check, &mu_binding, nonce)
 }
 
 /// Table columns and valid-row count at `point`, padded rows reading zero.
@@ -616,6 +627,149 @@ pub(super) fn verify(
         u64::from(selected.sc.degree),
     );
     Ok(())
+}
+
+/// Produce one lookup section for a stacked RFC-0029 multiplicity source (RFC-0026 A29):
+/// runs the exact same LogUp trees, selected product, and member split (with A28 virtual
+/// member absorption), then returns `(table.point, table.claims[0].1)` for reduction onto
+/// the segment's stacked multiplicity source instead of opening a separate v1 source.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn prove_for_stack(
+    t: &mut Transcript<K>,
+    check: &Check,
+    relation: &Relation,
+    resolved: &ResolvedColumns<'_>,
+    counts: &[i64],
+    mu_binding: &[u8],
+    out: &mut Vec<u8>,
+    claims: &mut Claims,
+) -> Result<(Vec<K>, K), Error> {
+    let p = start_with_mu(t, check, mu_binding, Nonce::Prove(out))?;
+    let (sigma, xs) = join(
+        || sigma_base(check, relation),
+        || originals_base(check, resolved),
+    );
+    let xs = xs?;
+    let base_leaves = if check.c == 1 {
+        BaseLeaves::SmallDomain {
+            sigma: &sigma,
+            values: &xs[0],
+            alpha: p.alpha,
+            table_size: check.t,
+        }
+    } else {
+        BaseLeaves::General {
+            sigma: &sigma,
+            xs: &xs,
+            alpha: p.alpha,
+            beta: p.beta,
+        }
+    };
+    let one = K::from_i64(1);
+    let build_right = || -> Result<fraction::BuiltTree<K>, Error> {
+        let mut right = alloc::vec![[K::from_i64(0), one]; check.entries.len() / check.c];
+        for_each_chunk(&mut right, |start, chunk| {
+            for (j, out) in chunk.iter_mut().enumerate() {
+                let i = start + j;
+                if i < check.t {
+                    let row = &check.entries[i * check.c..(i + 1) * check.c];
+                    let row = row
+                        .iter()
+                        .rev()
+                        .fold(K::from_i64(0), |v, x| v * p.beta + K::from_i64(*x));
+                    *out = [K::from_i64(counts[i]), p.alpha - row];
+                }
+            }
+        });
+        p.right.build_levels(&right).map_err(FRACTION)
+    };
+    let (left_tree, right_tree) = join(
+        || p.left.build_base_levels(base_leaves).map_err(FRACTION),
+        build_right,
+    );
+    let (left_proof, lookup) = p
+        .left
+        .prove_built_base(base_leaves, left_tree?, t)
+        .map_err(FRACTION)?;
+    out.extend_from_slice(&left_proof.encode(&p.left).map_err(FRACTION)?);
+    let (right_proof, table) = p.right.prove_built(right_tree?, t).map_err(FRACTION)?;
+    out.extend_from_slice(&right_proof.encode(&p.right).map_err(FRACTION)?);
+    let ids: Vec<u64> = (0..check.c).map(|i| check.tuple_id(i)).collect();
+    let leaf = LeafDescriptor::new(&p.left, &ids).map_err(FRACTION)?;
+    let (proof, selected) = SelectedProduct::new_base(leaf, &lookup, &sigma, p.alpha, p.beta)
+        .map_err(FRACTION)?
+        .prove_base(&xs, t)
+        .map_err(FRACTION)?;
+    out.extend_from_slice(&leaf.encode(&proof).map_err(FRACTION)?);
+    let members = split_base(check, &xs, &selected.point)?;
+    put(out, &members);
+    absorb_virtual_members(t, check, relation, &members)?;
+    route(check, &selected.point, &members, claims);
+    Ok((table.point, table.claims[0].1))
+}
+
+/// Replay one lookup section for a stacked RFC-0029 multiplicity source (RFC-0026 A29),
+/// recording LU/RLC/SC ledger lines and returning `(table.point, table.claims[0].1)`.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn verify_for_stack(
+    t: &mut Transcript<K>,
+    check: &Check,
+    relation: &Relation,
+    mu_binding: &[u8],
+    reader: &mut Reader<'_>,
+    claims: &mut Claims,
+    ledger: &mut Ledger,
+) -> Result<(Vec<K>, K), Error> {
+    let p = start_with_mu(t, check, mu_binding, Nonce::Verify(reader))?;
+    let bytes = reader.take(p.left.proof_size().map_err(FRACTION)?)?;
+    let left = fraction::Proof::decode(&p.left, bytes).map_err(FRACTION)?;
+    let lookup = p.left.verify(&left, t).map_err(FRACTION)?;
+    let bytes = reader.take(p.right.proof_size().map_err(FRACTION)?)?;
+    let right = fraction::Proof::decode(&p.right, bytes).map_err(FRACTION)?;
+    let table = p.right.verify(&right, t).map_err(FRACTION)?;
+    fraction::check_roots(left.root, right.root).map_err(FRACTION)?;
+    check_table(check, &p, &table)?;
+    let ids: Vec<u64> = (0..check.c).map(|i| check.tuple_id(i)).collect();
+    let leaf = LeafDescriptor::new(&p.left, &ids).map_err(FRACTION)?;
+    let sigma = sigma_base(check, relation);
+    let leaf_proof = leaf
+        .decode(reader.take(leaf.proof_size().map_err(FRACTION)?)?)
+        .map_err(FRACTION)?;
+    let selected = SelectedProduct::new_base(leaf, &lookup, &sigma, p.alpha, p.beta)
+        .map_err(FRACTION)?
+        .verify(&leaf_proof, t)
+        .map_err(FRACTION)?;
+    let members = reader.ks(check.members.len() * check.c)?;
+    check_members(check, &selected, &members)?;
+    absorb_virtual_members(t, check, relation, &members)?;
+    route(check, &selected.point, &members, claims);
+    let (n, c) = (1u64 << check.m, check.c as u64);
+    let lu = c * (n + check.t as u64) - 1;
+    ledger.add(Line::Lu, &check.name, lu, lu);
+    if let Some(e) = ledger.entries.last_mut() {
+        e.grind = check.grind;
+    }
+    for tree in [&lookup, &table] {
+        let a = &tree.accounting;
+        ledger.add(Line::Rlc, &check.name, a.gamma + a.fold, 1);
+        ledger.add(
+            Line::Sc,
+            &check.name,
+            a.layers.iter().map(|l| l.numerator).sum(),
+            a.layers
+                .iter()
+                .map(|l| u64::from(l.degree))
+                .max()
+                .unwrap_or(1),
+        );
+    }
+    ledger.add(
+        Line::Sc,
+        &check.name,
+        selected.sc.numerator,
+        u64::from(selected.sc.degree),
+    );
+    Ok((table.point, table.claims[0].1))
 }
 
 #[cfg(test)]

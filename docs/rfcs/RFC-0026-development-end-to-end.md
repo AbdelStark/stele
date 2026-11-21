@@ -2746,3 +2746,87 @@ Task: E18-01. Decision: ADR-150.
    `NC-1337..1340` reserved in `tests/negative-controls/catalog.md` (with `NC-1335..1336`
    already executed under A27).
 6. **Affected tasks.** E18-01, E18-02..E18-05.
+
+### A29 — Joined RFC-0029 recursive openings for segments, multiplicity stacks, and model sources (development tier)
+
+Status: Accepted (development tier, RFC-0027 §2). Companion of RFC-0029 §2, RFC-0010 A17, and RFC-0012 A20.
+Task: E19-04. Decision: ADR-154.
+
+1. **Profile byte and public bundle.** Profile byte `6` selects `Sources::CircleRecursive`
+   (unsegmented public bundle magic `stele-dev-public-v6`; segmented public bundles reuse
+   `stele-dev-public-v5` with `sources_byte = 6` and `segment_layers >= 1`). The proof
+   container is `stele-dev-e2e-v2` (A26). Development tier only; no security level or
+   profile promotion is granted (Workflow 10).
+2. **Level-0 source plans and shared level-1 tail.** Every source uses RFC-0010 A17
+   version-4 `CircleCoeff` (`b = 2`, Policy 3, `T = 100`, QM31):
+   - Each segment `s` witness stack and each segment `s` stacked multiplicity source
+     (packing all lookup multiplicity tables of segment `s` with A4 largest-first
+     alignment) uses a fresh-mode single-level `RecursivePlan` whose `(ell_0, m_0, 2)`
+     minimises level-0 opening bytes `q_0 * (4 * 2^ell_0 + 32 * (m_0 + 2))` over
+     `ell_0 >= 1`, `m_0 >= 1`, `ell_0 + m_0 = max(bits, 2)`, `m_0 + 2 <= 30`, subject to
+     the QM31 cap `2 * ell_0 * (e_0 + 1) <= floor(|K| / 2^100)` (ties: smallest `ell_0`).
+   - Each model source `k` uses a certified-mode single-level `CertifiedPlan` (`b = 2`,
+     radius `e_c = floor((D - 1) / 3)` minimizing `q_open * (4 * 2^ell_0 + 32 * (m_0 + 2))`
+     under `CertifiedPlan::new`'s cap, ties: smallest `ell_0`). Model registration stores
+     the 32-byte root and registration certificate; queried columns are recomputed from
+     weights at opening time so the full codeword is never resident (RFC-0029 §1.3).
+   - Let `M_max = max(2, max l0.m)` across all segment witness stacks, segment
+     multiplicity stacks, and model sources. A single `JoinedTailPlan` (`tail_levels[0] =
+     l1_spec` with `l1_spec.ell + l1_spec.m = M_max`) is selected by exact byte-minimising
+     DP over `b = 2` subject to `JoinedTailPlan::new` (enforcing effective level-1
+     proximity `2 * (block_bits + ell_1) * (e_1 + 1) <= cap`).
+3. **Resolving Q51 for multiplicity stacks.** In Step 2.2 of segment `s`, all multiplicity
+   tables are packed into one fresh stacked source `mu_stack` (`source_id = (s << 16) + 3`),
+   emitting only its 32-byte root in `multiplicities[0]` (absorbed under `RelationRoots`).
+   In Step 2.3 (b), each lookup check `j` runs LogUp `(beta, alpha)` (binding `mu_stack`'s
+   root), left/right fraction trees, selected product, and member split (with A28 virtual
+   member absorption), then reduces its table-side claim `(table.point, v_tab)` to a point
+   claim on `mu_stack`:
+   - When `check.t == 2^(check.k)` (exact power of two): `(bits_point(off >> k, stack_bits - k, table.point), v_tab)` directly (no extra sumcheck).
+   - When `check.t < 2^(check.k)`: one `k`-variable degree-2 sumcheck (`id = (1 << 62) | (7 << 48) | check.id`)
+     proving `sum_{x < t} eq(table.point, x) * mu_j(x) = v_tab`. The verifier checks the
+     first final value against the exact `O(k)` closed-form MLE `eq_prefix_mle(table.point, t, r_mu)`
+     (`EqMismatch` on mismatch), records `SC` `2k / |K|`, and routes `(r_mu, v_mu)` into
+     `mu_stack`.
+   Immediately after segment `s`'s lookups complete, `mu_stack` runs one RFC-0006 A2 mode-1
+   `claim_batch` (`id = (1 << 62) | (8 << 48) | (s << 32)`) to a fresh random point `(r_mu*, v_mu*)`,
+   closes level 0 via `PreparedRecursive::close_fresh_level0_at_point` (`opening_id = (1 << 62) | (10 << 48) | (s << 32)`) into `l1_spec`,
+   drops `mu_stack` by value, emits `[batch_bytes || l0_bytes]` in `multiplicities[1]`,
+   and pushes the resulting pending level-1 source into the proof's joined tail list.
+4. **Segment witness close, model close, and one joined recursion.** Each segment's witness
+   stack emits only its 32-byte root in `groups[0]` (absorbed under `RelationRoots`). At
+   Step 2.5 (for `s - 1`) and Step 3 (for the final segment), its claims batch via
+   `claim_batch` (`id = BATCH | (s << 32)`) to `(r*, v*)`, close level 0 via
+   `close_fresh_level0_at_point` (`opening_id = (1 << 62) | (9 << 48) | (s << 32)`), drop the witness
+   matrix and codeword by value, emit `[batch_bytes || l0_bytes]` in `openings[0]`, and
+   push the pending level-1 source. At Step 3, each opened model source `k` batches its
+   claims (`id = BATCH | (1 + k)`) to `(r_row || r_col, v*)`, closes level 0 via
+   `CertifiedModelSource::close_certified_level0` (`opening_id = (1 << 62) | (11 << 48) | k`) using
+   `row_weights = eq(r_row)` and `ColumnFunctional::Tensor(&r_col)`, emits
+   `[batch_bytes || l0_bytes]` in `model_openings`, and pushes its pending level-1 source.
+   Finally, when at least one pending level-1 source exists, one `prove_joined_tail` /
+   `verify_joined_tail` (`tail_opening_id = (1 << 62) | (12 << 48)`) combines all pending blocks with
+   `PcsLevelGamma` and is emitted as the final section of `model_openings`.
+5. **Soundness and controls.** Every RLC, SC, LU, and Policy-3 PCS line (including
+   `PcsLevelBeta` and `PcsLevelGamma`) is recorded in the verifier `Ledger`; the identity
+   lambda draw charges `n` as in A27 (RFC-0012 A16). Through `relation::verify_recursive`
+   on the composed proof: `NC-0631` (a Merkle sibling of a level-0 close and of the joined
+   tail), `NC-0633` (tail length), `NC-0634` (a claim-batch round) and `NC-0636`, the mask
+   binding of item 3: one bit of the `eq` final of a prefix sumcheck whose multiplicities
+   are zero is rejected with `EqMismatch`. `NC-0635` (a registration certificate at
+   another radius) is decided before it, by `relation::verify_recursive_model`. `NC-0630` and `NC-0632` need a forging prover, because every level
+   root and `u_L` are absorbed before the column indices are drawn; they run on the joined
+   recursion at the commitment level (`stele-pcs`, task E19-04). The catalogue's NC-13xx
+   development controls run on the older source sets (bytes 2, 3 and 5 and the expander
+   set); running them under byte 6 is a condition of promotion (E19-10, E21-09).
+5a. **Step 1 and the lookup statement under byte 6.** Step 1 absorbs the relation digest
+   under `relation/statement`, then one `relation/roots` frame that holds, for each model
+   source in plan order, its certified source context and its registration certificate
+   identifier (A5 absorbs roots there; the context contains the root). The lookup statement
+   of each check keeps A5's bytes, multiplicity layout fields included: under byte 6 they
+   are plan-derived constants and describe no committed source (the first check's layout
+   identifier coincides with the `mu_stack` identifier; its `ell` and blow-up do not). The multiplicity bundle that
+   follows names the `mu_stack` source context, which contains its root, so `(beta, alpha)`
+   are drawn after the committed multiplicities. A segment without a witness stack has no
+   opening section; a non-empty one is `ProofShape`.
+6. **Affected tasks.** E19-04, E18-09.

@@ -248,6 +248,8 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                 ('L0', 'one-layer', 16, 'CircleAllGrind', 5): (b'l0-a14-proof-bytes', 'RFC-0026 A14'),
                 ('L1', 'eight-layer', 64, 'CircleAll', 3): (b'l1-a12-proof-bytes', 'RFC-0026 A12'),
                 ('L1', 'eight-layer', 64, 'CircleAllGrind', 5): (b'l1-a14-proof-bytes', 'RFC-0026 A14'),
+                ('L0', 'one-layer', 16, 'CircleRecursive', 6): (b'l0-a29-proof-bytes', 'RFC-0026 A29'),
+                ('L1', 'eight-layer', 64, 'CircleRecursive', 6): (b'l1-a29-proof-bytes', 'RFC-0026 A29'),
             }
             manifest = {
                 'schema_version': 1,

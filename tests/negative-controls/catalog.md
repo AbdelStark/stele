@@ -117,6 +117,7 @@
 | NC-0633 | recursive commitment | 0029 §6, 0010 A17 | present a level count or `(ell, m, b)` other than the plan's | `ProofShape` | done |
 | NC-0634 | recursive commitment | 0029 §6, 0010 A17 | fresh mode: open at a point that is not the batching sumcheck's | `RoundSumMismatch` | done |
 | NC-0635 | recursive commitment | 0029 §6, 0010 A17 | certified mode: a certificate for another radius offered for the expected source | `CertificateContext` | done |
+| NC-0636 | recursive commitment | 0026 A29, 0029 Q51 | joined mode: the `eq` final of a multiplicity prefix sumcheck differs from the closed form of the row mask | `EqMismatch` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0704 | passport | 0011 A6/A7, 0025 §2.7 | alter one length or digest in each fixed child-reference role, one variant at a time | `ReferenceMismatch` | todo |
 | NC-0705 | passport | 0011 A4/A7 | substitute one Preparation mapping under the original Artifact/source relation | `PreparationMismatch` | todo |
@@ -466,4 +467,9 @@ Task E19-03 executes NC-0630..0634 through the actual fresh-mode verifiers
 (`verify_fresh_at_point` and `verify_fresh_claims`) and task E19-05 executes NC-0635
 through the actual certified-mode verifiers (`verify_certified_registration` and
 `verify_certified_opening`, `tests/negative-controls/src/pcs_recursive.rs`), with honest
-acceptance and exact rejection on every variant.
+acceptance and exact rejection on every variant. Task E19-04 executes NC-0636, the mask
+binding of RFC-0026 A29 item 3, through `relation::verify_recursive` on a table whose
+multiplicities are zero, asserting `EqMismatch`. On the composed proof the engine tests
+run NC-0631 and NC-0633..0636. Controls NC-0630 and NC-0632 need a forging prover (every
+level root and `u_L` are absorbed before the column indices are drawn) and run on the
+joined recursion in `crates/stele-pcs/tests/recursive.rs`.

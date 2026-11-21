@@ -4750,6 +4750,46 @@ Consequences:
   - Task `E19-02` is closed as `done`; `E19-03` proceeds directly on `RFC-0029` / `RFC-0010 A17`.
   - No protocol bytes, controls, or profile promotions change in this ADR.
 
+## ADR-154 — Joined RFC-0029 recursive openings (`RFC-0026 A29`, profile byte 6, task E19-04)
+
+- **Status:** Accepted (development tier, RFC-0027 §2)
+- **Task / Lane:** `E19-04` · Lane C
+- **Governing RFCs:** `RFC-0026 A29`, `RFC-0029 §2`, `RFC-0010 A17`, `RFC-0012 A20`
+- **Decision:** Introduce development-tier profile byte `6` (`Sources::CircleRecursive`,
+  `stele-dev-public-v6` unsegmented / `stele-dev-public-v5` segmented, `stele-dev-e2e-v2`)
+  joining every segment witness stack, every segment stacked multiplicity source, and every
+  certified model source into ONE `RFC-0029 §2` recursion per proof (`prove_joined_tail` /
+  `verify_joined_tail`).
+- **Rationale:**
+  - Leaving lookup multiplicity tables as separate version-1 Circle sources left multiplicity
+    certificates and piece openings alone above the `E19-04` 4 MB L2a proof budget. Packing
+    all multiplicity tables of segment `s` into one fresh A4-aligned `mu_stack` and reducing
+    any non-power-of-two table (`check.t < 2^k`) via one `k`-variable sumcheck checked by the
+    exact `O(k)` closed-form verifier MLE `eq_prefix_mle` resolves `RFC-0029 Q51` without
+    committing per-table certificates.
+  - Each segment's witness stack and multiplicity stack batch their claims via `RFC-0006 A2`
+    mode-1 `claim_batch`, close level 0 via `PreparedRecursive::close_fresh_level0_at_point`
+    into the shared `l1_spec`, and drop their level-0 matrices and codewords by value before
+    subsequent segments open.
+  - Model sources register via `CertifiedModelSource::register` borrowing stacked weights
+    without duplication, drop full codewords immediately, and recompute only queried columns
+    at opening time (`RFC-0029 §1.3`).
+  - `select_tail_levels(max_l0_m, max_blocks)` minimizes exact `JoinedTailPlan::tail_proof_size()`
+    across `ell_1` for the actual block bound while satisfying the `QM31` single-round
+    proximity cap.
+- **Consequences:**
+  - `RFC-0026 A29` is added as an Accepted development-tier amendment in
+    `docs/rfcs/RFC-0026-development-end-to-end.md` and indexed in `RFC-0000`.
+  - L2a (`stories42M`, `T = 64`) under `--dev-profile 6`: the proof is 3,927,613 bytes
+    (`bench/ledger/e19-04-dev-stories42m-t64-byte6-24t.json`; 12.4 MB under byte 3,
+    `bench/ledger/e20-02-dev-stories42m-24t.json`), with the
+    same bytes in three runs on the 24-thread class and on an arm64 host. The public bundle
+    grows to 17.3 MB: it carries the registration certificates of the certified model
+    sources, made once per model. Controls: `NC-0631` and `NC-0633..0636` through the
+    engine verifier on the composed proof; `NC-0630` and `NC-0632` on the joined recursion
+    in `stele-pcs` (review `agents/reviews/e19-04-joined-recursion-e2e.md`).
+  - Development tier only: no security level or profile promotion is granted (Workflow 10).
+
 ## ADR-155 — Accept RFC-0026 A8, the plan-fixed split of lookup checks, at the development tier (task E20-02)
 
 Context: RFC-0026 A3 rejects a lookup check whose concatenated domain exceeds `2^30`

@@ -715,10 +715,16 @@ fn rejects_tampers_on_a_supplied_proof() {
     // certificate (RFC-0026 §2.2). The other three tampers change the absorbed public input.
     let mut weight = public.clone();
     weight.commitment[0].0[0] ^= 1;
-    assert!(matches!(
-        rejects("weight", &weight, &statement),
-        Error::Commitment(_)
-    ));
+    let weight_error = rejects("weight", &weight, &statement);
+    // RFC-0026 A29: profile 6 checks the root inside the certified registration (RFC-0029 §1.3).
+    assert!(if public.sources == Sources::CircleRecursive {
+        matches!(
+            weight_error,
+            Error::Engine(stele_reductions::relation::Error::Recursive(_))
+        )
+    } else {
+        matches!(weight_error, Error::Commitment(_))
+    });
     // A tampered public norm gain (RFC-0026 A2).
     let mut gain = public.clone();
     gain.vectors[0].1[0] ^= 1;
@@ -740,7 +746,8 @@ fn matches_reference_model_commitment_of_a_supplied_proof() {
     let artifact = read("artifact.bin");
     let (public, _) = bundle::decode(&read("public.bin")).expect("bundle");
     let clock = Instant::now();
-    let weights = Weights::from_artifact(&model, &artifact).expect("weights");
+    let weights =
+        Weights::from_artifact_sources(&model, &artifact, public.sources).expect("weights");
     let committed = Committed::new(&weights).expect("commitment");
     let ns = clock.elapsed().as_nanos();
     assert!(
@@ -832,6 +839,21 @@ fn dumps_development_digests() {
             64usize,
             Sources::CircleAllGrind,
             "CircleAllGrind",
+        ),
+        // RFC-0026 A29: the joined recursion of profile byte 6.
+        (
+            "L0",
+            "one-layer",
+            16usize,
+            Sources::CircleRecursive,
+            "CircleRecursive",
+        ),
+        (
+            "L1",
+            "eight-layer",
+            64usize,
+            Sources::CircleRecursive,
+            "CircleRecursive",
         ),
     ] {
         let case = load(name);
@@ -2675,4 +2697,144 @@ fn accepts_segmented_one_layer_and_wide_gqa_windows() {
         Some(Error::StatementMismatch),
         "A16 registry::publish must reject segmented public bundles"
     );
+}
+
+#[test]
+fn accepts_recursive_profile_6_unsegmented_and_segmented_and_rejects_tampers() {
+    let case = load("one-layer");
+    let base = Statement {
+        tokens: vec![1],
+        start: 0,
+        end: 1,
+        next: None,
+    };
+
+    for seg_layers in [0u16, 1u16] {
+        let (public, statement, proof, report) =
+            stele_prover::development::prove_window_development_segmented_measured(
+                case.bytes[0],
+                case.bytes[2],
+                case.bytes[1],
+                &case.artifact,
+                base.clone(),
+                16,
+                stele_prover::development::RECURSIVE_PROFILE,
+                seg_layers,
+            )
+            .expect("profile-6 prove");
+
+        assert_eq!(public.sources, Sources::CircleRecursive);
+        assert_eq!(public.segment_layers, seg_layers);
+        let decoded_v2 = container::decode_v2(&proof).expect("stele-dev-e2e-v2");
+        if seg_layers == 0 {
+            assert_eq!(decoded_v2.segments.len(), 1);
+        } else {
+            assert_eq!(decoded_v2.segments.len(), 2);
+        }
+
+        // Bundle round-trip (`stele-dev-public-v6` unseg, `stele-dev-public-v5` seg).
+        let encoded_pub = bundle::encode(&public, &statement);
+        let expected_magic: &[u8] = if seg_layers == 0 {
+            b"stele-dev-public-v6"
+        } else {
+            b"stele-dev-public-v5"
+        };
+        assert!(encoded_pub.starts_with(expected_magic));
+        assert_eq!(
+            bundle::decode(&encoded_pub),
+            Ok((public.clone(), statement.clone()))
+        );
+
+        let ledger = verify(&public, &statement, &proof).expect("profile-6 verify");
+        assert!(ledger.pcs_sources >= 3);
+        assert_eq!(
+            stele_prover::development::registry::publish(&public, &statement).err(),
+            Some(Error::StatementMismatch),
+            "A16 registry::publish must reject profile-6 public bundles"
+        );
+
+        // INV-8 determinism.
+        let (pub2, stmt2, proof2, report2) =
+            stele_prover::development::prove_window_development_segmented_measured(
+                case.bytes[0],
+                case.bytes[2],
+                case.bytes[1],
+                &case.artifact,
+                base.clone(),
+                16,
+                stele_prover::development::RECURSIVE_PROFILE,
+                seg_layers,
+            )
+            .expect("second profile-6 prove");
+        assert_eq!(pub2, public);
+        assert_eq!(stmt2, statement);
+        assert_eq!(proof2, proof);
+        assert_eq!(
+            report.engine.committed_cells,
+            report2.engine.committed_cells
+        );
+        assert_eq!(
+            report.engine.lookup_positions,
+            report2.engine.lookup_positions
+        );
+
+        // NC-0630 and NC-0632 need a forging prover (every level root and `u_L` are absorbed
+        // before the column indices are drawn) and run on the joined recursion in `stele-pcs`.
+        let engine = |bytes: &[u8]| match verify(&public, &statement, bytes) {
+            Err(Error::Engine(e)) => Some(e),
+            _ => None,
+        };
+        use stele_reductions::relation::Error as Engine;
+        use stele_reductions::stele_pcs::recursive::RecursiveError;
+        let root_mismatch = Engine::Recursive(RecursiveError::Merkle(
+            stele_reductions::stele_hash::merkle::Error::RootMismatch,
+        ));
+
+        // NC-0631 on the composed proof: a Merkle sibling of segment 0's witness level-0 close.
+        let mut bad_l0 = decoded_v2.clone();
+        let last = bad_l0.segments[0].openings[0].len() - 1;
+        bad_l0.segments[0].openings[0][last] ^= 1;
+        assert_eq!(engine(&bad_l0.encode()), Some(root_mismatch.clone()));
+
+        // NC-0631 in the joined tail: a Merkle sibling of its last level.
+        let mut bad_tail = decoded_v2.clone();
+        let tail_idx = bad_tail.model_openings.len() - 1;
+        let tail_last = bad_tail.model_openings[tail_idx].len() - 16;
+        bad_tail.model_openings[tail_idx][tail_last] ^= 1;
+        assert_eq!(engine(&bad_tail.encode()), Some(root_mismatch));
+
+        // NC-0633: the joined tail one byte short.
+        let mut bad_shape = decoded_v2.clone();
+        bad_shape.model_openings[tail_idx].pop();
+        assert_eq!(
+            engine(&bad_shape.encode()),
+            Some(Engine::Recursive(RecursiveError::ProofShape))
+        );
+
+        // NC-0634: one round value of segment 0's claim batch.
+        let mut bad_batch = decoded_v2.clone();
+        bad_batch.segments[0].openings[0][0] ^= 1;
+        assert_eq!(
+            engine(&bad_batch.encode()).map(|e| format!("{e:?}")),
+            Some("Sumcheck(RoundSumMismatch)".into())
+        );
+
+        // NC-0635: the registration certificate names another radius (bytes 1..9).
+        let mut bad_pub = public.clone();
+        bad_pub.commitment[0].1[1] ^= 1;
+        assert_eq!(
+            verify(&bad_pub, &statement, &proof).err(),
+            Some(Error::Engine(Engine::Recursive(
+                RecursiveError::CertificateContext
+            )))
+        );
+
+        // Profile byte mismatch rejects.
+        let mut wrong_profile = public.clone();
+        wrong_profile.sources = Sources::CircleAll;
+        assert_eq!(
+            verify(&wrong_profile, &statement, &proof).err(),
+            Some(Error::StatementMismatch)
+        );
+    }
 }

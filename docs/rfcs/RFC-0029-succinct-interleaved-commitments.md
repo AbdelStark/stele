@@ -246,7 +246,8 @@ now keeps the byte layout stable.
   script prices both, and the per-round form of the proximity bound (one coordinate
   per sumcheck round, not the `ℓ`-fold union) is part of the question.
 - **Q51**: a reduction of RFC-0008 A5's prefix-mask functional to a point claim, so
-  that multiplicity sources can join fresh mode.
+  that multiplicity sources can join fresh mode. Resolved for the development tier by
+  A1 (RFC-0026 A29 item 3).
 - **Q39**: the largest proven radius for the interleaved circle code under tensor
   combination, and whether the Reed–Solomon results up to `D/2` and to the Johnson
   bound transfer to it.
@@ -273,3 +274,11 @@ now keeps the byte layout stable.
   for `b ≥ 1`; per-round QM31 = `1.570 MiB`; Ext6 Q50 = `0.950 MiB`; OM31 Q50 = `1.035 MiB`).
   Controls `NC-0630..0635` are entered as `todo` in `tests/negative-controls/catalog.md`
   for E19-03/E19-05. Promotion to `standard` or `treaty` remains a separate Workflow 10 task.
+- **A1 (development tier, ADR-154, task E19-04): Q51 for the development tier.**
+  RFC-0026 A29 item 3 packs the multiplicity tables of a segment into one fresh
+  version-4 stacked source and reduces RFC-0008 A5's prefix-mask functional of a table
+  with `t < 2^k` rows to a point claim by one `k`-variable sumcheck, checked against the
+  closed form of `eq(z, x)·[x < t]` (control NC-0636). Under profile byte 6 the last
+  sentence of §1.3's third bullet no longer applies, and multiplicity sources join the
+  one recursion of §2. Bytes 3 and 5 keep the version-1 multiplicity sources. Promotion
+  of the reduction is part of E21-09.

@@ -4308,7 +4308,9 @@ tasks:
   skill: pcs-engineer
   crate: stele-reductions+stele-pcs
   lane: C
-  status: ready
+  status: done
+  agent: claude
+  branch: task/E19-04-joined-recursion
   acceptance:
   - the row combinations of segments, multiplicity sources and model sources join one recursion; a segment leaves memory when its queries are answered
   - L2a proof at most 4 MB at the development query counts of Policy 3
@@ -4342,7 +4344,7 @@ tasks:
   skill: pcs-engineer
   crate: stele-pcs
   lane: C
-  status: in_progress
+  status: done
   agent: claude
   branch: task/E19-06-zk-reservation
   acceptance:
@@ -4382,6 +4384,23 @@ tasks:
   - same verifier-owned source, certificate bytes, opening bytes, field record and transcript as CPU for honest material
   - wrong root, changed sibling, wrong response size, exhausted lifetime and second opening reject under their specified checks
   - old CPU callers retain borrowed responses, work counts and no_std support
+- id: E19-10
+  epic: E19
+  title: Development controls under the joined recursion (profile byte 6)
+  depends:
+  - E19-04
+  rfc:
+  - RFC-0026 A29
+  - RFC-0029 §6
+  skill: negative-control-author
+  lane: C
+  crate: stele-reductions+tests/negative-controls
+  status: ready
+  acceptance:
+  - the NC-13xx development controls run through relation::verify_recursive under Sources::CircleRecursive, or the steps copied from verify_segmented are shared with it
+  - each of the ten checks listed in agents/reviews/e19-04-joined-recursion-e2e.md (F3) has a control that fails when the check is removed
+  - NC-0630 and NC-0632 run on the composed proof through a forging prover, or the catalogue states where they run
+  - an opening section on a segment without a witness stack is rejected with ProofShape by a committed test
 - id: E20-01
   epic: E20
   title: Typed small-value columns and base-field first rounds in the relation engine
@@ -4949,6 +4968,7 @@ tasks:
   - E18-06
   - E19-04
   - E19-05
+  - E19-10
   - E20-09
   - E22-03
   rfc:

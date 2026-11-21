@@ -54,7 +54,7 @@ const USAGE: &str = "usage: stele commit-model --zk --model M --preparation P --
 --artifact A --length T --proofs N --commitment OUT --secret OUT [--zk-profile 4|1] | \
 stele prove-dev --model M --preparation P --scales S --artifact A \
 --tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT \
-[--dev-profile 3|5 [--segment-layers N] [--relation OUT] | --zk --commitment FILE --secret FILE [--backend cpu|cuda]] | \
+[--dev-profile 3|5|6 [--segment-layers N] [--relation OUT] | --zk --commitment FILE --secret FILE [--backend cpu|cuda]] | \
 stele verify-dev --public FILE --proof FILE [--expect-model HEX] [--admit] | \
 stele plan-digest --public FILE --entry OUT | \
 stele verify-registered --public FILE --proof FILE --relation FILE --trusted-entry FILE \
@@ -411,10 +411,12 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
         }
         let [m, p, s, a] = read_files()?;
         // RFC-0026 A14: `--dev-profile 5` grinds each check's (β, α) round.
+        // RFC-0026 A29: `--dev-profile 6` uses joined RFC-0029 recursive openings.
         let profile = match o.get("dev-profile").copied().unwrap_or("3") {
             "3" => 3,
             "5" => 5,
-            _ => return Err(usage("--dev-profile is 3 or 5")),
+            "6" => 6,
+            _ => return Err(usage("--dev-profile is 3, 5 or 6")),
         };
         let (public, statement, proof, report) = prove_window_development_segmented_measured(
             &m,
