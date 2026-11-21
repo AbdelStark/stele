@@ -792,6 +792,37 @@ fn rejects_segment_boundary_and_carried_violations() {
     let _ = s1_out;
 }
 
+/// A computed column is held as `i32` entries when all fit and in the checked form
+/// otherwise (RFC-0028 §2.1): both read back as the definition's values.
+#[test]
+fn matches_reference_virtual_values_in_the_narrow_and_the_checked_form() {
+    let mut rel = Relation::default();
+    let g = Kind::Witness(rel.add_group("G/form/2", 2));
+    let acc = rel.add_column("acc", g.clone(), Width::signed(8), 2);
+    let y = rel.add_column("y", g, Width::signed(4), 2);
+    range(&mut rel, acc, Width::signed(8));
+    range(&mut rel, y, Width::signed(4));
+    let rem = rel.add_virtual(
+        "rem",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(acc, 2)), (-16, Ref::identity(y, 2))],
+        },
+        2,
+    );
+    let ys = vec![1, -1, 1, 0];
+    for accs in [
+        vec![19, -13, 31, 0],
+        vec![1 << 40, -(1 << 33), i64::from(i32::MAX) + 17, 0],
+    ] {
+        let mut vals = Values::new(&rel);
+        vals.set(&rel, acc, accs.clone()).expect("set");
+        vals.set(&rel, y, ys.clone()).expect("set");
+        let expected: Vec<i64> = accs.iter().zip(&ys).map(|(a, y)| a - 16 * y).collect();
+        assert_eq!(eval_column(&rel, &vals, rem), Ok(expected));
+    }
+}
+
 /// RFC-0028 §2.1–2.2 (E18-01): honest relations for Linear, Pointwise and Contraction
 /// virtual columns pass validation and plain checking without supplying virtual values,
 /// ignore garbage values supplied for virtual columns, and reject one tamper per kind.
