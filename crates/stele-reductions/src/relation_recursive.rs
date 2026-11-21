@@ -738,14 +738,16 @@ fn verify_fresh_close(
 
 /// Produce an RFC-0026 A29 / RFC-0029 development proof (`stele-dev-e2e-v2`) where all
 /// segments, stacked multiplicity sources, and certified model sources join ONE recursion.
-pub fn prove_recursive_measured<F>(
+/// A caller that keeps its `Values`, to run the plain check beside this, lends them.
+pub fn prove_recursive_measured<F, V>(
     t: &mut Transcript<K>,
     relation: &Relation,
     mut segment_values: F,
     model: &[RecursiveModelSource<'_>],
 ) -> Result<(ProofV2, Metrics), Error>
 where
-    F: FnMut(u32) -> Result<Values, Error>,
+    F: FnMut(u32) -> Result<V, Error>,
+    V: Borrow<Values>,
 {
     let plan_timer = Stopwatch::start();
     let plan = plan_recursive(relation)?;
@@ -813,8 +815,9 @@ where
     let mut pending_l1: Vec<PendingLevel1Prover<K>> = Vec::new();
 
     for (s, seg) in plan.segments.iter().enumerate() {
-        let values = segment_values(seg.segment)?;
-        let resolved = ResolvedColumns::for_segment(relation, &values, &seg.virtuals, None)?;
+        let owner = segment_values(seg.segment)?;
+        let values: &Values = owner.borrow();
+        let resolved = ResolvedColumns::for_segment(relation, values, &seg.virtuals, None)?;
 
         // Steps 2.1 & 2.2: commit segment witness stack (fresh mode) and count multiplicities in parallel.
         let witness_commit = || -> (Result<Option<PreparedRecursive<K>>, Error>, u64) {
@@ -826,7 +829,7 @@ where
                     let mut msg = vec![M31::from_i64(0); 1usize << seg.witness_bits];
                     for group in &seg.groups {
                         for (j, id) in group.columns.iter().enumerate() {
-                            let col = column(relation, &values, *id)?;
+                            let col = column(relation, values, *id)?;
                             let start = group.offset + (j << group.n);
                             for (out, v) in msg[start..].iter_mut().zip(col.iter()) {
                                 *out = M31::from_i64(v);
@@ -1252,7 +1255,7 @@ where
         }
         metrics.reductions_ns = metrics.reductions_ns.saturating_add(v_timer.elapsed_ns());
         drop(resolved);
-        drop(values);
+        drop(owner);
 
         // Step 2.5: close segment `s - 1` witness stack into `l1_spec` and drop it by value.
         let open_timer = Stopwatch::start();

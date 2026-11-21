@@ -16,6 +16,7 @@ extern crate std;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
+use core::borrow::Borrow;
 use core::fmt;
 use stele_field::{Field, Serialize, M31, QM31};
 use stele_hash::{AbsorbLabel, ChallengeLabel, HashUsage, Transcript};
@@ -3689,7 +3690,8 @@ where
 }
 
 /// [`prove_segmented`] together with stage timings and deterministic counters (RFC-0018 A2, RFC-0026 A27, RFC-0028 §2.4).
-pub fn prove_segmented_measured<F>(
+/// A caller that keeps its `Values`, to run the plain check beside this, lends them.
+pub fn prove_segmented_measured<F, V>(
     t: &mut Transcript<K>,
     relation: &Relation,
     segment_values: F,
@@ -3697,7 +3699,8 @@ pub fn prove_segmented_measured<F>(
     sources: Sources,
 ) -> Result<(ProofV2, Metrics), Error>
 where
-    F: FnMut(u32) -> Result<Values, Error>,
+    F: FnMut(u32) -> Result<V, Error>,
+    V: Borrow<Values>,
 {
     prove_segmented_impl(t, relation, segment_values, model, sources, None)
 }
@@ -3923,7 +3926,7 @@ pub fn prove_segmented_forged(
     .map(|(p, _)| p)
 }
 
-fn prove_segmented_impl<F>(
+fn prove_segmented_impl<F, V>(
     t: &mut Transcript<K>,
     relation: &Relation,
     segment_values: F,
@@ -3932,7 +3935,8 @@ fn prove_segmented_impl<F>(
     forge_virtual: Option<(ColumnId, usize, Option<usize>)>,
 ) -> Result<(ProofV2, Metrics), Error>
 where
-    F: FnMut(u32) -> Result<Values, Error>,
+    F: FnMut(u32) -> Result<V, Error>,
+    V: Borrow<Values>,
 {
     let plan_timer = Stopwatch::start();
     let plan = plan_segmented(relation, sources)?;
@@ -3950,7 +3954,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn prove_segmented_with_plan<F>(
+fn prove_segmented_with_plan<F, V>(
     t: &mut Transcript<K>,
     relation: &Relation,
     plan: &SegmentedPlan,
@@ -3961,7 +3965,8 @@ fn prove_segmented_with_plan<F>(
     round_values: Option<&Values>,
 ) -> Result<(ProofV2, Metrics), Error>
 where
-    F: FnMut(u32) -> Result<Values, Error>,
+    F: FnMut(u32) -> Result<V, Error>,
+    V: Borrow<Values>,
 {
     if let Some((col_id, idx, comp)) = forge_virtual {
         let col = relation
@@ -4056,10 +4061,11 @@ where
     let mut prev: Option<(usize, PreparedSource<'static, K>, VerifiedCertificate<K>)> = None;
 
     for (s, seg) in plan.segments.iter().enumerate() {
-        let values = segment_values(seg.segment)?;
+        let owner = segment_values(seg.segment)?;
+        let values: &Values = owner.borrow();
         let resolved = ResolvedColumns::for_segment(
             relation,
-            &values,
+            values,
             &seg.virtuals,
             forge_virtual.map(|(col_id, idx, _)| (col_id, idx)),
         )?;
@@ -4102,12 +4108,7 @@ where
         // Step 2.1 + 2.2: commit segment `s`'s witness stack (owned) alongside multiplicity counts.
         let commit_msg_timer = Stopwatch::start();
         let committed_message = match &seg.stack {
-            Some(stack) => Some(segment_stack_message(
-                &seg.groups,
-                stack,
-                relation,
-                &values,
-            )?),
+            Some(stack) => Some(segment_stack_message(&seg.groups, stack, relation, values)?),
             None => None,
         };
         let commit_msg_ns = commit_msg_timer.elapsed_ns();
@@ -4590,7 +4591,7 @@ where
         }
         metrics.reductions_ns = metrics.reductions_ns.saturating_add(v_timer.elapsed_ns());
         drop(resolved);
-        drop(values);
+        drop(owner);
 
         // Step 2.5: all claims on segment `s - 1` are now complete; batch, open, and drop it.
         let openings_timer = Stopwatch::start();

@@ -421,11 +421,19 @@ fn honest() -> (Case, Statement) {
 }
 
 /// E16-23: the plain checker runs beside the engine, and a false witness must still
-/// end in `Error::Check`, not in an engine error, a panic or a proof.
+/// end in `Error::Check`, not in an engine error, a panic or a proof. Under the default
+/// sources and under the joined recursion (RFC-0026 A29), whose engine is another one.
 #[test]
 fn rejects_false_witness_with_check() {
+    for sources in [Sources::CircleAll, Sources::CircleRecursive] {
+        rejects_false_witness_with_check_under(sources);
+    }
+}
+
+fn rejects_false_witness_with_check_under(sources: Sources) {
     let (case, statement) = honest();
-    let weights = Weights::from_artifact(&case.model, &case.artifact).expect("weights");
+    let weights =
+        Weights::from_artifact_sources(&case.model, &case.artifact, sources).expect("weights");
     let committed = Committed::new(&weights).expect("commitment");
     let public = case.public(&committed, &weights);
     let mut executor = case.executor(&case.artifact);
@@ -447,7 +455,7 @@ fn rejects_false_witness_with_check() {
         );
         assert!(
             matches!(result, Err(Error::Check(_))),
-            "{name}: {:?}",
+            "{sources:?} {name}: {:?}",
             result.err()
         );
     }

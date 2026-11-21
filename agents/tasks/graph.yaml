@@ -4259,6 +4259,23 @@ tasks:
   - a virtual contraction is materialised as one integer dot product over two contiguous typed rows; sums that may leave i64 keep the checked wide loop
   - a reference test compares the kernel with the definition on typed, permuted and fixed-bit operands
   - pinned L0 and L1 proof digests unchanged; L2a prove time before and after in ledgers (shared with E20-23)
+- id: E18-11
+  epic: E18
+  title: The plain check beside the engine for relations with virtual columns
+  depends:
+  - E18-05
+  rfc:
+  - RFC-0026 §3.7
+  - RFC-0028 §2.4
+  skill: performance-engineer
+  crate: stele-reductions+stele-prover
+  lane: P
+  status: in_progress
+  agent: claude
+  branch: task/E18-11-check-beside-engine
+  acceptance:
+  - for an unsegmented relation the plain check runs beside the segmented and the recursive engine and decides; a false witness ends in Check under the default sources and under the joined recursion
+  - public and proof bytes unchanged on L0, L1 and L2a; L2a prove time and peak RSS before and after in ledgers
 - id: E19-01
   epic: E19
   title: Parameter script and size model; RFC-0029 accepted for the development tier

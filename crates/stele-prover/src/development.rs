@@ -729,6 +729,36 @@ fn prove_inner(
     Ok((proof, report))
 }
 
+/// The plain check as the gate of [`parallel::gated`] (RFC-0026 §3.7, E16-23): it runs
+/// beside the engine and decides, so a false witness ends in `Check` whatever the engine
+/// does with it. `ns` receives its own time.
+fn plain_gate(
+    checked: bool,
+    relation: &Relation,
+    values: &Values,
+    ns: &mut u64,
+) -> Result<(), Error> {
+    let mut laps = parallel::Laps::start();
+    let timer = relation::Stopwatch::start();
+    let result = if checked {
+        check(relation, values).map_err(Error::Check)
+    } else {
+        Ok(())
+    };
+    *ns = timer.elapsed_ns();
+    laps.lap("dev/plain_check (beside the engine)");
+    result
+}
+
+/// The values of an unsegmented relation's one segment, lent to the engine.
+fn single_segment(segment: u32, values: &Values) -> Result<&Values, relation::Error> {
+    if segment == 0 {
+        Ok(values)
+    } else {
+        Err(relation::Error::Unsupported)
+    }
+}
+
 fn prove_inner_captured(
     public: &Public,
     capture: &Capture,
@@ -806,24 +836,17 @@ fn prove_inner_captured(
             hook(&mut layout.relation, &mut values);
         }
         let mut plain_check_ns = 0u64;
-        if checked {
-            let check_timer = relation::Stopwatch::start();
-            check(&layout.relation, &values).map_err(Error::Check)?;
-            plain_check_ns = check_timer.elapsed_ns();
-        }
-        let mut single = Some(values);
-        let (proof, engine) = relation::prove_recursive_measured(
-            &mut t,
-            &layout.relation,
-            |seg| {
-                if seg == 0 {
-                    single.take().ok_or(relation::Error::Unsupported)
-                } else {
-                    Err(relation::Error::Unsupported)
-                }
+        let (proof, engine) = parallel::gated(
+            || plain_gate(checked, &layout.relation, &values, &mut plain_check_ns),
+            || {
+                relation::prove_recursive_measured(
+                    &mut t,
+                    &layout.relation,
+                    |seg| single_segment(seg, &values),
+                    rec_model,
+                )
             },
-            rec_model,
-        )
+        )?
         .map_err(Error::Engine)?;
         let digest = statement_digest(&input, &relation::digest(&layout.relation));
         let report = Report {
@@ -902,25 +925,18 @@ fn prove_inner_captured(
     }
     if layout.relation.has_virtual() {
         let mut plain_check_ns = 0u64;
-        if checked {
-            let check_timer = relation::Stopwatch::start();
-            check(&layout.relation, &values).map_err(Error::Check)?;
-            plain_check_ns = check_timer.elapsed_ns();
-        }
-        let mut single = Some(values);
-        let (proof, engine) = relation::prove_segmented_measured(
-            &mut t,
-            &layout.relation,
-            |seg| {
-                if seg == 0 {
-                    single.take().ok_or(relation::Error::Unsupported)
-                } else {
-                    Err(relation::Error::Unsupported)
-                }
+        let (proof, engine) = parallel::gated(
+            || plain_gate(checked, &layout.relation, &values, &mut plain_check_ns),
+            || {
+                relation::prove_segmented_measured(
+                    &mut t,
+                    &layout.relation,
+                    |seg| single_segment(seg, &values),
+                    &model,
+                    public.sources,
+                )
             },
-            &model,
-            public.sources,
-        )
+        )?
         .map_err(Error::Engine)?;
         let digest = statement_digest(&input, &relation::digest(&layout.relation));
         let report = Report {
@@ -935,18 +951,7 @@ fn prove_inner_captured(
     // with `Check` even if the engine errs or panics on it (E16-23).
     let mut plain_check_ns = 0u64;
     let (proof, engine) = parallel::gated(
-        || {
-            let mut laps = parallel::Laps::start();
-            let check_timer = relation::Stopwatch::start();
-            let result = if checked {
-                check(&layout.relation, &values).map_err(Error::Check)
-            } else {
-                Ok(())
-            };
-            plain_check_ns = check_timer.elapsed_ns();
-            laps.lap("dev/plain_check (beside the engine)");
-            result
-        },
+        || plain_gate(checked, &layout.relation, &values, &mut plain_check_ns),
         || relation::prove_measured(&mut t, &layout.relation, &values, &model, public.sources),
     )?
     .map_err(Error::Engine)?;
