@@ -5304,6 +5304,23 @@ tasks:
   acceptance:
   - the registry digest is unchanged with and without std; no_std builds run the blocks in turn
   - verify time on L2a before and after in the E20-23 ledgers
+- id: E22-12
+  epic: E22
+  title: A block of the executor's point cache for each table descriptor
+  depends:
+  - E22-11
+  rfc:
+  - RFC-0021 §3
+  - RFC-0025 §2.5
+  skill: performance-engineer
+  crate: stele-cqis
+  lane: N
+  status: in_progress
+  agent: claude
+  branch: task/E20-26-check-instance-bound
+  acceptance:
+  - descriptors that read the same inputs do not evict each other's certified points - up to four descriptors own a block of 65536 slots each; a hit still needs the full descriptor and input
+  - executor outputs, public and proof bytes unchanged on L0, L1 and L2a; the witness stage time before and after in ledgers
 - id: E23-01
   epic: E23
   title: Zero-knowledge construction decision; RFC-0013 A3 accepted for the development tier
