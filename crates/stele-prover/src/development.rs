@@ -771,7 +771,9 @@ fn prove_inner_captured(
     let mut laps = parallel::Laps::start();
     let witness_timer = relation::Stopwatch::start();
     let d = decode(public)?;
+    laps.lap("witness/decode_public");
     let mut layout = layout(&d, public, statement)?;
+    laps.lap("witness/layout");
     let checked = hook.is_none();
     let input = public_input(public, &d.cqis_id, statement);
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
@@ -1349,6 +1351,7 @@ fn prove_window_sources_measured(
         }
         last_logits = Some(logits);
     }
+    laps.lap("witness/generate");
     if statement.next.is_none() && statement.end as usize == statement.tokens.len() {
         let last = match last_logits {
             Some(logits) => logits,
@@ -1430,6 +1433,7 @@ fn prove_window_sources_measured(
     let capture = executor
         .capture(&statement.tokens)
         .map_err(|_| Error::Witness)?;
+    laps.lap("witness/capture");
     drop(executor);
     let witness_pre_ns = witness_pre_timer.elapsed_ns();
     // E17-01: model commitment (Artifact weight decode + PCS commit) timed in process.
