@@ -228,10 +228,14 @@ pub(super) fn halve_suffix<K: ChallengeField>(suffix: &mut Vec<K>) {
     let half = suffix.len() / 2;
     if half > 0 {
         let (low, high) = suffix.split_at_mut(half);
-        for (a, b) in low.iter_mut().zip(high.iter()) {
-            *a = *a + *b;
-        }
+        let high = &*high;
+        stele_sumcheck::parallel::for_each_chunk(low, |start, chunk| {
+            for (a, b) in chunk.iter_mut().zip(&high[start..]) {
+                *a = *a + *b;
+            }
+        });
         suffix.truncate(half);
+        stele_sumcheck::parallel::release(suffix);
     }
 }
 impl<'a, K: ChallengeField + Eq> Layer<'a, K> {

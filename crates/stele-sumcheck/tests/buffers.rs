@@ -324,3 +324,21 @@ fn rejects_buffered_unused_final_value() {
     unused_final::<QM31>();
     unused_final::<OM31>();
 }
+
+/// A fold releases the half it no longer uses once that half is a megabyte, so a large
+/// sumcheck does not hold its first tables to its last round. Smaller tables keep theirs.
+#[test]
+fn matches_reference_fold_and_releases_the_folded_half_of_a_large_table() {
+    use stele_field::{Field, QM31};
+    let r = QM31::from_i64(7);
+    for (log, released) in [(17u32, true), (10, false)] {
+        let n = 1usize << log;
+        let mut table: Vec<QM31> = (0..n).map(|j| QM31::from_i64(j as i64 * 3 + 1)).collect();
+        let expected: Vec<QM31> = (0..n / 2)
+            .map(|j| table[j] + r * (table[j + n / 2] - table[j]))
+            .collect();
+        stele_sumcheck::parallel::fold(&mut table, r);
+        assert_eq!(table, expected);
+        assert_eq!(table.capacity() < n, released, "2^{log} entries");
+    }
+}

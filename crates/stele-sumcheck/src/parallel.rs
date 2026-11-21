@@ -310,6 +310,15 @@ pub fn layer_round_kernel<K: ChallengeField>(
     ])
 }
 
+/// Give back what a truncated table no longer uses, once that is a megabyte: without
+/// this a table of a large sumcheck holds its first size to the last round. Below a
+/// megabyte the allocator call costs more than it frees.
+pub fn release<T>(table: &mut Vec<T>) {
+    if (table.capacity() - table.len()) * core::mem::size_of::<T>() >= 1 << 20 {
+        table.shrink_to_fit();
+    }
+}
+
 /// Fix the leading coordinate: `t[j] += r·(t[j + half] − t[j])`, then halve.
 /// `table.len()` must be a power of two (a dense MLE table).
 pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
@@ -345,6 +354,7 @@ pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
         apply(low, high);
     }
     table.truncate(half);
+    release(table);
 }
 
 /// Fold a base-field M31 table into a half-sized extension-field table (RFC-0006 A5, E20-01):

@@ -249,8 +249,9 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         point.push(r0);
         running = next;
 
-        let folded_table = crate::parallel::fold_base(table, r0)?;
+        // The coefficients first: their fold frees half of them before the table's is made.
         crate::parallel::fold(&mut coeff, r0);
+        let folded_table = crate::parallel::fold_base(table, r0)?;
         let mut tables = Vec::new();
         reserve(&mut tables, 2)?;
         tables.push(folded_table);
