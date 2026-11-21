@@ -4867,15 +4867,16 @@ Consequences:
 
 Context: on the 24-thread reference class the L2a prover's time is field multiplications
 in the lookup, reduction and opening stages and int8 dot products in the reference
-forward. Probes on a Sapphire Rapids node show hand-written AVX-512 kernels at three to
-six times the scalar loops per core. RFC-0014 §1 makes the CPU and SIMD prover the
-reference for CUDA and requires byte identity (INV-3). `deny.toml` (RFC-0020 §2) lets only
+forward. RFC-0014 §1 makes the CPU and SIMD prover the reference for CUDA and requires
+byte identity (INV-3). `deny.toml` (RFC-0020 §2) lets only
 `stele-code` and `stele-poly` import `stele-simd`.
 
 Decision:
 - **Kernels are functions of `stele-simd` with a scalar reference each.** A kernel
-  `k` has `k_reference`; every backend returns the reference's limbs, and a seeded
-  1000-case parity test with edge values pins that. The sumcheck and lookup provers
+  `k` has `k_reference`; every backend returns the reference's limbs. A seeded
+  1000-case parity test with edge values pins that, and the tests of the independent
+  review (`agents/reviews/e20-03-host-kernels-slice-1.md`) compare each kernel with
+  arithmetic written from the definition and exercise the bounds of each safe entry. The sumcheck and lookup provers
   reach the kernels through `stele_poly::kernels`, the edge RFC-0020 already allows.
 - **Layout.** `M31` is `repr(transparent)` and the tower types `repr(C)`, so a slice of
   field elements is a slice of canonical `u32` limbs. Kernels write only canonical limbs.
@@ -4883,13 +4884,19 @@ Decision:
   `stele_simd::dot_i8` for the reference forward's exact int8 dot products.
 - **No NEON kernel for QM31 products**: one product per 64-bit lane gives no gain over
   the scalar multiplier. NEON has the base-field butterflies.
+- **Call sites in other lanes (RFC-0027 §5).** "The engine calls the trait" needs the
+  kernels called from `stele-code` and through the downcast hooks of `stele-hash`
+  (lane C) and from `stele-cqis` (lane N); review F2 needs the CI change (lane B). No
+  other change is open on those files, and the one independent review covers them.
 
 Consequences:
 - Proof and public bytes are unchanged: the pinned L0 and L1 digests and the L2a digests
   reproduce on an AVX-512 host and on arm64.
-- CI runs the AVX2 kernels (`STELE_REQUIRE_SIMD=avx2`). AVX-512 runs only on the
-  self-hosted Sapphire Rapids node, outside CI, until a job there executes the parity
-  tests: an open item of E20-03.
+- CI executes each backend on a host that has it (review F2): AVX2 on the hosted x86
+  runners, NEON on a hosted arm64 runner (job `simd-neon`), AVX-512 on the dedicated
+  node (job `gpu-parity`, now also selected by a change under `crates/stele-simd`).
+  A call site follows its host's backend; running the pinned digests once per
+  backend waits for the trait and stays an open item of E20-03.
 - The single trait of E20-03's first acceptance line is not built; the task stays in
   progress.
 

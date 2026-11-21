@@ -293,6 +293,7 @@ in A10–A14.
 ### A16 — The reference forward may use the int8 dot kernel
 
 Status: Accepted (development tier under RFC-0027 §2). Task E20-03. Decision: ADR-157.
+Review: [host kernels, slice 1](../../agents/reviews/e20-03-host-kernels-slice-1.md) (F5).
 
 The dependency list of `stele-cqis` becomes `[field, simd]`. Its reference forward
 (RFC-0025 §2.5, RFC-0004 A15) may compute the exact int32 dot product of a row of int8
