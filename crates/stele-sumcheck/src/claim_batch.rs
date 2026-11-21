@@ -34,9 +34,12 @@ fn add_eq<K: ChallengeField + Eq>(out: &mut [K], point: &[K], weight: K) -> Resu
     });
     Ok(())
 }
-/// Blocks below this many entries are summed and filled on one thread: with many claims
-/// the claims are the parallel items, and a task per 256 entries costs more than its work.
+/// In a batch of at least `MANY` claims, a block below `SERIAL_BLOCK` entries is summed
+/// and filled on one thread: the claims are the parallel items there, and a task per 256
+/// entries costs more than its work. A batch of a few claims splits every block on the
+/// pool, because nothing else runs beside it.
 const SERIAL_BLOCK: usize = 1 << 15;
+const MANY: usize = 64;
 /// A claim's coefficient once its leading coordinate `z0` is set aside:
 /// `weight · eq(point, ·)` on the block of `2^point.len()` entries at `begin`.
 struct Piece<'a, K> {
@@ -48,6 +51,10 @@ struct Piece<'a, K> {
 impl<K> Piece<'_, K> {
     fn len(&self) -> usize {
         1 << self.point.len()
+    }
+    /// Whether this block of a batch of `claims` claims stays on one thread.
+    fn serial(&self, claims: usize) -> bool {
+        claims >= MANY && self.len() < SERIAL_BLOCK
     }
 }
 /// Verifier-owned claims. The caller must derive the virtual role from its verified plan;
@@ -146,7 +153,7 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
             let low = &table[piece.begin..piece.begin + piece.len()];
             let high = &table[half + piece.begin..half + piece.begin + piece.len()];
             let mut sums = [zero; 2];
-            if piece.len() < SERIAL_BLOCK {
+            if piece.serial(pieces.len()) {
                 let eq = stele_poly::eq_table(piece.point).map_err(|_| Error::Capacity)?;
                 for ((e, a), b) in eq.iter().zip(low).zip(high) {
                     sums[0] = sums[0] + e.mul_m31(*a);
@@ -176,8 +183,8 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
     }
     /// [`Self::coefficient_table`] with its leading coordinate bound to `r0`, built at
     /// half the size: claim `j` weighs `γ^j · eq(z_0, r0)` over its other coordinates.
-    /// A large block is filled on the pool. A small one lies inside one aligned window of
-    /// `SERIAL_BLOCK` entries, and the windows are disjoint tasks.
+    /// A block that is not [`Piece::serial`] is filled on the pool. A serial one lies inside
+    /// one aligned window of `SERIAL_BLOCK` entries, and the windows are disjoint tasks.
     fn folded_coefficient_table(&self, pieces: &[Piece<'_, K>], r0: K) -> Result<Vec<K>, Error> {
         let one = K::from_i64(1);
         let weight =
@@ -189,7 +196,7 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         let mut small = Vec::new();
         reserve(&mut small, pieces.len())?;
         for (j, piece) in pieces.iter().enumerate() {
-            if piece.len() < SERIAL_BLOCK {
+            if piece.serial(pieces.len()) {
                 small.push(j);
                 continue;
             }

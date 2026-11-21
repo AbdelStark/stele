@@ -265,11 +265,12 @@ fn batch_base_matches<K: ChallengeField + Eq + core::fmt::Debug>() {
     let mut ext = Ext::<K>::new(b"review/batch");
     let mut cases = 0;
     // 16 and 17 variables: blocks at and above the size where a claim's own sums and fill
-    // run on the pool, with short prefixes so that such blocks occur, and forty claims so
-    // that small blocks fall in several windows, nested in the large ones and disjoint.
+    // run on the pool, with short prefixes so that such blocks occur. Ninety claims are a
+    // batch of many: its small blocks stay on one thread and fall in several windows,
+    // nested in the large ones and disjoint.
     for nv in (0..=13u32).chain([16, 17]) {
         let n = 1usize << nv;
-        for count in if nv > 13 { [1usize, 5, 40] } else { [1, 2, 5] } {
+        for count in if nv > 13 { [1usize, 5, 90] } else { [1, 2, 5] } {
             let base: Vec<M31> = (0..n).map(|_| rng.m31()).collect();
             let reference: Vec<K> = base.iter().map(|v| embed::<K>(*v)).collect();
             let mut claims: Vec<(Vec<K>, K)> = Vec::new();
