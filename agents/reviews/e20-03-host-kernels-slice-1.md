@@ -435,9 +435,13 @@ ledgers `e22-10-*`).
 
 | Rung | Ledger | Prove | Before | Verify | Peak RSS | Before |
 |---|---|---|---|---|---|---|
-| L1 | `e20-03-dev-synthetic-8layer-byte6-24t` | 7.03 s | 7.69 s | 0.54 s | 2.0 GB | |
-| L2a | `e20-03-dev-stories42m-t64-byte6-24t` | 30.11 s | 36.33 s | 2.04 s | 10.7 GB | 12.7 GB |
-| L2a, malloc on huge pages | `e20-03-dev-stories42m-t64-byte6-24t-hugepages` | 25.76 s | 31.85 s | 1.57 s | 10.6 GB | 12.6 GB |
+| L1 | `e20-03-dev-synthetic-8layer-byte6-24t` | 7.03 s | 7.69 s | 0.54 s | 1.94 GiB | 1.98 GiB |
+| L2a | `e20-03-dev-stories42m-t64-byte6-24t` | 30.11 s | 36.33 s | 2.04 s | 10.22 GiB | 12.67 GiB |
+| L2a, malloc on huge pages | `e20-03-dev-stories42m-t64-byte6-24t-hugepages` | 25.76 s | 31.85 s | 1.57 s | 10.15 GiB | 12.56 GiB |
+
+The RSS columns were first committed as "10.7 GB" and "10.6 GB" against "12.7 GB" and
+"12.6 GB": the first two were kilobytes read as megabytes, the last two GiB. The table
+above is in GiB from the ledgers.
 
 - The L2a proof is the same 3,927,613 bytes as before the stack (SHA-256 `afb3581b…67cb`),
   in all three runs of both jobs; the L1 proof is the same in its three runs.

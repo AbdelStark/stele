@@ -2839,7 +2839,7 @@ power of two and the prover builds its fraction trees whole. The largest check o
 (`range_8`, 74,202,368 positions) is padded to `2^27`, so 45% of its leaves are padding.
 On L2a under byte 6, with the rule against without it (ledgers `e20-26-*` against
 `e18-11-*`, 24-thread reference class): prove 26.40 s against 28.10 s, the lookup stage
-8.13 s against 9.70 s, prover peak RSS 9.3 GB against 11.2 GB.
+8.13 s against 9.70 s, prover peak RSS 8.9 GiB against 10.7 GiB.
 
 Replacement text, A8, sentence "The plan fixes an instance bound `B` (30 in the
 development profile).":

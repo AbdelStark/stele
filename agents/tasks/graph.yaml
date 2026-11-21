@@ -4564,6 +4564,24 @@ tasks:
   - RFC-0026 A30 is Accepted at the development tier with an independent review and an ADR; the recursive planner of profile byte 6 gives each check the bound min(B, max(25, m - 2)), and the plans of the other profile bytes keep one bound (A8, A15 §6.3)
   - a proof whose checks hold at most 2^25 positions keeps its bytes - the pinned L0 and L1 digests reproduce; a plan with the instance sizes of L2a's largest check has three instances, and the joined recursion proves and rejects tampers of cut members under small plan bounds
   - L2a proves and verifies with the split check, one changed member value of each lookup instance is rejected, and the proof stays within 4 MB; prove time, lookup stage time, peak RSS and proof bytes before and after in ledgers
+- id: E20-27
+  epic: E20
+  title: A folded table releases the half it no longer uses; a layer's eq suffix is halved on the pool
+  depends:
+  - E20-23
+  rfc:
+  - RFC-0006 A1
+  - RFC-0008 A3
+  skill: performance-engineer
+  crate: stele-sumcheck+stele-lookup
+  lane: E
+  status: in_progress
+  agent: claude
+  branch: task/E20-26-check-instance-bound
+  acceptance:
+  - a fold gives back the allocation of the half it no longer uses once that is a megabyte, and the claim batch folds its coefficients before it makes its folded table
+  - the eq suffix of a fraction-tree layer is halved on the pool; the sums are the same field elements
+  - public and proof bytes unchanged on L0, L1 and L2a; L2a prove time and peak RSS before and after in ledgers
 - id: E20-03
   epic: E20
   title: Backend trait with CPU reference and SIMD
