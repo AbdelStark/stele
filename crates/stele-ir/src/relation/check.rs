@@ -1,6 +1,6 @@
 //! Plain integer checker of RFC-0026 §3.7 and RFC-0028 §2.1: every relation evaluated over Z, no proof.
 
-use super::{ColumnId, ColumnSlice, Def, Invalid, Kind, Ref, Relation, Values, Violation};
+use super::{ColumnId, ColumnSlice, Def, Indexer, Invalid, Kind, Ref, Relation, Values, Violation};
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
@@ -28,67 +28,6 @@ fn first_item<T: Sync>(
     #[cfg(not(feature = "std"))]
     let found = items.iter().find_map(one);
     found.map_or(Ok(()), Err)
-}
-
-/// Fast index evaluator: direct bit-gather on small domains, byte-table on large ones.
-enum Indexer<'a> {
-    Direct(&'a Ref),
-    Table(Gather),
-}
-
-impl<'a> Indexer<'a> {
-    fn new(r: &'a Ref, domain_size: usize) -> Self {
-        if domain_size >= 512 {
-            Self::Table(Gather::new(r))
-        } else {
-            Self::Direct(r)
-        }
-    }
-
-    #[inline]
-    fn index(&self, x: u64) -> usize {
-        match self {
-            Self::Direct(r) => r.index(x),
-            Self::Table(g) => g.index(x),
-        }
-    }
-}
-
-/// [`Ref::index`] as one table per byte of the domain point: `index(x)` is the OR of
-/// the byte entries. Exact: each index bit reads one domain bit or a fixed constant, so it
-/// comes from exactly one byte's entry, and the fixed constants are the same in every entry.
-/// Domain points have at most `MAX_VARS = 30` bits for ordinary relations and at most
-/// `2 * MAX_VARS = 60` bits for split virtual contractions (RFC-0028 §2.1).
-struct Gather(Vec<[usize; 256]>);
-impl Gather {
-    fn new(r: &Ref) -> Self {
-        let bytes = r
-            .vars
-            .iter()
-            .copied()
-            .filter(|&v| Ref::fixed(v).is_none())
-            .map(|v| (v as usize) / 8 + 1)
-            .max()
-            .unwrap_or(1)
-            .max(4);
-        Self(
-            (0..bytes)
-                .map(|c| core::array::from_fn(|b| r.index((b as u64) << (8 * c))))
-                .collect(),
-        )
-    }
-    #[inline]
-    fn index(&self, x: u64) -> usize {
-        let t = &self.0;
-        let mut out = t[0][(x & 0xff) as usize]
-            | t[1][((x >> 8) & 0xff) as usize]
-            | t[2][((x >> 16) & 0xff) as usize]
-            | t[3][((x >> 24) & 0xff) as usize];
-        for (c, table) in t.iter().enumerate().skip(4) {
-            out |= table[((x >> (8 * c)) & 0xff) as usize];
-        }
-        out
-    }
 }
 
 /// Resolved values of one column during plain checking.
@@ -194,6 +133,15 @@ fn eval_virtual(
             rhs,
         } => {
             let (lc, rc) = (col(lhs.column), col(rhs.column));
+            // Typed operands: one exact dot product per entry (`contract`); sums that may
+            // leave `i64`, and computed operands, keep the checked loop below.
+            if let (ColData::Borrowed(l), ColData::Borrowed(r)) = (lc, rc) {
+                if let Some(out) = super::contract(*free, *summed, (lhs, *l), (rhs, *r)) {
+                    if out.len() == n {
+                        return out.into_iter().map(|v| Some(i128::from(v))).collect();
+                    }
+                }
+            }
             let total_work =
                 n.saturating_mul(1usize.checked_shl(u32::from(*summed)).unwrap_or(usize::MAX));
             let (lg, rg) = (Indexer::new(lhs, total_work), Indexer::new(rhs, total_work));
@@ -477,11 +425,11 @@ fn check_inner(
         let selector = lookup
             .selector
             .as_ref()
-            .map(|s| (column(s), Gather::new(s)));
+            .map(|s| (column(s), Indexer::new(s, usize::MAX)));
         let tuple: Vec<_> = lookup
             .tuple
             .iter()
-            .map(|r| (column(r), Gather::new(r)))
+            .map(|r| (column(r), Indexer::new(r, usize::MAX)))
             .collect();
         first_point(1u64 << lookup.vars, |x| {
             if selector
@@ -528,7 +476,10 @@ fn check_inner(
             .terms
             .iter()
             .map(|t| {
-                let factors = t.factors.iter().map(|f| (column(f), Gather::new(f)));
+                let factors = t
+                    .factors
+                    .iter()
+                    .map(|f| (column(f), Indexer::new(f, usize::MAX)));
                 (t.coeff, factors.collect())
             })
             .collect();
@@ -549,7 +500,11 @@ fn check_inner(
     first_item(&relation.matmuls, &kept_matmul, |matmul| {
         let (lhs, rhs, out) = (&matmul.lhs, &matmul.rhs, &matmul.out);
         let (lc, rc, oc) = (column(lhs), column(rhs), column(out));
-        let (lg, rg, og) = (Gather::new(lhs), Gather::new(rhs), Gather::new(out));
+        let (lg, rg, og) = (
+            Indexer::new(lhs, usize::MAX),
+            Indexer::new(rhs, usize::MAX),
+            Indexer::new(out, usize::MAX),
+        );
         // index(x | y << free) = index(x) | index(y << free): x reads only the free bits.
         let summed = 0..1u64 << matmul.summed;
         let ys: Vec<(usize, usize)> = match matmul.summed <= summed_table {
@@ -606,7 +561,7 @@ mod tests {
                 column: ColumnId(0),
                 vars,
             };
-            let g = Gather::new(&r);
+            let g = Indexer::new(&r, usize::MAX);
             let mut x = 0x2545_f491_9e37_79b9u64 & mask;
             for _ in 0..20_000 {
                 assert_eq!(g.index(x), r.index(x), "{:?} {x:#x}", r.vars);

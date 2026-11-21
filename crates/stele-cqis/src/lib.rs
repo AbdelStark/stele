@@ -6,6 +6,110 @@
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
+
+/// Threads for block-parallel generation (rotation rows, table rows): the machine's
+/// parallelism, capped by `RAYON_NUM_THREADS` when it is set, so a run pinned to a thread
+/// count stays within it. Only the schedule depends on it, never a value.
+#[cfg(feature = "std")]
+pub(crate) fn workers() -> usize {
+    let available = std::thread::available_parallelism().map_or(1, |n| n.get());
+    std::env::var("RAYON_NUM_THREADS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|n| *n > 0)
+        .map_or(available, |n| n.min(available))
+}
+
+/// Join scoped workers in order. A worker's panic is re-raised after every worker has
+/// been joined; otherwise the first error in worker order is returned.
+#[cfg(feature = "std")]
+pub(crate) fn join_all<'scope, E>(
+    handles: impl IntoIterator<Item = std::thread::ScopedJoinHandle<'scope, Result<(), E>>>,
+) -> Result<(), E> {
+    let (mut first, mut panic) = (Ok(()), None);
+    for handle in handles {
+        match handle.join() {
+            Ok(result) if first.is_ok() => first = result,
+            Ok(_) => {}
+            Err(payload) => panic = panic.or(Some(payload)),
+        }
+    }
+    if let Some(payload) = panic {
+        std::panic::resume_unwind(payload);
+    }
+    first
+}
+
+#[cfg(all(test, feature = "std"))]
+mod join_tests {
+    use super::join_all;
+    extern crate std;
+    use std::string::String;
+    use std::vec::Vec;
+
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    enum Act {
+        Ok,
+        Err(u8),
+        Panic,
+    }
+
+    fn outcome(acts: &[Act], delays_ms: &[u64]) -> String {
+        let result = std::panic::catch_unwind(|| {
+            std::thread::scope(|scope| {
+                let handles: Vec<_> = acts
+                    .iter()
+                    .zip(delays_ms)
+                    .map(|(act, delay)| {
+                        scope.spawn(move || -> Result<(), u8> {
+                            std::thread::sleep(std::time::Duration::from_millis(*delay));
+                            match act {
+                                Act::Ok => Ok(()),
+                                Act::Err(e) => Err(*e),
+                                Act::Panic => {
+                                    // No delay reaches `u64::MAX`: this `expect` panics.
+                                    let _ = delay
+                                        .checked_sub(u64::MAX)
+                                        .expect("worker panic of the join test");
+                                    Ok(())
+                                }
+                            }
+                        })
+                    })
+                    .collect();
+                join_all(handles)
+            })
+        });
+        match result {
+            Ok(r) => std::format!("{r:?}"),
+            Err(_) => String::from("PANIC"),
+        }
+    }
+
+    /// The first error in worker order, whichever worker finishes first, and a panic
+    /// re-raised even after an earlier error (review of E22-10, second pass, S2).
+    #[test]
+    fn rejects_with_the_first_error_in_worker_order_and_re_raises_a_panic() {
+        use Act::*;
+        // (workers, completion delays, expected)
+        let cases: [(&[Act], &[u64], &str); 9] = [
+            (&[Ok, Ok, Ok], &[0, 0, 0], "Ok(())"),
+            (&[Ok, Err(1), Ok], &[0, 0, 0], "Err(1)"),
+            (&[Err(1), Err(2)], &[30, 0], "Err(1)"),
+            (&[Err(1), Err(2)], &[0, 30], "Err(1)"),
+            (&[Ok, Err(2), Err(3)], &[0, 30, 0], "Err(2)"),
+            (&[Panic, Ok], &[0, 0], "PANIC"),
+            (&[Err(1), Panic], &[0, 30], "PANIC"),
+            (&[Panic, Err(2)], &[30, 0], "PANIC"),
+            (&[Ok, Ok, Panic], &[0, 0, 0], "PANIC"),
+        ];
+        for (acts, delays, expected) in cases {
+            assert_eq!(outcome(acts, delays), expected, "{acts:?}");
+        }
+    }
+}
 
 mod numerics;
 

@@ -85,6 +85,18 @@ fn tree_parity<K: ChallengeField + Eq + core::fmt::Debug>() {
                         let mut t_ref = Transcript::<K>::new(b"review/tree/t").expect("t");
                         let reference = d.prove(&leaves, &mut t_ref).expect("reference");
                         let next = t_ref.challenge(ChallengeLabel::Sumcheck).expect("c");
+                        // The prebuilt-tree prover over the same extension leaves.
+                        let mut t_built = Transcript::<K>::new(b"review/tree/t").expect("t");
+                        let built = d.build_levels(&leaves).expect("levels");
+                        assert_eq!(
+                            d.prove_built(built, &mut t_built).expect("built"),
+                            reference,
+                            "prove_built m={m} b={b}"
+                        );
+                        assert_eq!(
+                            t_built.challenge(ChallengeLabel::Sumcheck).expect("c"),
+                            next
+                        );
                         let mut variants = vec![BaseLeaves::General {
                             sigma: &sigma,
                             xs: &xs[..c],

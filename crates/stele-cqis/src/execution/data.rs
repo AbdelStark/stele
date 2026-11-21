@@ -25,6 +25,66 @@ pub(super) struct Data<'a> {
     records: Vec<Record<'a>>,
     pub(super) scope: [[u8; 32]; 3],
 }
+/// Matrix cells from which the rows of a projection split over threads: the vocabulary
+/// head, not a block's projections.
+#[cfg(feature = "std")]
+const PARALLEL_CELLS: usize = 1 << 22;
+
+/// `[row(0), .., row(rows - 1)]`. A row depends only on its index, so with `std` the rows
+/// of a large matrix run in blocks on scoped threads: the same values in the same order,
+/// and the first failing row's error.
+fn rows_in_blocks<T: Copy + Default + Send>(
+    rows: usize,
+    columns: usize,
+    row: impl Fn(usize) -> Result<T, Error> + Sync,
+) -> Result<Vec<T>, Error> {
+    #[cfg(feature = "std")]
+    let workers = if rows.saturating_mul(columns) >= PARALLEL_CELLS {
+        crate::workers().min(rows / 64)
+    } else {
+        1
+    };
+    #[cfg(not(feature = "std"))]
+    let workers = {
+        let _ = columns;
+        1
+    };
+    rows_on(rows, workers, row)
+}
+
+/// [`rows_in_blocks`] on `workers` threads; one, or a build without `std`, is the loop.
+fn rows_on<T: Copy + Default + Send>(
+    rows: usize,
+    workers: usize,
+    row: impl Fn(usize) -> Result<T, Error> + Sync,
+) -> Result<Vec<T>, Error> {
+    let mut out = reserved(rows)?;
+    out.resize(rows, T::default());
+    let fill = |first: usize, block: &mut [T]| -> Result<(), Error> {
+        for (i, slot) in block.iter_mut().enumerate() {
+            *slot = row(first + i)?;
+        }
+        Ok(())
+    };
+    #[cfg(feature = "std")]
+    if workers > 1 && rows > 0 {
+        let per = rows.div_ceil(workers);
+        let fill = &fill;
+        std::thread::scope(|scope| {
+            let mut handles = reserved(workers)?;
+            for (b, block) in out.chunks_mut(per).enumerate() {
+                handles.push(scope.spawn(move || fill(b * per, block)));
+            }
+            crate::join_all(handles)
+        })?;
+        return Ok(out);
+    }
+    #[cfg(not(feature = "std"))]
+    let _ = workers;
+    fill(0, &mut out)?;
+    Ok(out)
+}
+
 impl<'a> Data<'a> {
     pub(super) fn new(
         model: &'a Model,
@@ -156,31 +216,55 @@ impl<'a> Data<'a> {
         let mut out = reserved(r.rows)?;
         let scales = row.scales();
         let g = r.columns / scales.len();
-        for j in 0..r.rows {
-            // RFC-0004 A15: A' = sum_i s_k(i)*q_i*w_i (|A'| < 2^51), then one rounding.
-            let (dot, product) = if scales.len() > 1 {
-                let dot: i64 = row
-                    .codes()
-                    .iter()
-                    .enumerate()
-                    .map(|(k, x)| {
-                        i64::from(scales[k / g])
-                            * i64::from(*x)
-                            * i64::from(self.code(ordinal, j * r.columns + k))
-                    })
-                    .sum();
-                let dot = i128::from(dot);
-                (dot, dot * i128::from(scale.mantissas()[j]))
+        // RFC-0004 A15: A' = sum_i s_k(i)*q_i*w_i (|A'| < 2^51), then one rounding.
+        let dot_of = |j: usize| -> i128 {
+            if scales.len() > 1 {
+                let dot: i64 = if r.bits == 8 {
+                    // The same sum, one int32 dot per group (|dot| < 2^28, as in `dot`).
+                    let w = &r.raw[j * r.columns..(j + 1) * r.columns];
+                    row.codes()
+                        .chunks(g)
+                        .zip(w.chunks(g))
+                        .zip(scales)
+                        .map(|((x, w), s)| {
+                            let part: i32 = x
+                                .iter()
+                                .zip(w)
+                                .map(|(x, w)| i32::from(*x) * i32::from(*w as i8))
+                                .sum();
+                            i64::from(*s) * i64::from(part)
+                        })
+                        .sum()
+                } else {
+                    row.codes()
+                        .iter()
+                        .enumerate()
+                        .map(|(k, x)| {
+                            i64::from(scales[k / g])
+                                * i64::from(*x)
+                                * i64::from(self.code(ordinal, j * r.columns + k))
+                        })
+                        .sum()
+                };
+                i128::from(dot)
             } else {
-                let dot = self.dot(ordinal, row, j);
-                (
-                    dot,
-                    dot * i128::from(scale.mantissas()[j]) * i128::from(row.scale()),
-                )
+                self.dot(ordinal, row, j)
+            }
+        };
+        let bias_shift = i32::from(fraction) - i32::from(fb);
+        // Each output row's dot, scaled product, bias and rounded value.
+        let rows = rows_in_blocks(r.rows, r.columns, |j| {
+            let dot = dot_of(j);
+            let product = if scales.len() > 1 {
+                dot * i128::from(scale.mantissas()[j])
+            } else {
+                dot * i128::from(scale.mantissas()[j]) * i128::from(row.scale())
             };
             let b = bias.map_or(0, |i| self.code(i, j));
-            let bias_shift = i32::from(fraction) - i32::from(fb);
             let value = numerics::scaled_sum(product, shift, i128::from(b), bias_shift, 1)?;
+            Ok((dot, product, b, value))
+        })?;
+        for (dot, product, b, value) in rows {
             if let Some(w) = capture.as_deref_mut() {
                 w.push(dot, product, b)?;
                 w.output
@@ -294,5 +378,38 @@ impl<'a> Data<'a> {
             w.layer(&narrow, (&gains, &biases), (&parts, &outputs), (p[4], p[5]))?;
         }
         Ok(outputs)
+    }
+}
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use super::*;
+
+    /// The split of a projection's rows against the plain loop (review of E22-10, second
+    /// pass, S1): row counts that do not fill the last block, at 1, 2, 3 and 7 workers.
+    /// With two failing rows in different blocks, the lower row's error is returned.
+    #[test]
+    fn matches_reference_rows_at_every_worker_count_and_returns_the_first_failing_row() {
+        let row = |j: usize| -> Result<u64, Error> {
+            Ok((j as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 5)
+        };
+        for rows in [0usize, 1, 2, 6, 7, 100, 101] {
+            let expected: Vec<u64> = (0..rows).map(|j| row(j).expect("row")).collect();
+            for workers in [1, 2, 3, 7] {
+                assert_eq!(
+                    rows_on(rows, workers, row),
+                    Ok(expected.clone()),
+                    "{rows} rows, {workers} workers"
+                );
+            }
+        }
+        let failing = |j: usize| match j {
+            30 => Err(Error::Range),
+            90 => Err(Error::Length),
+            _ => Ok(j as u64),
+        };
+        for workers in [1, 2, 3, 7] {
+            assert_eq!(rows_on(101, workers, failing), Err(Error::Range));
+        }
     }
 }

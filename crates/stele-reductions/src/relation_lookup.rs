@@ -15,7 +15,7 @@ use crate::lookup::{functionals, phase};
 use alloc::vec::Vec;
 use stele_field::{Field, Serialize, M31};
 use stele_hash::{AbsorbLabel, ChallengeLabel, Transcript};
-use stele_ir::relation::Relation;
+use stele_ir::relation::{Indexer, Relation};
 use stele_lookup::fraction::{self, BaseLeaves, LeafDescriptor, SelectedProduct};
 use stele_pcs::{verify_opening, Functional, PreparedSource, Source, VerifiedCertificate};
 use stele_sumcheck::parallel::{for_each_chunk, join, sum_ranges};
@@ -76,11 +76,12 @@ fn originals_base(check: &Check, resolved: &ResolvedColumns<'_>) -> Result<Vec<V
         for (x, (r, offset)) in out.iter_mut().zip(&member.tuple) {
             let col = resolved.get(r.column)?;
             let shift = M31::from_i64(*offset);
+            let at = Indexer::new(r, 1 << member.m);
             let block = &mut x[member.offset..member.offset + (1 << member.m)];
             for_each_chunk(block, |start, chunk| {
                 for (j, v) in chunk.iter_mut().enumerate() {
                     let dom = (block_base | (start + j)) as u64;
-                    *v = M31::from_i64(col.at(r.index(dom))) + shift;
+                    *v = M31::from_i64(col.at(at.index(dom))) + shift;
                 }
             });
         }
@@ -124,6 +125,9 @@ fn split_base(check: &Check, xs: &[Vec<M31>], z: &[K]) -> Result<Vec<K>, Error> 
     Ok(out)
 }
 
+/// Positions per histogram task of [`counts`].
+const HISTOGRAM_PIECE: usize = 1 << 16;
+
 fn compress(row: &[K], beta: K) -> K {
     row.iter().rev().fold(K::from_i64(0), |v, x| v * beta + *x)
 }
@@ -151,11 +155,47 @@ pub(super) fn counts(
     index.sort_unstable();
     let selected = sigma_base(check, relation);
     let mut mu = alloc::vec![0i64; 1 << check.k];
+    // A range table lists 0..t in order: a value is its own row.
+    let identity = check.c == 1
+        && check
+            .entries
+            .iter()
+            .take(check.t)
+            .enumerate()
+            .all(|(i, v)| *v == i as i64);
     for member in &check.members {
         let block_base = member.block_index << member.m;
         let mut xs = Vec::new();
         for (r, offset) in &member.tuple {
             xs.push((r, resolved.get(r.column)?, M31::from_i64(*offset)));
+        }
+        if identity {
+            // One histogram per piece of the block, added in piece order.
+            let (r, col, shift) = xs[0];
+            let len = 1usize << member.m;
+            let at = Indexer::new(r, len);
+            let pieces = len.div_ceil(HISTOGRAM_PIECE);
+            let parts = stele_sumcheck::parallel::map(pieces, |p| {
+                let mut part = alloc::vec![0i64; check.t];
+                for local in p * HISTOGRAM_PIECE..((p + 1) * HISTOGRAM_PIECE).min(len) {
+                    if selected[member.offset + local] == M31::ZERO {
+                        continue;
+                    }
+                    let dom = (block_base | local) as u64;
+                    let value = (M31::from_i64(col.at(at.index(dom))) + shift).as_u32() as usize;
+                    // Unmatched values stay in the lookup leaves; the roots decide.
+                    if let Some(count) = part.get_mut(value) {
+                        *count += 1;
+                    }
+                }
+                part
+            });
+            for part in parts {
+                for (total, count) in mu.iter_mut().zip(part) {
+                    *total += count;
+                }
+            }
+            continue;
         }
         // Each position's table row is found in parallel and counted in order below.
         let mut rows = alloc::vec![usize::MAX; 1 << member.m];

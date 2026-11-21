@@ -94,10 +94,15 @@ impl Rope {
             if usize::from(r.width()) > head_width {
                 return Err(ModelError::Rotation);
             }
-            for t in 0..tokens {
+            // Each position certifies its own coefficients: one task per position.
+            let rows = stele_sumcheck::parallel::map(tokens, |t| {
                 let position = u32::try_from(t).map_err(|_| ModelError::Rotation)?;
-                for j in 0..half {
-                    let (c, s) = r.coefficient(position, j as u16)?;
+                (0..half)
+                    .map(|j| r.coefficient(position, j as u16))
+                    .collect::<Result<Vec<_>, _>>()
+            });
+            for (t, row) in rows.into_iter().enumerate() {
+                for (j, (c, s)) in row?.into_iter().enumerate() {
                     let (c, s) = (i64::from(c), i64::from(s));
                     let (left, right) = if r.layout() == 0 {
                         (2 * j, 2 * j + 1)
