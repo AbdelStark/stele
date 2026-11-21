@@ -418,6 +418,7 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
             "6" => 6,
             _ => return Err(usage("--dev-profile is 3, 5 or 6")),
         };
+        let probe_t0 = std::time::Instant::now();
         let (public, statement, proof, report) = prove_window_development_segmented_measured(
             &m,
             &p,
@@ -429,6 +430,7 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
             segment_layers,
         )
         .map_err(reject)?;
+        eprintln!("stage cli/proved {}", probe_t0.elapsed().as_millis());
         let relation = o
             .get("relation")
             .map(|_| registry::publish(&public, &statement).map(|(_, relation)| relation))
@@ -436,6 +438,7 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
             .map_err(reject)?;
         write("public", &bundle::encode(&public, &statement))?;
         write("proof", &proof)?;
+        eprintln!("stage cli/written {}", probe_t0.elapsed().as_millis());
         if let Some(relation) = relation {
             write("relation", &relation)?;
         }
@@ -446,6 +449,7 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
         identity(&cqis_id, &model, &statement);
         println!("proof {} bytes", proof.len());
         print_report(&report);
+        eprintln!("stage cli/identity_and_report {}", probe_t0.elapsed().as_millis());
         return Ok("PROOF WRITTEN".into());
     }
     // Ownership covers both reads, the counter update, proof, and any rollback (A6.5).

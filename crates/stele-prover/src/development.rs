@@ -848,14 +848,22 @@ fn prove_inner_captured(
             },
         )?
         .map_err(Error::Engine)?;
+        laps.lap("probe/engine_returned");
         let digest = statement_digest(&input, &relation::digest(&layout.relation));
+        laps.lap("probe/relation_digest");
         let report = Report {
             model_commitment_ns: 0,
             witness_ns,
             plain_check_ns,
             engine,
         };
-        return Ok((sections_v2(proof, d.cqis_id, digest).encode(), report));
+        let encoded = sections_v2(proof, d.cqis_id, digest).encode();
+        laps.lap("probe/proof_encoded");
+        drop(values);
+        laps.lap("probe/values_dropped");
+        drop(layout);
+        laps.lap("probe/layout_dropped");
+        return Ok((encoded, report));
     }
 
     let CommittedKind::Standard {
@@ -1428,6 +1436,13 @@ fn prove_window_sources_measured(
     };
     let (proof, mut report) =
         prove_inner_captured(&public, &capture, &weights, &committed, &statement, None)?;
+    laps.lap("probe/inner_returned");
+    drop(capture);
+    laps.lap("probe/capture_dropped");
+    drop(committed);
+    laps.lap("probe/committed_dropped");
+    drop(weights);
+    laps.lap("probe/weights_dropped");
     report.model_commitment_ns = model_commitment_ns;
     report.witness_ns = report.witness_ns.saturating_add(witness_pre_ns);
     Ok((public, statement, proof, report))
