@@ -34,12 +34,13 @@ fn add_eq<K: ChallengeField + Eq>(out: &mut [K], point: &[K], weight: K) -> Resu
     });
     Ok(())
 }
-/// In a batch of at least `MANY` claims, a block below `SERIAL_BLOCK` entries is summed
-/// and filled on one thread: the claims are the parallel items there, and a task per 256
-/// entries costs more than its work. A batch of a few claims splits every block on the
-/// pool, because nothing else runs beside it.
-const SERIAL_BLOCK: usize = 1 << 15;
+/// In a batch of at least `MANY` claims, a block below `HUGE_BLOCK` entries is summed and
+/// filled on one thread: the claims are the parallel items there. A batch of a few claims
+/// splits every block on the pool, because nothing else runs beside it.
 const MANY: usize = 64;
+const HUGE_BLOCK: usize = 1 << 22;
+/// The window of the smaller of those blocks, see [`Batch::fill_windows`].
+const SMALL_BLOCK: usize = 1 << 15;
 /// A claim's coefficient once its leading coordinate `z0` is set aside:
 /// `weight · eq(point, ·)` on the block of `2^point.len()` entries at `begin`.
 struct Piece<'a, K> {
@@ -54,7 +55,7 @@ impl<K> Piece<'_, K> {
     }
     /// Whether this block of a batch of `claims` claims stays on one thread.
     fn serial(&self, claims: usize) -> bool {
-        claims >= MANY && self.len() < SERIAL_BLOCK
+        claims >= MANY && self.len() < HUGE_BLOCK
     }
 }
 /// Verifier-owned claims. The caller must derive the virtual role from its verified plan;
@@ -183,8 +184,8 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
     }
     /// [`Self::coefficient_table`] with its leading coordinate bound to `r0`, built at
     /// half the size: claim `j` weighs `γ^j · eq(z_0, r0)` over its other coordinates.
-    /// A block that is not [`Piece::serial`] is filled on the pool. A serial one lies inside
-    /// one aligned window of `SERIAL_BLOCK` entries, and the windows are disjoint tasks.
+    /// A block that is not [`Piece::serial`] is filled on the pool, one after another. The
+    /// serial ones are filled through disjoint windows, the smaller ones first.
     fn folded_coefficient_table(&self, pieces: &[Piece<'_, K>], r0: K) -> Result<Vec<K>, Error> {
         let one = K::from_i64(1);
         let weight =
@@ -193,13 +194,7 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
             .checked_shl(self.num_vars - 1)
             .ok_or(Error::Capacity)?;
         let mut out = crate::parallel::build(n, |_| K::from_i64(0))?;
-        let mut small = Vec::new();
-        reserve(&mut small, pieces.len())?;
-        for (j, piece) in pieces.iter().enumerate() {
-            if piece.serial(pieces.len()) {
-                small.push(j);
-                continue;
-            }
+        for piece in pieces.iter().filter(|p| !p.serial(pieces.len())) {
             let eq = crate::parallel::eq_table_scaled(piece.point, weight(piece))?;
             let target = &mut out[piece.begin..piece.begin + piece.len()];
             crate::parallel::for_each_chunk(target, |offset, chunk| {
@@ -208,34 +203,52 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
                 }
             });
         }
-        small.sort_by_key(|&j| pieces[j].begin);
+        if pieces.len() >= MANY {
+            Self::fill_windows(&mut out, pieces, 0..SMALL_BLOCK, &weight)?;
+            Self::fill_windows(&mut out, pieces, SMALL_BLOCK..HUGE_BLOCK, &weight)?;
+        }
+        Ok(out)
+    }
+    /// `out += weight(piece) · eq(piece.point, ·)` for the pieces whose length is in
+    /// `sizes`. Such a block is dyadic and shorter than `sizes.end`, so it lies inside one
+    /// aligned window of `sizes.end` entries, and the windows are disjoint tasks.
+    fn fill_windows(
+        out: &mut [K],
+        pieces: &[Piece<'_, K>],
+        sizes: core::ops::Range<usize>,
+        weight: &(impl Fn(&Piece<'_, K>) -> K + Sync),
+    ) -> Result<(), Error> {
+        let (n, window) = (out.len(), sizes.end);
+        let mut inside = Vec::new();
+        reserve(&mut inside, pieces.len())?;
+        inside.extend((0..pieces.len()).filter(|&j| sizes.contains(&pieces[j].len())));
+        inside.sort_by_key(|&j| pieces[j].begin);
         let mut windows: Vec<(usize, usize)> = Vec::new();
-        reserve(&mut windows, small.len())?;
-        // `members[g]` is the range of `small` inside window `g`.
+        reserve(&mut windows, inside.len())?;
+        // `members[g]` is the range of `inside` that lies in window `g`.
         let mut members: Vec<core::ops::Range<usize>> = Vec::new();
-        reserve(&mut members, small.len())?;
-        for (at, &j) in small.iter().enumerate() {
-            let begin = pieces[j].begin / SERIAL_BLOCK * SERIAL_BLOCK;
+        reserve(&mut members, inside.len())?;
+        for (at, &j) in inside.iter().enumerate() {
+            let begin = pieces[j].begin / window * window;
             match (windows.last(), members.last_mut()) {
-                (Some(&(last, _)), Some(inside)) if last == begin => inside.end = at + 1,
+                (Some(&(last, _)), Some(run)) if last == begin => run.end = at + 1,
                 _ => {
-                    windows.push((begin, SERIAL_BLOCK.min(n - begin)));
+                    windows.push((begin, window.min(n - begin)));
                     members.push(at..at + 1);
                 }
             }
         }
-        crate::parallel::for_each_block(&mut out, &windows, |g, window| {
-            for &j in &small[members[g].clone()] {
+        crate::parallel::for_each_block(out, &windows, |g, block| {
+            for &j in &inside[members[g].clone()] {
                 let (piece, weight) = (&pieces[j], weight(&pieces[j]));
                 let eq = stele_poly::eq_table(piece.point).map_err(|_| Error::Capacity)?;
-                let target = &mut window[piece.begin - windows[g].0..][..piece.len()];
+                let target = &mut block[piece.begin - windows[g].0..][..piece.len()];
                 for (t, e) in target.iter_mut().zip(eq) {
                     *t = *t + e * weight;
                 }
             }
             Ok(())
-        })?;
-        Ok(out)
+        })
     }
     /// Direct verifier evaluation in O(t*(m+1)); no coefficient table or final A value.
     pub fn coefficient(&self, point: &[K], gamma: K) -> Result<K, Error> {
