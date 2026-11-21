@@ -111,6 +111,12 @@
 | NC-0619 | sharded commitment | 0010 A13 | a valid segment of shard σ sent in shard σ' 's slot, authenticated under child root σ'; actual certificate and opening verifiers | `RootMismatch` | todo |
 | NC-0620 | sharded commitment | 0010 A13 | one shard committed off-code, or t/u inconsistent with one shard's segment, all paths valid; actual certificate and opening verifiers | `ColumnMismatch` | todo |
 | NC-0621 | sharded commitment | 0010 A13 | one payload byte changed in a segment of a shard whose row coefficients are all zero; actual opening verifier | `RootMismatch` | todo |
+| NC-0630 | recursive commitment | 0029 §6, 0010 A17 | commit a row combination `u_1` differing from `a^T M_0` in one entry | `ColumnMismatch` | done |
+| NC-0631 | recursive commitment | 0029 §6, 0010 A17 | answer a level-`i` query with the column of another index | `RootMismatch` | done |
+| NC-0632 | recursive commitment | 0029 §6, 0010 A17 | send a final vector `u_L` with one entry changed | `ValueMismatch / ColumnMismatch` | done |
+| NC-0633 | recursive commitment | 0029 §6, 0010 A17 | present a level count or `(ell, m, b)` other than the plan's | `ProofShape` | done |
+| NC-0634 | recursive commitment | 0029 §6, 0010 A17 | fresh mode: open at a point that is not the batching sumcheck's | `RoundSumMismatch` | done |
+| NC-0635 | recursive commitment | 0029 §6, 0010 A17 | certified mode: a certificate for another radius offered for the expected source | `CertificateContext` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0704 | passport | 0011 A6/A7, 0025 §2.7 | alter one length or digest in each fixed child-reference role, one variant at a time | `ReferenceMismatch` | todo |
 | NC-0705 | passport | 0011 A4/A7 | substitute one Preparation mapping under the original Artifact/source relation | `PreparationMismatch` | todo |
@@ -453,3 +459,11 @@ with virtual remainder `rem = acc - 2^k * y` range-checked through RFC-0008 A9, 
 `RootMismatch`) and Control NC-1340 (declaring a rounding output as `Linear` with the integer
 field inverse of `2^k`, asserting `StatementMismatch` on the static `p/2` derived-magnitude bound)
 through `relation::verify_segmented`.
+
+RFC-0029 and companion RFC-0010 A17 (Accepted for the development tier, task E19-01,
+ADR-152) define NC-0630..0635 for recursive interleaved circle Reed–Solomon openings.
+Task E19-03 executes NC-0630..0634 through the actual fresh-mode verifiers
+(`verify_fresh_at_point` and `verify_fresh_claims`) and task E19-05 executes NC-0635
+through the actual certified-mode verifiers (`verify_certified_registration` and
+`verify_certified_opening`, `tests/negative-controls/src/pcs_recursive.rs`), with honest
+acceptance and exact rejection on every variant.

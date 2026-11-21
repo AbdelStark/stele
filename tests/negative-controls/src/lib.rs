@@ -40,6 +40,8 @@ pub mod pcs_opening_field;
 #[doc(hidden)]
 pub mod pcs_policy2;
 #[doc(hidden)]
+pub mod pcs_recursive;
+#[doc(hidden)]
 pub mod registry;
 #[doc(hidden)]
 pub mod requant;
@@ -1117,6 +1119,42 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         kind: catalog::ControlKind::Proof,
         expected_error: "CertificateContext",
         run: || lookup_grind::run(817),
+    },
+    catalog::RegisteredControl {
+        id: 630,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ColumnMismatch",
+        run: || pcs_recursive::run(630),
+    },
+    catalog::RegisteredControl {
+        id: 631,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || pcs_recursive::run(631),
+    },
+    catalog::RegisteredControl {
+        id: 632,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ValueMismatch / ColumnMismatch",
+        run: || pcs_recursive::run(632),
+    },
+    catalog::RegisteredControl {
+        id: 633,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ProofShape",
+        run: || pcs_recursive::run(633),
+    },
+    catalog::RegisteredControl {
+        id: 634,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || pcs_recursive::run(634),
+    },
+    catalog::RegisteredControl {
+        id: 635,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "CertificateContext",
+        run: || pcs_recursive::run(635),
     },
 ];
 

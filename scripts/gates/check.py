@@ -1336,14 +1336,18 @@ def field_source_codec(root):
                'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs', 'src/work.rs',
                'src/hiding.rs', 'tests/hiding.rs', 'src/material.rs', 'tests/selected_material.rs',
                # E12-23: RFC-0010 A14 Policy 2 wire parity.
-               'tests/policy2_wire.rs', 'tests/fixtures/policy2-wire.jsonl'}
+               'tests/policy2_wire.rs', 'tests/fixtures/policy2-wire.jsonl',
+               # E19-03: RFC-0029 & RFC-0010 A17 recursive opening in fresh mode (Policy 3).
+               'src/recursive.rs', 'tests/recursive.rs', 'examples/recursive_oracle.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional Circle and v2 field sources, certificates and functional openings,\n'
                '//! RFC-0010 A3/A6/A9/A10/A15, with RFC-0013 A2 hiding sources.\n'
                '//!\n//! Verification retains conditional obligations; A1 closure and profiles remain separate.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod certificate;\nmod expansion;\nmod hiding;\nmod material;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\nmod work;\n'
+               'extern crate alloc;\nmod certificate;\nmod expansion;\nmod hiding;\nmod material;\nmod opening;\nmod preparation;\nmod producer;\n'
+               '/// RFC-0029 & RFC-0010 A17 coefficient-form interleaved Circle RS recursive openings (Policy 3).\n'
+               'pub mod recursive;\nmod source;\nmod work;\n'
                'pub use certificate::{\n'
                '    verify_certificate, verify_certificate_measured, CertificateRecord, Failure, Usage,\n'
                '    VerifiedCertificate,\n};\n'
@@ -1357,7 +1361,7 @@ def field_source_codec(root):
                'pub use producer::CertificateFailure;\n'
                'pub use source::{Error, Parameters, Policy, ProofKind, Response, Source, SourceBytes, Wire};\n'
                '// A1 registry validator: stele-code is reachable only through this crate (deny.toml).\n'
-               'pub use stele_code::{registry, CodeField};\n'
+               'pub use stele_code::{registry, CircleCoeff, CodeField};\n'
                'pub use work::{ProverWork, VerifierWork};\n')
     try:
         manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
@@ -1578,7 +1582,11 @@ def field_source_codec(root):
           'test matches_reference_v2_policy_and_proof_sizes ... ok',
           'test rejects_unsupported_v2_contexts_before_transcript_work ... ok',
           'test expansion::tests::matches_reference_signed_and_offset_embeddings ... ok',
-          'test source::matches_reference_pinned_evidence_ids ... ok']),
+          'test source::matches_reference_pinned_evidence_ids ... ok',
+          'test accepts_recursive_opening_single_and_multi_level_qm31_and_om31 ... ok',
+          'test matches_reference_policy3_dp_and_version4_context ... ok',
+          'test rejects_nc_0630_through_nc_0634_through_actual_verifier ... ok',
+          'test accepts_certified_model_source_general_functional_and_streaming_memory ... ok']),
         (['python3', 'research/merkle-oracle/check_native_policy.py', '--native'],
          ['59 native query pairs match exact independently checked minima']),
         (['python3', 'research/merkle-oracle/check_expander_policy.py', '--native'],
@@ -2147,7 +2155,7 @@ def controls_layout(root):
                                             'standard-unproven': ['stele-reductions/standard-unproven']}
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/registry.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/lookup_grind.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/registry.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/pcs_recursive.rs', 'src/lookup_grind.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(('src/development_messages.rs', 'src/development_bindings.rs'))
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',

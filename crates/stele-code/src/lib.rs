@@ -132,6 +132,158 @@ impl Circle {
     }
 }
 
+/// Coefficient-form M31 circle Reed–Solomon code (RFC-0029 §1.2, RFC-0010 A17, task E19-03).
+///
+/// Treats the `2^m` row entries as coefficients in the RFC-0010 A2 tensor basis, zero-pads
+/// to `N = 2^(m+b)` (`b ∈ {1, 2, 3, 4}`, `m + b ≤ 30`), and evaluates on `D_(m+b)` with a
+/// single forward circle transform. The codeword set and distance (`D = N - C` for `C ≥ 2`,
+/// `D = N` for `C = 1`) match [`Circle`]; every codeword column `j` is an inner product with
+/// the rank-1 tensor basis vector `g_j` evaluable in `O(m + b)` field operations.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CircleCoeff {
+    log_message: u32,
+    log_blowup: u32,
+    message_len: usize,
+    codeword_len: usize,
+}
+
+impl CircleCoeff {
+    /// Validate `b ∈ {1, 2, 3, 4}` and `m + b ≤ 30` without allocating (RFC-0010 A17 item 1).
+    pub fn new(log_message: u32, log_blowup: u32) -> Result<Self, Error> {
+        if !(1..=4).contains(&log_blowup) || log_message > 30 - log_blowup {
+            return Err(Error::InvalidSize);
+        }
+        Ok(Self {
+            log_message,
+            log_blowup,
+            message_len: 1usize.checked_shl(log_message).ok_or(Error::Capacity)?,
+            codeword_len: 1usize
+                .checked_shl(log_message + log_blowup)
+                .ok_or(Error::Capacity)?,
+        })
+    }
+
+    /// Parse canonical `stele/circle-coeff-m31/v1 || u8(m) || u8(b)` code identity (27 bytes).
+    pub fn from_code_id(id: &[u8]) -> Result<Self, Error> {
+        if id.len() != 27 || &id[..25] != b"stele/circle-coeff-m31/v1" {
+            return Err(Error::InvalidCodeId);
+        }
+        Self::new(u32::from(id[25]), u32::from(id[26])).map_err(|_| Error::InvalidCodeId)
+    }
+
+    pub fn log_message(&self) -> u32 {
+        self.log_message
+    }
+
+    pub fn log_blowup(&self) -> u32 {
+        self.log_blowup
+    }
+
+    pub fn message_len(&self) -> usize {
+        self.message_len
+    }
+
+    pub fn codeword_len(&self) -> usize {
+        self.codeword_len
+    }
+
+    /// Canonical coefficient-form code identity (RFC-0010 A17 item 1).
+    pub fn code_id(&self) -> [u8; 27] {
+        let mut id = [0; 27];
+        id[..25].copy_from_slice(b"stele/circle-coeff-m31/v1");
+        id[25] = self.log_message as u8;
+        id[26] = self.log_blowup as u8;
+        id
+    }
+
+    fn validate<K: Field>(&self, row: &[K]) -> Result<(), Error> {
+        if K::MODULUS != M31::MODULUS {
+            return Err(Error::FieldMismatch);
+        }
+        if row.len() != self.message_len {
+            return Err(Error::RowShape);
+        }
+        Ok(())
+    }
+
+    /// Zero-pad `2^m` coefficients to `N = 2^(m+b)` and run one forward circle transform.
+    pub fn encode<K: Field>(&self, row: &[K]) -> Result<Vec<K>, Error> {
+        let mut output = reserved(self.codeword_len)?;
+        self.encode_into(row, &mut output)?;
+        Ok(output)
+    }
+
+    /// Encode `row` into a caller-reused buffer `out` (`len == N`), avoiding per-row allocation.
+    pub fn encode_into<K: Field>(&self, row: &[K], out: &mut Vec<K>) -> Result<(), Error> {
+        self.validate(row)?;
+        out.clear();
+        if out.capacity() < self.codeword_len {
+            out.try_reserve_exact(self.codeword_len - out.len())
+                .map_err(|_| Error::Capacity)?;
+        }
+        out.extend_from_slice(row);
+        out.resize(self.codeword_len, K::from_i64(0));
+        transform_recorded(out, false, &mut Measurement::default())?;
+        Ok(())
+    }
+
+    /// The `m` base-field tensor factors `[f_0, ..., f_{m-1}]` at codeword column `column`
+    /// such that `Enc(row)[column] = Σ_{idx=0}^{2^m-1} row[idx] · Π_{k: (idx>>k)&1 == 1} f_k`
+    /// (RFC-0029 §2). Runs in `O(m + b)` M31 operations with no domain table allocation.
+    pub fn basis_factors(&self, column: usize) -> Result<Vec<M31>, Error> {
+        if column >= self.codeword_len {
+            return Err(Error::Column);
+        }
+        let m = self.log_message as usize;
+        let mut factors = reserved(m)?;
+        if m == 0 {
+            return Ok(factors);
+        }
+        let log = self.log_message + self.log_blowup;
+        let half0 = 1usize << (log - 1);
+        let (cur, neg_y) = if column < half0 {
+            (column, false)
+        } else {
+            ((2 * half0) - 1 - column, true)
+        };
+        let exp = (((2 * cur + 1) as u64) << (30 - log)) as u32;
+        let pt = generator_power(exp);
+        factors.push(if neg_y { -pt.1 } else { pt.1 });
+        if m == 1 {
+            return Ok(factors);
+        }
+        let mut x_val = pt.0;
+        factors.push(x_val);
+        for _ in 2..m {
+            let sq = x_val * x_val;
+            x_val = sq + sq - M31::ONE;
+            factors.push(x_val);
+        }
+        Ok(factors)
+    }
+
+    /// Evaluate the multilinear extension `g̃_column(point)` at an MSB-first `point` of length `m`
+    /// in `O(m + b)` field operations (RFC-0029 §2).
+    pub fn basis_mle<K: Field>(&self, column: usize, point: &[K]) -> Result<K, Error> {
+        if K::MODULUS != M31::MODULUS {
+            return Err(Error::FieldMismatch);
+        }
+        if point.len() != self.log_message as usize {
+            return Err(Error::RowShape);
+        }
+        let factors = self.basis_factors(column)?;
+        let one = K::from_i64(1);
+        let mut acc = one;
+        // `point` is MSB-first: `point[m - 1 - k]` corresponds to bit `k` of the coefficient index.
+        let m = factors.len();
+        for (k, &f) in factors.iter().enumerate() {
+            let r = point[m - 1 - k];
+            acc = acc * (one - r + r.mul_m31(f));
+        }
+        Ok(acc)
+    }
+}
+
 fn reserved<T>(len: usize) -> Result<Vec<T>, Error> {
     let mut values = Vec::new();
     values.try_reserve_exact(len).map_err(|_| Error::Capacity)?;
@@ -313,5 +465,83 @@ mod tests {
             multiply(generator_power(1 << 30), generator_power(1 << 30)),
             (M31::ONE, M31::ZERO)
         );
+    }
+
+    /// RFC-0029 §1.2 / E19-03: `CircleCoeff` encodes a coefficient row identically to
+    /// `Circle` encoding that row's evaluations on `D_m`, and `basis_mle(j, r)` matches
+    /// the exact multilinear extension of column `j`'s basis vector `g_j` across all `m, b, j`.
+    #[test]
+    fn matches_reference_circle_coeff_and_basis_mle() {
+        use stele_field::QM31;
+
+        for m in 0..=6u32 {
+            let len = 1usize << m;
+            let coeffs: Vec<M31> = (0..len)
+                .map(|i| M31::from_i64((i as i64 * 37 + 11) % 1009 - 500))
+                .collect();
+            let mut evals_on_dm = coeffs.clone();
+            transform(&mut evals_on_dm, false).expect("eval on D_m");
+
+            for b in 1..=4u32 {
+                let cc = CircleCoeff::new(m, b).expect("circle coeff");
+                assert_eq!(CircleCoeff::from_code_id(&cc.code_id()), Ok(cc));
+                let cw = cc.encode(&coeffs).expect("encode coeff");
+                assert_eq!(cw.len(), 1 << (m + b));
+                if b <= 2 {
+                    let ev = Circle::new(m, b).expect("circle eval");
+                    assert_eq!(cw, ev.encode(&evals_on_dm).expect("encode eval"));
+                }
+                // Check basis_factors and basis_mle on every column (for m <= 4) or sample.
+                let step = if m <= 4 { 1 } else { 7 };
+                let pt: Vec<QM31> = (0..m)
+                    .map(|k| {
+                        QM31(
+                            stele_field::CM31(
+                                M31::from_i64(3 + k as i64 * 17),
+                                M31::from_i64(5 + k as i64 * 23),
+                            ),
+                            stele_field::CM31(
+                                M31::from_i64(7 + k as i64 * 29),
+                                M31::from_i64(11 + k as i64 * 31),
+                            ),
+                        )
+                    })
+                    .collect();
+                let one = QM31::from_i64(1);
+                for j in (0..cw.len()).step_by(step) {
+                    let factors = cc.basis_factors(j).expect("factors");
+                    // Reconstruct g_j[idx] = Π_{k: bit k of idx == 1} factors[k].
+                    let mut dot = M31::ZERO;
+                    let mut mle_direct = QM31::from_i64(0);
+                    for (idx, &coeff) in coeffs.iter().enumerate() {
+                        let mut g = M31::ONE;
+                        let mut eq = one;
+                        for k in 0..m as usize {
+                            let r = pt[m as usize - 1 - k];
+                            if (idx >> k) & 1 == 1 {
+                                g = g * factors[k];
+                                eq = eq * r;
+                            } else {
+                                eq = eq * (one - r);
+                            }
+                        }
+                        dot = dot + coeff * g;
+                        mle_direct = mle_direct + eq.mul_m31(g);
+                    }
+                    assert_eq!(dot, cw[j], "m={m} b={b} col={j}");
+                    assert_eq!(
+                        cc.basis_mle(j, &pt).expect("mle"),
+                        mle_direct,
+                        "mle m={m} b={b} col={j}"
+                    );
+                }
+            }
+        }
+        // Reject invalid b or m + b > 30 (RFC-0010 A17).
+        assert_eq!(CircleCoeff::new(10, 0), Err(Error::InvalidSize));
+        assert_eq!(CircleCoeff::new(10, 5), Err(Error::InvalidSize));
+        assert_eq!(CircleCoeff::new(30, 1), Err(Error::InvalidSize));
+        assert_eq!(CircleCoeff::new(27, 4), Err(Error::InvalidSize));
+        assert!(CircleCoeff::new(26, 4).is_ok());
     }
 }

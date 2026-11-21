@@ -47,5 +47,8 @@
   ["challenge", "stele/v0.1/relation/point", "SZ"],
   ["grind", "stele/v0.1/grind", "-"],
   ["absorb", "stele/v0.1/zk/mask-sum", "-"],
-  ["challenge", "stele/v0.1/zk/mask-weight", "MASK"]
+  ["challenge", "stele/v0.1/zk/mask-weight", "MASK"],
+  ["absorb", "stele/v0.1/pcs/level-root", "-"],
+  ["challenge", "stele/v0.1/pcs/level-beta", "RLC"],
+  ["challenge", "stele/v0.1/pcs/level-gamma", "RLC"]
 ]

@@ -965,3 +965,44 @@ RFC-0028 §2.4 step 4 virtual column reductions are accounted on existing ledger
 - Cost-model terms: moves `c_c` and `c_a` as virtual columns replace committed
   intermediates (E18-02..E18-05).
 - Affected tasks: E18-01 (IR and acceptance), E18-02..E18-05 (engine reductions).
+
+### A20 — Recursive PCS labels and per-level accounting (companion of RFC-0029)
+
+Status: Accepted (development tier, RFC-0027 §2). Companion of RFC-0029 §1.4 and §5.
+Task: E19-01. Decision: ADR-152.
+
+Reserves the transcript labels and per-level soundness ledger records for RFC-0029 §2
+recursive openings (Amendment A19 is reserved for RFC-0028 virtual-column reductions in
+task E18-01):
+
+| Kind | Label | Line |
+|---|---|---|
+| absorb | `stele/v0.1/pcs/level-root` | - |
+| challenge | `stele/v0.1/pcs/level-beta` | RLC |
+| challenge | `stele/v0.1/pcs/level-gamma` | RLC |
+
+Existing A1/A10 labels reused at each recursion level: `stele/v0.1/sumcheck/*` (row-round
+sumcheck at levels `i >= 1`), `stele/v0.1/pcs/opening-column` (level-`i` query index
+sampler), and `stele/v0.1/pcs/opening-columns` (queried column payloads). Strong
+Fiat–Shamir order (RFC-0012 §2, RFC-0030 §1.2): at every level `i`, either the committed
+`u_{i+1}` root or (at the final transition `i = L - 1`) the clear vector `u_L` is absorbed
+under `stele/v0.1/pcs/level-root` **before** drawing the `q_i` column indices under
+`stele/v0.1/pcs/opening-column`, and the queried column payloads are absorbed under
+`stele/v0.1/pcs/opening-columns` **before** drawing `stele/v0.1/pcs/level-beta`.
+
+Per-level ledger lines (RFC-0029 §5, `D_i = N_i - C_i` for `C_i >= 2` and `D_i = N_i` for
+`C_i = 1`, `e_i < D_i / 3`):
+
+| Source | Line | Formula | Status |
+|---|---|---|---|
+| Tensor row-combination proximity test | PCS | `2 · ell_i · (e_i + 1) / |K|` | proven (Diamond–Posen) |
+| Column queries (far / near) | PCS | `((N_i - e_i - 1) / N_i)^q_i` / `((N_i - D_i + e_i) / N_i)^q_i` | proven |
+| Per-source consistency batch (`pcs/level-beta`) | RLC | `q_i / |K|` | proven |
+| Multi-source block combination (`pcs/level-gamma`) | RLC | `(k_i - 1) / |K|` | proven |
+| Row-round sumcheck (levels `i >= 1`) | SC | `ell_i · 2 / |K|` | proven |
+| Level Merkle trees | H | RFC-0012 A15 | proven under caps |
+
+- Scope: development tier only; promotion to `standard` or `treaty` requires Workflow 10
+  and RFC-0030.
+- Cost-model terms: `T_cuts`, `T_weights`. Affected task: E19-03 (registers the three labels
+  in `stele-hash` and `docs/security/transcript-labels.json` alongside the consumer).

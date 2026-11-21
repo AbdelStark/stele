@@ -4690,6 +4690,66 @@ Consequences:
   and lookup positions by `42.05B` (`1.54x`).
 - No security level or profile promotion is granted (development tier only, RFC-0027 §2).
 
+## ADR-152 — Accept RFC-0029 (Commitment scheme v3, Policy 3) for the development tier (task E19-01)
+
+- **Status:** Accepted (development tier, RFC-0027 §2)
+- **Task / Lane:** `E19-01` · Lane C
+- **Governing RFCs:** `RFC-0029`, `RFC-0010 A17`, `RFC-0012 A20`, `RFC-0030 §3`
+- **Decision:** Accept `RFC-0029` (interleaved coefficient-form circle Reed–Solomon with
+  recursive opening) and companion amendments `RFC-0010 A17` and `RFC-0012 A20` for the
+  development tier, verified by the exact-integer checker `research/rfc0029-pcs/check_policy3.py`
+  (`research/rfc0029-pcs/REPORT.md`).
+- **Key choices:**
+  - Allocate **source version `u8(4)`** and canonical ASCII `code_id`
+    `stele/circle-coeff-m31/v1 || u8(m) || u8(b)` (`m >= 0`, `b in {1, 2, 3, 4}`, `m + b <= 30`)
+    in `RFC-0010 A17` (resolving Q48 without colliding with `RFC-0010 A15`'s version `u8(3)`
+    hiding Circle sources), and reserve Policy 3 (`policy = u8(3)`, restricted to version-4
+    sources so `NC-0613` is preserved; `e = floor((D - 1) / 3)`, `q = 381` at rate 1/2, `241`
+    at rate 1/4, `202` at rate 1/8, `185` at rate 1/16 for `T = 100`).
+  - Reserve transcript labels `stele/v0.1/pcs/level-root`, `stele/v0.1/pcs/level-beta`, and
+    `stele/v0.1/pcs/level-gamma` in `RFC-0012 A20` (registered in `stele-hash` and
+    `docs/security/transcript-labels.json` in `E19-03`), with explicit strong-FS absorb order
+    for `u_L` and queried columns.
+  - Reserve `NC-0630..0635` as `todo` in `tests/negative-controls/catalog.md` for `E19-03`/`E19-05`.
+  - **Bet B3 (`docs/plan.md §2`) check:** Exact-integer DP (enforcing `m + b <= 30` and
+    unconditional single-round `2·ell·(e_c + 1) <= cap` on certified model sources) proves
+    that at `2^32` M31 entries and `T = 100` under RFC-0030 §3 caps: strict `2·ell·(e + 1)`
+    QM31 takes `8,388,256 B` (`8.000 MiB`, slightly above `8.00 MB` decimal) for `b >= 2`,
+    drops to `3,810,608 B` (`3.634 MiB < 8 MB`) when admitting `b = 1` (rate 1/2, RFC-0010 A2),
+    and under Q50 takes `1,646,784 B` (`1.570 MiB`) per-round QM31, `996,664 B` (`0.950 MiB`)
+    Ext6, and `1,085,248 B` (`1.035 MiB`) OM31; certified `2^33` model sources open in
+    `722,000 B` (`0.689 MiB`, `q_open = 51`, `q_cert = 17,710`, strict `2·ell·(e_c+1) <= cap`).
+    Bet B3 stays active.
+- **Promotion:** Admission to `standard` or `treaty` is not granted here (requires RFC-0030
+  and Workflow 10).
+
+## ADR-153 — Supersede Draft RFC-0026 A7 (`E19-02`) by Accepted A11/A12 and RFC-0029 coefficient-form sources (task E19-02)
+
+- **Status:** Accepted (development tier, RFC-0027 §2)
+- **Task / Lane:** `E19-02` · Lane C
+- **Governing RFCs:** `RFC-0026 A7, A11, A12`, `RFC-0010 A9, A17`, `RFC-0029`
+- **Decision:** Withdraw Draft `RFC-0026 A7` as superseded by Accepted `RFC-0026 A11` (task
+  `E16-30`, byte-minimising blow-up-2 Circle rate-1/4 stacked and model sources under Policy 2,
+  with L1 and L2a before/after ledgers `bench/ledger/e16-30-dev-*.json`) and Accepted
+  `RFC-0026 A12` (task `E16-31`, Circle rate-1/4 multiplicity sources,
+  `bench/ledger/e16-31-dev-*.json`), and transition directly to Accepted `RFC-0029` /
+  `RFC-0010 A17` coefficient-form version-4 sources (`E19-03`..`E19-06`).
+- **Rationale:**
+  - `RFC-0026 A11` already implemented A7's exact Circle rate-1/4 (`blow-up = 2`) geometry
+    and byte-minimising row split for both the stacked witness source and all model sources,
+    kept `NC-1303`, `NC-1304`, and `NC-1306` green, re-recorded the pinned L0/L1 hashes, and
+    published paired L1/L2a before/after ledgers.
+  - `RFC-0026 A11` explicitly noted under "Affected tasks": *"E19-02: Draft A7's geometry is
+    A11's; if A11 is accepted, A7 and E19-02's acceptance should be rebased on Policy 2 or
+    withdrawn. E19-03 changes the row map again (coefficient-form rows)."*
+  - Re-implementing an intermediate Policy-1 version-1 evaluation-form mode would add dead
+    protocol surface immediately superseded by `E19-03` (`CircleCoeff`, version 4, Policy 3).
+- **Consequences:**
+  - `RFC-0026 A7` is marked `Superseded by Accepted A11/A12 and RFC-0029 (ADR-153)` in
+    `docs/rfcs/RFC-0026-development-end-to-end.md` and `docs/rfcs/RFC-0000-index-and-process.md`.
+  - Task `E19-02` is closed as `done`; `E19-03` proceeds directly on `RFC-0029` / `RFC-0010 A17`.
+  - No protocol bytes, controls, or profile promotions change in this ADR.
+
 ## ADR-155 — Accept RFC-0026 A8, the plan-fixed split of lookup checks, at the development tier (task E20-02)
 
 Context: RFC-0026 A3 rejects a lookup check whose concatenated domain exceeds `2^30`

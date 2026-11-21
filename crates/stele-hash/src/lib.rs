@@ -100,7 +100,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 49] = [
+const REGISTRY: [RegistryEntry<'static>; 52] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -347,6 +347,22 @@ const REGISTRY: [RegistryEntry<'static>; 49] = [
         kind: LabelKind::Challenge,
         loss: Some(LossLine::Mask),
     },
+    // RFC-0012 A20 (companion of RFC-0029): recursive PCS level root and batching weights.
+    RegistryEntry {
+        label: "stele/v0.1/pcs/level-root",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/level-beta",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Rlc),
+    },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/level-gamma",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Rlc),
+    },
 ];
 const GRIND: usize = 46;
 /// Largest admitted grinding difficulty (RFC-0012 A17 item 3).
@@ -377,7 +393,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 49], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 52], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -483,6 +499,8 @@ pub enum AbsorbLabel {
     RelationRoots,
     /// Masked-sumcheck mask sum G before its weight (A18, RFC-0013 A2).
     ZkMaskSum,
+    /// Recursive PCS level root or final clear vector u_L (A20, RFC-0029 §2).
+    PcsLevelRoot,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -519,6 +537,7 @@ impl AbsorbLabel {
             Self::RelationStatement => 42,
             Self::RelationRoots => 43,
             Self::ZkMaskSum => 47,
+            Self::PcsLevelRoot => 49,
         }]
     }
 }
@@ -555,6 +574,10 @@ pub enum ChallengeLabel {
     RelationPoint,
     /// Masked-sumcheck weight after the mask sum, MASK (A18, RFC-0013 A2).
     ZkMaskWeight,
+    /// Recursive PCS per-source consistency batching coefficient, RLC (A20, RFC-0029 §2).
+    PcsLevelBeta,
+    /// Recursive PCS multi-source block combination coefficient, RLC (A20, RFC-0029 §2).
+    PcsLevelGamma,
 }
 impl ChallengeLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -574,6 +597,8 @@ impl ChallengeLabel {
             Self::RelationIdentity => 44,
             Self::RelationPoint => 45,
             Self::ZkMaskWeight => 48,
+            Self::PcsLevelBeta => 50,
+            Self::PcsLevelGamma => 51,
         }]
     }
 }

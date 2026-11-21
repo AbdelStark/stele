@@ -4253,7 +4253,8 @@ tasks:
   skill: pcs-engineer
   crate: research+docs
   lane: C
-  status: ready
+  status: done
+  branch: task/E19-01-rfc0029-parameters
   acceptance:
   - an exact-integer checker derives the least query count per level for Policy 3 (RFC-0029 §5) and its failure at one fewer, and prints proof bytes for sources of 2^20 to 2^34 entries
   - it prints each size twice - without caps and under the caps of RFC-0030 §3 - and prices the wider-field alternative of Q50 at 2^32 to 2^34 entries
@@ -4268,7 +4269,8 @@ tasks:
   skill: pcs-engineer
   crate: stele-reductions+stele-pcs
   lane: C
-  status: ready
+  status: done
+  branch: task/E19-02-circle-sources-closure
   acceptance:
   - RFC-0026 A7 Accepted; the stacked source and model sources are version-1 sources at blow-up exponent 2 with the byte-minimising row split
   - NC-1303, NC-1304 and NC-1306 run unchanged; the pinned L0 and L1 hashes are re-recorded with the amendment
@@ -4285,7 +4287,9 @@ tasks:
   skill: pcs-engineer
   crate: stele-pcs
   lane: C
-  status: ready
+  status: done
+  agent: claude
+  branch: task/E19-06-zk-reservation
   acceptance:
   - the coefficient-form circle code with its own code identity and source version; a test shows its codeword for a coefficient row equals the RFC-0010 A2 codeword of that row's evaluations on D_m
   - levels, row combinations, queries, consistency batch and final check as RFC-0029 §2; every count from the plan
@@ -4321,7 +4325,9 @@ tasks:
   skill: pcs-engineer
   crate: stele-pcs
   lane: C
-  status: ready
+  status: done
+  agent: claude
+  branch: task/E19-06-zk-reservation
   acceptance:
   - a registration certificate at the plan-stated radius; openings with any verifier-computable row and column functional
   - queried columns are recomputed from the weights; the full codeword is never resident (memory test)
@@ -4336,7 +4342,9 @@ tasks:
   skill: pcs-engineer
   crate: stele-pcs
   lane: C
-  status: ready
+  status: in_progress
+  agent: claude
+  branch: task/E19-06-zk-reservation
   acceptance:
   - randomiser and mask-row counts are fields of the source context, zero by default
   - proof bytes with zero counts equal the bytes before this task (pinned)

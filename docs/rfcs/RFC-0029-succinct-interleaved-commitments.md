@@ -1,12 +1,12 @@
 # RFC-0029 — Commitment scheme v3: interleaved circle Reed–Solomon with a recursive opening
 
-Status: Draft · Version: 0.1.0 · Depends: RFC-0003 §3, RFC-0006, RFC-0010 (A2, A3, A8, A9), RFC-0012, RFC-0027
+Status: Accepted (development tier) · Version: 0.1.0 · Depends: RFC-0003 §3, RFC-0006, RFC-0010 (A2, A3, A8, A9, A17), RFC-0012 (A20), RFC-0027
 
-Scope: the development tier first. Admission to `standard` needs RFC-0030 and
-Workflow 10. Questions: Q27, Q39, Q44, Q45, Q48, Q50, Q51. Tasks: E19-01..E19-06.
-RFC-0010 A3 item 1 reserves the fresh-tensor mode and the succinct ("Ligerito") mode
-for a new amendment. This RFC is the proposal for that amendment; §1.4 lists the
-companion texts it needs at acceptance.
+Scope: Accepted for the development tier (RFC-0027 §2, ADR-152). Admission to `standard` or `treaty`
+needs RFC-0030 and Workflow 10. Questions: Q27, Q39, Q44, Q45, Q48, Q50, Q51. Tasks: E19-01..E19-06.
+RFC-0010 A3 item 1 reserved the fresh-tensor mode and the succinct ("Ligerito") mode for a new
+amendment; companion amendments RFC-0010 A17 and RFC-0012 A20 are Accepted for the development tier
+alongside this RFC (§1.4, §9).
 
 ## 1. Statement
 
@@ -20,28 +20,32 @@ companion texts it needs at acceptance.
 - Published systems with this shape reach sub-megabyte openings (Ligerito, ePrint
   2025/1187: 255 KiB at 2^24 and 420 KiB at 2^30 coefficients, rate 1/4, 100 bits).
   Its 148 queries per level are the unique-decoding radius `D/2`. Under the radius
-  this draft admits (`D/3`, §5) the count at rate 1/4 is 241 for 100 bits and 314 for
+  this RFC admits (`D/3`, §5) the count at rate 1/4 is 241 for 100 bits and 314 for
   130 bits, so sizes here are larger by that factor until Q39 is answered.
 
 ### 1.2 Object
 
 A **source** is an `R × C` matrix over M31 (level 0) or over `K` (levels 1 and up),
 `R = 2^ℓ`, `C = 2^m`. Each row is encoded with the **coefficient-form circle code** of
-blow-up `2^b`: the row's `C` entries are the coefficients in the basis `b_0..b_(C−1)`
-of RFC-0010 A2, zero-padded to `N = 2^(m+b)` and evaluated on `D_(m+b)`. The `N`
-columns are leaves of an RFC-0012 A3 Merkle tree. A `K`-valued row is encoded limb by
-limb, which is the `K`-linear extension of the code.
+blow-up `2^b` (`b ∈ {1, 2, 3, 4}`, `m + b ≤ 30`, RFC-0010 A2 & A17): the row's `C`
+entries are the coefficients in the basis `b_0..b_(C−1)` of RFC-0010 A2, zero-padded to
+`N = 2^(m+b)` and evaluated on `D_(m+b)`. The `N` columns are leaves of an RFC-0012 A3
+Merkle tree. A `K`-valued row is encoded limb by limb, which is the `K`-linear extension
+of the code.
 
 This is not the map of RFC-0010 A2, which takes message rows as evaluations on `D_m`
 and interpolates first. The two maps have the same set of codewords, so the distance
-bound of A2 (`D = N − C` for `C ≥ 2`) holds unchanged. They differ in which message a
-codeword encodes, so the coefficient form has its own code identity and its own
-source version (3). Version 1 sources (RFC-0010 A9) keep A2's map and are not opened
-recursively. The coefficient form costs one transform per row where A2 costs two.
+bound of A2 (`D = N − C` for `C ≥ 2`; `D = N` for `C = 1`) holds unchanged. They differ
+in which message a codeword encodes, so the coefficient form has its own code identity
+(`stele/circle-coeff-m31/v1 || u8(m) || u8(b)`) and its own source version `u8(4)`
+(RFC-0010 A17; source version `u8(3)` is already used by RFC-0010 A15 hiding Circle
+sources). Version-1 sources (RFC-0010 A9) keep A2's map and are not opened recursively.
+The coefficient form costs one transform per row where A2 costs two.
 
 An **opening** proves `⟨a ⊗ b, M⟩ = v` for verifier-computable `a ∈ K^R`, `b ∈ K^C`.
-Version 3 adds: the prover commits `u = aᵀM` as the next level's source in place of
-sending it, and the checks on `u` become claims on that source.
+Commitment scheme v3 (source version `u8(4)`) adds: the prover commits `u = aᵀM` as the
+next level's source in place of sending it, and the checks on `u` become claims on that
+source.
 
 ### 1.3 Modes
 
@@ -52,8 +56,10 @@ sending it, and the checks on `u` become claims on that source.
   and the row combination is also the proximity test. No separate certificate is
   produced.
 - **Certified mode**, for model sources. The registration certificate of RFC-0010 A9
-  is kept, computed on the coefficient-form map under a version-3 source context. An
-  opening may then use any verifier-computable `(a, b)`. With exactly one claim on
+  is kept, computed on the coefficient-form map under a version-4 source context
+  (RFC-0010 A17). Because registration draws all `ℓ` `CertificateWeight` coordinates in
+  one round (no sumcheck), its proximity error is unconditionally `2·ℓ·(e_c + 1)/|K|`.
+  An opening may then use any verifier-computable `(a, b)`. With exactly one claim on
   the source per proof, `a` is the weight-side partial evaluation of the matmul
   sumcheck (the fused opening) and no batching pass reads the weights. That needs one
   model source per weight role, stacked over layers (task E18-07). A source with
@@ -66,14 +72,17 @@ sending it, and the checks on `u` become claims on that source.
   stay version-1 sources with their A9 certificate and openings, as RFC-0026 uses
   them, until an amendment reduces such a functional to a point claim (Q51).
 
-### 1.4 Companion amendments required at acceptance
+### 1.4 Companion amendments
 
-- **A new RFC-0010 amendment**: admits fresh mode for sources whose claims are reduced to one
+- **RFC-0010 A17**: admits fresh mode for sources whose claims are reduced to one
   transcript-random point, and the recursive opening of §2, replacing for those two
   cases the last sentence of A3 item 1 and the cost sentence of A3 item 10; registers
-  the coefficient-form code identity and source version 3 (Q48).
-- **A new RFC-0012 amendment**: the batching-coefficient label, the level roots' absorb
-  label, and one PCS record per level.
+  the coefficient-form code identity `stele/circle-coeff-m31/v1 || u8(m) || u8(b)`,
+  source version `u8(4)`, and Policy 3 (`policy = u8(3)`, restricted to version-4
+  sources so `NC-0613` is preserved) (Q48).
+- **RFC-0012 A20**: reserves the level-root absorb label (`stele/v0.1/pcs/level-root`),
+  the batching-coefficient labels (`stele/v0.1/pcs/level-beta`,
+  `stele/v0.1/pcs/level-gamma`), and one PCS record per level.
 - RFC-0008 A5 and RFC-0006 A8 are unchanged.
 
 ## 2. Protocol (transcript order)
@@ -86,16 +95,21 @@ For one source at level `i` with claim `⟨w_i, M_i⟩ = v_i`. At level 0 in fre
    `Σ_x w̃_i(x)·M̃_i(x)`; the challenges are the row point `r_i`.
 2. **Commit the row combination.** The prover computes `u_{i+1} = eq(·, r_i)ᵀ M_i` (certified
    level 0: `aᵀM_0`), arranges it as `R_{i+1} × C_{i+1}`, encodes, hashes and sends
-   the root, which is absorbed. If `C_i` is at most the plan's final length the
-   prover sends `u_{i+1}` itself and the recursion ends.
+   the root, which is absorbed under `stele/v0.1/pcs/level-root`. If `C_i` is at most
+   the plan's final length the prover sends `u_{i+1}` itself in the clear (no Merkle
+   root) and absorbs its canonical bytes under `stele/v0.1/pcs/level-root` before step 3
+   so the prover cannot choose `u_L` after seeing the last level's query positions; the
+   recursion ends after step 6.
 3. **Query.** The verifier draws `q_i` column indices from the transcript with the
-   RFC-0012 A10 sampler (independent draws; duplicates are kept). The prover sends
-   each column of `M̂_i` with its Merkle path.
+   RFC-0012 A10 sampler (`stele/v0.1/pcs/opening-column`; independent draws, duplicates
+   kept). The prover sends each column of `M̂_i` with its Merkle path, and the queried
+   column payloads are absorbed (`stele/v0.1/pcs/opening-columns`) before step 4
+   (strong Fiat–Shamir, RFC-0012 §2, RFC-0030 §1.2).
 4. **Derive the next claim.** For each queried column `j` let
    `y_j = Σ_r eq(r_i)_r · M̂_i[r, j]`. Because the code is linear,
    `Enc(u_{i+1})[j] = ⟨g_j, u_{i+1}⟩`, where `g_j` is the vector of circle-basis
    functions at domain point `j`. The verifier draws one batching coefficient `β`
-   (its label is registered at acceptance) and sets
+   (`stele/v0.1/pcs/level-beta`, RFC-0012 A20) and sets
    `w_{i+1} = w_i(r_i, ·) + Σ_j β^j·g_j` and `v_{i+1} = v_i' + Σ_j β^j·y_j`,
    where `v_i'` is the sumcheck's running claim and `j` counts queries from 1. At
    level 0 no row round is run and `v_0' = v_0`. In fresh mode the row weights are
@@ -200,7 +214,7 @@ Per level, with distance `D_i = N_i − C_i` (RFC-0010 A3 item 3; `D_i = N_i` wh
 
 ## 6. Negative controls
 
-Proposed ids, entered in the catalogue at acceptance.
+Reserved in `tests/negative-controls/catalog.md` (implemented in E19-03 and E19-05).
 
 | NC | Tamper | Expected |
 |---|---|---|
@@ -219,7 +233,7 @@ now keeps the byte layout stable.
 
 ## 8. Open questions
 
-- **Q27** (restated): this RFC is the proposed answer for succinct openings.
+- **Q27** (restated): this RFC is the development-tier answer for succinct openings.
 - **Q48**: the byte identity and version of the coefficient-form code, and whether
   model sources registered in evaluation form (version 1) need a one-time
   re-registration or a proved change of basis. The development tier has no long-lived
@@ -244,4 +258,18 @@ now keeps the byte layout stable.
 
 ## 9. Amendment log
 
-None.
+- **Acceptance (development tier, ADR-152, task E19-01):** Accepted for the development
+  tier (RFC-0027 §2) together with companion amendments RFC-0010 A17 and RFC-0012 A20.
+  Because RFC-0010 A15 already allocated source version `u8(3)` for hiding Circle sources,
+  RFC-0010 A17 allocates **source version `u8(4)`** and code identity
+  `stele/circle-coeff-m31/v1 || u8(m) || u8(b)` (`m ≥ 0`, `b ∈ {1, 2, 3, 4}`, `m + b ≤ 30`)
+  for coefficient-form recursive Circle RS sources (resolving Q48's wire identity), and
+  registers Policy 3 (`policy = u8(3)`, restricted to version-4 sources). Exact-integer
+  parameter receipts and Bet B3 verification (`2^20..2^34` uncapped, RFC-0030 §3 capped,
+  rate-1/2 `b = 1` option, strict single-round certified model sources, faithful level-1
+  segment joining, and Q50 wider-field pricing) are pinned in
+  `research/rfc0029-pcs/check_policy3.py` and `research/rfc0029-pcs/REPORT.md`
+  (`2^32` QM31 capped: `8,388,256 B` / `8.000 MiB` for `b ≥ 2`, `3,810,608 B` / `3.634 MiB`
+  for `b ≥ 1`; per-round QM31 = `1.570 MiB`; Ext6 Q50 = `0.950 MiB`; OM31 Q50 = `1.035 MiB`).
+  Controls `NC-0630..0635` are entered as `todo` in `tests/negative-controls/catalog.md`
+  for E19-03/E19-05. Promotion to `standard` or `treaty` remains a separate Workflow 10 task.

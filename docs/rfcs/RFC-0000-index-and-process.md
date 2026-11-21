@@ -35,9 +35,9 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted (A1, A2, A3, A4, A5, A6, A7); A8 Draft |
 | 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted (A2, A3, A4, A5, A6, A7 conditional, A8, A9 development tier); A1 Draft |
 | 0009 | Attention protocol | Accepted (A1, A4); A2, A3 superseded by A4 for RFC-0025 |
-| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A1, A2, A3, A4, A5, A6, A8, A9, A10, A11, A12, A13, A14, A15, A16); A7 Draft |
+| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A1, A2, A3, A4, A5, A6, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17 dev); A7 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted (A2, A8); A1 Draft; A3–A7 superseded by A8 for RFC-0025 |
-| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19 development tier) |
+| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20 development tier) |
 | 0013 | Zero-knowledge | Accepted (A2, A4, A5, A6, A7, A8, A9, A10, conditional; dev-zk admitted at the development tier, ADR-109; A8 byte 4, ADR-114; A9/A10 stories42M T ≤ 64, ADR-117/119); A1, A3 Draft |
 | 0014 | GPU prover architecture | Accepted (A1, A2, A3, A4, A5, A6) |
 | 0015 | Distributed proving | Accepted (A1) |
@@ -51,10 +51,10 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0023 | Integer Requant with a fixed advice cut | Accepted (A1) |
 | 0024 | Centered signed-int8 matmul and Requant | Accepted |
 | 0025 | Canonical full-model CQIS and checkpoint conversion | Accepted (A1, A2, A3) |
-| 0026 | Development-profile end-to-end prefill proof | Accepted (A1, A2, A3, A4, A5, A6, A8, A10, A11, A12, A13, A14, A15 including erratum E1, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27, A28; A9 conditional); A7 Draft |
+| 0026 | Development-profile end-to-end prefill proof | Accepted (A1, A2, A3, A4, A5, A6, A8, A10, A11, A12, A13, A14, A15 including erratum E1, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27, A28; A9 conditional); A7 superseded by A11/A12 and RFC-0029 (ADR-153) |
 | 0027 | Build program: tiers, ladder, lanes and milestones | Accepted |
 | 0028 | Relation IR v2: the commit rule, virtual columns and segments | Accepted (development tier) |
-| 0029 | Commitment scheme v3: interleaved circle Reed–Solomon with a recursive opening | Draft |
+| 0029 | Commitment scheme v3: interleaved circle Reed–Solomon with a recursive opening | Accepted (development tier, ADR-152) |
 | 0030 | Security accounting: round-by-round error, Fiat–Shamir and the profiles | Draft |
 
 RFC-0027 §2 adds a shortened acceptance path for development-tier protocol changes; §2 above is unchanged for
