@@ -872,17 +872,24 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         {
             return Err(Error::SourceShape);
         }
-        let root = tree.root;
+        let BuiltBaseTree {
+            levels,
+            denom,
+            root,
+        } = tree;
         let mut values = root;
         let mut point = Vec::new();
         let mut a = accounting(self)?;
         let mut steps = Vec::new();
         reserve(&mut steps, self.m as usize)?;
         bind(self, root, t)?;
-        // Upper levels `1..m` from prebuilt extension pairs.
-        for children in tree.levels.iter().skip(1) {
+        // Upper levels `1..m` from prebuilt extension pairs. A level is freed once its
+        // child tables are made: the levels are half the tree's memory.
+        for children in levels.into_iter().skip(1) {
             let i = layer(self, &point, values, t, &mut a)?;
-            let (step, next) = prove_layer(&i, split_children(children)?, &point, t)?;
+            let tables = split_children(&children)?;
+            drop(children);
+            let (step, next) = prove_layer(&i, tables, &point, t)?;
             a.layers.push(ScRecord {
                 id: i.id,
                 m: i.num_vars,
@@ -898,8 +905,8 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         if self.m >= 1 {
             let i = layer(self, &point, values, t, &mut a)?;
             let (step, next) = if self.m == 1 {
-                let [p0, q0] = leaves.leaf_at(&tree.denom, 0);
-                let [p1, q1] = leaves.leaf_at(&tree.denom, 1);
+                let [p0, q0] = leaves.leaf_at(&denom, 0);
+                let [p1, q1] = leaves.leaf_at(&denom, 1);
                 let tables = vec![vec![p0], vec![q0], vec![p1], vec![q1], vec![K::from_i64(1)]];
                 let (s, n, _) = prove_dense(&i, tables, t)?;
                 (s, n)
@@ -908,7 +915,7 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
                 reserve(&mut next, i.num_vars as usize)?;
                 let summand = BaseLeafSummand {
                     leaves,
-                    denom: &tree.denom,
+                    denom: &denom,
                     r: &point,
                     suffix: Some(stele_sumcheck::parallel::eq_table(&point[1..])?),
                     weights: [
