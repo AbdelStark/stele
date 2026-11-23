@@ -758,7 +758,7 @@ where
 fn prove_recursive_with_bound<F, V>(
     t: &mut Transcript<K>,
     relation: &Relation,
-    mut segment_values: F,
+    segment_values: F,
     model: &[RecursiveModelSource<'_>],
     instance_bound: u8,
 ) -> Result<(ProofV2, Metrics), Error>
@@ -769,7 +769,53 @@ where
     let plan_timer = Stopwatch::start();
     let plan = plan_recursive_with_bound(relation, instance_bound)?;
     let plan_ns = plan_timer.elapsed_ns();
+    prove_recursive_with_plan(t, relation, plan, plan_ns, segment_values, model)
+}
 
+/// [`prove_recursive_measured`] as a malicious prover (controls only): the plan and the
+/// absorbed relation digest are `relation`'s, and the prover reads the public selector
+/// column of `forge.deselect` with that selected entry cleared, so the position is left
+/// out of its lookup tree and of its selected product (control NC-1344). The joined
+/// recursion supports no other field of `forge`.
+#[cfg(feature = "controls")]
+pub fn prove_recursive_forged<F, V>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    segment_values: F,
+    model: &[RecursiveModelSource<'_>],
+    forge: &Forge,
+) -> Result<ProofV2, Error>
+where
+    F: FnMut(u32) -> Result<V, Error>,
+    V: Borrow<Values>,
+{
+    if forge.table.is_some()
+        || forge.public.is_some()
+        || forge.witness.is_some()
+        || forge.column_claim.is_some()
+    {
+        return Err(Error::Unsupported);
+    }
+    let plan = plan_recursive_with_bound(relation, DEFAULT_INSTANCE_BOUND)?;
+    let read = deselected(relation, forge.deselect)?;
+    prove_recursive_with_plan(t, &read, plan, 0, segment_values, model).map(|(proof, _)| proof)
+}
+
+/// The prover of [`prove_recursive_measured`] over a plan made beforehand. `relation` is
+/// the relation the prover reads its public columns from: the plan's own, except under
+/// the forging prover of the controls.
+fn prove_recursive_with_plan<F, V>(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    plan: RecursiveEnginePlan,
+    plan_ns: u64,
+    mut segment_values: F,
+    model: &[RecursiveModelSource<'_>],
+) -> Result<(ProofV2, Metrics), Error>
+where
+    F: FnMut(u32) -> Result<V, Error>,
+    V: Borrow<Values>,
+{
     if model.len() != plan.model.len() {
         return Err(Error::Weights);
     }
