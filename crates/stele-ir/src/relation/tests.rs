@@ -839,7 +839,8 @@ fn matches_reference_virtual_values_in_the_narrow_and_the_checked_form() {
         2,
     );
     let mut vals = Values::new(&rel);
-    vals.set(&rel, acc, vec![0, 1, i64::MAX, 0]).expect("set");
+    // The entries before the overflowed one fit the narrow form, so it alone decides.
+    vals.set(&rel, acc, vec![0, 0, i64::MAX, 0]).expect("set");
     vals.set(&rel, y, ys).expect("set");
     assert_eq!(
         eval_column(&rel, &vals, wide),

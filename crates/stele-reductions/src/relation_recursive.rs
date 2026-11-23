@@ -775,7 +775,7 @@ where
 /// [`prove_recursive_measured`] as a malicious prover (controls only): the plan and the
 /// absorbed relation digest are `relation`'s, and the prover reads the public selector
 /// column of `forge.deselect` with that selected entry cleared, so the position is left
-/// out of its lookup tree and of its selected product (control NC-1344). The joined
+/// out of its lookup tree and of its selected product (control NC-1342). The joined
 /// recursion supports no other field of `forge`.
 #[cfg(feature = "controls")]
 pub fn prove_recursive_forged<F, V>(

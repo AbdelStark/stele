@@ -2268,7 +2268,7 @@ pub struct Forge {
     pub column_claim: Option<ColumnId>,
     /// Read public selector column `c` with its selected entry `j` cleared while proving,
     /// so the prover leaves that position out of its lookup tree and of its selected
-    /// product (RFC-0008 A3, RFC-0026 §3.3; control NC-1344).
+    /// product (RFC-0008 A3, RFC-0026 §3.3; control NC-1342).
     pub deselect: Option<(ColumnId, usize)>,
 }
 
