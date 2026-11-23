@@ -15,6 +15,7 @@ RMSNorm eps 1e-5, RoPE theta 10000, SwiGLU, shared embedding/classifier), traine
                       half-split layout (RoPE layout 1), and the shared classifier is written
                       as an explicit lm_head.weight (RFC-0025 Llama sources are untied).
   frames   OUT FR     write the Model, Preparation, Source and Assets frames for prepare_source.
+  frames-power OUT FR the same with power-of-two rows and channel scales (RFC-0004 A16).
   fidelity OUT PR [IN] fp32 reference vs the exact CQIS executor (harness cqis_torch, CPU) on the
                       prompt and on TinyStories windows; prints the greedy continuations and
                       the prove-dev arguments. Informative only, not a gate.
@@ -64,6 +65,8 @@ DIM, HIDDEN, LAYERS, HEADS, VOCAB, CONTEXT = 512, 1376, 8, 8, 32000, 1024
 PROMPT = 'Once upon a time, there was a little girl named Lily. She loved to play outside in the park.'
 BIN = 'stories42M.bin'
 GROUP = 128  # RFC-0004 A15 grouped rows on the d = 512 affine inputs
+POWER_BITS, POWER_GATED_LEAST = 10, 5  # RFC-0004 A16 power-of-two rows (`frames-power`)
+POWER_FRAMES = {}
 
 
 def sha256(path):
@@ -129,9 +132,13 @@ def convert(src, out):
     assert got == OUTPUTS, 'OutputDrift'
 
 
-def configuration():
+def configuration(power=False):
     """CQIS family-1 Model and SourceMap: the Llama-3.1 qualification parameters at this shape,
-    int8 matrices, grouped rows on the d-wide affine inputs, greedy decoding."""
+    int8 matrices, grouped rows on the d-wide affine inputs, greedy decoding.
+
+    power (RFC-0004 A16): every affine-input row is a power-of-two row with 10-bit codes (the
+    gated row with a least exponent of 5) and every projection matrix has power-of-two
+    channel scales."""
     import qualify_original_llama as ql
     from model_codec import Rotation
     from rms_bounds import RMSNorm
@@ -140,10 +147,10 @@ def configuration():
     s = base.Shape(1, LAYERS, DIM, HEADS, HEADS, DIM//HEADS, HIDDEN, VOCAB, CONTEXT)
     norm = RMSNorm(DIM, 7, 8, 7, 1, 100000)
     rotation = Rotation(DIM//HEADS, CONTEXT, 0, 1, 0, ((10000, 1), (1, 1), (0, 1), (0, 1)))
-    g = (2, GROUP)
-    block = ql.Block(norm, norm, (7,)*7, 7, 7, 7, (g, (0, 0), (0, 0), (0, 0), g, g, (0, 0)), 1, -3, 0, 0,
+    g, gated = ((3, POWER_BITS), (3, POWER_BITS+256*POWER_GATED_LEAST)) if power else ((2, GROUP), (0, 0))
+    block = ql.Block(norm, norm, (7,)*7, 7, 7, 7, (g, (0, 0), (0, 0), (0, 0), g, g, gated), 1, -3, 0, 0,
                      base.Exponential(CONTEXT, 15, 7, 14, 0), base.Activation(HIDDEN, 1, 7, 7), rotation)
-    formats = tuple((8, 0) if len(ds) == 2 else (16, 8) for _, _, ds in base.roles(s))
+    formats = tuple((8, int(power and name != 'token')) if len(ds) == 2 else (16, 8) for name, _, ds in base.roles(s))
     model = ql.Model(s, formats, 7, (block,)*LAYERS, norm, g, 7, None)
     from random import Random
     m = base.mapped(model, 2, Random(0))
@@ -151,12 +158,12 @@ def configuration():
     return model, mapping
 
 
-def frames(out, fr):
+def frames(out, fr, power=False):
     import qualify_original_llama as ql
     base = ql.base
     out, fr = Path(out), Path(fr)
     fr.mkdir(parents=True, exist_ok=True)
-    model, mapping = configuration()
+    model, mapping = configuration(power)
     file = lambda n: base.sc.File(n, (out/n).stat().st_size, bytes.fromhex(sha256(out/n)))
     source = base.sc.Source(0, None, (file('model.safetensors'),))
     assets = base.sc.Assets(file('config.json'), (file('tokenizer.model'),), None)
@@ -164,7 +171,9 @@ def frames(out, fr):
            'source.bin': base.sc.encode_source(source), 'assets.bin': base.sc.encode_assets(assets)}
     for name, value in raw.items():
         (fr/name).write_bytes(value)
-    assert {n: hashlib.sha256(v).hexdigest() for n, v in raw.items()} == FRAMES, 'FrameDrift'
+    got = {n: hashlib.sha256(v).hexdigest() for n, v in raw.items()}
+    print(json.dumps(got, indent=1))
+    assert got == (POWER_FRAMES if power else FRAMES), 'FrameDrift'
 
 
 def reference(t, tokens, interleaved=False):
@@ -286,4 +295,5 @@ def fidelity(out, pr, downloads=None, count=4):
 if __name__ == '__main__':
     if not __debug__:
         raise RuntimeError('assertions must remain enabled')
-    {'convert': convert, 'frames': frames, 'fidelity': fidelity}[sys.argv[1]](*sys.argv[2:])
+    {'convert': convert, 'frames': frames, 'frames-power': lambda *a: frames(*a, power=True),
+     'fidelity': fidelity}[sys.argv[1]](*sys.argv[2:])

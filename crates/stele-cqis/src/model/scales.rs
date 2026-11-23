@@ -8,6 +8,16 @@ use alloc::vec::Vec;
 const PREFIX: &[u8] = b"stele/v0.1/cqis/scales";
 const LIMIT: u64 = 1 << 26;
 
+/// RFC-0004 A16: a matrix with format parameter 1 has power-of-two channel mantissas.
+fn admits(model: &Model, ordinal: u16, mantissa: u16) -> bool {
+    mantissa != 0
+        && (mantissa.is_power_of_two()
+            || model
+                .formats()
+                .get(usize::from(ordinal))
+                .is_none_or(|f| f.parameter() != 1))
+}
+
 fn matrices(model: &Model) -> impl Iterator<Item = Physical> + '_ {
     (0..model.shape().record_count())
         .filter_map(|i| model.shape().physical(i))
@@ -66,7 +76,7 @@ impl Scales {
             if mantissas.len() as u64 != u64::from(physical.dimensions()[0]) {
                 return Err(Error::Physical);
             }
-            if mantissas.contains(&0) {
+            if !mantissas.iter().all(|m| admits(model, physical.ordinal(), *m)) {
                 return Err(Error::ScaleMantissa);
             }
             hash.update(&physical.ordinal().to_le_bytes());
@@ -173,7 +183,7 @@ impl Scales {
                 r.exact(bytes)?;
                 for word in bytes.chunks_exact(2) {
                     let m = u16::from_le_bytes([word[0], word[1]]);
-                    if m == 0 {
+                    if !admits(model, ordinal, m) {
                         return Err(Error::ScaleMantissa);
                     }
                     mantissas.push(m);

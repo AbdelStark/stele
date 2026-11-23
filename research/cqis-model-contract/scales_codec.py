@@ -30,11 +30,13 @@ def layout(model):
     return model_id, matrices, size
 
 
-def validate(scale, count):
+def validate(scale, count, power=False):
+    """power (RFC-0004 A16, matrix format parameter 1): every mantissa is a power of two."""
     if type(scale) is not Scale:
         raise ValueError('Scale')
     integer(scale.exponent, -1099, 1024, 'Exponent')
-    if type(scale.mantissas) is not bytes or len(scale.mantissas) != 2*count or any(m == 0 for m in scale.values()):
+    if (type(scale.mantissas) is not bytes or len(scale.mantissas) != 2*count
+            or any(m == 0 or (power and m & (m-1)) for m in scale.values())):
         raise ValueError('Mantissas')
 
 
@@ -44,7 +46,7 @@ def encode(model, scales):
         raise ValueError('Records')
     chunks = [PREFIX, model_id]
     for (i, count), scale in zip(matrices, scales):
-        validate(scale, count)
+        validate(scale, count, model.formats[i][1] == 1)
         chunks += [pack('<Hh', i, scale.exponent), scale.mantissas]
     result = b''.join(chunks)
     assert len(result) == size
@@ -67,7 +69,7 @@ def decode(model, raw):
         record, exponent = unpack_from('<Hh', raw, pos)
         if record != i:
             raise ValueError('Record')
-        scale = Scale(exponent, raw[pos+4:pos+4+2*count]); validate(scale, count)
+        scale = Scale(exponent, raw[pos+4:pos+4+2*count]); validate(scale, count, model.formats[i][1] == 1)
         result.append(scale); pos += 4+2*count
     assert pos == size
     return tuple(result)

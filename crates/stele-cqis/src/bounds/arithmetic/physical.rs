@@ -9,7 +9,8 @@ impl Record {
         let physical = shape.physical(ordinal).ok_or(Error::Parameters)?;
         let dims = physical.dimensions();
         let matrix = dims.len() == 2;
-        if (matrix && (!matches!(bits, 4 | 8) || parameter != 0))
+        // RFC-0004 A16: matrix parameter 1 is power-of-two channel scales.
+        if (matrix && (!matches!(bits, 4 | 8) || parameter > 1))
             || (!matrix && (bits != 16 || parameter > 30))
         {
             return Err(Error::Parameters);

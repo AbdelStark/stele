@@ -84,8 +84,10 @@ impl Scalar {
         value.negative = false;
         value
     }
-    pub fn exponent(self, bits: u8) -> Result<i16, Error> {
-        let bound = u64::from(limit(bits)?) * 65535;
+    /// `power` (RFC-0004 A16): the largest channel mantissa is at most 2^15, so every
+    /// mantissa rounds up to a power of two within u16.
+    pub fn exponent(self, bits: u8, power: bool) -> Result<i16, Error> {
+        let bound = u64::from(limit(bits)?) * if power { 32768 } else { 65535 };
         if self.magnitude == 0 {
             return Ok(0);
         }
@@ -104,13 +106,19 @@ impl Scalar {
         }
         Ok(e)
     }
-    pub fn mantissa(self, exponent: i16, bits: u8) -> Result<u16, Error> {
+    /// `power` (RFC-0004 A16): the least power of two at or above the minimal mantissa.
+    pub fn mantissa(self, exponent: i16, bits: u8, power: bool) -> Result<u16, Error> {
         let (q, fraction, _) =
             self.ratio(i32::from(self.power) - i32::from(exponent), limit(bits)?)?;
         let value = q
             .checked_add(u64::from(fraction))
             .ok_or(Error::ConversionOverflow)?
             .max(1);
+        let value = if power {
+            value.checked_next_power_of_two().ok_or(Error::ScaleMantissa)?
+        } else {
+            value
+        };
         u16::try_from(value).map_err(|_| Error::ScaleMantissa)
     }
     pub fn weight(self, exponent: i16, mantissa: u16, bits: u8) -> Result<i16, Error> {

@@ -19,16 +19,20 @@ use stele_ir::relation::{
 pub mod attention;
 pub mod embedding;
 mod limbs;
+pub mod power;
 pub mod projection;
 pub mod rmsnorm;
 pub mod row;
 
 pub use attention::{Attention, AttentionCapture, AttentionPlan, PositionCapture};
+pub use power::{PowerGated, PowerGatedCapture, PowerOutput, PowerPlan, PowerProjection, PowerRow};
 pub use projection::{Projection, ProjectionCapture, ProjectionPlan};
 pub use row::{ConversionCapture, Policy, RowConversion, RowOutput};
 
 #[cfg(test)]
 mod norm_embedding_tests;
+#[cfg(test)]
+mod power_tests;
 #[cfg(test)]
 pub(crate) mod tests;
 

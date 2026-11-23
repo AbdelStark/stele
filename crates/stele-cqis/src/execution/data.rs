@@ -187,6 +187,9 @@ impl<'a> Data<'a> {
         mut capture: Option<&mut Projection>,
     ) -> Result<Vec<T>, Error> {
         let ordinal = self.ordinal(role, layer)?;
+        if row.exponent().is_some() {
+            return self.affine_power(ordinal, row, fraction, output, capture);
+        }
         let r = &self.records[ordinal];
         if row.codes().len() != r.columns {
             return Err(Error::Arithmetic);
@@ -264,6 +267,86 @@ impl<'a> Data<'a> {
                     .scaled((product, shift), (i128::from(b), bias_shift), 1, value)?;
             }
             out.push(output(value)?);
+        }
+        Ok(out)
+    }
+    /// RFC-0004 A16: a power-of-two row into a matrix with power-of-two channel scales.
+    /// `lambda_j = f - fo - e - k_j >= 1` for the channel mantissa `2^k_j`. With
+    /// `a' = min(a, lambda_min - 1)` and `a'' = a - a'`, the output is
+    /// `R+(A_j / 2^(lambda_j - a')) * 2^a''`: one rounding, half up.
+    fn affine_power<T>(
+        &self,
+        ordinal: usize,
+        row: &QuantisedRow,
+        fraction: u8,
+        output: impl Fn(i64) -> Result<T, Error>,
+        mut capture: Option<&mut Projection>,
+    ) -> Result<Vec<T>, Error> {
+        let r = &self.records[ordinal];
+        let codes = row.wide_codes();
+        let a = i32::from(row.exponent().ok_or(Error::Arithmetic)?);
+        let scale = self
+            .scales
+            .matrix(ordinal as u16)
+            .ok_or(Error::Arithmetic)?;
+        let mantissas = scale.mantissas();
+        if codes.len() != r.columns
+            || mantissas.len() != r.rows
+            || mantissas.iter().any(|m| !m.is_power_of_two())
+        {
+            return Err(Error::Arithmetic);
+        }
+        let high = i32::from(row.fraction()) - i32::from(fraction) - i32::from(scale.exponent());
+        let shift = |m: u16| high - m.trailing_zeros() as i32;
+        let low = mantissas.iter().map(|m| shift(*m)).min().unwrap_or(0);
+        if low < 1 {
+            return Err(Error::Arithmetic);
+        }
+        let kept = a.min(low - 1);
+        let excess = (a - kept) as u32;
+        let rows = rows_in_blocks(r.rows, r.columns, |j| {
+            let dot: i64 = if r.bits == 8 {
+                let w = &r.raw[j * r.columns..(j + 1) * r.columns];
+                // |q*w| < 2^18, so 2^12 terms of one block sum exactly in i32.
+                codes
+                    .chunks(4096)
+                    .zip(w.chunks(4096))
+                    .map(|(x, w)| {
+                        let sum: i32 = x
+                            .iter()
+                            .zip(w)
+                            .map(|(x, w)| i32::from(*x) * i32::from(*w as i8))
+                            .sum();
+                        i64::from(sum)
+                    })
+                    .sum()
+            } else {
+                codes
+                    .iter()
+                    .enumerate()
+                    .map(|(k, x)| {
+                        i64::from(*x) * i64::from(self.code(ordinal, j * r.columns + k))
+                    })
+                    .sum()
+            };
+            let s = (shift(mantissas[j]) - kept) as u32;
+            // |A| < 2^33, so a shift past 62 bits rounds to zero.
+            let z = if s > 62 {
+                0
+            } else {
+                (dot + (1i64 << (s - 1))) >> s
+            };
+            Ok((dot, s, z))
+        })?;
+        let mut out = reserved(r.rows)?;
+        for (dot, s, z) in rows {
+            if let Some(w) = capture.as_deref_mut() {
+                w.push(i128::from(dot), 0, 0)?;
+                w.output.rounding = super::capture::Rounding::HalfUp;
+                let divisor = 1u128.checked_shl(s).ok_or(Error::Capacity)?;
+                w.output.push(i128::from(dot), divisor, z)?;
+            }
+            out.push(output(z << excess)?);
         }
         Ok(out)
     }

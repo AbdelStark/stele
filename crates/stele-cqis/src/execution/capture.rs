@@ -29,6 +29,8 @@ pub enum Rounding {
     Floor,
     /// ceil(n/d) for n >= 0.
     Ceil,
+    /// Nearest, ties toward plus infinity: floor((2n+d)/(2d)) (RFC-0004 A16).
+    HalfUp,
 }
 
 /// Element-wise exact divisions with retained remainders:
@@ -222,7 +224,9 @@ impl Norm {
     }
 }
 
-/// One complete-row int8 conversion (RFC-0025 §2.2 flow §1; grouped RFC-0004 A15).
+/// One complete-row int8 conversion (RFC-0025 §2.2 flow §1; grouped RFC-0004 A15). A
+/// power-of-two row (RFC-0004 A16) records `input`, its one scale `2^a` and its codes;
+/// `scale` and `magnitude` stay empty.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Quantised {
     /// [lane] X (int16, or the gated int32 product).
@@ -252,6 +256,14 @@ impl Quantised {
             maximum: row.maximum(),
             ..Self::default()
         };
+        if row.exponent().is_some() {
+            put(&mut out.scales, row.scale())?;
+            for (x, q) in input.iter().zip(row.wide_codes()) {
+                put(&mut out.input, *x)?;
+                put(&mut out.codes, i64::from(*q))?;
+            }
+            return Ok(out);
+        }
         for (k, s) in row.scales().iter().enumerate() {
             put(&mut out.scales, *s)?;
             if p.policy != 1 {

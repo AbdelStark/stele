@@ -22,6 +22,44 @@ def round_ratio(numerator, denominator):
     return (-1 if numerator < 0 else 1)*(q+int(2*r >= denominator))
 
 
+def round_shift(n, k):
+    """RFC-0004 A16: R+(n/2^k) = floor((n + floor(2^k/2)) / 2^k), nearest with ties up."""
+    if type(n) is not int or type(k) is not int or k < 0:
+        raise ValueError('Ratio')
+    return (n+((1 << k) >> 1)) >> k
+
+
+def power_row(bits_and_least, gated):
+    """RFC-0004 A16: (c, amin, amax) of a power-of-two row policy scale b + 256*amin."""
+    integer(bits_and_least, 0, (1 << 32)-1, 'Policy')
+    bits, least = bits_and_least & 255, bits_and_least >> 8
+    integer(bits, 4, 12, 'Policy')
+    most = (29 if gated else 17)-bits  # a gated product of magnitude 2^28 or more is rejected
+    integer(least, 0, most, 'Policy')
+    return (1 << (bits-1))-1, least, most
+
+
+def power_affine(acc, mantissa, shift, exponent, fraction, output_fraction, low, bits=16):
+    """RFC-0004 A16: a power-of-two row (scale 2^shift) into a channel of mantissa 2^k.
+
+    lambda = fraction - output_fraction - exponent - k >= low >= 1, low the least lambda of
+    the matrix. a' = min(shift, low - 1), a'' = shift - a'; the output is
+    R+(acc / 2^(lambda - a')) * 2^a'': one rounding, half up."""
+    integer(acc, -(1 << 33), 1 << 33, 'Accumulator')
+    integer(mantissa, 1, 32768, 'WeightScale')
+    if mantissa & (mantissa-1):
+        raise ValueError('WeightScale')
+    integer(shift, 0, 26, 'RowScale')
+    integer(exponent, -1099, 1024, 'WeightExponent')
+    integer(fraction, 0, 44, 'Units')
+    integer(output_fraction, 0, 30, 'Units')
+    lam = fraction-output_fraction-exponent-(mantissa.bit_length()-1)
+    if low < 1 or lam < low:
+        raise ValueError('Shift')
+    kept = min(shift, low-1)
+    return checked_output(round_shift(acc, lam-kept) << (shift-kept), bits)
+
+
 def checked_output(value, bits=16):
     """Signed int16, or int24 for RFC-0004 A14's wide residual stream and O/down outputs."""
     integer(value, -(1 << (bits-1)), (1 << (bits-1))-1, 'Range')

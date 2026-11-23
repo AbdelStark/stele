@@ -197,7 +197,8 @@ impl PhysicalFormat {
     pub fn bits(self) -> u8 {
         self.bits
     }
-    /// Matrix channel axis (zero), or the vector's configured fractional bits.
+    /// Matrix scale rule (0, or 1 for power-of-two channel scales, RFC-0004 A16), or
+    /// the vector's configured fractional bits.
     pub fn parameter(self) -> u8 {
         self.parameter
     }
@@ -252,7 +253,8 @@ impl Model {
             }
             let bits = r.u8()?;
             let parameter = r.u8()?;
-            if (dimensions.len() == 2 && (!matches!(bits, 4 | 8) || parameter != 0))
+            // RFC-0004 A16: matrix parameter 1 is power-of-two channel scales.
+            if (dimensions.len() == 2 && (!matches!(bits, 4 | 8) || parameter > 1))
                 || (dimensions.len() == 1 && (bits != 16 || parameter > 30))
             {
                 return Err(Error::Physical);
@@ -278,7 +280,8 @@ impl Model {
         }) {
             return Err(Error::Width);
         }
-        let final_policy = Policy::read(&mut r, false, Some(shape.width()))?;
+        let final_policy =
+            Policy::read(&mut r, false, Some(shape.width()), shape.family() == 1)?;
         let logits_fraction = block::fraction(&mut r)?;
         let decoding = Decoding::read(r.blob(345)?)?;
         r.end()?;
@@ -294,6 +297,7 @@ impl Model {
             identity: [0; 32],
         };
         model.check_norm_sources()?;
+        model.check_power_rows()?;
         model.check_function_selections()?;
         if model.encode()? != raw {
             return Err(Error::Encoding);
@@ -309,6 +313,38 @@ impl Model {
             return Err(Error::Identity);
         }
         Ok(model)
+    }
+    /// RFC-0004 A16: a power-of-two row feeds only matrices with power-of-two channel
+    /// scales.
+    fn check_power_rows(&self) -> Result<(), Error> {
+        for (i, format) in self.formats.iter().enumerate() {
+            let physical = self
+                .shape
+                .physical(u16::try_from(i).map_err(|_| Error::Physical)?)
+                .ok_or(Error::Physical)?;
+            if self
+                .row_policy(physical.role(), physical.layer())
+                .is_some_and(|p| p.mode() == 3)
+                && format.parameter != 1
+            {
+                return Err(Error::Policy);
+            }
+        }
+        Ok(())
+    }
+    /// The policy of the row a projection matrix reads; `None` for any other record.
+    pub fn row_policy(&self, role: Role, layer: Option<u16>) -> Option<Policy> {
+        use Role::*;
+        let index = match role {
+            Query | Key | Value => 0,
+            Output => 4,
+            Up | Gate => 5,
+            Down => 6,
+            Head => return Some(self.final_policy),
+            _ => return None,
+        };
+        let block = self.blocks.get(usize::from(layer?))?;
+        Some(block.policies()[index])
     }
     fn check_norm_sources(&self) -> Result<(), Error> {
         use Role::*;

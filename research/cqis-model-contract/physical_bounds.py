@@ -24,7 +24,7 @@ class Physical:
         integer(self.bits, 4, 16, 'Format')
         if self.bits not in ((4, 8) if matrix else (16,)):
             raise ValueError('Format')
-        integer(self.parameter, 0, 0 if matrix else 30, 'Format')
+        integer(self.parameter, 0, 1 if matrix else 30, 'Format')  # RFC-0004 A16: matrix parameter 1
 
     def descriptor(self):
         dims = self.shape.roles()[self.record][2]

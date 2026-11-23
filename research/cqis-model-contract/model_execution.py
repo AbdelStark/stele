@@ -14,7 +14,8 @@ import attention_input_bounds as attention
 import decoding_execution as decoding
 from flow_bounds import Row as RowSpec
 from model_codec import encode as encode_model
-from numerics import LayerNorm, affine, checked_output, embedding, grouped_affine, integer, layer_norm, round_ratio, shifted_pair
+from numerics import (LayerNorm, affine, checked_output, embedding, grouped_affine, integer, layer_norm,
+                      power_affine, power_row, round_ratio, round_shift, shifted_pair)
 import request_bounds as request
 from rms_bounds import RMSNorm
 import scales_codec
@@ -82,6 +83,7 @@ class Row:
     codes: tuple[int,...]
     scale: int | tuple[int,...]  # a tuple of group scales for a grouped row (RFC-0004 A15)
     fraction: int
+    shift: int | None = None  # the exponent a of a power-of-two row, scale 2^a (RFC-0004 A16)
 
 
 def convert(values,fraction,policy,gated=False):
@@ -89,6 +91,12 @@ def convert(values,fraction,policy,gated=False):
     if type(values) is not tuple: raise ValueError('Row')
     RowSpec(len(values),int(gated),fraction,*policy)
     for x in values: integer(x,-(1<<30) if gated else -32768,(1<<30) if gated else 32767,'Input')
+    if policy[0]==3:  # RFC-0004 A16: the least exponent in amin..amax that keeps every code within [-c,c]
+        c,least,most=power_row(policy[1],gated); low,high=min(values+(0,)),max(values+(0,))
+        for a in range(least,most+1):
+            if round_shift(high,a)<=c and round_shift(low,a)>=-c: break
+        else: raise ValueError('RowRange')
+        return Row(tuple(round_shift(x,a) for x in values),1<<a,fraction,a)
     if policy[0]==2:
         g=policy[1]; parts=tuple(convert(values[i:i+g],fraction,(0,0),gated) for i in range(0,len(values),g))
         return Row(tuple(c for part in parts for c in part.codes),tuple(part.scale for part in parts),fraction)
@@ -108,6 +116,13 @@ def linear(data,name,layer,x,fraction):
     if len(x.codes)!=columns: raise ValueError('Shape')
     bias=None if data.model.shape.family or name=='head' else data.record(name+'.bias',layer)
     fb=0 if bias is None else data.model.formats[bias.ordinal][1]; result=[]
+    if x.shift is not None:  # RFC-0004 A16: one field matmul, then one rounding half up
+        e=data.scales[record.ordinal].exponent; top=max(data.scales[record.ordinal].values())
+        low=x.fraction-fraction-e-(top.bit_length()-1); bits=width(data.model) if name in ('O','down') else 16
+        for j in range(rows):
+            dot=sum(code*data.code(record,j*columns+k) for k,code in enumerate(x.codes))
+            result.append(power_affine(dot,data.scale(record,j)[0],x.shift,e,x.fraction,fraction,low,bits))
+        return tuple(result)
     grouped=type(x.scale) is tuple; g=columns//len(x.scale) if grouped else columns
     for j in range(rows):
         m,e=data.scale(record,j); b=0 if bias is None else data.code(bias,j); bits=width(data.model) if name in ('O','down') else 16

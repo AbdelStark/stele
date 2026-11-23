@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 
 from arithmetic_bounds import CAPACITY, P, _column, _encode_record, _rounding_roles, _unsigned, digit_bounds
-from numerics import group, integer
+from numerics import group, integer, power_row
 
 
 @dataclass(frozen=True)
@@ -17,8 +17,10 @@ class Row:
         integer(self.d, 1, 16384, 'Shape')
         integer(self.kind, 0, 1, 'Kind')
         integer(self.fraction, 0, 44 if self.kind else 30, 'Fraction')
-        integer(self.policy, 0, 2, 'Policy')
-        if self.policy == 2:  # RFC-0004 A15 grouped dynamic row: scale carries the group size
+        integer(self.policy, 0, 3, 'Policy')
+        if self.policy == 3:  # RFC-0004 A16 power-of-two row: scale is b + 256*amin
+            power_row(self.scale, self.kind)
+        elif self.policy == 2:  # RFC-0004 A15 grouped dynamic row: scale carries the group size
             group(self.scale, self.d, 'Scale')
         else:
             integer(self.scale, 1 if self.policy else 0,
@@ -56,6 +58,14 @@ class Gated:
 
 def derive(p):
     """All operands/counts are fixed by the checked role; no supplied bounds."""
+    if type(p) is Row and p.policy == 3:
+        # Schema 26 (RFC-0004 A16): x + floor(P/2) = q*P + rho with P = 2^a, amin <= a <= amax,
+        # |q| <= c and 0 <= rho < P.
+        c, least, most = power_row(p.scale, p.kind)
+        h, power = (1 << 30 if p.kind else 32768), 1 << most
+        scalars = (h, c, least, most, power, power-1, power//2, p.d-1, (c+1)//2)
+        roles = (((1, c, power),), ((1, c*power, 1), (1, power-1, 1)), ((1, h, 1), (1, power//2, 1)))
+        return 26, scalars, (), tuple(_column(t) for t in roles)
     if type(p) is Row and p.policy == 2:
         # Schema 23 (RFC-0004 A15): schema 4 for one dynamic group of g, then the magnitude
         # fold F = s*|q|, the offset radix-256 digits o (low in [0,255], top in [0,2*top]) and

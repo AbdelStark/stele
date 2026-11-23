@@ -51,15 +51,29 @@ pub struct Policy {
 }
 impl Policy {
     /// `n` is the row length of an affine-input row, which alone may be grouped:
-    /// RFC-0004 A15 mode 2 with a power-of-two g < n dividing n.
-    pub(super) fn read(r: &mut Reader<'_>, gated: bool, n: Option<u16>) -> Result<Self, Error> {
+    /// RFC-0004 A15 mode 2 with a power-of-two g < n dividing n. Such a row of a Llama
+    /// family Model (`power`) may also be a power-of-two row, RFC-0004 A16 mode 3 with
+    /// `scale = b + 256*amin`: a code width b in 4..=12 and a least row exponent amin
+    /// at most `17 - b` (`29 - b` for the gated row).
+    pub(super) fn read(
+        r: &mut Reader<'_>,
+        gated: bool,
+        n: Option<u16>,
+        power: bool,
+    ) -> Result<Self, Error> {
         let mode = r.u8()?;
         let scale = r.u32()?;
         let grouped =
             |n: u16| scale.is_power_of_two() && scale < u32::from(n) && u32::from(n) % scale == 0;
+        let (bits, least) = (scale & 255, scale >> 8);
         if !((mode == 0 && scale == 0)
             || (mode == 1 && (1..=if gated { 8454661 } else { 65535 }).contains(&scale))
-            || (mode == 2 && n.is_some_and(grouped)))
+            || (mode == 2 && n.is_some_and(grouped))
+            || (mode == 3
+                && power
+                && n.is_some()
+                && (4..=12).contains(&bits)
+                && least <= if gated { 29 } else { 17 } - bits))
         {
             return Err(Error::Policy);
         }
@@ -69,12 +83,14 @@ impl Policy {
         w.push(&[self.mode])?;
         w.push(&self.scale.to_le_bytes())
     }
-    /// Dynamic=0, static=1, grouped dynamic=2 (RFC-0004 A15); no automatic fallback.
+    /// Dynamic=0, static=1, grouped dynamic=2 (RFC-0004 A15), power-of-two=3 (A16);
+    /// no automatic fallback.
     pub fn mode(self) -> u8 {
         self.mode
     }
     /// Configured scale; dynamic configuration stores zero, not the runtime scale;
-    /// grouped configuration stores the group size g.
+    /// grouped configuration stores the group size g; a power-of-two row stores
+    /// `b + 256*amin`.
     pub fn scale(self) -> u32 {
         self.scale
     }
@@ -118,7 +134,7 @@ impl Block {
         let w = Some(s.width());
         let lengths = [w, None, None, None, w, w, Some(s.hidden())];
         for (i, p) in policies.iter_mut().enumerate() {
-            *p = Policy::read(r, s.family() == 1 && i == 6, lengths[i])?;
+            *p = Policy::read(r, s.family() == 1 && i == 6, lengths[i], s.family() == 1)?;
         }
         let score_m = r.u16()?;
         let score_e = r.u8()? as i8;

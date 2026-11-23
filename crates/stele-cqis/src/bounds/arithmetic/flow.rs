@@ -35,14 +35,14 @@ impl Row {
         Ok(())
     }
     /// RFC-0004 A16, a power-of-two row: the largest code magnitude `2^(b-1) - 1`, the
-    /// least row exponent `amin` and the largest, `17 - b` for an int16 row and `30 - b`
-    /// for a gated one.
+    /// least row exponent `amin` and the largest, `17 - b` for an int16 row and `29 - b`
+    /// for a gated one (a gated product of magnitude `2^28` or more is rejected).
     pub fn power(self) -> Option<Power> {
         let (bits, least) = (self.scale & 255, self.scale >> 8);
         if self.policy != 3 || !(4..=12).contains(&bits) {
             return None;
         }
-        let most = if self.kind == 0 { 17 } else { 30 } - bits;
+        let most = if self.kind == 0 { 17 } else { 29 } - bits;
         (least <= most).then_some(Power {
             code: (1 << (bits - 1)) - 1,
             least: least as u8,

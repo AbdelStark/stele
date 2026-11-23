@@ -47,13 +47,14 @@ def _rounded(n,shift,denominator):
     return (quotient+int(2*remainder>=bottom))*(-1 if n<0 else 1)
 
 
-def _scale(view,bits):
+def _scale(view,bits,power=False):
+    """power (RFC-0004 A16): the top mantissa is at most 2^15 and each rounds up to a power of two."""
     q=(1<<(bits-1))-1; peak=(0,0)
     for k in range(view.count):
         n,p=view.scalar(k); peak=_maximum(peak,(abs(n),p))
     n,p=peak; exponent=0
     if n:
-        bound=q*65535; exponent=n.bit_length()-bound.bit_length()+p
+        bound=q*(32768 if power else 65535); exponent=n.bit_length()-bound.bit_length()+p
         top,bottom=_ratio(n,p-exponent,bound)
         exponent+=int(top>bottom)
     integer(exponent,-1099,1024,'Exponent')
@@ -63,7 +64,9 @@ def _scale(view,bits):
         for column in range(columns):
             n,p=view.scalar(row*columns+column); maximum=_maximum(maximum,(abs(n),p))
         n,p=maximum; top,bottom=_ratio(n,p-exponent,q)
-        m=max(1,(top+bottom-1)//bottom); integer(m,1,65535,'Mantissa'); words.extend(pack('<H',m))
+        m=max(1,(top+bottom-1)//bottom)
+        if power: m=1<<(m-1).bit_length()
+        integer(m,1,65535,'Mantissa'); words.extend(pack('<H',m))
     return scales_codec.Scale(exponent,bytes(words))
 
 
@@ -124,7 +127,7 @@ def convert(model,mapping,source,assets,files,sink):
     scales=[]; by_record=[]
     for view,fmt in zip(views,model.formats):
         if fmt[0]!=16:
-            scale=_scale(view,fmt[0]); scales.append(scale)
+            scale=_scale(view,fmt[0],fmt[1]==1); scales.append(scale)
         else:
             scale=None
             for _ in _codes(view,fmt,None): pass

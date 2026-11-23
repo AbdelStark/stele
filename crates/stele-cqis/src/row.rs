@@ -1,6 +1,7 @@
 //! RFC-0025 §2.2/2.5 and flow §1: complete-row quantisation, without proof admission.
 //! A grouped row (RFC-0004 A15, policy 2) converts each group of g values on its own.
-use crate::bounds::arithmetic::{self, Record, Row};
+//! A power-of-two row (RFC-0004 A16, policy 3) has b-bit codes and the scale `2^a`.
+use crate::bounds::arithmetic::{self, Power, Record, Row};
 use alloc::vec::Vec;
 
 /// A rejected configuration or complete row; no partial output is returned.
@@ -15,6 +16,7 @@ pub enum Error {
     /// A gated input is outside [-2^30,2^30]; this is not a general int32 converter.
     Input,
     /// Exact rounding exceeds [-127,127]; a static policy never changes its scale.
+    /// For a power-of-two row: no exponent up to the largest holds every code.
     Range,
     /// The complete owned output row could not be allocated.
     Capacity,
@@ -77,6 +79,9 @@ impl Quantiser {
         };
         let high = if self.parameters.kind == 0 { h - 1 } else { h };
         let p = self.parameters;
+        if let Some(limits) = p.power() {
+            return self.convert_power(length, input, limits, (-h, high));
+        }
         let g = usize::from(p.dimension);
         let g = if p.policy == 2 { p.scale as usize } else { g };
         let mut maximum = (p.policy == 0).then_some((0u16, 0u32));
@@ -134,8 +139,46 @@ impl Quantiser {
         Ok(QuantisedRow {
             parameters: self.parameters,
             codes,
+            wide: Vec::new(),
             scales,
             maximum,
+        })
+    }
+    /// RFC-0004 A16: codes `R+(x/2^a) = floor((x + floor(2^a/2)) / 2^a)` at the least
+    /// exponent `a` in `amin..=amax` that keeps every code within `[-c, c]`.
+    fn convert_power(
+        &self,
+        length: usize,
+        input: impl Iterator<Item = i32> + Clone,
+        limits: Power,
+        envelope: (i32, i32),
+    ) -> Result<QuantisedRow, Error> {
+        let code = |x: i32, a: u8| (i64::from(x) + ((1i64 << a) >> 1)) >> a;
+        // R+ is monotone, so the row's extremes decide the exponent.
+        let (mut low, mut high) = (0, 0);
+        for value in input.clone() {
+            if !(envelope.0..=envelope.1).contains(&value) {
+                return Err(Error::Input);
+            }
+            low = low.min(value);
+            high = high.max(value);
+        }
+        let c = i64::from(limits.code);
+        let a = (limits.least..=limits.most)
+            .find(|&a| code(high, a) <= c && code(low, a) >= -c)
+            .ok_or(Error::Range)?;
+        let mut wide = Vec::new();
+        wide.try_reserve_exact(length).map_err(|_| Error::Capacity)?;
+        wide.extend(input.map(|x| code(x, a) as i16));
+        let mut scales = Vec::new();
+        scales.try_reserve_exact(1).map_err(|_| Error::Capacity)?;
+        scales.push(1 << a);
+        Ok(QuantisedRow {
+            parameters: self.parameters,
+            codes: Vec::new(),
+            wide,
+            scales,
+            maximum: None,
         })
     }
 }
@@ -149,6 +192,8 @@ impl Quantiser {
 pub struct QuantisedRow {
     parameters: Row,
     codes: Vec<i8>,
+    /// The codes of a power-of-two row (RFC-0004 A16); `codes` is then empty.
+    wide: Vec<i16>,
     scales: Vec<u32>,
     maximum: Option<(u16, u32)>,
 }
@@ -164,9 +209,14 @@ impl QuantisedRow {
             .try_reserve_exact(self.scales.len())
             .map_err(|_| Error::Capacity)?;
         scales.extend_from_slice(&self.scales);
+        let mut wide = Vec::new();
+        wide.try_reserve_exact(self.wide.len())
+            .map_err(|_| Error::Capacity)?;
+        wide.extend_from_slice(&self.wide);
         Ok(Self {
             parameters: self.parameters,
             codes,
+            wide,
             scales,
             maximum: self.maximum,
         })
@@ -175,9 +225,21 @@ impl QuantisedRow {
     pub fn parameters(&self) -> Row {
         self.parameters
     }
-    /// Complete row-order signed codes in [-127,127], without padding.
+    /// Complete row-order signed codes in [-127,127], without padding. Empty for a
+    /// power-of-two row, whose codes are [`Self::wide_codes`].
     pub fn codes(&self) -> &[i8] {
         &self.codes
+    }
+    /// RFC-0004 A16: the codes of a power-of-two row, in `[-(2^(b-1) - 1), 2^(b-1) - 1]`.
+    /// Empty for every other policy.
+    pub fn wide_codes(&self) -> &[i16] {
+        &self.wide
+    }
+    /// RFC-0004 A16: the exponent `a` of a power-of-two row, whose scale is `2^a`.
+    pub fn exponent(&self) -> Option<u8> {
+        self.parameters
+            .power()
+            .map(|_| self.scales[0].trailing_zeros() as u8)
     }
     /// Runtime row scale, up to 8454661 for gated inputs; zero only in dynamic mode.
     /// A grouped row (policy 2) has no single scale: this is its first group's.

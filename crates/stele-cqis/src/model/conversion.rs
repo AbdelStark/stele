@@ -91,7 +91,8 @@ impl Conversion {
                 for k in 0..tensor.count {
                     peak = peak.maximum(tensor.scalar(k, &mut cache, &mut read_at)?);
                 }
-                let exponent = peak.exponent(format.bits())?;
+                let power = format.parameter() == 1;
+                let exponent = peak.exponent(format.bits(), power)?;
                 let mut mantissas =
                     reserved(usize::try_from(tensor.rows).map_err(|_| Error::Capacity)?)?;
                 for row in 0..tensor.rows {
@@ -103,7 +104,7 @@ impl Conversion {
                             &mut read_at,
                         )?);
                     }
-                    mantissas.push(peak.mantissa(exponent, format.bits())?);
+                    mantissas.push(peak.mantissa(exponent, format.bits(), power)?);
                 }
                 values.push((exponent, mantissas));
             }

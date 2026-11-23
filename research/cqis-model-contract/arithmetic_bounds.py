@@ -1,7 +1,7 @@
 """Draft RFC-0025 static appendix §§1–6: closed arithmetic records, no proof API."""
 from dataclasses import dataclass
 
-from numerics import LayerNorm, group, integer
+from numerics import LayerNorm, group, integer, power_row
 
 P = (1 << 31)-1
 WORD_BYTES = 288
@@ -39,8 +39,10 @@ class Affine:
         integer(self.kind, 0, 1, 'Kind')
         integer(self.fraction, 0, 44 if self.kind else 30, 'Fraction')
         integer(self.output_fraction, 0, 30, 'Fraction')
-        integer(self.policy, 0, 2, 'Policy')
-        if self.policy == 2:  # RFC-0004 A15 grouped dynamic row: scale carries the group size
+        integer(self.policy, 0, 3, 'Policy')
+        if self.policy == 3:  # RFC-0004 A16 power-of-two row: scale is b + 256*amin
+            power_row(self.scale, self.kind)
+        elif self.policy == 2:  # RFC-0004 A15 grouped dynamic row: scale carries the group size
             group(self.scale, self.inner, 'Scale')
         else:
             integer(self.scale, 1 if self.policy else 0,
@@ -249,10 +251,40 @@ def _grouped_affine(p):
     return (24 if p.output_bits == 16 else 25), scalars, (le, re, shift), tuple(_column(t) for t in roles)
 
 
+def _power_affine(p):
+    """Schemas 27/28 (RFC-0004 A16): a power-of-two row into a matrix whose channel scales
+    are powers of two.
+
+    A = sum_i q_i*w_ji is one field matmul, faithful when 2*|A| < p. With
+    lambda_j = f - fo - e - k_j in low..high (low at the largest mantissa, high = f - fo - e),
+    a' = min(a, low - 1) and a'' = a - a', the output is R+(A / 2^(lambda_j - a')) * 2^a''."""
+    c, _, most = power_row(p.scale, p.kind)
+    if p.bias_fraction is not None or p.mantissa & (p.mantissa-1):
+        raise ValueError('Weight')
+    high = p.fraction-p.output_fraction-p.exponent
+    low = high-(p.mantissa.bit_length()-1)
+    if not 1 <= low <= 255:
+        raise ValueError('Shift')
+    weight = (1 << (p.bits-1))-1
+    accumulator = c*weight*p.inner
+    if 2*accumulator >= P:
+        raise ValueError('FieldBound')
+    divisor, excess, out = 1 << high, max(0, most-(low-1)), 1 << (p.output_bits-1)
+    scalars = (weight, c, accumulator, 2*accumulator, low, high, divisor, divisor-1, divisor >> 1,
+               excess, 1 << excess, out)
+    roles = (((1, out, divisor),), ((1, out*divisor, 1), (1, divisor-1, 1)),
+             ((1, accumulator, 1), (1, divisor >> 1, 1)), ((1, out, 1 << excess),))
+    for scalar in scalars:
+        _caps(scalar)
+    return (27 if p.output_bits == 16 else 28), scalars, (-high,), tuple(_column(t) for t in roles)
+
+
 def derive(parameters):
     """Static metadata only: no values, source handles, field or arbitrary ops."""
     if type(parameters) is LayerNorm:
         return _layernorm(parameters)
+    if type(parameters) is Affine and parameters.policy == 3:
+        return _power_affine(parameters)
     if type(parameters) is Affine and parameters.policy == 2:
         return _grouped_affine(parameters)
     if type(parameters) is Affine:

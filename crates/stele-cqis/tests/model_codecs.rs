@@ -160,7 +160,8 @@ fn rejects_truncation_physical_headers_and_changed_expected_identity() {
             (2, &[1][..]),
             (3, &u32::MAX.to_le_bytes()[..]),
             (11, &[16][..]),
-            (12, &[1][..]),
+            // RFC-0004 A16: a matrix parameter is 0 or 1 (power-of-two channel scales).
+            (12, &[2][..]),
         ] {
             let mut changed = raw.to_vec();
             changed[first + offset..first + offset + bytes.len()].copy_from_slice(bytes);
