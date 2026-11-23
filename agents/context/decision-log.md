@@ -4944,3 +4944,45 @@ Consequences:
   they are not measured.
 - No security level or profile promotion is granted.
 
+## ADR-159 — The CLI asks glibc for transparent huge pages by re-executing itself once (task E21-11)
+
+Context: the prover's tables are gigabytes. With malloc on 4 KiB pages their page faults
+and unmaps make the pool's threads wait on one another. On the reference class L2a
+under byte 6 proves in 24.75 s, and in 20.67 s when `GLIBC_TUNABLES=glibc.malloc.hugetlb=1`
+asks malloc for transparent huge pages; verification falls from 1.26 s to 1.13 s
+(`bench/ledger/e20-27-dev-stories42m-t64-byte6-24t.json` against `-hugepages.json`). The
+reference node has transparent huge pages on `madvise`, and glibc reads the tunable only
+when a process starts.
+
+Decision:
+- **On Linux with glibc the `stele` CLI replaces itself once** with
+  `GLIBC_TUNABLES=glibc.malloc.hugetlb=1` when the variable is unset. A variable the
+  user set, to any value, is kept. A failed `exec` or an unknown executable path leaves
+  the run as it is. Other platforms are unchanged.
+- **The replacement carries its own marker**, `STELE_HUGE_PAGES_EXEC`, and a process
+  that sees it is never replaced (`stele_cli::replaces_itself`). The tunable alone is not
+  a safe guard: a loader in secure-execution mode (a set-user-ID, set-group-ID or
+  file-capability binary) drops `GLIBC_TUNABLES` from the replacement's environment, and
+  the CLI would then replace itself without end (review finding F3, read from the glibc
+  rules and not run). The marker is not a variable the loader removes.
+- **No value depends on it.** The tunable changes how malloc obtains memory, not what a
+  computation returns. The L2a proof and public input have the same SHA-256 with and
+  without it (the two `e20-27` L2a ledgers). The pinned L0 and L1 digests are produced
+  by the library and do not pass through the CLI.
+- **A ledger states its environment.** A record made with the default says so in its
+  note (`bench/dev_e2e.py`); a record made with the variable preset says which value in
+  its host context. Records made before this decision are not re-read under it.
+- **Alternatives.** Leaving the variable to the operator makes two runs of one commit
+  differ by an environment that no record names. A huge-page allocator inside the
+  process needs `unsafe` or a new dependency in a crate that forbids both. `madvise`
+  on the tables has the same objection.
+
+Consequences:
+- The default L2a prove time on the reference class is the huge-page figure (20.67 s at
+  `ea232178`); `GLIBC_TUNABLES=` with any other value reproduces the earlier one.
+- The process image is replaced before any argument is parsed, so a wrapper that counts
+  `exec` calls sees two on Linux. The program name (`argv[0]`) is kept.
+- Known edges, not handled: under an explicit loader (`ld.so stele …`) the path of the
+  running executable is the loader's, and the replacement runs the loader with the
+  CLI's arguments; and a failed `exec` leaves `SIGPIPE` at its default disposition.
+- No security level or profile promotion is granted.
