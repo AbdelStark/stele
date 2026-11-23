@@ -30,6 +30,7 @@ proof section bytes that `accepts_eight_layer_window` prints). They are merged i
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -266,6 +267,9 @@ def device_counters(stderr, verified, byte, driver, proof=None):
 
 
 def main():
+    # ADR-159: with the marker set the CLI does not ask for huge pages, and the note would be wrong.
+    if 'STELE_HUGE_PAGES_EXEC' in os.environ:
+        raise SystemExit('STELE_HUGE_PAGES_EXEC is set: the prove-dev run did not use the huge-page default')
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('run', type=Path)
     p.add_argument('out', type=Path)
@@ -390,8 +394,9 @@ def main():
             'present, is Artifact decode plus model commitment timed in a separate test process; it is '
             'part of prove_dev_wall. '
         )
-        + 'On Linux with glibc the CLI runs with GLIBC_TUNABLES=glibc.malloc.hugetlb=1 unless the variable '
-        'is already set (ADR-159). '
+        + 'On Linux with glibc the CLI runs with GLIBC_TUNABLES=glibc.malloc.hugetlb=1 unless that variable '
+        'is already set (ADR-159); this harness refuses an environment that holds STELE_HUGE_PAGES_EXEC, '
+        'which would stop the CLI from setting it. '
         + 'Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware '
         'thread count available to the process. Peak RSS is the ' + timer + ' maximum resident set size. '
         'Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this '

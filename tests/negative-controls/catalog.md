@@ -231,7 +231,7 @@
 | NC-1339 | development virtual rounding remainder | 0028 §6, 0008 A9 | commit `y + 1` for one rounding, with virtual `rem` recomputed | `RootMismatch` | done |
 | NC-1340 | development virtual advice inverse | 0028 §2.2, §6 | declare advice (a rounding output) as `Linear` with the integer representing a field inverse of `2^k` | `StatementMismatch` | done |
 | NC-1341 | development lookup split | 0026 A8 | under instance bound `B = 2`, move one member value across an instance boundary with the receiving instance keeping its multiplicities (relation-engine level through the segmented verifier; a development plan has `B = 30`) | `RootMismatch` | done |
-| NC-1342 | development lookup selector | 0026 §3.3, 0008 A3 | a forging prover hides one selected value that is inside its range and outside the table by clearing that entry of the selector on its side, so its tree and its selected product leave the position out (plain, segmented and joined-recursion engines; the same value under the unforged prover is `RootMismatch`) | `SelectorMismatch` | done |
+| NC-1342 | development lookup selector | 0026 §3.3, 0008 A3 | a forging prover clears one selected entry of the selector on its side, so its tree and its selected product leave the position out (plain, segmented and joined-recursion engines; a value outside the table behind the cleared entry gets the same error, and `RootMismatch` under the unforged prover) | `SelectorMismatch` | done |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206
@@ -466,9 +466,10 @@ Task E20-25 adds NC-1342 for the selector of a selected lookup at the relation l
 (RFC-0026 §3.3, RFC-0008 A3). The engine's verifiers evaluate the selector's extension from
 the members of the check and compare it with the leaf claim and with the final value of the
 selected product. Control NC-1342 runs a forging prover that clears one selected entry of
-the selector on its side, over a value outside the table, through `relation::verify`,
-`relation::verify_segmented` and `relation::verify_recursive`, and requires
-`SelectorMismatch` from each. It is a documented two-value exception like NC-1310.
+the selector on its side, through `relation::verify`, `relation::verify_segmented` and
+`relation::verify_recursive`, and requires `SelectorMismatch` from each. The honest value
+stays, so the tamper is one change. The control also puts a value outside the table behind
+the cleared entry (`SelectorMismatch` again) and under the unforged prover (`RootMismatch`).
 
 RFC-0029 and companion RFC-0010 A17 (Accepted for the development tier, task E19-01,
 ADR-152) define NC-0630..0635 for recursive interleaved circle Reed–Solomon openings.

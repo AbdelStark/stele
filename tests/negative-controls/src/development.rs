@@ -1728,16 +1728,15 @@ fn rejects_nc_1341_value_moved_across_an_instance_boundary() {
 /// and the segmented plan, `verify_for_stack` under the joined recursion).
 ///
 /// A selected lookup into `{0, 1}` over eight unsigned-2 values; positions 0, 2, 5 and 7
-/// are selected. The honest witness holds table values there. The tamper is a forging
-/// prover with a false witness: position 2 holds 2, inside the column's range and outside
-/// the table, and the prover clears that entry of the selector on its own side. Its tree
-/// and its selected product leave the position out, so every root equation holds and only
-/// the selector comparison of the selected product sees the forgery: `SelectorMismatch`.
+/// are selected. The honest witness holds table values there. The tamper is one change: a
+/// forging prover clears entry 2 of the selector on its own side. Its tree and its selected
+/// product leave the position out, so every root equation holds and only the selector
+/// comparison of the selected product sees it: `SelectorMismatch`.
 ///
-/// Documented INV-4 exception, as NC-1310 (ADR-110): two things change, the value and the
-/// prover's selector entry, because a false value alone never reaches the selector
-/// comparison. The control also runs that value under the unforged prover and requires the
-/// root equation's `RootMismatch`, so the rejection under test is the selector's.
+/// Two more runs show what the cleared entry would buy. With the value 2 at that position
+/// (inside the column's range, outside the table) the forging prover gets the same
+/// `SelectorMismatch`, and the unforged prover is stopped by the root equation,
+/// `RootMismatch`.
 #[cfg(feature = "controls")]
 pub fn run_selector() -> Result<(), String> {
     use stele_hash::Transcript;
@@ -1806,6 +1805,7 @@ pub fn run_selector() -> Result<(), String> {
     let rejected = |e: stele_reductions::relation::Error| name_of(&format!("{e:?}"));
     let honest: Forgery = (1, false);
     let selector_mismatch = "SelectorMismatch".to_string();
+    let hidden = Err(selector_mismatch.clone());
     let root_mismatch = Err("RootMismatch".to_string());
 
     // The plain plan.
@@ -1833,6 +1833,9 @@ pub fn run_selector() -> Result<(), String> {
         selector_mismatch.clone(),
     )
     .map_err(|e| format!("plain: {e:?}"))?;
+    if verify_plain(&prove_plain(&(2, true))?) != hidden {
+        return Err("plain: a false value behind the cleared entry is accepted".into());
+    }
     if verify_plain(&prove_plain(&(2, false))?) != root_mismatch {
         return Err("plain: the unforged prover is not stopped by the roots".into());
     }
@@ -1862,6 +1865,9 @@ pub fn run_selector() -> Result<(), String> {
         selector_mismatch.clone(),
     )
     .map_err(|e| format!("segmented: {e:?}"))?;
+    if verify_segmented(&prove_segmented(&(2, true))?) != hidden {
+        return Err("segmented: a false value behind the cleared entry is accepted".into());
+    }
     if verify_segmented(&prove_segmented(&(2, false))?) != root_mismatch {
         return Err("segmented: the unforged prover is not stopped by the roots".into());
     }
@@ -1891,25 +1897,28 @@ pub fn run_selector() -> Result<(), String> {
         selector_mismatch,
     )
     .map_err(|e| format!("recursive: {e:?}"))?;
+    if verify_recursive(&prove_recursive(&(2, true))?) != hidden {
+        return Err("recursive: a false value behind the cleared entry is accepted".into());
+    }
     if verify_recursive(&prove_recursive(&(2, false))?) != root_mismatch {
         return Err("recursive: the unforged prover is not stopped by the roots".into());
     }
     Ok(())
 }
 
-/// The out-of-table value 2 at the selected position, hidden by the forging prover.
+/// The forging prover clears its selector entry; the value stays the honest one.
 #[cfg(feature = "controls")]
 struct Forged1342;
 #[cfg(feature = "controls")]
 impl crate::ProverHook<(i64, bool)> for Forged1342 {
     fn tamper(&self, forgery: &mut (i64, bool)) {
-        *forgery = (2, true);
+        forgery.1 = true;
     }
 }
 
 #[cfg(all(test, feature = "controls"))]
 #[test]
-fn rejects_nc_1342_value_hidden_by_a_cleared_selector_entry() {
+fn rejects_nc_1342_cleared_selector_entry() {
     run_selector().expect("NC-1342");
 }
 

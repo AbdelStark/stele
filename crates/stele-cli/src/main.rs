@@ -679,17 +679,8 @@ fn huge_pages() {
         return;
     }
     if let Ok(exe) = std::env::current_exe() {
-        let mut args = std::env::args_os();
-        let mut command = std::process::Command::new(exe);
-        if let Some(name) = args.next() {
-            command.arg0(name);
-        }
         // `exec` returns only when it failed.
-        let _ = command
-            .args(args)
-            .env("GLIBC_TUNABLES", "glibc.malloc.hugetlb=1")
-            .env(stele_cli::HUGE_PAGES_MARKER, "1")
-            .exec();
+        let _ = stele_cli::replacement(exe, std::env::args_os()).exec();
     }
 }
 
