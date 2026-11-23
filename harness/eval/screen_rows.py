@@ -8,7 +8,8 @@ The protocol, the candidates and the decision rule are in
 `experiments/E22-02-shift-only-rows.md`, committed before any score was seen.
 
 Usage (one H100, about 40 GB of host memory):
-    python screen_rows.py --model DIR --out DIR --stage A|B|C [--windows 8]
+    python screen_rows.py --model DIR --out DIR --stage A|B|C|A2|B2|C2 [--windows 8]
+Stages A2, B2 and C2 are the addendum of `experiments/E22-02-shift-only-rows.md`.
 A config is `weights;site=scheme[bits];...`, for example
 `w8p2;attn=static12;out=p2row12;mlp=static12;down=p2row10;head=static12`. Sites left out stay
 in float32. Stage C reads the stage B scores from `--out` to build the mixed candidate.
@@ -32,6 +33,8 @@ SITES = {
     'head': ('lm_head',),                    # final norm's output
 }
 SCHEMES = ('dynrow', 'dyng128', 'p2row', 'static', 'staticch')
+# Addendum: a static scale 2^1 or 2^2 above the calibrated one (room against rejection).
+HEADROOM = ('statich1', 'statich2', 'staticchh1', 'staticchh2')
 BITS = (8, 10, 12, 16)
 BASELINE = 'w8;' + ';'.join(f'{site}=dyng1288' for site in SITES)
 CALIBRATION_WINDOWS = 4
@@ -50,6 +53,9 @@ def pow2_at_least(s):
     return torch.exp2(torch.ceil(torch.log2(s)))
 
 
+SATURATED = [0, 0]  # elements a static scale clamped, elements converted (per scored config)
+
+
 def convert(x, scheme, bits, static=None):
     """Quantise-dequantise rows `x[..., d]`. Dynamic schemes scale by the attained maximum
     of the row or of each group of 128 features; `p2*` round that scale up to a power of
@@ -62,29 +68,40 @@ def convert(x, scheme, bits, static=None):
         s = x.abs().amax(dim=-1, keepdim=True).clamp_min(1e-30)/q
         if scheme == 'p2row':
             s = pow2_at_least(s)
-    elif scheme in ('static', 'staticch'):
+    elif scheme.startswith('static'):
         s = static
+        # CQIS static rows reject a code outside its width: count what a clamp hides.
+        SATURATED[0] += int((torch.round(x/s).abs() > q).sum())
+        SATURATED[1] += x.numel()
     else:
         raise ValueError(scheme)
     return torch.round(x/s).clamp(-q, q)*s
 
 
 def weight(w, kind):
-    """int8 codes per output row: `w8` at absmax/127, `w8p2` at the next power of two."""
+    """Codes per output row. `w8`: int8 at absmax/127. `wBp2`: B-bit codes at the least
+    power of two at or above absmax/qmax. `w8mK`: int8 codes at the least scale of the form
+    `(2^K + i)·2^e`, `0 <= i < 2^K`, at or above absmax/127 (a K-bit mantissa)."""
     if kind == 'fp':
         return w
-    s = w.abs().amax(dim=1, keepdim=True).clamp_min(1e-30)/127
-    if kind == 'w8p2':
-        s = pow2_at_least(s)
-    elif kind != 'w8':
+    match = re.fullmatch(r'w(\d+)(p2|m(\d+))?', kind)
+    if not match:
         raise ValueError(kind)
-    return torch.round(w/s).clamp(-127, 127)*s
+    q = qmax(int(match.group(1)))
+    s = w.abs().amax(dim=1, keepdim=True).clamp_min(1e-30)/q
+    if match.group(2) == 'p2':
+        s = pow2_at_least(s)
+    elif match.group(2):
+        steps = 1 << int(match.group(3))
+        floor = torch.exp2(torch.floor(torch.log2(s)))
+        s = floor*torch.ceil(s/floor*steps)/steps
+    return torch.round(w/s).clamp(-q, q)*s
 
 
 def scheme_bits(value):
     """Split `dyng1288` -> (`dyng128`, 8): the group size is part of the scheme's name."""
-    for scheme in ('dyng128', 'p2g128'):
-        if value.startswith(scheme):
+    for scheme in ('dyng128', 'p2g128') + HEADROOM:
+        if value.startswith(scheme) and value[len(scheme):].isdigit():
             return scheme, int(value[len(scheme):])
     match = re.fullmatch(r'([a-z0-9]*?[a-z])(\d+)', value)
     return match.group(1), int(match.group(2))
@@ -96,7 +113,7 @@ def parse_config(config):
     for item in rest:
         site, value = item.split('=')
         scheme, bits = scheme_bits(value)
-        assert site in SITES and scheme in SCHEMES + ('p2g128',), item
+        assert site in SITES and scheme in SCHEMES + ('p2g128',) + HEADROOM, item
         sites[site] = (scheme, bits)
     return head, sites
 
@@ -141,12 +158,13 @@ class Screen:
 
     def static_scale(self, name, scheme, bits):
         peak = self.absmax[name].clamp_min(1e-30)
-        if scheme == 'static':
+        room = int(scheme[-1]) if scheme in HEADROOM else 0
+        if not scheme.startswith('staticch'):
             peak = peak.amax()
-        return pow2_at_least(peak/qmax(bits))
+        return pow2_at_least(peak/qmax(bits))*(1 << room)
 
     def install(self, config):
-        kind, sites = parse_config(config)
+        kind, sites = parse_config(config.removesuffix('@sat'))
         hooks = []
         for name, m in self.linears.items():
             w = self.original[name].to(m.weight.device)
@@ -154,8 +172,8 @@ class Screen:
             fold = None
             if spec is not None:
                 scheme, bits = spec
-                static = self.static_scale(name, scheme, bits) if scheme in ('static', 'staticch') else None
-                if scheme == 'staticch':
+                static = self.static_scale(name, scheme, bits) if scheme.startswith('static') else None
+                if scheme.startswith('staticch'):
                     fold = static  # per-feature scales fold into the weight columns
                 hooks.append(m.register_forward_pre_hook(
                     lambda _, args, s=scheme, b=bits, st=static: (convert(args[0], s, b, st),)))
@@ -166,6 +184,7 @@ class Screen:
     @torch.no_grad()
     def score(self, config):
         hooks = self.install(config)
+        SATURATED[0] = SATURATED[1] = 0
         rows = []
         for i, window in enumerate(self.windows):
             logits = self.model(torch.tensor([window], device=self.backend.device)).logits[0, :-1].double()
@@ -187,12 +206,50 @@ def summarise(config, rows, reference_rows):
     ref = sum(r['nll'] for r in reference_rows)
     return dict(config=config, ppl=math.exp(nll/tokens), delta=math.exp((nll - ref)/tokens) - 1,
                 agreement=sum(r['agree'] for r in rows)/tokens, tokens=tokens,
+                saturated=SATURATED[0], converted=SATURATED[1],
                 windows=[dict(window=r['window'], nll=r['nll'], tokens=r['tokens'], agree=r['agree']) for r in rows])
+
+
+ADDENDUM_WEIGHTS = ('w9p2', 'w10p2', 'w8m1', 'w8m2', 'w8m3')
 
 
 def stage_configs(stage, out):
     if stage == 'A':
         return ['w8', 'w8p2']
+    if stage == 'A2':
+        return list(ADDENDUM_WEIGHTS)
+    if stage == 'B2':
+        # Static formats again with saturation counted (`@sat` keeps the stage B rows), the
+        # widths between, room above the calibrated scale, and the row format at 9 and 11 bits.
+        again = [f'fp;{site}={scheme}{bits}@sat' for site in SITES for scheme in ('static', 'staticch')
+                 for bits in (8, 10, 12)]
+        between = [f'fp;{site}={scheme}{bits}' for site in SITES for scheme in ('static', 'staticch', 'p2row')
+                   for bits in (7, 9, 11)]
+        room = [f'fp;{site}={scheme}{bits}' for site in SITES for scheme in ('staticchh1', 'staticchh2')
+                for bits in (8, 9, 10)]
+        return again + between + room
+    if stage == 'C2':
+        def mixed(weights, norm_fed, out, down):
+            return f'{weights};attn={norm_fed};out={out};mlp={norm_fed};down={down};head={norm_fed}'
+        return [
+            mixed('w8p2', 'staticch8', 'p2row8', 'p2row10'),
+            mixed('w8p2', 'staticch8', 'p2row10', 'p2row12'),
+            mixed('w8p2', 'staticch10', 'p2row10', 'p2row12'),
+            mixed('w9p2', 'staticch8', 'p2row8', 'p2row9'),
+            mixed('w9p2', 'staticch8', 'p2row8', 'p2row10'),
+            mixed('w9p2', 'staticch8', 'p2row10', 'p2row12'),
+            mixed('w9p2', 'staticch10', 'p2row10', 'p2row12'),
+            mixed('w9p2', 'p2row10', 'p2row10', 'p2row10'),
+            mixed('w9p2', 'p2row10', 'p2row10', 'p2row9'),
+            mixed('w10p2', 'p2row10', 'p2row10', 'p2row10'),
+            mixed('w8m2', 'staticch8', 'p2row8', 'p2row10'),
+            mixed('w8m3', 'staticch8', 'p2row8', 'p2row10'),
+            mixed('w8', 'staticch8', 'p2row8', 'p2row10'),
+            mixed('w9p2', 'staticchh18', 'p2row8', 'p2row10'),
+            mixed('w9p2', 'staticchh19', 'p2row10', 'p2row12'),
+            mixed('w9p2', 'staticch8', 'static12', 'p2row12'),
+            mixed('w9p2', 'staticch8', 'p2row8', 'dyng1288'),
+        ]
     if stage == 'B':
         return [f'fp;{site}={scheme}{bits}' for site in SITES for scheme in SCHEMES for bits in BITS]
     scores = {r['config']: r['delta'] for r in map(json.loads, (out/'scores.jsonl').read_text().splitlines())}
@@ -220,7 +277,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', required=True)
     parser.add_argument('--out', required=True, type=Path)
-    parser.add_argument('--stage', required=True, choices=['A', 'B', 'C'])
+    parser.add_argument('--stage', required=True, choices=['A', 'B', 'C', 'A2', 'B2', 'C2'])
     parser.add_argument('--windows', type=int, default=8)
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
