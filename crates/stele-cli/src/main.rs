@@ -705,17 +705,28 @@ fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> 
 /// with the variable set. Its tables are gigabytes: on 4 KiB pages their page faults and
 /// unmaps make the threads wait on one another. A `GLIBC_TUNABLES` the user set is kept,
 /// and a failed exec leaves the run as it is. No value the CLI computes depends on it.
+/// The replacement carries a marker of its own, so it is never replaced again, even
+/// where the loader drops `GLIBC_TUNABLES` (`stele_cli::replaces_itself`).
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 fn huge_pages() {
     use std::os::unix::process::CommandExt;
-    if std::env::var_os("GLIBC_TUNABLES").is_some() {
+    if !stele_cli::replaces_itself(
+        std::env::var_os("GLIBC_TUNABLES").is_some(),
+        std::env::var_os(stele_cli::HUGE_PAGES_MARKER).is_some(),
+    ) {
         return;
     }
     if let Ok(exe) = std::env::current_exe() {
+        let mut args = std::env::args_os();
+        let mut command = std::process::Command::new(exe);
+        if let Some(name) = args.next() {
+            command.arg0(name);
+        }
         // `exec` returns only when it failed.
-        let _ = std::process::Command::new(exe)
-            .args(std::env::args_os().skip(1))
+        let _ = command
+            .args(args)
             .env("GLIBC_TUNABLES", "glibc.malloc.hugetlb=1")
+            .env(stele_cli::HUGE_PAGES_MARKER, "1")
             .exec();
     }
 }

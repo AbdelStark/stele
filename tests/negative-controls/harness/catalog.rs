@@ -53,9 +53,9 @@ fn rejects_registry_binding_tampers() {
 #[test]
 fn accepts_repository_catalog_without_crediting_stub() {
     let catalog = parse(include_str!("../catalog.md")).expect("valid repository catalog");
-    assert_eq!(catalog.len(), 262);
+    assert_eq!(catalog.len(), 263);
     assert_eq!(catalog.first().map(|entry| entry.id), Some(1));
-    assert_eq!(catalog.last().map(|entry| entry.id), Some(1343));
+    assert_eq!(catalog.last().map(|entry| entry.id), Some(1344));
     assert!(
         report(&catalog, &[]).is_err(),
         "done requires executed registration"
@@ -63,7 +63,7 @@ fn accepts_repository_catalog_without_crediting_stub() {
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
     assert!(
-        coverage.contains("88/130 bindings; 166/262 controls"),
+        coverage.contains("89/131 bindings; 167/263 controls"),
         "{coverage}"
     );
     assert_eq!(coverage.matches("MISSING").count(), 96);
@@ -75,6 +75,7 @@ fn accepts_repository_catalog_without_crediting_stub() {
         932, 1300, 1301, 1302, 1303, 1304, 1305, 1306, 1307, 1308, 1309, 1310, 1311, 1312, 1313,
         1314, 1315, 1316, 1317, 1318, 1319, 1320, 1321, 1322, 1323, 1324, 1325, 1326, 1327, 1328,
         1329, 1330, 1331, 1332, 1333, 1334, 1335, 1336, 1337, 1338, 1339, 1340, 1341, 1342, 1343,
+        1344,
     ] {
         assert!(
             catalog

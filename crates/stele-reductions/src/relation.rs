@@ -36,6 +36,8 @@ mod lookup;
 #[path = "relation_recursive.rs"]
 mod recursive;
 pub use codec::{digest, encode};
+#[cfg(feature = "controls")]
+pub use recursive::prove_recursive_forged;
 pub use recursive::{
     prove_recursive_measured, recursive_model_layout, recursive_model_layout_for,
     recursive_model_sources, verify_recursive, verify_recursive_model, RecursiveModelLayout,
@@ -2274,6 +2276,25 @@ pub struct Forge {
     /// Route this witness column's first claim to the next real, equal-valued
     /// column in its group (RFC-0026 A18). Cannot combine with other mutations.
     pub column_claim: Option<ColumnId>,
+    /// Read public selector column `c` with its selected entry `j` cleared while proving,
+    /// so the prover leaves that position out of its lookup tree and of its selected
+    /// product (RFC-0008 A3, RFC-0026 §3.3; control NC-1344).
+    pub deselect: Option<(ColumnId, usize)>,
+}
+
+/// The relation a forging prover reads its public columns from: `relation` with the
+/// selected entry `deselect` of a public selector column cleared (controls only). The plan
+/// and the absorbed relation digest stay `relation`'s.
+#[cfg(feature = "controls")]
+fn deselected(relation: &Relation, deselect: Option<(ColumnId, usize)>) -> Result<Relation, Error> {
+    let mut read = relation.clone();
+    if let Some((c, j)) = deselect {
+        match read.columns.get_mut(c.0 as usize).map(|c| &mut c.kind) {
+            Some(Kind::Public(v)) if v.get(j) == Some(&1) => v[j] = 0,
+            _ => return Err(Error::Unsupported),
+        }
+    }
+    Ok(read)
 }
 
 /// [`prove`] as a malicious prover: the plan and the absorbed relation digest are
@@ -2289,7 +2310,11 @@ pub fn prove_forged(
 ) -> Result<Proof, Error> {
     let mut plan = plan(relation, sources)?;
     if let Some(c) = forge.column_claim {
-        if forge.table.is_some() || forge.public.is_some() || forge.witness.is_some() {
+        if forge.table.is_some()
+            || forge.public.is_some()
+            || forge.witness.is_some()
+            || forge.deselect.is_some()
+        {
             return Err(Error::Unsupported);
         }
         let group = plan
@@ -2313,7 +2338,7 @@ pub fn prove_forged(
     if let Some(i) = forge.table {
         plan.checks.get_mut(i).ok_or(Error::Unsupported)?.shift = 1;
     }
-    let mut read = relation.clone();
+    let mut read = deselected(relation, forge.deselect)?;
     if let Some((c, j)) = forge.public {
         match read.columns.get_mut(c.0 as usize).map(|c| &mut c.kind) {
             Some(Kind::Public(v)) if j < v.len() => v[j] += 1,
@@ -3884,7 +3909,11 @@ pub fn prove_segmented_forged(
     let mut plan = plan_segmented(relation, sources)?;
     let plan_ns = plan_timer.elapsed_ns();
     if let Some(c) = forge.column_claim {
-        if forge.table.is_some() || forge.public.is_some() || forge.witness.is_some() {
+        if forge.table.is_some()
+            || forge.public.is_some()
+            || forge.witness.is_some()
+            || forge.deselect.is_some()
+        {
             return Err(Error::Unsupported);
         }
         let group = plan
@@ -3913,7 +3942,7 @@ pub fn prove_segmented_forged(
             .ok_or(Error::Unsupported)?
             .shift = 1;
     }
-    let mut read = relation.clone();
+    let mut read = deselected(relation, forge.deselect)?;
     if let Some((c, j)) = forge.public {
         match read.columns.get_mut(c.0 as usize).map(|c| &mut c.kind) {
             Some(Kind::Public(v)) if j < v.len() => v[j] += 1,

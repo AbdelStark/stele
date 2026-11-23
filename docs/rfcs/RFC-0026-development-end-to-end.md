@@ -2940,12 +2940,12 @@ of BLAKE3). A root fixes the committed matrix, and the registration certificate 
 the certified openings of RFC-0029 §1.3 binds every claim on the source to the one
 message within the certified radius of it. The issuer obtained the same roots from the
 Artifact's codes, so that message is those codes, and they lie within their widths. A
-prover that commits anything else has another root and another digest (NC-1342). The
+prover that commits anything else has another root and another digest (NC-1343). The
 assumption this adds is on the verifier's side: its trusted digest was recomputed from
 the Artifact. A proof alone no longer shows that an in-range model exists, so the
 library has no entry that accepts a byte 7 proof without the comparison. A proof of
 byte 6 is not a proof of byte 7 or the reverse: the public input and the relation
-encoding differ (NC-1343).
+encoding differ (NC-1344).
 Hidden weights: recomputation needs the weights. A model whose weights stay private
 needs a registration proof of their widths, made once per commitment, in place of the
 recomputation; that is a later amendment (lane Z). Byte 7 is for published weights.
@@ -2953,9 +2953,9 @@ Cells, lookups, bytes: committed witness cells are unchanged. Lookup positions f
 the padded weight cells. On L2a: 203,484,736 to 136,375,872 lookup positions and
 3,971,461 to 3,919,837 proof bytes (one arm64 run; the task records ledgers). The model
 commitment is computed as before; a later task loads it.
-Controls: NC-1342, a model one weight code away from the published Artifact, proved
+Controls: NC-1343, a model one weight code away from the published Artifact, proved
 honestly under byte 7 and verified against the published model's digest (`Passport`).
-NC-1343, a byte 7 proof presented with the byte 6 input file, one byte of the file tag
+NC-1344, a byte 7 proof presented with the byte 6 input file, one byte of the file tag
 away (`StatementMismatch`).
 Affected tasks: E18-14; E21-05 (the passport file of RFC-0011 §1, whose model roots this
 digest names). Promotion to `standard`: not granted (Workflow 10).

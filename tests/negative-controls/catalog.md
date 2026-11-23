@@ -231,8 +231,9 @@
 | NC-1339 | development virtual rounding remainder | 0028 §6, 0008 A9 | commit `y + 1` for one rounding, with virtual `rem` recomputed | `RootMismatch` | done |
 | NC-1340 | development virtual advice inverse | 0028 §2.2, §6 | declare advice (a rounding output) as `Linear` with the integer representing a field inverse of `2^k` | `StatementMismatch` | done |
 | NC-1341 | development lookup split | 0026 A8 | under instance bound `B = 2`, move one member value across an instance boundary with the receiving instance keeping its multiplicities (relation-engine level through the segmented verifier; a development plan has `B = 30`) | `RootMismatch` | done |
-| NC-1342 | development passport model | 0026 A31 | under profile byte 7, commit a model whose Artifact differs from the published one in one weight code (one bit of the first Token code) and prove honestly for it; the verifier holds the digest recomputed from the published Artifact | `Passport` | done |
-| NC-1343 | development passport profile | 0026 A31 | present a profile byte 7 proof with the profile byte 6 input file (the version digit of the file tag), whose verifier needs no passport | `StatementMismatch` | done |
+| NC-1342 | development lookup selector | 0026 §3.3, 0008 A3 | a forging prover hides one selected value that is inside its range and outside the table by clearing that entry of the selector on its side, so its tree and its selected product leave the position out (plain, segmented and joined-recursion engines; the same value under the unforged prover is `RootMismatch`) | `SelectorMismatch` | done |
+| NC-1343 | development passport model | 0026 A31 | under profile byte 7, commit a model whose Artifact differs from the published one in one weight code (one bit of the first Token code) and prove honestly for it; the verifier holds the digest recomputed from the published Artifact | `Passport` | done |
+| NC-1344 | development passport profile | 0026 A31 | present a profile byte 7 proof with the profile byte 6 input file (the version digit of the file tag), whose verifier needs no passport | `StatementMismatch` | done |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206
@@ -463,10 +464,17 @@ with virtual remainder `rem = acc - 2^k * y` range-checked through RFC-0008 A9, 
 field inverse of `2^k`, asserting `StatementMismatch` on the static `p/2` derived-magnitude bound)
 through `relation::verify_segmented`.
 
-RFC-0026 A31 (Accepted for the development tier, task E18-14) adds NC-1342 and NC-1343 for
+Task E20-25 adds NC-1342 for the selector of a selected lookup at the relation level
+(RFC-0026 §3.3, RFC-0008 A3). The engine's verifiers evaluate the selector's extension from
+the members of the check and compare it with the leaf claim and with the final value of the
+selected product. Control NC-1342 runs a forging prover that clears one selected entry of
+the selector on its side, over a value outside the table, through `relation::verify`,
+`relation::verify_segmented` and `relation::verify_recursive`, and requires
+`SelectorMismatch` from each. It is a documented two-value exception like NC-1310.
+RFC-0026 A31 (Accepted for the development tier, task E18-14) adds NC-1343 and NC-1344 for
 profile byte 7, where no range check reads a weight and the verifier compares the model
-digest with its passport's. Control NC-1342 proves honestly for an Artifact one weight code
-away from the published one and is rejected by that comparison (`Passport`). Control NC-1343
+digest with its passport's. Control NC-1343 proves honestly for an Artifact one weight code
+away from the published one and is rejected by that comparison (`Passport`). Control NC-1344
 presents the same kind of proof with the profile byte 6 input file and is rejected by the
 statement digest (`StatementMismatch`). Both run through `verify_passport`.
 

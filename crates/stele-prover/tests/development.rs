@@ -462,6 +462,62 @@ fn rejects_false_witness_with_check_under(sources: Sources) {
     }
 }
 
+/// E18-11 review (F5): the check decides whatever the engine does. One witness value of
+/// the first norm changes, inside its width. The engine alone errs on it, with an error
+/// of its own and no proof; with the plain checker beside it the result is `Check`. A join
+/// that returned the engine's error first would fail the last assertion.
+#[test]
+fn rejects_false_witness_with_check_when_the_engine_errs() {
+    use stele_prover::development::{prove_false_witness, prove_tampered};
+    use stele_reductions::stele_ir::relation::{ColumnId, Relation, Values};
+    let (case, statement) = honest();
+    for sources in [Sources::CircleAll, Sources::CircleRecursive] {
+        let weights =
+            Weights::from_artifact_sources(&case.model, &case.artifact, sources).expect("weights");
+        let committed = Committed::new(&weights).expect("commitment");
+        let public = case.public(&committed, &weights);
+        // The one-hot of the norm's exponent: one more entry set to one.
+        let false_witness = |relation: &mut Relation, values: &mut Values| {
+            let id = relation
+                .columns
+                .iter()
+                .position(|c| c.name == "L0/norm1/h")
+                .map(|i| ColumnId(i as u32))
+                .expect("the norm's one-hot");
+            let mut entries = values.get(relation, id).expect("assigned").to_vec();
+            let j = entries.iter().position(|&v| v == 0).expect("a zero entry");
+            entries[j] = 1;
+            values.set(relation, id, entries).expect("inside the width");
+        };
+        let engine = prove_tampered(
+            &public,
+            &mut case.executor(&case.artifact),
+            &weights,
+            &committed,
+            &statement,
+            &mut { false_witness },
+        );
+        assert!(
+            matches!(engine, Err(Error::Engine(_))),
+            "{sources:?}: the engine alone answered {:?}",
+            engine.err()
+        );
+        let checked = prove_false_witness(
+            &public,
+            &mut case.executor(&case.artifact),
+            &weights,
+            &committed,
+            &statement,
+            &mut { false_witness },
+        );
+        assert!(
+            matches!(checked, Err(Error::Check(_))),
+            "{sources:?}: {:?}",
+            checked.err()
+        );
+    }
+}
+
 /// E16-34 review: dev-zk's single plain check (on the committed relation) rejects the
 /// same false witnesses, in `zk::window` and in `zk::prove`, with `Check`.
 #[test]
@@ -2753,6 +2809,43 @@ fn accepts_segmented_one_layer_and_wide_gqa_windows() {
         Some(Error::StatementMismatch),
         "A16 registry::publish must reject segmented public bundles"
     );
+}
+
+/// A window given in full takes `y` from the last position of the capture, with no forward
+/// pass of its own: the statement, the public input and the proof are those of the window
+/// the prover extended itself, and `y` is the reference greedy choice.
+#[test]
+fn matches_reference_next_token_of_a_window_given_in_full() {
+    let case = load("one-layer");
+    let prove = |statement: Statement| {
+        stele_prover::development::prove_window_development_segmented_measured(
+            case.bytes[0],
+            case.bytes[2],
+            case.bytes[1],
+            &case.artifact,
+            statement,
+            16,
+            stele_prover::development::RECURSIVE_PROFILE,
+            0,
+        )
+        .expect("prove")
+    };
+    let (public, extended, proof, _) = prove(Statement {
+        tokens: vec![1],
+        start: 0,
+        end: 1,
+        next: None,
+    });
+    let reference = greedy(&mut case.executor(&case.artifact), 16);
+    assert_eq!(extended, reference);
+    let given = Statement {
+        next: None,
+        ..extended.clone()
+    };
+    let (public_given, statement_given, proof_given, _) = prove(given);
+    assert_eq!(statement_given, extended);
+    assert_eq!(public_given, public);
+    assert_eq!(proof_given, proof);
 }
 
 /// RFC-0026 A31 (profile byte 7): no range check reads a weight, and the proof is accepted

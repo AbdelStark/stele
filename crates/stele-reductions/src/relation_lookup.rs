@@ -72,6 +72,8 @@ pub(super) fn sigma_base(check: &Check, relation: &Relation) -> Vec<M31> {
 /// selector is one on the block, and a public selector is summed over the local domain bits
 /// its `Ref` reads. The verifier's form: it builds no vector of the check's `2^m` points.
 pub(super) fn sigma_at(check: &Check, relation: &Relation, z: &[K]) -> Result<K, fraction::Error> {
+    // The selected product asks at its own points of `m` coordinates, so no plan reaches
+    // this refusal; it stands for a caller outside the engine.
     if z.len() != usize::from(check.m) {
         return Err(fraction::Error::SourceShape);
     }
@@ -84,6 +86,8 @@ pub(super) fn sigma_at(check: &Check, relation: &Relation, z: &[K]) -> Result<K,
                 stele_ir::relation::Kind::Public(v) => {
                     public_selector_at(r, v, member, &z[usize::from(check.m - member.m)..])?
                 }
+                // `Relation::validate` admits a public selector only (RFC-0026 §3.6 item
+                // 1); another kind reads as unselected here, as in `sigma_base`.
                 _ => zero,
             },
         };
@@ -109,6 +113,7 @@ fn public_selector_at(
         .filter(|&var| Ref::fixed(var).is_none() && usize::from(var) < m)
         .collect();
     read.sort_unstable();
+    // `Relation::validate` refuses a `Ref` that names a bit twice; the dedup restates it.
     read.dedup();
     // Entry `u` of the eq table has bit `t` of `u` at local bit `read[t]`, whose
     // coordinate is `low[m - 1 - read[t]]`.
