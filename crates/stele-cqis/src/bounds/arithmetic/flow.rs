@@ -1,5 +1,6 @@
 //! RFC-0025 flow appendix §§1–3: row conversion, residual alignment, gated product,
-//! plus RFC-0004 A14's schema 22 (int24 residual alignment) and A15's schema 23 (grouped row).
+//! plus RFC-0004 A14's schema 22 (int24 residual alignment), A15's schema 23 (grouped row)
+//! and A16's schema 26 (power-of-two row).
 use super::{digits, field_bound, term, Builder, Error, Record, Word};
 
 /// Complete-row parameters; all domains are checked when deriving the record.
@@ -11,9 +12,11 @@ pub struct Row {
     pub kind: u8,
     /// Source fraction, at most 30 for wide or 44 for gated.
     pub fraction: u8,
-    /// Dynamic=0, static=1 or grouped dynamic=2 (RFC-0004 A15).
+    /// Dynamic=0, static=1, grouped dynamic=2 (RFC-0004 A15) or power-of-two=3 (A16).
     pub policy: u8,
-    /// Zero for dynamic; positive configured scale for static; the group size g for grouped.
+    /// Zero for dynamic; positive configured scale for static; the group size g for
+    /// grouped; `b + 256*amin` for a power-of-two row: the code width b in 4..=12 and
+    /// the least row exponent amin, at most the row's largest exponent.
     pub scale: u32,
 }
 impl Row {
@@ -24,11 +27,27 @@ impl Row {
             || self.fraction > if self.kind == 0 { 30 } else { 44 }
             || !((self.policy == 0 && self.scale == 0)
                 || (self.policy == 1 && (1..=maximum).contains(&self.scale))
-                || (self.policy == 2 && group(self.scale, self.dimension)))
+                || (self.policy == 2 && group(self.scale, self.dimension))
+                || (self.policy == 3 && self.power().is_some()))
         {
             return Err(Error::Parameters);
         }
         Ok(())
+    }
+    /// RFC-0004 A16, a power-of-two row: the largest code magnitude `2^(b-1) - 1`, the
+    /// least row exponent `amin` and the largest, `17 - b` for an int16 row and `30 - b`
+    /// for a gated one.
+    pub fn power(self) -> Option<Power> {
+        let (bits, least) = (self.scale & 255, self.scale >> 8);
+        if self.policy != 3 || !(4..=12).contains(&bits) {
+            return None;
+        }
+        let most = if self.kind == 0 { 17 } else { 30 } - bits;
+        (least <= most).then_some(Power {
+            code: (1 << (bits - 1)) - 1,
+            least: least as u8,
+            most: most as u8,
+        })
     }
     /// Group size, or the whole row for policies 0/1.
     pub(super) fn group(self) -> u16 {
@@ -39,7 +58,9 @@ impl Row {
         }
     }
     pub(super) fn scale_bound(self) -> u64 {
-        if self.policy == 1 {
+        if let Some(p) = self.power() {
+            1 << p.most
+        } else if self.policy == 1 {
             u64::from(self.scale)
         } else if self.kind == 0 {
             259
@@ -47,6 +68,16 @@ impl Row {
             8454661
         }
     }
+}
+
+/// RFC-0004 A16: the static limits of a power-of-two row.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Power {
+    /// Largest code magnitude, `2^(b-1) - 1`.
+    pub code: u32,
+    /// Least and largest row exponent.
+    pub least: u8,
+    pub most: u8,
 }
 
 /// RFC-0004 A15: a group size is a power of two below the row length n that divides n.
@@ -82,6 +113,9 @@ impl Record {
     /// group of g, then the fold, the offset digits and the fold sign join.
     pub fn row(p: Row) -> Result<Self, Error> {
         p.check()?;
+        if let Some(power) = p.power() {
+            return Self::power_row(p, power);
+        }
         let grouped = p.policy == 2;
         let base = if grouped {
             Row {
@@ -175,6 +209,34 @@ impl Record {
             b.column(&offsets[..count as usize + 1])?;
             b.column(&[term(c, 1), term(x, 1)])?;
         }
+        b.finish()
+    }
+    /// RFC-0004 A16's schema 26: `x + floor(P/2) = q*P + rho` with `P = 2^a`,
+    /// `amin <= a <= amax`, `|q| <= c` and `0 <= rho < P`.
+    fn power_row(p: Row, limits: Power) -> Result<Self, Error> {
+        let h = if p.kind == 0 { 32768u64 } else { 1 << 30 };
+        let code = u64::from(limits.code);
+        let power = 1u64 << limits.most;
+        let scalars = [
+            h,
+            code,
+            u64::from(limits.least),
+            u64::from(limits.most),
+            power,
+            power - 1,
+            power / 2,
+            u64::from(p.dimension - 1),
+            (code + 1) / 2,
+        ]
+        .map(Word::from);
+        let mut params = [0u8; 9];
+        params[..2].copy_from_slice(&p.dimension.to_le_bytes());
+        params[2..5].copy_from_slice(&[p.kind, p.fraction, p.policy]);
+        params[5..].copy_from_slice(&p.scale.to_le_bytes());
+        let mut b = Builder::new(26, &params, 8, &scalars, &[], 3)?;
+        b.column(&[term(code, power)])?;
+        b.column(&[term(code * power, 1), term(power - 1, 1)])?;
+        b.column(&[term(h, 1), term(power / 2, 1)])?;
         b.finish()
     }
     /// Derive schema 5, retaining the two aligned sources and one rounding.

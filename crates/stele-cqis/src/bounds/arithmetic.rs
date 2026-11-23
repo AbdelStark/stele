@@ -14,7 +14,7 @@ mod word;
 pub use affine::{Affine, Embedding, Weight};
 pub use attention::{AttentionShape, Maximum, Rotary, Score};
 pub use decoding::{Logits, Sampling, Temperature};
-pub use flow::{Gated, Residual, Row};
+pub use flow::{Gated, Power, Residual, Row};
 pub use function::{Activation, Exponential};
 pub use request::Request;
 pub use weighted::{Normalize, Weighted};

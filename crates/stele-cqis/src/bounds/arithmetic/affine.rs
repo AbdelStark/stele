@@ -1,6 +1,7 @@
 //! RFC-0025 static appendix §§3–5: complete affine and aligned embedding records,
-//! plus RFC-0004 A15's grouped affine (schemas 24/25).
-use super::{digits, field_bound, term, Builder, Error, Record, Row, Word};
+//! plus RFC-0004 A15's grouped affine (schemas 24/25) and A16's power-of-two affine
+//! (schemas 27/28).
+use super::{digits, field_bound, term, Builder, Error, Power, Record, Row, Word};
 
 /// RFC-0004 A15: the offset accumulator window U_t < 2^29 (top byte at most 31).
 const CAP: u64 = 1 << 29;
@@ -65,7 +66,78 @@ pub struct Embedding {
     pub position: Option<Weight>,
 }
 
+impl Affine {
+    fn parameters(self) -> [u8; 17] {
+        let p = self;
+        let mut params = [0; 17];
+        params[..2].copy_from_slice(&p.source.dimension.to_le_bytes());
+        params[2..7].copy_from_slice(&p.weight.parameters());
+        params[7..11].copy_from_slice(&[
+            p.source.kind,
+            p.source.fraction,
+            p.output_fraction,
+            p.source.policy,
+        ]);
+        params[11..15].copy_from_slice(&p.source.scale.to_le_bytes());
+        params[15] = u8::from(p.bias_fraction.is_some());
+        params[16] = p.bias_fraction.unwrap_or(0);
+        params
+    }
+    /// RFC-0004 A16: the least channel shift `lambda_min = f - fo - e - log2(m_max)` of a
+    /// power-of-two row into this matrix; `None` unless the largest mantissa is a power
+    /// of two and the shift is at least 1.
+    pub fn least_shift(self) -> Option<u8> {
+        let high = i32::from(self.source.fraction)
+            - i32::from(self.output_fraction)
+            - i32::from(self.weight.exponent);
+        let low = high - self.weight.mantissa.trailing_zeros() as i32;
+        (self.weight.mantissa.is_power_of_two() && (1..=255).contains(&low)).then_some(low as u8)
+    }
+}
+
 impl Record {
+    /// RFC-0004 A16's schemas 27 (int16 output) and 28 (int24): a power-of-two row into
+    /// a matrix whose channel scales are powers of two. `A = sum_i q_i*w_ji` is one field
+    /// matmul. With `lambda_j = f - fo - e - k_j` in `lambda_min..=L`, `L = f - fo - e`,
+    /// the row exponent splits as `a' = min(a, lambda_min - 1)` and `a'' = a - a'`;
+    /// `Z = R+(A / 2^(lambda_j - a'))` and the output is `Z * 2^a''`.
+    fn power_affine(p: Affine, limits: Power, output: u32) -> Result<Self, Error> {
+        let low = p.least_shift().ok_or(Error::Parameters)?;
+        if p.bias_fraction.is_some() {
+            return Err(Error::Parameters);
+        }
+        let weight = p.weight.magnitude();
+        let accumulator = u64::from(limits.code) * weight * u64::from(p.source.dimension);
+        // One field matmul names A when 2|A| < p.
+        field_bound(accumulator)?;
+        let high = i16::from(low) + p.weight.mantissa.trailing_zeros() as i16;
+        let divisor = Word::power(high)?;
+        let top = divisor.sub(1.into())?;
+        let half = Word::power(high - 1)?;
+        let excess = limits.most.saturating_sub(low - 1);
+        let out = u64::from(output);
+        let scalars = [
+            weight.into(),
+            u64::from(limits.code).into(),
+            accumulator.into(),
+            (2 * accumulator).into(),
+            u64::from(low).into(),
+            u64::from(high as u16).into(),
+            divisor,
+            top,
+            half,
+            u64::from(excess).into(),
+            (1u64 << excess).into(),
+            out.into(),
+        ];
+        let schema = if output == 1 << 15 { 27 } else { 28 };
+        let mut b = Builder::new(schema, &p.parameters()[..16], 8, &scalars, &[-high], 4)?;
+        b.column(&[term(out, divisor)])?;
+        b.column(&[term(divisor.mul(out.into())?, 1), term(top, 1)])?;
+        b.column(&[term(accumulator, 1), term(half, 1)])?;
+        b.column(&[term(out, 1u64 << excess)])?;
+        b.finish()
+    }
     /// Derive schema 1 (24 for a grouped source row, RFC-0004 A15); bias joins the full
     /// scaled product before rounding.
     pub fn affine(p: Affine) -> Result<Self, Error> {
@@ -85,6 +157,9 @@ impl Record {
         p.weight.check()?;
         if p.output_fraction > 30 || p.bias_fraction.is_some_and(|f| f > 30) {
             return Err(Error::Parameters);
+        }
+        if let Some(limits) = p.source.power() {
+            return Self::power_affine(p, limits, output);
         }
         let weight = p.weight.magnitude();
         let inner = u64::from(p.source.dimension);
@@ -156,18 +231,7 @@ impl Record {
         for (out, value) in scalars.iter_mut().zip(words.chain(sides)) {
             *out = value;
         }
-        let mut params = [0; 17];
-        params[..2].copy_from_slice(&p.source.dimension.to_le_bytes());
-        params[2..7].copy_from_slice(&p.weight.parameters());
-        params[7..11].copy_from_slice(&[
-            p.source.kind,
-            p.source.fraction,
-            p.output_fraction,
-            p.source.policy,
-        ]);
-        params[11..15].copy_from_slice(&p.source.scale.to_le_bytes());
-        params[15] = u8::from(p.bias_fraction.is_some());
-        params[16] = p.bias_fraction.unwrap_or(0);
+        let params = p.parameters();
         let schema = match (grouped, output == 1 << 15) {
             (false, true) => 1,
             (false, false) => 21,
