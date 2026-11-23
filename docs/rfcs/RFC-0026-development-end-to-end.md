@@ -2891,3 +2891,71 @@ changes the last value of every lookup section of the proof. On L2a that is a me
 value in 20 of the 23 sections, the three of the split check among them, and a prefix
 sumcheck final in three. The `e20-26-*` ledgers were recorded before this control.
 Affected tasks: E20-26, E20-09. Promotion to `standard`: not granted (Workflow 10).
+
+### A31 — Under profile byte 7 the model's passport carries the weight widths
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task: E18-14.
+Motivation: §2.2 runs the range check of every weight column in every proof. The
+weights of a model are the same in every proof, and RFC-0011 §1 item 2 already makes
+their commitment a passport field. On L2a under byte 6 the weight columns hold
+67,108,864 of the 203,484,736 lookup positions, and on the L3b shape 8,858,370,048 of
+77,693,585,408 (`weight_cells` and `lookup_positions` of
+`e18-05-static-accounting-l2a` and `-l3b`).
+
+Replacement text, §2.2, bullet "Every weight column must still pass a range check
+(§3.6). In the development profile that check is run in every proof.":
+
+> "Every weight column must lie within its declared width (§3.6). Under profile bytes 0
+> to 6 a range check enforces that in every proof. Under profile byte 7 the model's
+> passport carries it. The relation declares no range check on a weight column. The
+> verifier first computes the model digest of the public input: BLAKE3 over
+> `stele/v0.1/dev-e2e/model`, the `cqis_id`, the count and the weight roots in plan
+> order, and the 1-D records. It accepts only if that digest equals one it trusts, and
+> rejects with `Passport` when it holds none. A trusted digest is one that the verifier,
+> or a party it relies on, recomputed from the published Artifact `cqis-weights-v1`:
+> decode the Artifact, commit each weight source under the source set of byte 6, and
+> hash. Every code of a decodable Artifact lies within its width, because the format
+> stores exactly the declared int4 or int8 codes. In every other respect byte 7 is byte
+> 6 (A29, A30): the same sources, the same roots and the same model digest."
+
+Added text, §3.6 item 3, one more way a column is enforced:
+
+> "- being a weight column of a relation that its plan marks `passport_weights`
+>   (profile byte 7, A31)."
+
+Added text, §4 step 1 and A15: the public input ends with profile byte `7`. The
+canonical relation encoding of a `passport_weights` relation ends with the tag
+`stele/v0.1/relation/passport-weights` after its compositions; every other relation's
+bytes are unchanged. The unsegmented input file is `stele-dev-public-v7`, with the
+layout of `-v6`; a segmented file (`-v5`) names source byte `7`.
+
+Scope: the relation engine, its plans and the proof container are those of byte 6; the
+engine sees a relation with fewer range checks. Bytes 0 to 6 are unchanged.
+Soundness: no round is added. The rounds of the weight range checks are removed: per
+weight source one RFC-0008 A5 statement (A8, A30), with its `(β, α)` round, its trees,
+its selected product and its multiplicity claim. In their place the verifier compares
+two 32-byte digests before it reads a proof byte. The bound rule of §3.6 needs every
+weight entry within its width. The trusted digest fixes the roots (collision resistance
+of BLAKE3). A root fixes the committed matrix, and the registration certificate with
+the certified openings of RFC-0029 §1.3 binds every claim on the source to the one
+message within the certified radius of it. The issuer obtained the same roots from the
+Artifact's codes, so that message is those codes, and they lie within their widths. A
+prover that commits anything else has another root and another digest (NC-1342). The
+assumption this adds is on the verifier's side: its trusted digest was recomputed from
+the Artifact. A proof alone no longer shows that an in-range model exists, so the
+library has no entry that accepts a byte 7 proof without the comparison. A proof of
+byte 6 is not a proof of byte 7 or the reverse: the public input and the relation
+encoding differ (NC-1343).
+Hidden weights: recomputation needs the weights. A model whose weights stay private
+needs a registration proof of their widths, made once per commitment, in place of the
+recomputation; that is a later amendment (lane Z). Byte 7 is for published weights.
+Cells, lookups, bytes: committed witness cells are unchanged. Lookup positions fall by
+the padded weight cells. On L2a: 203,484,736 to 136,375,872 lookup positions and
+3,971,461 to 3,919,837 proof bytes (one arm64 run; the task records ledgers). The model
+commitment is computed as before; a later task loads it.
+Controls: NC-1342, a model one weight code away from the published Artifact, proved
+honestly under byte 7 and verified against the published model's digest (`Passport`).
+NC-1343, a byte 7 proof presented with the byte 6 input file, one byte of the file tag
+away (`StatementMismatch`).
+Affected tasks: E18-14; E21-05 (the passport file of RFC-0011 §1, whose model roots this
+digest names). Promotion to `standard`: not granted (Workflow 10).
