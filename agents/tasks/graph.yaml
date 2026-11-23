@@ -5065,7 +5065,9 @@ tasks:
   skill: fidelity-researcher
   crate: harness
   lane: N
-  status: ready
+  status: in_progress
+  agent: claude
+  branch: task/E22-02-static-scale-experiment
   acceptance:
   - a pre-registered protocol (Workflow 11) fixed before any score is seen
   - simulation and exact executor runs on the fixed 8-window subset for each candidate; the full G7 protocol for the best one
