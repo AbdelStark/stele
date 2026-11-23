@@ -814,6 +814,13 @@ fn matches_reference_virtual_values_in_the_narrow_and_the_checked_form() {
     for accs in [
         vec![19, -13, 31, 0],
         vec![1 << 40, -(1 << 33), i64::from(i32::MAX) + 17, 0],
+        // Negative entries of the narrow form keep their sign.
+        vec![-100, -29, i64::from(i32::MIN) + 16, -1],
+        // One entry just past `i32`, `i32::MAX + 1`, and one just before it: the first
+        // alone moves the column to the checked form, and neither wraps.
+        vec![19, -13, i64::from(i32::MAX) + 17, 0],
+        vec![19, -13, i64::from(i32::MAX) + 16, 0],
+        vec![19, i64::from(i32::MIN) - 17, 31, 0],
     ] {
         let mut vals = Values::new(&rel);
         vals.set(&rel, acc, accs.clone()).expect("set");
@@ -821,6 +828,23 @@ fn matches_reference_virtual_values_in_the_narrow_and_the_checked_form() {
         let expected: Vec<i64> = accs.iter().zip(&ys).map(|(a, y)| a - 16 * y).collect();
         assert_eq!(eval_column(&rel, &vals, rem), Ok(expected));
     }
+    // An entry whose definition overflows `i128` is not a value: the column is refused,
+    // never read as zero.
+    let wide = rel.add_virtual(
+        "wide",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(i64::MAX, Ref::identity(acc, 2)); 3],
+        },
+        2,
+    );
+    let mut vals = Values::new(&rel);
+    vals.set(&rel, acc, vec![0, 1, i64::MAX, 0]).expect("set");
+    vals.set(&rel, y, ys).expect("set");
+    assert_eq!(
+        eval_column(&rel, &vals, wide),
+        Err(Violation::Missing(wide))
+    );
 }
 
 /// RFC-0028 §2.1–2.2 (E18-01): honest relations for Linear, Pointwise and Contraction
