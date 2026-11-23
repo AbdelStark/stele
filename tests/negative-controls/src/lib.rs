@@ -197,6 +197,18 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: development::run_split,
     },
     catalog::RegisteredControl {
+        id: 1342,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "Passport",
+        run: || development::run_passport(1342),
+    },
+    catalog::RegisteredControl {
+        id: 1343,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "StatementMismatch",
+        run: || development::run_passport(1343),
+    },
+    catalog::RegisteredControl {
         id: 316,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",

@@ -1723,6 +1723,112 @@ fn rejects_nc_1341_value_moved_across_an_instance_boundary() {
     run_split().expect("NC-1341");
 }
 
+/// NC-1342 and NC-1343 (RFC-0026 A31): the passport of profile byte 7, where no range
+/// check reads a weight and the verifier holds the model digest that the issuer
+/// recomputed from the published Artifact.
+///
+/// NC-1342: the prover's Artifact differs from the published one in one weight code (one
+/// bit of the first Token code). Its proof is honest for the model it commits, so nothing
+/// inside the proof can reject it; the verifier's comparison with the passport does, with
+/// `Passport`.
+/// NC-1343: a profile byte 7 proof is presented with the profile byte 6 input file, one
+/// byte of the file tag away, whose verifier needs no passport. The public input and the
+/// relation differ: `StatementMismatch`.
+pub fn run_passport(id: u16) -> Result<(), String> {
+    use stele_prover::development::{
+        bundle, passport, prove_window_development_segmented_measured, verify_passport,
+        PASSPORT_PROFILE,
+    };
+    let files = [
+        span("model")?,
+        span("preparation")?,
+        span("scales")?,
+        span("artifact")?,
+    ];
+    let err = |e: Error| format!("{e:?}");
+    let (_, _, trusted) =
+        passport(files[0], files[1], files[2], files[3], PASSPORT_PROFILE).map_err(err)?;
+    let model = Model::decode(files[0]).map_err(|e| format!("{e:?}"))?;
+    let layout = ArtifactLayout::new(&model).map_err(|e| format!("{e:?}"))?;
+    let token = layout
+        .records()
+        .iter()
+        .find(|r| {
+            model
+                .shape()
+                .physical(r.ordinal())
+                .is_some_and(|p| p.role() == Role::Token)
+        })
+        .ok_or("Token record")?;
+    // The prover's two files: the public input file and the proof.
+    let prove = |artifact: &Vec<u8>| -> Result<(Vec<u8>, Vec<u8>), String> {
+        let window = Statement {
+            tokens: vec![1],
+            start: 0,
+            end: 1,
+            next: None,
+        };
+        let (public, statement, proof, _) = prove_window_development_segmented_measured(
+            files[0],
+            files[1],
+            files[2],
+            artifact,
+            window,
+            4,
+            PASSPORT_PROFILE,
+            0,
+        )
+        .map_err(err)?;
+        Ok((bundle::encode(&public, &statement), proof))
+    };
+    let verify = |(input, proof): &(Vec<u8>, Vec<u8>)| -> Result<(), String> {
+        let (public, statement) = bundle::decode(input).map_err(|e| name(&e))?;
+        verify_passport(&public, &statement, proof, &trusted)
+            .map(|_| ())
+            .map_err(|e| name(&e))
+    };
+    match id {
+        1342 => crate::check_control(
+            &files[3].to_vec(),
+            &WeightCode(token.payload_offset() as usize),
+            prove,
+            verify,
+            "Passport".to_string(),
+        ),
+        1343 => crate::check_proof_control(
+            || prove(&files[3].to_vec()),
+            &ProfileTag,
+            verify,
+            "StatementMismatch".to_string(),
+        ),
+        _ => return Err(format!("unknown passport control {id}")),
+    }
+    .map_err(|e| format!("{e:?}"))
+}
+
+/// One bit of the weight code at this byte of the Artifact.
+struct WeightCode(usize);
+impl crate::ProverHook<Vec<u8>> for WeightCode {
+    fn tamper(&self, artifact: &mut Vec<u8>) {
+        artifact[self.0] ^= 1;
+    }
+}
+
+/// The version digit of the input file tag: `stele-dev-public-v7` to `-v6`.
+struct ProfileTag;
+impl crate::ProverHook<(Vec<u8>, Vec<u8>)> for ProfileTag {
+    fn tamper(&self, files: &mut (Vec<u8>, Vec<u8>)) {
+        files.0[b"stele-dev-public-v".len()] = b'6';
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn rejects_nc_1342_and_nc_1343_passport() {
+    run_passport(1342).expect("NC-1342");
+    run_passport(1343).expect("NC-1343");
+}
+
 /// The innermost variant name of a nested error's debug form.
 #[cfg(feature = "controls")]
 fn name_of(debug: &str) -> String {

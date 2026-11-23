@@ -44,6 +44,9 @@ REQUIRED_DEVELOPMENT_DIGESTS = (
     # RFC-0026 A29: the joined recursion of profile byte 6.
     ('L0', 'one-layer', 16, 'CircleRecursive', 6),
     ('L1', 'eight-layer', 64, 'CircleRecursive', 6),
+    # RFC-0026 A31: profile byte 7, the weight widths on the model's passport.
+    ('L0', 'one-layer', 16, 'CirclePassport', 7),
+    ('L1', 'eight-layer', 64, 'CirclePassport', 7),
 )
 
 

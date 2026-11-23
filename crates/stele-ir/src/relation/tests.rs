@@ -351,6 +351,24 @@ fn rejects_undisciplined_column() {
     assert_eq!(f.relation.validate(), Err(Invalid::Undisciplined(a)));
 }
 
+/// RFC-0026 A31: a weight column without a range is undisciplined, and disciplined once the
+/// relation says its passport carries the weight widths. A witness column gains nothing.
+#[test]
+fn accepts_weight_width_carried_by_the_passport_only_for_weights() {
+    let mut rel = Relation::default();
+    let w = rel.add_column("w", Kind::Weight, Width::signed(8), 1);
+    assert_eq!(rel.validate(), Err(Invalid::Undisciplined(w)));
+    rel.passport_weights = true;
+    assert_eq!(rel.validate(), Ok(()));
+    let g = Kind::Witness(rel.add_group("G/x/1", 1));
+    let x = rel.add_column("x", g, Width::signed(8), 1);
+    assert_eq!(rel.validate(), Err(Invalid::Undisciplined(x)));
+    range(&mut rel, x, Width::signed(8));
+    assert_eq!(rel.validate(), Ok(()));
+    rel.passport_weights = false;
+    assert_eq!(rel.validate(), Err(Invalid::Undisciplined(w)));
+}
+
 #[test]
 fn rejects_selected_lookup_as_discipline() {
     let mut f = fixture();

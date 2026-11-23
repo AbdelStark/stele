@@ -893,6 +893,21 @@ fn dumps_development_digests() {
             Sources::CircleRecursive,
             "CircleRecursive",
         ),
+        // RFC-0026 A31: profile byte 7, the weight widths on the passport.
+        (
+            "L0",
+            "one-layer",
+            16usize,
+            Sources::CirclePassport,
+            "CirclePassport",
+        ),
+        (
+            "L1",
+            "eight-layer",
+            64usize,
+            Sources::CirclePassport,
+            "CirclePassport",
+        ),
     ] {
         let case = load(name);
         let mut executor = case.executor(&case.artifact);
@@ -902,7 +917,9 @@ fn dumps_development_digests() {
         let committed = Committed::new(&weights).expect("commitment");
         let public = case.public(&committed, &weights);
         let proof = prove(&public, &mut executor, &weights, &committed, &statement).expect("prove");
-        verify(&public, &statement, &proof).expect("verify");
+        let (_, model) = model_identity(&public).expect("identity");
+        stele_prover::development::verify_passport(&public, &statement, &proof, &model)
+            .expect("verify");
         let filename = format!("{rung}-{label}.proof");
         std::fs::write(dir.join(&filename), &proof).expect("write proof");
         eprintln!(
@@ -1754,6 +1771,7 @@ fn a15_small() -> (Relation, Public, Statement, container::Container) {
             column: ColumnId(0),
             limbs: vec![(ColumnId(1), 4)],
         }],
+        passport_weights: false,
     };
     let public = Public {
         model: b"MDL".to_vec(),
@@ -2735,6 +2753,131 @@ fn accepts_segmented_one_layer_and_wide_gqa_windows() {
         Some(Error::StatementMismatch),
         "A16 registry::publish must reject segmented public bundles"
     );
+}
+
+/// RFC-0026 A31 (profile byte 7): no range check reads a weight, and the proof is accepted
+/// only against the model digest its passport names. The issuer recomputes that digest from
+/// the published Artifact; a prover that commits another model, even one weight code away,
+/// has another digest.
+#[test]
+fn accepts_passport_profile_7_only_against_the_trusted_model() {
+    use stele_prover::development::{
+        passport, verify_passport, PASSPORT_PROFILE, RECURSIVE_PROFILE,
+    };
+    use stele_reductions::stele_cqis::model::{ArtifactLayout, Role};
+    let case = load("one-layer");
+    let base = Statement {
+        tokens: vec![1],
+        start: 0,
+        end: 1,
+        next: None,
+    };
+    let prove = |artifact: &[u8], profile: u8, segment_layers: u16| {
+        stele_prover::development::prove_window_development_segmented_measured(
+            case.bytes[0],
+            case.bytes[2],
+            case.bytes[1],
+            artifact,
+            base.clone(),
+            16,
+            profile,
+            segment_layers,
+        )
+    };
+    let (issued, cqis_id, trusted) = passport(
+        case.bytes[0],
+        case.bytes[2],
+        case.bytes[1],
+        &case.artifact,
+        PASSPORT_PROFILE,
+    )
+    .expect("passport");
+    assert_eq!(issued.sources, Sources::CirclePassport);
+    assert_eq!(model_identity(&issued), Ok((cqis_id, trusted)));
+    let mut other = trusted;
+    other[0] ^= 1;
+
+    for segment_layers in [0u16, 1] {
+        let (public, statement, proof, report) =
+            prove(&case.artifact, PASSPORT_PROFILE, segment_layers).expect("profile-7 prove");
+        assert_eq!(public.sources, Sources::CirclePassport);
+        assert_eq!(public.commitment, issued.commitment);
+        assert_eq!(model_identity(&public), Ok((cqis_id, trusted)));
+        let encoded = bundle::encode(&public, &statement);
+        let magic: &[u8] = if segment_layers == 0 {
+            b"stele-dev-public-v7"
+        } else {
+            b"stele-dev-public-v5"
+        };
+        assert!(encoded.starts_with(magic));
+        assert_eq!(
+            bundle::decode(&encoded),
+            Ok((public.clone(), statement.clone()))
+        );
+
+        // Accepted against the trusted digest; refused without one and against another.
+        verify_passport(&public, &statement, &proof, &trusted).expect("profile-7 verify");
+        assert_eq!(
+            verify(&public, &statement, &proof).err(),
+            Some(Error::Passport)
+        );
+        assert_eq!(
+            verify_passport(&public, &statement, &proof, &other).err(),
+            Some(Error::Passport)
+        );
+
+        // Byte 6 commits the same model and reads each weight column in one range check
+        // more; the witness is the same.
+        let (public6, statement6, proof6, report6) =
+            prove(&case.artifact, RECURSIVE_PROFILE, segment_layers).expect("profile-6 prove");
+        assert_eq!(statement6, statement);
+        assert_eq!(public6.commitment, public.commitment);
+        assert_eq!(model_identity(&public6), Ok((cqis_id, trusted)));
+        assert_eq!(
+            report.engine.committed_cells,
+            report6.engine.committed_cells
+        );
+        assert!(report.engine.lookup_positions < report6.engine.lookup_positions);
+        verify_passport(&public6, &statement6, &proof6, &trusted).expect("profile-6 verify");
+        // Neither proof is one of the other profile byte: the public input and the
+        // relation differ, with or without the passport.
+        assert_eq!(
+            verify(&public6, &statement, &proof).err(),
+            Some(Error::StatementMismatch)
+        );
+        assert_eq!(
+            verify_passport(&public6, &statement, &proof, &trusted).err(),
+            Some(Error::StatementMismatch)
+        );
+        assert_eq!(
+            verify_passport(&public, &statement, &proof6, &trusted).err(),
+            Some(Error::StatementMismatch)
+        );
+    }
+
+    // One weight code of the embedding changed: an honest proof of another model.
+    let layout = ArtifactLayout::new(&case.model).expect("layout");
+    let token = layout
+        .records()
+        .iter()
+        .find(|r| {
+            case.model
+                .shape()
+                .physical(r.ordinal())
+                .is_some_and(|p| p.role() == Role::Token)
+        })
+        .expect("Token record");
+    let mut artifact = case.artifact.to_vec();
+    artifact[token.payload_offset() as usize] ^= 1;
+    let (public, statement, proof, _) =
+        prove(&artifact, PASSPORT_PROFILE, 0).expect("the other model's prover");
+    let (_, own) = model_identity(&public).expect("identity");
+    assert_ne!(own, trusted);
+    assert_eq!(
+        verify_passport(&public, &statement, &proof, &trusted).err(),
+        Some(Error::Passport)
+    );
+    verify_passport(&public, &statement, &proof, &own).expect("its own passport");
 }
 
 #[test]
