@@ -17,8 +17,9 @@ use alloc::vec::Vec;
 use stele_reductions::development::embedding::{Embedding, EmbeddingCapture, EmbeddingPlan};
 use stele_reductions::development::rmsnorm::{RmsNorm, RmsNormPlan, RmsNormRow};
 use stele_reductions::development::{
-    Attention, AttentionCapture, AttentionPlan, ConversionCapture, Policy, PositionCapture,
-    Projection, ProjectionCapture, ProjectionPlan, RowConversion,
+    AnyProjection, AnyRow, Attention, AttentionCapture, AttentionPlan, ConversionCapture, Policy,
+    PositionCapture, PowerGated, PowerGatedCapture, ProjectionCapture, ProjectionPlan,
+    RowConversion, RowPolicy, RowRead,
 };
 use stele_reductions::finish::{Finish, FinishCapture, FinishPlan};
 use stele_reductions::residual::{Residual, ResidualCapture};
@@ -109,6 +110,24 @@ fn policy(p: stele_reductions::stele_cqis::model::Policy) -> Result<Policy, Erro
     })
 }
 
+/// A row a projection reads: a scaled int8 row, or a power-of-two row (RFC-0026 A32).
+fn row_policy(p: stele_reductions::stele_cqis::model::Policy) -> Result<RowPolicy, Error> {
+    Ok(match p.mode() {
+        3 => RowPolicy::Power(p.scale()),
+        _ => RowPolicy::Scaled(policy(p)?),
+    })
+}
+
+/// The gated product and the row the down projection reads (RFC-0026 §5 row 10; a
+/// power-of-two row under A32).
+enum Ffn {
+    Scaled {
+        gated: GatedProduct,
+        down_row: GatedConversion,
+    },
+    Power(PowerGated),
+}
+
 fn unsupported<E>(_: E) -> Error {
     Error::UnsupportedModel
 }
@@ -116,26 +135,24 @@ fn unsupported<E>(_: E) -> Error {
 /// The modules of one layer, in RFC-0026 §5 order.
 struct LayerModules {
     norm1: RmsNorm,
-    row1: RowConversion,
-    q: Projection,
-    k: Projection,
-    v: Projection,
+    row1: AnyRow,
+    q: AnyProjection,
+    k: AnyProjection,
+    v: AnyProjection,
     rope_q: Rope,
     rope_k: Rope,
     /// Q', K' and V row conversions read by attention (RFC-0026 §5 row 6).
     attention_rows: [RowConversion; 3],
     attention: Attention,
-    row_o: RowConversion,
-    o: Projection,
+    row_o: AnyRow,
+    o: AnyProjection,
     mid: Residual,
     norm2: RmsNorm,
-    row2: RowConversion,
-    gate: Projection,
-    up: Projection,
-    gated: GatedProduct,
-
-    down_row: GatedConversion,
-    down: Projection,
+    row2: AnyRow,
+    gate: AnyProjection,
+    up: AnyProjection,
+    ffn: Ffn,
+    down: AnyProjection,
     residual: Residual,
     norm2_descriptor: Descriptor,
     norm1_descriptor: Descriptor,
@@ -256,9 +273,14 @@ impl Layout {
             )
             .map_err(unsupported)?;
             norm1.declare(&mut relation);
-            let mut row1 =
-                RowConversion::new(&s("row1"), declared(norm1.output())?, t, d, policy(p[0])?)
-                    .map_err(unsupported)?;
+            let mut row1 = AnyRow::new(
+                &s("row1"),
+                declared(norm1.output())?,
+                t,
+                d,
+                row_policy(p[0])?,
+            )
+            .map_err(unsupported)?;
             row1.declare(&mut relation);
             let unit1 = norm1_descriptor.parameters()[4];
             let input1 = declared(row1.output())?;
@@ -266,12 +288,12 @@ impl Layout {
                            weights: &mut Vec<_>,
                            name: &str,
                            role: Role,
-                           input,
+                           input: RowRead,
                            unit: u8,
                            fo: u8|
-             -> Result<Projection, Error> {
+             -> Result<AnyProjection, Error> {
                 let plan = plan.projection(role, layer, t, unit, fo)?;
-                let mut m = Projection::new(&s(name), input, None, plan).map_err(unsupported)?;
+                let mut m = AnyProjection::new(&s(name), input, None, plan).map_err(unsupported)?;
                 m.declare(relation);
                 weights.push((declared(m.weight())?, role, layer));
                 Ok(m)
@@ -370,12 +392,12 @@ impl Layout {
             )
             .map_err(unsupported)?;
             attention.declare(&mut relation);
-            let mut row_o = RowConversion::new(
+            let mut row_o = AnyRow::new(
                 &s("row_o"),
                 declared(attention.output())?,
                 t,
                 d,
-                policy(p[4])?,
+                row_policy(p[4])?,
             )
             .map_err(unsupported)?;
             row_o.declare(&mut relation);
@@ -424,9 +446,14 @@ impl Layout {
             )
             .map_err(unsupported)?;
             norm2.declare(&mut relation);
-            let mut row2 =
-                RowConversion::new(&s("row2"), declared(norm2.output())?, t, d, policy(p[5])?)
-                    .map_err(unsupported)?;
+            let mut row2 = AnyRow::new(
+                &s("row2"),
+                declared(norm2.output())?,
+                t,
+                d,
+                row_policy(p[5])?,
+            )
+            .map_err(unsupported)?;
             row2.declare(&mut relation);
             let unit2 = norm2_descriptor.parameters()[4];
             let input2 = declared(row2.output())?;
@@ -454,29 +481,33 @@ impl Layout {
                 Some(table) if *table.descriptor() == component => table,
                 _ => CqisTable::generate(component).map_err(unsupported)?,
             };
-            let mut gated = GatedProduct::new(
-                l,
-                declared(gate.output())?,
-                declared(up.output())?,
-                t,
-                f,
-                &table,
-            )
-            .map_err(unsupported)?;
-            table_cache = Some(table);
-            gated.declare(&mut relation);
-            let high_low = declared(gated.columns())?;
-            let mut down_row =
-                GatedConversion::new(l, high_low.high, high_low.low, t, f, policy(p[6])?)
+            let (gate_out, up_out) = (declared(gate.output())?, declared(up.output())?);
+            let (ffn, down_input) = if p[6].mode() == 3 {
+                let mut gated = PowerGated::new(l, gate_out, up_out, t, f, &table, p[6].scale())
                     .map_err(unsupported)?;
-            down_row.declare(&mut relation);
+                gated.declare(&mut relation);
+                let read = RowRead::Power(declared(gated.output())?);
+                (Ffn::Power(gated), read)
+            } else {
+                let mut gated =
+                    GatedProduct::new(l, gate_out, up_out, t, f, &table).map_err(unsupported)?;
+                gated.declare(&mut relation);
+                let high_low = declared(gated.columns())?;
+                let mut down_row =
+                    GatedConversion::new(l, high_low.high, high_low.low, t, f, policy(p[6])?)
+                        .map_err(unsupported)?;
+                down_row.declare(&mut relation);
+                let read = RowRead::Scaled(declared(down_row.output())?);
+                (Ffn::Scaled { gated, down_row }, read)
+            };
+            table_cache = Some(table);
             let activation = block.activation().function().parameters();
             let down = project(
                 &mut relation,
                 &mut weights,
                 "down",
                 Role::Down,
-                declared(down_row.output())?,
+                down_input,
                 activation[1] + fr[4],
                 fr[6],
             )?;
@@ -528,8 +559,7 @@ impl Layout {
                 row2,
                 gate,
                 up,
-                gated,
-                down_row,
+                ffn,
                 down,
                 residual,
                 norm1_descriptor,
@@ -579,7 +609,7 @@ impl Layout {
                     rows: t,
                     fixed_widths: plan.zk,
                 },
-                policy: policy(model.final_policy())?,
+                policy: row_policy(model.final_policy())?,
                 head: plan.projection(
                     Role::Head,
                     None,
@@ -781,19 +811,23 @@ impl Layout {
             .map_err(w("gate"))?;
         m.up.assign(r, &projection(|b| &b.second_row, |b| &b.up, wi + 5), values)
             .map_err(w("up"))?;
-        m.gated
-            .assign(
-                r,
-                &GatedCapture {
-                    gate: flat(|b| &b.gate.output.quotient),
-                    up: flat(|b| &b.up.output.quotient),
-                },
-                values,
-            )
-            .map_err(w("gated"))?;
-        m.down_row
-            .assign(r, &flat64(|b| &b.gated), values)
-            .map_err(w("down_row"))?;
+        let (gate, up) = (
+            flat(|b| &b.gate.output.quotient),
+            flat(|b| &b.up.output.quotient),
+        );
+        match &m.ffn {
+            Ffn::Scaled { gated, down_row } => {
+                gated
+                    .assign(r, &GatedCapture { gate, up }, values)
+                    .map_err(w("gated"))?;
+                down_row
+                    .assign(r, &flat64(|b| &b.gated), values)
+                    .map_err(w("down_row"))?;
+            }
+            Ffn::Power(gated) => gated
+                .assign(r, &PowerGatedCapture { gate, up }, values)
+                .map_err(w("gated"))?,
+        }
         m.down
             .assign(r, &projection(|b| &b.down_row, |b| &b.down, wi + 6), values)
             .map_err(w("down"))?;

@@ -9,8 +9,9 @@
 //!
 //! This module adds no relation of its own. It composes, in plan order:
 //! - [`RmsNorm`] (E16-04, row 2) reading `R_L`, scope `G/norm`;
-//! - [`RowConversion`] (E16-05, row 3) reading the norm output, prefix `G/row`;
-//! - [`Projection`] (E16-05, row 4) reading that row, prefix `G/head`. Its weight is
+//! - [`AnyRow`] (E16-05, row 3; a power-of-two row under RFC-0026 A32) reading the norm
+//!   output, prefix `G/row`;
+//! - [`AnyProjection`] (E16-05, row 4) reading that row, prefix `G/head`. Its weight is
 //!   the head source, declared here in plan order (after every layer), or the
 //!   embedding's column for a tied head (RFC-0026 §2.2);
 //! - [`Argmax`] (row 13) reading the head output as the logits.
@@ -21,7 +22,7 @@
 use crate::argmax::Argmax;
 use crate::development::rmsnorm::{RmsNorm, RmsNormPlan, RmsNormRow};
 use crate::development::{
-    ConversionCapture, Policy, Projection, ProjectionCapture, ProjectionPlan, RowConversion,
+    AnyProjection, AnyRow, ConversionCapture, ProjectionCapture, ProjectionPlan, RowPolicy,
     Unsupported,
 };
 use alloc::vec::Vec;
@@ -32,8 +33,8 @@ use stele_ir::relation::{Column, ColumnId, Invalid, Kind, Module, Relation, Valu
 pub struct FinishPlan {
     /// The final `rmsnorm_q` descriptor and gains; `rows` is `T`.
     pub norm: RmsNormPlan,
-    /// The Model's final row policy.
-    pub policy: Policy,
+    /// The Model's final row policy, of either kind (RFC-0026 A32).
+    pub policy: RowPolicy,
     /// The head: `rows = T`, `inner = d`, `outputs = V`, shift `e − f + fl`.
     pub head: ProjectionPlan,
     /// A tied head reads this (embedding) weight column instead of its own source.
@@ -76,8 +77,8 @@ pub struct Finish {
     plan: FinishPlan,
     input: ColumnId,
     norm: Option<RmsNorm>,
-    row: Option<RowConversion>,
-    head: Option<Projection>,
+    row: Option<AnyRow>,
+    head: Option<AnyProjection>,
     argmax: Option<Argmax>,
 }
 
@@ -136,12 +137,12 @@ impl Finish {
         let normalised = norm.output().expect("declared");
         let (rows, inner) = (p.head.rows, p.head.inner);
         let mut row =
-            RowConversion::new("G/row", normalised, rows, inner, p.policy).map_err(unsupported)?;
+            AnyRow::new("G/row", normalised, rows, inner, p.policy).map_err(unsupported)?;
         row.declare(relation);
         if p.head.output_bits != 16 {
             return Err(FinishError::Unsupported(Unsupported::Shape));
         }
-        let mut head = Projection::new(
+        let mut head = AnyProjection::new(
             "G/head",
             row.output().expect("declared"),
             p.tied,
@@ -163,7 +164,7 @@ impl Finish {
         let (norm, row, head) = (self.norm.as_ref()?, self.row.as_ref()?, self.head.as_ref()?);
         Some(FinishColumns {
             normalised: norm.output()?,
-            codes: row.output()?.codes,
+            codes: row.output()?.codes(),
             weight: head.weight()?,
             logits: head.output()?,
         })

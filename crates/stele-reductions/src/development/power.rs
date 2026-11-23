@@ -40,7 +40,10 @@
 //! Committed cells per element: a row 2 (`q`, `h`); a projection output 1 (`Z`); a
 //! gated lane 5 (`s`, `q`, `h`, `rho0`, `rho1`). Row-domain columns are extra.
 
-use super::{log2_ceil, r, term, Builder, ConversionCapture, ProjectionCapture, Unsupported};
+use super::{
+    log2_ceil, r, term, Builder, ConversionCapture, Policy, Projection, ProjectionCapture,
+    ProjectionPlan, RowConversion, RowOutput, Unsupported,
+};
 use alloc::format;
 use alloc::string::String;
 use alloc::vec;
@@ -463,23 +466,6 @@ impl Module for PowerRow {
     }
 }
 
-/// Plan data of one projection of a power-of-two row.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PowerPlan {
-    /// Real rows `T` and dimensions `d` (inner) and `o` (outputs).
-    pub rows: usize,
-    pub inner: usize,
-    pub outputs: usize,
-    /// Weight code bits, 4 or 8.
-    pub weight_bits: u8,
-    /// Public channel mantissas, each a power of two.
-    pub mantissas: Vec<u16>,
-    /// `L = f - fo - e`: row fraction minus output fraction minus the weight exponent.
-    pub shift: i32,
-    /// Signed output width; 16 is the one this module proves.
-    pub output_bits: u8,
-}
-
 #[derive(Clone, Copy, Debug)]
 struct ProjectionColumns {
     weight: ColumnId,
@@ -498,7 +484,7 @@ pub struct PowerProjection {
     prefix: String,
     input: PowerOutput,
     weight: Option<ColumnId>,
-    plan: PowerPlan,
+    plan: ProjectionPlan,
     /// Channel shifts `lambda_j`, and `cap = min(amax, lambda_min - 1)`.
     shifts: Vec<u8>,
     cap: u8,
@@ -506,11 +492,13 @@ pub struct PowerProjection {
 }
 
 impl PowerProjection {
+    /// `plan` is the projection's plan data; its mantissas are powers of two and its
+    /// `shift` is `e - f + fo`, so the channel shift is `lambda_j = -shift - k_j`.
     pub fn new(
         prefix: &str,
         input: PowerOutput,
         weight: Option<ColumnId>,
-        plan: PowerPlan,
+        plan: ProjectionPlan,
     ) -> Result<Self, Unsupported> {
         let shape = plan.rows > 0
             && (1..=16384).contains(&plan.inner)
@@ -527,7 +515,7 @@ impl PowerProjection {
         {
             return Err(Unsupported::Policy);
         }
-        let shift = |m: u16| plan.shift - m.trailing_zeros() as i32;
+        let shift = |m: u16| -plan.shift - m.trailing_zeros() as i32;
         let low = plan.mantissas.iter().map(|m| shift(*m)).min().unwrap_or(0);
         let high = plan.mantissas.iter().map(|m| shift(*m)).max().unwrap_or(0);
         if low < 1 || high > 63 {
@@ -1072,5 +1060,150 @@ impl Module for PowerGated {
             values.set(relation, id, column)?;
         }
         Ok(())
+    }
+}
+
+/// A row policy of either kind: scaled int8 codes, or a power-of-two row with the
+/// policy scale `b + 256*amin`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RowPolicy {
+    Scaled(Policy),
+    Power(u32),
+}
+
+/// What a projection reads from a row of either kind.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RowRead {
+    Scaled(RowOutput),
+    Power(PowerOutput),
+}
+
+impl RowRead {
+    /// The codes column.
+    pub fn codes(self) -> ColumnId {
+        match self {
+            RowRead::Scaled(o) => o.codes,
+            RowRead::Power(o) => o.codes,
+        }
+    }
+}
+
+/// A row conversion of either kind.
+#[derive(Clone, Debug)]
+pub enum AnyRow {
+    Scaled(RowConversion),
+    Power(PowerRow),
+}
+
+impl AnyRow {
+    pub fn new(
+        prefix: &str,
+        input: ColumnId,
+        rows: usize,
+        dimension: usize,
+        policy: RowPolicy,
+    ) -> Result<Self, Unsupported> {
+        Ok(match policy {
+            RowPolicy::Scaled(p) => {
+                AnyRow::Scaled(RowConversion::new(prefix, input, rows, dimension, p)?)
+            }
+            RowPolicy::Power(scale) => {
+                AnyRow::Power(PowerRow::new(prefix, input, rows, dimension, scale)?)
+            }
+        })
+    }
+
+    /// What a projection reads; `None` before `declare`.
+    pub fn output(&self) -> Option<RowRead> {
+        match self {
+            AnyRow::Scaled(m) => m.output().map(RowRead::Scaled),
+            AnyRow::Power(m) => m.output().map(RowRead::Power),
+        }
+    }
+}
+
+impl Module for AnyRow {
+    type Capture = ConversionCapture;
+
+    fn declare(&mut self, relation: &mut Relation) {
+        match self {
+            AnyRow::Scaled(m) => m.declare(relation),
+            AnyRow::Power(m) => m.declare(relation),
+        }
+    }
+
+    fn assign(
+        &self,
+        relation: &Relation,
+        capture: &ConversionCapture,
+        values: &mut Values,
+    ) -> Result<(), Violation> {
+        match self {
+            AnyRow::Scaled(m) => m.assign(relation, capture, values),
+            AnyRow::Power(m) => m.assign(relation, capture, values),
+        }
+    }
+}
+
+/// A projection of a row of either kind.
+pub enum AnyProjection {
+    Scaled(Projection),
+    Power(PowerProjection),
+}
+
+impl AnyProjection {
+    pub fn new(
+        prefix: &str,
+        input: RowRead,
+        weight: Option<ColumnId>,
+        plan: ProjectionPlan,
+    ) -> Result<Self, Unsupported> {
+        Ok(match input {
+            RowRead::Scaled(row) => {
+                AnyProjection::Scaled(Projection::new(prefix, row, weight, plan)?)
+            }
+            RowRead::Power(row) => {
+                AnyProjection::Power(PowerProjection::new(prefix, row, weight, plan)?)
+            }
+        })
+    }
+
+    /// The output column; `None` before `declare`.
+    pub fn output(&self) -> Option<ColumnId> {
+        match self {
+            AnyProjection::Scaled(m) => m.output(),
+            AnyProjection::Power(m) => m.output(),
+        }
+    }
+
+    /// The weight column read (declared here unless one was supplied).
+    pub fn weight(&self) -> Option<ColumnId> {
+        match self {
+            AnyProjection::Scaled(m) => m.weight(),
+            AnyProjection::Power(m) => m.weight(),
+        }
+    }
+}
+
+impl Module for AnyProjection {
+    type Capture = ProjectionCapture;
+
+    fn declare(&mut self, relation: &mut Relation) {
+        match self {
+            AnyProjection::Scaled(m) => m.declare(relation),
+            AnyProjection::Power(m) => m.declare(relation),
+        }
+    }
+
+    fn assign(
+        &self,
+        relation: &Relation,
+        capture: &ProjectionCapture,
+        values: &mut Values,
+    ) -> Result<(), Violation> {
+        match self {
+            AnyProjection::Scaled(m) => m.assign(relation, capture, values),
+            AnyProjection::Power(m) => m.assign(relation, capture, values),
+        }
     }
 }

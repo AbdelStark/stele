@@ -54,7 +54,6 @@ fn division(d: &Division) {
             }
             Rounding::Floor => assert!(num >= 0 && (0..div).contains(&r), "floor"),
             Rounding::Ceil => assert!(num >= 0 && r <= 0 && -r < div, "ceil"),
-            Rounding::HalfUp => assert!(-div <= 2 * r && 2 * r < div, "half up"),
         }
     }
 }

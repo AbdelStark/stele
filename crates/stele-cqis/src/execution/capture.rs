@@ -29,8 +29,6 @@ pub enum Rounding {
     Floor,
     /// ceil(n/d) for n >= 0.
     Ceil,
-    /// Nearest, ties toward plus infinity: floor((2n+d)/(2d)) (RFC-0004 A16).
-    HalfUp,
 }
 
 /// Element-wise exact divisions with retained remainders:
@@ -296,7 +294,9 @@ pub struct Projection {
     pub product: Vec<i128>,
     /// [output] bias code; zero when the Model has none.
     pub bias: Vec<i64>,
-    /// [output] Nearest; quotient is the projection output.
+    /// [output] Nearest; quotient is the projection output. For a power-of-two row
+    /// (RFC-0004 A16) each entry is the output over 1 and `product` repeats the
+    /// accumulator: the row exponent and the channel shift round it in the executor.
     pub output: Division,
 }
 impl Projection {

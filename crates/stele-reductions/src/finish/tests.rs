@@ -3,6 +3,7 @@
 //! static validity at the E16-10 shape.
 
 use super::*;
+use crate::development::Policy;
 use crate::residual::tests::{executor_captures, Fixture};
 use alloc::vec;
 use stele_cqis::model::{ArtifactLayout, Model, Role};
@@ -109,7 +110,7 @@ fn case(f: &Fixture, claims: &[u32]) -> Option<Case> {
             rows: t,
             fixed_widths: false,
         },
-        policy: policy(model.final_policy()),
+        policy: RowPolicy::Scaled(policy(model.final_policy())),
         head: ProjectionPlan {
             rows: t,
             inner: d,
@@ -290,7 +291,7 @@ fn accepts_tied_head_on_embedding_source() {
                 rows: t,
                 fixed_widths: false,
             },
-            policy: policy(model.final_policy()),
+            policy: RowPolicy::Scaled(policy(model.final_policy())),
             head: ProjectionPlan {
                 rows: t,
                 inner: d,
@@ -397,7 +398,7 @@ fn accepts_static_validity_e2e_shape() {
             rows: t,
             fixed_widths: false,
         },
-        policy: Policy::Dynamic,
+        policy: RowPolicy::Scaled(Policy::Dynamic),
         head: ProjectionPlan {
             rows: t,
             inner: d,

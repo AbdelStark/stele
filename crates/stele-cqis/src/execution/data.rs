@@ -336,17 +336,17 @@ impl<'a> Data<'a> {
             } else {
                 (dot + (1i64 << (s - 1))) >> s
             };
-            Ok((dot, s, z))
+            Ok((dot, z))
         })?;
         let mut out = reserved(r.rows)?;
-        for (dot, s, z) in rows {
+        for (dot, z) in rows {
+            let y = z << excess;
             if let Some(w) = capture.as_deref_mut() {
-                w.push(i128::from(dot), 0, 0)?;
-                w.output.rounding = super::capture::Rounding::HalfUp;
-                let divisor = 1u128.checked_shl(s).ok_or(Error::Capacity)?;
-                w.output.push(i128::from(dot), divisor, z)?;
+                // The one rounding is the module's; the capture holds the output itself.
+                w.push(i128::from(dot), i128::from(dot), 0)?;
+                w.output.push(i128::from(y), 1, y)?;
             }
-            out.push(output(z << excess)?);
+            out.push(output(y)?);
         }
         Ok(out)
     }

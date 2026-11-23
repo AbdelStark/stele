@@ -108,13 +108,13 @@ fn build(scale: u32, inputs: &[Vec<i64>], weights: &[Vec<i64>], m: &[u16], shift
         PowerRow::new("L0/row", input, inputs.len(), inputs[0].len(), scale).expect("row plan");
     row.declare(&mut relation);
     let output = row.output().expect("declared");
-    let plan = PowerPlan {
+    let plan = ProjectionPlan {
         rows: inputs.len(),
         inner: inputs[0].len(),
         outputs: weights.len(),
         weight_bits: 8,
         mantissas: m.to_vec(),
-        shift,
+        shift: -shift,
         output_bits: 16,
     };
     let mut projection = PowerProjection::new("L0/q", output, None, plan).expect("projection");
@@ -407,16 +407,16 @@ fn rejects_plans_outside_the_module() {
     let mut row = PowerRow::new("L0/row", input, 2, 4, 10).expect("row");
     row.declare(&mut relation);
     let output = row.output().expect("declared");
-    let plan = |mantissas: Vec<u16>, shift: i32, output_bits: u8| PowerPlan {
+    let plan = |mantissas: Vec<u16>, shift: i32, output_bits: u8| ProjectionPlan {
         rows: 2,
         inner: 4,
         outputs: mantissas.len(),
         weight_bits: 8,
         mantissas,
-        shift,
+        shift: -shift,
         output_bits,
     };
-    let new = |p: PowerPlan| PowerProjection::new("L0/q", output, None, p).err();
+    let new = |p: ProjectionPlan| PowerProjection::new("L0/q", output, None, p).err();
     // A mantissa that is no power of two, and a channel shift below 1.
     assert_eq!(new(plan(vec![3], 8, 16)), Some(Unsupported::Policy));
     assert_eq!(new(plan(vec![4], 2, 16)), Some(Unsupported::Policy));

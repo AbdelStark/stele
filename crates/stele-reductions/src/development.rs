@@ -25,7 +25,10 @@ pub mod rmsnorm;
 pub mod row;
 
 pub use attention::{Attention, AttentionCapture, AttentionPlan, PositionCapture};
-pub use power::{PowerGated, PowerGatedCapture, PowerOutput, PowerPlan, PowerProjection, PowerRow};
+pub use power::{
+    AnyProjection, AnyRow, PowerGated, PowerGatedCapture, PowerOutput, PowerProjection, PowerRow,
+    RowPolicy, RowRead,
+};
 pub use projection::{Projection, ProjectionCapture, ProjectionPlan};
 pub use row::{ConversionCapture, Policy, RowConversion, RowOutput};
 
