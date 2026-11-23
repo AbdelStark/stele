@@ -38,6 +38,26 @@ fn rows_in_blocks<T: Copy + Default + Send>(
     columns: usize,
     row: impl Fn(usize) -> Result<T, Error> + Sync,
 ) -> Result<Vec<T>, Error> {
+    #[cfg(feature = "std")]
+    let workers = if rows.saturating_mul(columns) >= PARALLEL_CELLS {
+        crate::workers().min(rows / 64)
+    } else {
+        1
+    };
+    #[cfg(not(feature = "std"))]
+    let workers = {
+        let _ = columns;
+        1
+    };
+    rows_on(rows, workers, row)
+}
+
+/// [`rows_in_blocks`] on `workers` threads; one, or a build without `std`, is the loop.
+fn rows_on<T: Copy + Default + Send>(
+    rows: usize,
+    workers: usize,
+    row: impl Fn(usize) -> Result<T, Error> + Sync,
+) -> Result<Vec<T>, Error> {
     let mut out = reserved(rows)?;
     out.resize(rows, T::default());
     let fill = |first: usize, block: &mut [T]| -> Result<(), Error> {
@@ -47,27 +67,20 @@ fn rows_in_blocks<T: Copy + Default + Send>(
         Ok(())
     };
     #[cfg(feature = "std")]
-    {
-        let workers = if rows.saturating_mul(columns) >= PARALLEL_CELLS {
-            crate::workers().min(rows / 64)
-        } else {
-            1
-        };
-        if workers > 1 {
-            let per = rows.div_ceil(workers);
-            let fill = &fill;
-            std::thread::scope(|scope| {
-                let mut handles = reserved(workers)?;
-                for (b, block) in out.chunks_mut(per).enumerate() {
-                    handles.push(scope.spawn(move || fill(b * per, block)));
-                }
-                crate::join_all(handles)
-            })?;
-            return Ok(out);
-        }
+    if workers > 1 && rows > 0 {
+        let per = rows.div_ceil(workers);
+        let fill = &fill;
+        std::thread::scope(|scope| {
+            let mut handles = reserved(workers)?;
+            for (b, block) in out.chunks_mut(per).enumerate() {
+                handles.push(scope.spawn(move || fill(b * per, block)));
+            }
+            crate::join_all(handles)
+        })?;
+        return Ok(out);
     }
     #[cfg(not(feature = "std"))]
-    let _ = columns;
+    let _ = workers;
     fill(0, &mut out)?;
     Ok(out)
 }
@@ -354,5 +367,38 @@ impl<'a> Data<'a> {
             w.layer(&narrow, (&gains, &biases), (&parts, &outputs), (p[4], p[5]))?;
         }
         Ok(outputs)
+    }
+}
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use super::*;
+
+    /// The split of a projection's rows against the plain loop (review of E22-10, second
+    /// pass, S1): row counts that do not fill the last block, at 1, 2, 3 and 7 workers.
+    /// With two failing rows in different blocks, the lower row's error is returned.
+    #[test]
+    fn matches_reference_rows_at_every_worker_count_and_returns_the_first_failing_row() {
+        let row = |j: usize| -> Result<u64, Error> {
+            Ok((j as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 5)
+        };
+        for rows in [0usize, 1, 2, 6, 7, 100, 101] {
+            let expected: Vec<u64> = (0..rows).map(|j| row(j).expect("row")).collect();
+            for workers in [1, 2, 3, 7] {
+                assert_eq!(
+                    rows_on(rows, workers, row),
+                    Ok(expected.clone()),
+                    "{rows} rows, {workers} workers"
+                );
+            }
+        }
+        let failing = |j: usize| match j {
+            30 => Err(Error::Range),
+            90 => Err(Error::Length),
+            _ => Ok(j as u64),
+        };
+        for workers in [1, 2, 3, 7] {
+            assert_eq!(rows_on(101, workers, failing), Err(Error::Range));
+        }
     }
 }

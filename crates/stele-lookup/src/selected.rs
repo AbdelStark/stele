@@ -575,10 +575,13 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stele_field::{Field, QM31};
+    use stele_field::{Field, OM31, QM31};
+    use stele_hash::ChallengeLabel;
 
-    #[test]
-    fn matches_reference_dense_sum_for_the_split_base_extension() {
+    /// The split evaluation against the dense sum at points with every limb drawn, in both
+    /// challenge fields (review of E20-23, second pass, S3).
+    fn split_matches_dense<K: ChallengeField + Eq + core::fmt::Debug>() {
+        let mut draw = Transcript::<K>::new(b"test/mle-base").expect("transcript");
         let mut state = 0x5354_454c_u64;
         let mut next = || {
             state = state
@@ -588,8 +591,8 @@ mod tests {
         };
         // No trailing split, exactly one block, and several blocks.
         for vars in [0usize, 3, MLE_LOW_BITS, MLE_LOW_BITS + 3] {
-            let point: Vec<QM31> = (0..vars)
-                .map(|_| QM31::from_i64(next()) * QM31::from_i64(next()))
+            let point: Vec<K> = (0..vars)
+                .map(|_| draw.challenge(ChallengeLabel::Sumcheck).expect("point"))
                 .collect();
             // Selector-like entries (0 and 1) and arbitrary ones.
             let values: Vec<M31> = (0..1usize << vars)
@@ -599,18 +602,18 @@ mod tests {
                     _ => M31::from_i64(next()),
                 })
                 .collect();
-            let embedded: Vec<QM31> = values
-                .iter()
-                .map(|v| QM31::from_i64(1).mul_m31(*v))
-                .collect();
+            let embedded: Vec<K> = values.iter().map(|v| K::from_i64(1).mul_m31(*v)).collect();
             assert_eq!(
                 mle_base(&values, &point).expect("split"),
                 mle(&embedded, &point).expect("dense")
             );
         }
-        assert_eq!(
-            mle_base::<QM31>(&[M31::ONE; 2], &[]),
-            Err(Error::SourceShape)
-        );
+        assert_eq!(mle_base::<K>(&[M31::ONE; 2], &[]), Err(Error::SourceShape));
+    }
+
+    #[test]
+    fn matches_reference_dense_sum_for_the_split_base_extension() {
+        split_matches_dense::<QM31>();
+        split_matches_dense::<OM31>();
     }
 }

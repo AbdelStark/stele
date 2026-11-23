@@ -250,13 +250,14 @@ fn enumerates_every_round_of_the_one_layer_window() {
 #[test]
 #[ignore = "8 layers at T=64: run with --release -- --ignored"]
 fn enumerates_every_round_of_the_eight_layer_window() {
-    // Worst round LU range_16, 2^-101.9; floor 2^-99.6 (Policy 1) and 2^-99.4
-    // (Policy 2, whose 2^-108 column rounds add up), both above 2^-100.
-    for (sources, floor) in [(Sources::Expander, 102_066), (Sources::CircleAll, 101_844)] {
+    // Worst round LU range_16, 2^-101.9; floor 2^-99.8 (Policy 1) and 2^-99.6
+    // (Policy 2, whose 2^-108 column rounds add up), both above 2^-100. 28,447 rounds
+    // since the virtual-column relations of E18-05 (11,687 and 2^-99.6, 2^-99.4 before).
+    for (sources, floor) in [(Sources::Expander, 102_229), (Sources::CircleAll, 101_983)] {
         let (_, ledger) = proved("eight-layer", 64, sources);
         let summary = enumerated(&ledger);
         eprintln!("{sources:?}: {summary:?}");
-        assert_eq!(summary, (11_687, "LU range_16".to_string(), 104_425, floor));
+        assert_eq!(summary, (28_447, "LU range_16".to_string(), 104_425, floor));
     }
 }
 
