@@ -4825,3 +4825,41 @@ Consequences:
 - The review's tests of the split through `verify_segmented` (three-segment fixture,
   virtual and selected members, block binding, cross-bound rejection) are in
   `crates/stele-reductions/src/relation_tests.rs`.
+
+## ADR-156 — Byte-identical prover and verifier speedups as one cross-lane stack; `Field: Send + Sync` (tasks E18-10, E19-09, E20-23, E22-10, E22-11)
+
+Context: after `E19-04`, L2a under profile byte 6 was more than ten times over Gate M2's
+10 s on the 24-thread reference class (`bench/ledger/e19-04-dev-stories42m-t64-byte6-24t.json`).
+Profiles showed the time spread over every stage
+and crate: serial passes, per-element index gathers, dense `eq` tables, repeated twiddle
+generation, serial table certification. No single lane owns that list. Each change keeps
+every proof byte, public byte and verifier decision, so none needs an amendment.
+
+Decision:
+- **One stack, five tasks, one review.** The changes land as one branch
+  (`task/E22-10-capture-single-pass`) carrying tasks of lanes P (`E18-10`), C (`E19-09`),
+  E (`E20-23`) and N (`E22-10`, `E22-11`). RFC-0027 §5 gives a lane its crates; this
+  stack crosses them because its safety net is one thing, the pinned proof bytes, and
+  splitting it per lane would re-run the same net four times. The independent review
+  (`agents/reviews/e20-23-byte-identical-speedups.md`) covers the whole stack.
+- **`stele_field::Field` requires `Send + Sync`.** Every field type is plain data, so the
+  bound holds for all of them. It lets a row transform and a row combination split on
+  the work pool without a bound at every call site.
+- **New shared items.** `stele_ir::relation::contract` (typed row dot products for
+  `Def::Contraction`, RFC-0028 §2.1) and `stele_ir::relation::Indexer` (a `Ref`'s index
+  map prepared once, RFC-0026 §3.2) are prover-side and plain-checker helpers. Neither
+  is read by a verifier decision.
+- **Threads outside the pool.** `stele-cqis` has no pool dependency. Its table and
+  rotation generation use scoped threads under its `std` feature, capped by
+  `RAYON_NUM_THREADS`, so a run pinned to a thread count stays within it. The schedule
+  never changes a value.
+
+Consequences:
+- The six pinned L0 and L1 digests and the L2a proof and public digests are unchanged.
+- Verifier code changed in three places, each to an equal value: the selector's
+  extension through split `eq` tables, the rotation coefficients built per position on
+  the pool, and table certification in blocks.
+- The split grain of the pool helpers stays at 2^8 items. A probe on the reference class
+  with 2^11 and with 2^13 was slower on L2a, mostly in the reductions stage; it is a
+  probe, not a ledger.
+

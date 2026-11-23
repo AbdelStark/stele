@@ -2,13 +2,13 @@
 //! c_sc/T_misc: dense A1 copies and linear equality tables; no intermediate commitment.
 use super::super::{
     reserve,
-    tree::{prove_dense, prove_mixed},
+    tree::{eq_line, factored_message, halve_suffix, prove_dense},
     work, Reduction, Work,
 };
 use super::{Error, LeafDescriptor};
 use alloc::vec::Vec;
 use stele_hash::{AbsorbLabel, ChallengeField, Transcript};
-use stele_sumcheck::{DenseTable, Instance, Proof, ScRecord, Term, M31};
+use stele_sumcheck::{Instance, Proof, ScRecord, Summand, Term, M31};
 
 /// Conditional original-column obligations in the selected-product leaf phase.
 #[must_use = "every original column requires a real reduction or opening consumer"]
@@ -34,6 +34,138 @@ impl<K> Selector<'_, K> {
             Self::Ext(s) => s.len(),
             Self::Base(s) => s.len(),
         }
+    }
+}
+/// A1 strategy for the selected product `eq · σ · Σ_j β^j x_j` over base-field originals,
+/// with `eq(r, ·)` factored as in the tree layers: three sums over the suffix table give
+/// each round's four values. The originals stay in the base field through the first round.
+/// Messages equal the dense strategy's.
+struct SelectedSummand<'a, K> {
+    /// `σ` and the original columns, until the first fold.
+    base: Option<(&'a [M31], &'a [Vec<M31>])>,
+    /// `σ` then the original columns over the unbound coordinates, after the first fold.
+    tables: Vec<Vec<K>>,
+    /// `β^j`.
+    powers: Vec<K>,
+    /// The unbound coordinates of the claim point, leading first.
+    r: &'a [K],
+    /// `eq` of the bound coordinates.
+    scale: K,
+    /// `eq(r[1..], ·)`.
+    suffix: Vec<K>,
+    point: &'a mut Vec<K>,
+}
+impl<K: ChallengeField + Eq> Summand<K> for SelectedSummand<'_, K> {
+    fn shape(&self) -> (u32, usize) {
+        (self.r.len() as u32, self.powers.len() + 2)
+    }
+    fn round(&self, _: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
+        let r0 = *self.r.first().ok_or(stele_sumcheck::Error::PublicShape)?;
+        let half = self.suffix.len();
+        let mut sums = [K::from_i64(0); 3];
+        if let Some((sigma, xs)) = self.base {
+            if sigma.len() != 2 * half {
+                return Err(stele_sumcheck::Error::PublicShape);
+            }
+            // `σ · Σ_j β^j x_j` at 0, at 1 and its leading coefficient, per position.
+            let single = xs.len() == 1;
+            stele_sumcheck::parallel::sum_ranges(half, &mut sums, |range, out| {
+                for x in range {
+                    let y = x + half;
+                    let e = self.suffix[x];
+                    let (sa, sb) = (sigma[x], sigma[y]);
+                    if single {
+                        let (va, vb) = (xs[0][x], xs[0][y]);
+                        out[0] = out[0] + e.mul_m31(sa * va);
+                        out[1] = out[1] + e.mul_m31(sb * vb);
+                        out[2] = out[2] + e.mul_m31((sb - sa) * (vb - va));
+                    } else {
+                        let (mut va, mut vb) = (K::from_i64(0), K::from_i64(0));
+                        for (power, column) in self.powers.iter().zip(xs) {
+                            va = va + power.mul_m31(column[x]);
+                            vb = vb + power.mul_m31(column[y]);
+                        }
+                        out[0] = out[0] + e * va.mul_m31(sa);
+                        out[1] = out[1] + e * vb.mul_m31(sb);
+                        out[2] = out[2] + e * (vb - va).mul_m31(sb - sa);
+                    }
+                }
+                Ok(())
+            })?;
+        } else {
+            let (sigma, xs) = self
+                .tables
+                .split_first()
+                .ok_or(stele_sumcheck::Error::PublicShape)?;
+            if sigma.len() != 2 * half {
+                return Err(stele_sumcheck::Error::PublicShape);
+            }
+            stele_sumcheck::parallel::sum_ranges(half, &mut sums, |range, out| {
+                for x in range {
+                    let y = x + half;
+                    let (mut va, mut vb) = (xs[0][x], xs[0][y]);
+                    for (power, column) in self.powers.iter().zip(xs).skip(1) {
+                        va = va + *power * column[x];
+                        vb = vb + *power * column[y];
+                    }
+                    let e = self.suffix[x];
+                    let (sa, sb) = (sigma[x], sigma[y]);
+                    out[0] = out[0] + e * (sa * va);
+                    out[1] = out[1] + e * (sb * vb);
+                    out[2] = out[2] + e * ((sb - sa) * (vb - va));
+                }
+                Ok(())
+            })?;
+        }
+        factored_message(self.scale, r0, sums)
+    }
+    fn fold(&mut self, challenge: K) -> Result<(), stele_sumcheck::Error> {
+        let (&r0, rest) = self
+            .r
+            .split_first()
+            .ok_or(stele_sumcheck::Error::PublicShape)?;
+        if let Some((sigma, xs)) = self.base.take() {
+            self.tables
+                .try_reserve_exact(xs.len() + 1)
+                .map_err(|_| stele_sumcheck::Error::Capacity)?;
+            self.tables
+                .push(stele_sumcheck::parallel::fold_base(sigma, challenge)?);
+            for column in xs {
+                self.tables
+                    .push(stele_sumcheck::parallel::fold_base(column, challenge)?);
+            }
+        } else {
+            for table in &mut self.tables {
+                stele_sumcheck::parallel::fold(table, challenge);
+            }
+        }
+        self.scale = self.scale * eq_line(r0, challenge);
+        halve_suffix(&mut self.suffix);
+        self.r = rest;
+        self.point
+            .try_reserve(1)
+            .map_err(|_| stele_sumcheck::Error::Capacity)?;
+        self.point.push(challenge);
+        Ok(())
+    }
+    fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
+        if !self.r.is_empty() {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        let mut out = Vec::new();
+        out.try_reserve_exact(self.powers.len() + 2)
+            .map_err(|_| stele_sumcheck::Error::Capacity)?;
+        out.push(self.scale);
+        match self.base {
+            // No round ran: the originals are single values.
+            Some((sigma, xs)) => {
+                let one = K::from_i64(1);
+                out.push(one.mul_m31(sigma[0]));
+                out.extend(xs.iter().map(|column| one.mul_m31(column[0])));
+            }
+            None => out.extend(self.tables.iter().map(|table| table[0])),
+        }
+        Ok(out)
     }
 }
 /// Fixed public selector and incoming fraction claims; construction is not acceptance.
@@ -67,18 +199,40 @@ fn mle<K: ChallengeField>(values: &[K], point: &[K]) -> Result<K, Error> {
     })?;
     Ok(sum[0])
 }
+/// Trailing coordinates of [`mle_base`]'s split: their `eq` table stays in cache.
+const MLE_LOW_BITS: usize = 12;
+/// `Σ_j eq(point, j)·values[j]`. `eq(point, (hi, lo))` is the product of the `eq` of the
+/// leading and of the trailing coordinates, so the sum runs over two short tables and no
+/// table of the whole domain is built. Field sums and products are exact: the value is
+/// the dense sum's. A selector's entries are mostly 0 or 1, which cost no product.
 fn mle_base<K: ChallengeField>(values: &[M31], point: &[K]) -> Result<K, Error> {
     if !values.len().is_power_of_two() || values.len().trailing_zeros() as usize != point.len() {
         return Err(Error::SourceShape);
     }
-    let weights = stele_sumcheck::parallel::eq_table(point)?;
+    let split = point.len() - point.len().min(MLE_LOW_BITS);
+    let table = |part: &[K]| stele_poly::eq_table(part).map_err(|_| Error::Capacity);
+    let (high, low) = (table(&point[..split])?, table(&point[split..])?);
     let mut sum = [K::from_i64(0)];
-    stele_sumcheck::parallel::sum_ranges(values.len(), &mut sum, |range, out| {
-        for j in range {
-            out[0] = out[0] + weights[j].mul_m31(values[j]);
-        }
-        Ok(())
-    })?;
+    stele_sumcheck::parallel::sum_ranges_weighted(
+        high.len(),
+        low.len(),
+        &mut sum,
+        |range, out| {
+            for hi in range {
+                let block = &values[hi * low.len()..(hi + 1) * low.len()];
+                let mut inner = K::from_i64(0);
+                for (weight, value) in low.iter().zip(block) {
+                    if *value == M31::ONE {
+                        inner = inner + *weight;
+                    } else if *value != M31::ZERO {
+                        inner = inner + weight.mul_m31(*value);
+                    }
+                }
+                out[0] = out[0] + high[hi] * inner;
+            }
+            Ok(())
+        },
+    )?;
     Ok(sum[0])
 }
 impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
@@ -241,8 +395,9 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
             sc,
         })
     }
-    /// Prove the selected Boolean product directly from base-field `xs` (task E20-02):
-    /// keeps `sigma` and `xs` in `M31` during round 0 via `Dense::new_mixed`. Proof bytes
+    /// Prove the selected Boolean product directly from base-field `xs` (task E20-02): a
+    /// base-field selector and `xs` stay in `M31` through round 0, with `eq` factored
+    /// ([`SelectedSummand`]). An extension selector takes the reference rounds. Proof bytes
     /// are bit-identical to [`Self::prove`].
     pub fn prove_base(
         &self,
@@ -251,20 +406,34 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
     ) -> Result<(Proof<K>, LeafReduction<K>), Error> {
         self.sources_base(xs)?;
         let i = self.instance()?;
-        let mut tables = Vec::new();
-        reserve(&mut tables, xs.len() + 2)?;
-        tables.push(DenseTable::Ext(stele_sumcheck::parallel::eq_table(
-            self.point,
-        )?));
-        match self.sigma {
-            Selector::Base(s) => tables.push(DenseTable::Base(owned(s)?)),
-            Selector::Ext(s) => tables.push(DenseTable::Ext(owned(s)?)),
-        }
-        for x in xs {
-            tables.push(DenseTable::Base(owned(x)?));
-        }
+        let Selector::Base(sigma) = self.sigma else {
+            // An extension selector has no base-field round: the reference rounds.
+            let mut ext = Vec::new();
+            reserve(&mut ext, xs.len())?;
+            for x in xs {
+                let mut column = Vec::new();
+                reserve(&mut column, x.len())?;
+                column.extend(x.iter().map(|v| K::from_i64(1).mul_m31(*v)));
+                ext.push(column);
+            }
+            return self.prove(&ext, t);
+        };
+        let mut powers = Vec::new();
+        reserve(&mut powers, xs.len())?;
+        powers.extend(i.terms.iter().map(|term| term.coefficient));
         self.bind(t)?;
-        let (proof, point) = prove_mixed(&i, tables, t)?;
+        let mut point = Vec::new();
+        reserve(&mut point, self.point.len())?;
+        let strategy = SelectedSummand {
+            base: Some((sigma, xs)),
+            tables: Vec::new(),
+            powers,
+            r: self.point,
+            scale: K::from_i64(1),
+            suffix: stele_sumcheck::parallel::eq_table(self.point.get(1..).unwrap_or(&[]))?,
+            point: &mut point,
+        };
+        let proof = stele_sumcheck::prove(&i, strategy, t)?;
         let result = self.finish(
             point,
             &proof.final_values,
@@ -363,5 +532,51 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
             }
         }
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use stele_field::{Field, OM31, QM31};
+    use stele_hash::ChallengeLabel;
+
+    /// The split evaluation against the dense sum at points with every limb drawn, in both
+    /// challenge fields (review of E20-23, second pass, S3).
+    fn split_matches_dense<K: ChallengeField + Eq + core::fmt::Debug>() {
+        let mut draw = Transcript::<K>::new(b"test/mle-base").expect("transcript");
+        let mut state = 0x5354_454c_u64;
+        let mut next = || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (state >> 33) as i64
+        };
+        // No trailing split, exactly one block, and several blocks.
+        for vars in [0usize, 3, MLE_LOW_BITS, MLE_LOW_BITS + 3] {
+            let point: Vec<K> = (0..vars)
+                .map(|_| draw.challenge(ChallengeLabel::Sumcheck).expect("point"))
+                .collect();
+            // Selector-like entries (0 and 1) and arbitrary ones.
+            let values: Vec<M31> = (0..1usize << vars)
+                .map(|_| match next() % 4 {
+                    0 => M31::ZERO,
+                    1 | 2 => M31::ONE,
+                    _ => M31::from_i64(next()),
+                })
+                .collect();
+            let embedded: Vec<K> = values.iter().map(|v| K::from_i64(1).mul_m31(*v)).collect();
+            assert_eq!(
+                mle_base(&values, &point).expect("split"),
+                mle(&embedded, &point).expect("dense")
+            );
+        }
+        assert_eq!(mle_base::<K>(&[M31::ONE; 2], &[]), Err(Error::SourceShape));
+    }
+
+    #[test]
+    fn matches_reference_dense_sum_for_the_split_base_extension() {
+        split_matches_dense::<QM31>();
+        split_matches_dense::<OM31>();
     }
 }

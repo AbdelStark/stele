@@ -407,16 +407,31 @@ impl Chain {
                 }
             }
         }
+        // Every factor's column and index map, resolved once and not once per point.
+        type Factors<'c> = Vec<(&'c [i64], stele_ir::relation::Indexer<'c>)>;
+        let mut positions: Vec<Vec<(i128, Factors<'_>)>> = Vec::with_capacity(n);
+        for terms in &self.positions {
+            let mut resolved = Vec::with_capacity(terms.len());
+            for t in terms {
+                let mut factors = Vec::with_capacity(t.factors.len());
+                for f in &t.factors {
+                    let column = cache.get(&f.column).ok_or(Violation::Missing(f.column))?;
+                    factors.push((column.as_slice(), stele_ir::relation::Indexer::new(f, size)));
+                }
+                resolved.push((t.coeff as i128, factors));
+            }
+            positions.push(resolved);
+        }
         let mut columns: Vec<Vec<i64>> = vec![vec![0; size]; n];
+        let mut sums = Vec::with_capacity(n);
         for x in 0..size as u64 {
-            let mut sums = Vec::with_capacity(n);
-            for terms in &self.positions {
+            sums.clear();
+            for terms in &positions {
                 let mut sum = 0i128;
-                for t in terms {
-                    let mut product = t.coeff as i128;
-                    for f in &t.factors {
-                        let column = cache.get(&f.column).ok_or(Violation::Missing(f.column))?;
-                        product *= column[f.index(x)] as i128;
+                for (coeff, factors) in terms {
+                    let mut product = *coeff;
+                    for (column, at) in factors {
+                        product *= column[at.index(x)] as i128;
                     }
                     sum += product;
                 }

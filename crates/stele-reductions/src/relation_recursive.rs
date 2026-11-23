@@ -932,10 +932,11 @@ where
             let mut tables = Vec::with_capacity(inputs.len());
             for r in &inputs {
                 let col = resolved.get(r.column)?;
+                let at = stele_ir::relation::Indexer::new(r, 1 << m);
                 let mut table = vec![M31::from_i64(0); 1 << m];
                 parallel::for_each_chunk(&mut table, |start, chunk| {
                     for (j, out) in chunk.iter_mut().enumerate() {
-                        *out = M31::from_i64(col.at(r.index((start + j) as u64)));
+                        *out = M31::from_i64(col.at(at.index((start + j) as u64)));
                     }
                 });
                 tables.push(table);
@@ -1218,10 +1219,11 @@ where
                     tables.push(DenseTable::Ext(parallel::eq_table(&z)?));
                     for r in &inputs {
                         let data = resolved.get(r.column)?;
+                        let at = stele_ir::relation::Indexer::new(r, 1usize << col.log_len);
                         let mut table = vec![M31::from_i64(0); 1usize << col.log_len];
                         parallel::for_each_chunk(&mut table, |start, chunk| {
                             for (j, slot) in chunk.iter_mut().enumerate() {
-                                *slot = M31::from_i64(data.at(r.index((start + j) as u64)));
+                                *slot = M31::from_i64(data.at(at.index((start + j) as u64)));
                             }
                         });
                         tables.push(DenseTable::Base(table));

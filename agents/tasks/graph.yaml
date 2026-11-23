@@ -4242,6 +4242,23 @@ tasks:
   - L3b proves on at most 64 cores in at most 1800 s; its proof bytes, verify time and peak RSS are recorded
   - committed cells per token at most 1/10 and lookup positions at most 1/5 of the E22-01 baseline on L2 and L3
   - proof bytes identical across two hosts; every control of the catalogue that the engine implements passes
+- id: E18-10
+  epic: E18
+  title: Typed contraction kernel for virtual column materialisation and the plain checker
+  depends:
+  - E18-05
+  rfc:
+  - RFC-0028 §2.1
+  skill: performance-engineer
+  crate: stele-ir+stele-reductions
+  lane: P
+  status: done
+  agent: claude
+  branch: task/E22-10-capture-single-pass
+  acceptance:
+  - a virtual contraction is materialised as one integer dot product over two contiguous typed rows; sums that may leave i64 keep the checked wide loop
+  - a reference test compares the kernel with the definition on typed, permuted and fixed-bit operands
+  - pinned L0 and L1 proof digests unchanged; L2a prove time before and after in ledgers (shared with E20-23)
 - id: E19-01
   epic: E19
   title: Parameter script and size model; RFC-0029 accepted for the development tier
@@ -4384,6 +4401,23 @@ tasks:
   - same verifier-owned source, certificate bytes, opening bytes, field record and transcript as CPU for honest material
   - wrong root, changed sibling, wrong response size, exhausted lifetime and second opening reject under their specified checks
   - old CPU callers retain borrowed responses, work counts and no_std support
+- id: E19-09
+  epic: E19
+  title: Long row transforms and certified column recomputation on the work pool
+  depends:
+  - E19-05
+  rfc:
+  - RFC-0029 §1.3
+  skill: pcs-engineer
+  crate: stele-code+stele-pcs+stele-field
+  lane: C
+  status: done
+  agent: claude
+  branch: task/E22-10-capture-single-pass
+  acceptance:
+  - a forward transform of 2^16 values or more splits its butterflies; a long row is checked against the basis-factor formula in both split regimes
+  - queried columns of a certified source are recomputed in blocks of rows with one row buffer per running block; the memory test of E19-05 holds
+  - pinned digests and the zero-reservation pins of E19-06 unchanged
 - id: E19-10
   epic: E19
   title: Development controls under the joined recursion (profile byte 6)
@@ -4802,6 +4836,27 @@ tasks:
   - Reject altered shared round, standalone root, standalone sibling, two-block rank or owner, and restore the original reservation after device failure
   - Account for all five sources and four batches on genuine T32 with independent geometry, realized device counters, A1 peak and paired same-host proof time
 
+- id: E20-23
+  epic: E20
+  title: Byte-identical lookup and field speedups toward M2
+  depends:
+  - E20-02
+  - E19-04
+  rfc:
+  - RFC-0008 A3
+  - RFC-0008 A5
+  - RFC-0006 A1
+  skill: sumcheck-prover-engineer
+  crate: stele-lookup+stele-sumcheck+stele-field+stele-reductions
+  lane: E
+  status: done
+  agent: claude
+  branch: task/E22-10-capture-single-pass
+  acceptance:
+  - a fraction-tree layer round reads four tables at three points with eq factored; its messages equal the dense strategy's on the existing parity tests in both fields
+  - pool work is split into four pieces per thread; range multiplicities are counted by per-piece histograms
+  - pinned L0 and L1 digests under bytes 3, 5 and 6 unchanged; the L2a proof has the same bytes before and after on two hosts
+  - L1 and L2a prove and verify times under byte 6 before and after on the 24-thread class in ledgers
 - id: E21-01
   epic: E21
   title: RFC-0030 accepted; per-round ledger
@@ -5137,6 +5192,39 @@ tasks:
   - L5 on one H100 at 111 tokens per second or more at batch 24, proof at most 4 MB, verification at most 2 s, single request at most 30 s
   - W6 proved with every generated token checked; committed-seed sampling proved on L3
   - eight-GPU efficiency of 0.8 or more on W4
+- id: E22-10
+  epic: E22
+  title: One forward pass for the next token and vectorised grouped projections in the executor
+  depends:
+  - E22-04
+  rfc:
+  - RFC-0025 §2.5
+  - RFC-0004 A15
+  skill: performance-engineer
+  crate: stele-cqis+stele-prover+stele-reductions
+  lane: N
+  status: done
+  agent: claude
+  branch: task/E22-10-capture-single-pass
+  acceptance:
+  - the prover reuses the last generated position's logits for the next token; a grouped projection over int8 weights sums each group as one int32 dot; the projection witness sums run on the work pool
+  - public and proof bytes unchanged on L0, L1 and L2a; the witness stage time before and after in the E20-23 ledgers
+- id: E22-11
+  epic: E22
+  title: Rotation table regenerated in blocks on scoped threads
+  depends:
+  - E22-04
+  rfc:
+  - RFC-0025 §2.4
+  skill: performance-engineer
+  crate: stele-cqis+stele-reductions
+  lane: N
+  status: done
+  agent: claude
+  branch: task/E22-10-capture-single-pass
+  acceptance:
+  - the registry digest is unchanged with and without std; no_std builds run the blocks in turn
+  - verify time on L2a before and after in the E20-23 ledgers
 - id: E23-01
   epic: E23
   title: Zero-knowledge construction decision; RFC-0013 A3 accepted for the development tier

@@ -1322,6 +1322,8 @@ fn prove_window_sources_measured(
     let witness_pre_timer = relation::Stopwatch::start();
     let mut executor =
         Executor::new(&m, &p, &s, artifact, &id, 1 << 36).map_err(|_| Error::Witness)?;
+    // The last generated position's logits, kept so `next` needs no second forward pass.
+    let mut last_logits = None;
     if statement.tokens.len() < length {
         let whole = statement.end as usize == statement.tokens.len();
         let (mut cache, mut logits) = (None, Vec::new());
@@ -1340,12 +1342,19 @@ fn prove_window_sources_measured(
         if whole {
             statement.end = length as u32;
         }
+        last_logits = Some(logits);
     }
     if statement.next.is_none() && statement.end as usize == statement.tokens.len() {
-        let full = executor
-            .full(&statement.tokens)
-            .map_err(|_| Error::Witness)?;
-        let last = full.logits().last().ok_or(Error::Witness)?;
+        let last = match last_logits {
+            Some(logits) => logits,
+            None => executor
+                .full(&statement.tokens)
+                .map_err(|_| Error::Witness)?
+                .logits()
+                .last()
+                .ok_or(Error::Witness)?
+                .clone(),
+        };
         let max = last.iter().max().ok_or(Error::Witness)?;
         statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
     }
