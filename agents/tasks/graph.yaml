@@ -4312,6 +4312,24 @@ tasks:
   - the assignment of an unsegmented relation fills the weight columns, the embedding and each layer's outgoing residual stream first, then each layer and the finish as one task on the work pool; the parts are joined in layer order and a column assigned by two parts is refused
   - a norm module's carry chains read the module's input from the capture; a reference test compares the evaluation with held entries against the definition's
   - public and proof bytes unchanged on L0, L1 and L2a; the witness stage time on L2a before and after in ledgers
+- id: E18-15
+  epic: E18
+  title: Weight rows decoded on the work pool; the next token of a window given in full from the capture
+  depends:
+  - E18-12
+  rfc:
+  - RFC-0026 §1.1
+  - RFC-0026 §2.2
+  skill: performance-engineer
+  crate: stele-prover
+  lane: P
+  status: in_progress
+  agent: claude
+  branch: task/E18-13-assign-on-pool
+  acceptance:
+  - the rows of each weight record are written into the padded source on the work pool; the model roots are unchanged
+  - a window given in full with no next token takes it from the last position of the capture and runs no forward pass for it; a reference test compares the statement, the public input and the proof with those of the window the prover extended itself
+  - public and proof bytes unchanged on L0, L1 and L2a
 - id: E19-01
   epic: E19
   title: Parameter script and size model; RFC-0029 accepted for the development tier
