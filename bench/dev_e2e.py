@@ -381,7 +381,7 @@ def main():
         'commitment, executor capture (witness), plain check and proof. '
         + (
             'In-process stage timings (stage_times_ns, RFC-0018 A2) time model_commitment (running beside '
-            'the executor passes of stage witness under std), witness, '
+            'the executor passes of stage witness under std; the weight decode is counted in both), witness, '
             'plain_check (running beside the relation engine under std), plan, commitment (overlapping '
             'multiplicity counting in parallel::join), multiplicities, zerochecks, lookups, reductions '
             'and openings; witness_recompute_ns equals stage witness. '

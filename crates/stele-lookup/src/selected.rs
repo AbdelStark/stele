@@ -319,6 +319,8 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
         alpha: K,
         beta: K,
     ) -> Result<Self, Error> {
+        // A plan builds `original` from this descriptor's own tree, so the shapes differ
+        // only for a caller that pairs two checks; the engine never does.
         if original.point.len() != descriptor.tree.m as usize
             || original.claims.map(|c| c.0) != descriptor.tree.leaves
         {

@@ -1723,6 +1723,196 @@ fn rejects_nc_1341_value_moved_across_an_instance_boundary() {
     run_split().expect("NC-1341");
 }
 
+/// NC-1342 (RFC-0008 A3, RFC-0026 §3.3): the selector of a selected lookup at the relation
+/// level, through the engine's three verifiers (`relation_lookup::verify` under the plain
+/// and the segmented plan, `verify_for_stack` under the joined recursion).
+///
+/// A selected lookup into `{0, 1}` over eight unsigned-2 values; positions 0, 2, 5 and 7
+/// are selected. The honest witness holds table values there. The tamper is a forging
+/// prover with a false witness: position 2 holds 2, inside the column's range and outside
+/// the table, and the prover clears that entry of the selector on its own side. Its tree
+/// and its selected product leave the position out, so every root equation holds and only
+/// the selector comparison of the selected product sees the forgery: `SelectorMismatch`.
+///
+/// Documented INV-4 exception, as NC-1310 (ADR-110): two things change, the value and the
+/// prover's selector entry, because a false value alone never reaches the selector
+/// comparison. The control also runs that value under the unforged prover and requires the
+/// root equation's `RootMismatch`, so the rejection under test is the selector's.
+#[cfg(feature = "controls")]
+pub fn run_selector() -> Result<(), String> {
+    use stele_hash::Transcript;
+    use stele_reductions::relation::{
+        prove_forged, prove_recursive_forged, prove_segmented_forged, verify, verify_recursive,
+        verify_segmented, Forge, Sources,
+    };
+    use stele_reductions::stele_ir::relation::{
+        check, ColumnId, Kind, Lookup, Range, Ref, Table, Violation, Width,
+    };
+
+    const PUBLIC: &[u8] = b"stele/nc-1342/selector";
+    const POSITION: usize = 2;
+    let mut rel = Relation::default();
+    let g = rel.add_group("L0/selector/3", 3);
+    let x = rel.add_column("x", Kind::Witness(g), Width::unsigned(2), 3);
+    rel.ranges.push(Range {
+        name: "x".into(),
+        column: x,
+        width: Width::unsigned(2),
+    });
+    let selector: ColumnId = rel.add_column(
+        "selector",
+        Kind::Public(vec![1, 0, 1, 0, 0, 1, 0, 1]),
+        Width::unsigned(1),
+        3,
+    );
+    let table = rel.add_table(Table {
+        name: "bit".into(),
+        widths: vec![Width::unsigned(2)],
+        rows: vec![vec![0], vec![1]],
+    });
+    rel.lookups.push(Lookup {
+        name: "bit".into(),
+        vars: 3,
+        selector: Some(Ref::identity(selector, 3)),
+        tuple: vec![Ref::identity(x, 3)],
+        table,
+    });
+    // (value at the selected position, whether the prover clears its selector entry).
+    type Forgery = (i64, bool);
+    let witness = |value: i64| -> Result<Values, String> {
+        let mut values = Values::new(&rel);
+        values
+            .set(&rel, x, vec![0, 3, value, 2, 3, 1, 2, 0])
+            .map_err(|e| format!("{e:?}"))?;
+        Ok(values)
+    };
+    // Fixture checks: the honest witness holds, and the false one fails exactly this lookup.
+    check(&rel, &witness(1)?).map_err(|e| format!("fixture: {e:?}"))?;
+    match check(&rel, &witness(2)?) {
+        Err(Violation::Lookup { relation, point })
+            if relation == "bit" && point == POSITION as u64 => {}
+        other => {
+            return Err(format!(
+                "the false witness is not exactly this lookup: {other:?}"
+            ))
+        }
+    }
+    let forge = |cleared: bool| Forge {
+        deselect: cleared.then_some((selector, POSITION)),
+        ..Forge::default()
+    };
+    let transcript = || Transcript::new(PUBLIC).map_err(|e| format!("{e:?}"));
+    let show = |e: stele_reductions::relation::Error| format!("{e:?}");
+    let rejected = |e: stele_reductions::relation::Error| name_of(&format!("{e:?}"));
+    let honest: Forgery = (1, false);
+    let selector_mismatch = "SelectorMismatch".to_string();
+    let root_mismatch = Err("RootMismatch".to_string());
+
+    // The plain plan.
+    let prove_plain = |&(value, cleared): &Forgery| {
+        prove_forged(
+            &mut transcript()?,
+            &rel,
+            &witness(value)?,
+            &[],
+            Sources::CircleAll,
+            &forge(cleared),
+        )
+        .map_err(show)
+    };
+    let verify_plain = |proof: &_| {
+        verify(&mut transcript()?, &rel, &[], proof, Sources::CircleAll)
+            .map(|_| ())
+            .map_err(rejected)
+    };
+    crate::check_control(
+        &honest,
+        &Forged1342,
+        prove_plain,
+        verify_plain,
+        selector_mismatch.clone(),
+    )
+    .map_err(|e| format!("plain: {e:?}"))?;
+    if verify_plain(&prove_plain(&(2, false))?) != root_mismatch {
+        return Err("plain: the unforged prover is not stopped by the roots".into());
+    }
+
+    // The segmented plan.
+    let prove_segmented = |&(value, cleared): &Forgery| {
+        prove_segmented_forged(
+            &mut transcript()?,
+            &rel,
+            &witness(value)?,
+            &[],
+            Sources::CircleAll,
+            &forge(cleared),
+        )
+        .map_err(show)
+    };
+    let verify_segmented = |proof: &_| {
+        verify_segmented(&mut transcript()?, &rel, &[], proof, Sources::CircleAll)
+            .map(|_| ())
+            .map_err(rejected)
+    };
+    crate::check_control(
+        &honest,
+        &Forged1342,
+        prove_segmented,
+        verify_segmented,
+        selector_mismatch.clone(),
+    )
+    .map_err(|e| format!("segmented: {e:?}"))?;
+    if verify_segmented(&prove_segmented(&(2, false))?) != root_mismatch {
+        return Err("segmented: the unforged prover is not stopped by the roots".into());
+    }
+
+    // The joined recursion of profile byte 6.
+    let prove_recursive = |&(value, cleared): &Forgery| {
+        let values = witness(value)?;
+        prove_recursive_forged(
+            &mut transcript()?,
+            &rel,
+            |_| Ok(values.clone()),
+            &[],
+            &forge(cleared),
+        )
+        .map_err(show)
+    };
+    let verify_recursive = |proof: &_| {
+        verify_recursive(&mut transcript()?, &rel, &[], proof)
+            .map(|_| ())
+            .map_err(rejected)
+    };
+    crate::check_control(
+        &honest,
+        &Forged1342,
+        prove_recursive,
+        verify_recursive,
+        selector_mismatch,
+    )
+    .map_err(|e| format!("recursive: {e:?}"))?;
+    if verify_recursive(&prove_recursive(&(2, false))?) != root_mismatch {
+        return Err("recursive: the unforged prover is not stopped by the roots".into());
+    }
+    Ok(())
+}
+
+/// The out-of-table value 2 at the selected position, hidden by the forging prover.
+#[cfg(feature = "controls")]
+struct Forged1342;
+#[cfg(feature = "controls")]
+impl crate::ProverHook<(i64, bool)> for Forged1342 {
+    fn tamper(&self, forgery: &mut (i64, bool)) {
+        *forgery = (2, true);
+    }
+}
+
+#[cfg(all(test, feature = "controls"))]
+#[test]
+fn rejects_nc_1342_value_hidden_by_a_cleared_selector_entry() {
+    run_selector().expect("NC-1342");
+}
+
 /// The innermost variant name of a nested error's debug form.
 #[cfg(feature = "controls")]
 fn name_of(debug: &str) -> String {
@@ -2514,6 +2704,7 @@ pub fn forged_windows(dir: &std::path::Path, public_entry: usize) -> Result<(), 
                 public: None,
                 witness: None,
                 column_claim: None,
+                deselect: None,
             },
             "TableDenominatorMismatch".to_string(),
         ),
@@ -2524,6 +2715,7 @@ pub fn forged_windows(dir: &std::path::Path, public_entry: usize) -> Result<(), 
                 public: Some((forged_pub_col, public_entry)),
                 witness: None,
                 column_claim: None,
+                deselect: None,
             },
             expected_pub,
         ),

@@ -688,7 +688,7 @@ pub fn prove(
     committed: &Committed<'_>,
     statement: &Statement,
 ) -> Result<Vec<u8>, Error> {
-    prove_inner(public, executor, weights, committed, statement, None).map(|(proof, _)| proof)
+    prove_inner(public, executor, weights, committed, statement, None, true).map(|(proof, _)| proof)
 }
 
 /// [`prove`] together with in-process stage timings and deterministic counters
@@ -700,7 +700,7 @@ pub fn prove_measured(
     committed: &Committed<'_>,
     statement: &Statement,
 ) -> Result<(Vec<u8>, Report), Error> {
-    prove_inner(public, executor, weights, committed, statement, None)
+    prove_inner(public, executor, weights, committed, statement, None, true)
 }
 
 /// A prover-side tamper for negative controls (RFC-0026 §9): it edits the prover's
@@ -718,7 +718,40 @@ pub fn prove_tampered(
     statement: &Statement,
     hook: Hook<'_>,
 ) -> Result<Vec<u8>, Error> {
-    prove_inner(public, executor, weights, committed, statement, Some(hook)).map(|(proof, _)| proof)
+    prove_inner(
+        public,
+        executor,
+        weights,
+        committed,
+        statement,
+        Some(hook),
+        false,
+    )
+    .map(|(proof, _)| proof)
+}
+
+/// Tests of the plain check as the gate (RFC-0026 §3.7): [`prove`] with `hook` applied to
+/// the prover's relation and values and with the plain checker running beside the engine,
+/// as [`prove`] runs it. The hook stands for a faulty executor. The result is `Check`
+/// whatever the engine does with the false witness, an error of its own included.
+pub fn prove_false_witness(
+    public: &Public,
+    executor: &mut Executor<'_>,
+    weights: &Weights,
+    committed: &Committed<'_>,
+    statement: &Statement,
+    hook: Hook<'_>,
+) -> Result<Vec<u8>, Error> {
+    prove_inner(
+        public,
+        executor,
+        weights,
+        committed,
+        statement,
+        Some(hook),
+        true,
+    )
+    .map(|(proof, _)| proof)
 }
 
 fn prove_inner(
@@ -728,14 +761,16 @@ fn prove_inner(
     committed: &Committed<'_>,
     statement: &Statement,
     hook: Option<Hook<'_>>,
+    checked: bool,
 ) -> Result<(Vec<u8>, Report), Error> {
     let witness_capture_timer = relation::Stopwatch::start();
     let capture = executor
         .capture(&statement.tokens)
         .map_err(|_| Error::Witness)?;
     let capture_ns = witness_capture_timer.elapsed_ns();
-    let (proof, mut report) =
-        prove_inner_captured(public, &capture, weights, committed, statement, hook)?;
+    let (proof, mut report) = prove_inner_captured(
+        public, &capture, weights, committed, statement, hook, checked,
+    )?;
     report.witness_ns = report.witness_ns.saturating_add(capture_ns);
     Ok((proof, report))
 }
@@ -777,13 +812,13 @@ fn prove_inner_captured(
     committed: &Committed<'_>,
     statement: &Statement,
     hook: Option<Hook<'_>>,
+    checked: bool,
 ) -> Result<(Vec<u8>, Report), Error> {
     // E16-22: stage timing, off unless STELE_STAGE_TIMES.
     let mut laps = parallel::Laps::start();
     let witness_timer = relation::Stopwatch::start();
     let d = decode(public)?;
     let mut layout = layout(&d, public, statement)?;
-    let checked = hook.is_none();
     let input = public_input(public, &d.cqis_id, statement);
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
 
@@ -1442,8 +1477,9 @@ fn prove_window_sources_measured(
         sources: weights.sources,
         segment_layers,
     };
-    let (proof, mut report) =
-        prove_inner_captured(&public, &capture, &weights, &committed, &statement, None)?;
+    let (proof, mut report) = prove_inner_captured(
+        &public, &capture, &weights, &committed, &statement, None, true,
+    )?;
     report.model_commitment_ns = model_commitment_ns;
     report.witness_ns = report.witness_ns.saturating_add(witness_pre_ns);
     Ok((public, statement, proof, report))

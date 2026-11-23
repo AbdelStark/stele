@@ -196,6 +196,13 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "RootMismatch",
         run: development::run_split,
     },
+    #[cfg(feature = "controls")]
+    catalog::RegisteredControl {
+        id: 1342,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "SelectorMismatch",
+        run: development::run_selector,
+    },
     catalog::RegisteredControl {
         id: 316,
         kind: catalog::ControlKind::Proof,

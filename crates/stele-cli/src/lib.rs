@@ -174,6 +174,19 @@ pub fn gate<E>(verified: Result<Ledger, E>) -> Result<Ledger, Refusal<E>> {
     }
 }
 
+/// The variable the CLI sets beside `GLIBC_TUNABLES` when it replaces itself (ADR-159).
+pub const HUGE_PAGES_MARKER: &str = "STELE_HUGE_PAGES_EXEC";
+
+/// Whether the CLI replaces itself once to ask glibc for transparent huge pages
+/// (ADR-159): only when the user set no `GLIBC_TUNABLES` and this process is not already
+/// the replacement. The marker decides the second half. A loader in secure-execution
+/// mode (a set-user-ID, set-group-ID or file-capability binary) drops `GLIBC_TUNABLES`
+/// from the replacement's environment, and with that variable alone the CLI would then
+/// replace itself without end.
+pub fn replaces_itself(tunables_set: bool, marker_set: bool) -> bool {
+    !tunables_set && !marker_set
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -280,5 +293,16 @@ mod tests {
         );
         assert!(out.contains("floor\t2^-95.6\n"), "{out}");
         assert!(out.contains("verdict\tFAIL (C4)"), "{out}");
+    }
+
+    /// ADR-159: the CLI replaces itself only when the user set no `GLIBC_TUNABLES` and it
+    /// is not already the replacement. The second line is the loader of a secure-execution
+    /// binary dropping the variable from the replacement: the marker alone stops it.
+    #[test]
+    fn replaces_itself_once_and_never_under_a_user_variable() {
+        assert!(replaces_itself(false, false));
+        assert!(!replaces_itself(false, true));
+        assert!(!replaces_itself(true, false));
+        assert!(!replaces_itself(true, true));
     }
 }
