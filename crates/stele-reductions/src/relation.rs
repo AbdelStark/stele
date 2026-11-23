@@ -16,6 +16,7 @@ extern crate std;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
+use core::borrow::Borrow;
 use core::fmt;
 use stele_field::{Field, Serialize, M31, QM31};
 use stele_hash::{AbsorbLabel, ChallengeLabel, HashUsage, Transcript};
@@ -35,6 +36,8 @@ mod lookup;
 #[path = "relation_recursive.rs"]
 mod recursive;
 pub use codec::{digest, encode};
+#[cfg(feature = "controls")]
+pub use recursive::prove_recursive_forged;
 pub use recursive::{
     prove_recursive_measured, recursive_model_layout, recursive_model_layout_for,
     recursive_model_sources, verify_recursive, verify_recursive_model, RecursiveModelLayout,
@@ -650,6 +653,19 @@ impl Stack {
 /// Default lookup instance domain bound `B` (RFC-0026 A8): 2^30 positions per instance.
 pub const DEFAULT_INSTANCE_BOUND: u8 = 30;
 
+/// RFC-0026 A30, the split floor `F` of profile byte 6: a check above `2^F` positions is
+/// split even when it fits `2^B`.
+pub const SPLIT_FLOOR: u8 = 25;
+
+/// The instance bound of one check under profile byte 6 (RFC-0026 A8 as amended by A30):
+/// `min(B, max(F, m − 2))` for a check whose members hold `positions` in all and
+/// `m = ceil(log2 positions)`. So a check of at most `2^F` positions is one instance, and a
+/// larger one has at most four instances up to `m = B + 2`.
+fn check_bound(instance_bound: u8, positions: u64) -> u8 {
+    let m = (u64::BITS - positions.max(1).wrapping_sub(1).leading_zeros()) as u8;
+    instance_bound.min(SPLIT_FLOOR.max(m.saturating_sub(2)))
+}
+
 /// One lookup or range inside its table's batched A5 statement (RFC-0026 A3, A8).
 pub(crate) struct Member {
     m: u8,
@@ -679,6 +695,8 @@ pub(crate) struct Check {
     /// A14: the `(β, α)` round's grinding bits, from the expected context only;
     /// 0 (no nonce) outside `Sources::CircleAllGrind`.
     grind: u8,
+    /// `Some(j)` for instance `j` of a split check (A8), whose name ends in `/inst<j>`.
+    instance: Option<usize>,
     /// Test-only malicious-prover seam: added to the committed count of row 0.
     #[cfg(test)]
     skew: i64,
@@ -865,6 +883,7 @@ fn check(
         k,
         layout,
         grind,
+        instance: None,
         #[cfg(test)]
         skew: 0,
         #[cfg(any(test, feature = "controls"))]
@@ -876,8 +895,10 @@ fn check(
     })
 }
 
-/// Build RFC-0026 A3 & A8 check instances for `targets` under domain bound `B = instance_bound`.
-/// Unsplit targets (`total <= 2^B`) keep identical ids, source ids and names.
+/// Build RFC-0026 A3 & A8 check instances for `targets` under domain bound `B = instance_bound`;
+/// under profile byte 6 each check has its own bound ([`check_bound`], A30).
+/// Unsplit targets (`total <= 2^B`, and `<= 2^25` under byte 6) keep identical ids, source
+/// ids and names.
 fn build_a8_checks(
     targets: Vec<(Target, Vec<Member>)>,
     relation: &Relation,
@@ -890,9 +911,20 @@ fn build_a8_checks(
     if instance_bound == 0 || instance_bound > 30 {
         return Err(Error::Unsupported);
     }
-    let cap = 1usize << instance_bound;
     let mut checks = Vec::new();
     for (target, raw_members) in targets {
+        // RFC-0026 A30: under profile byte 6 a check has its own bound, at most the plan's.
+        // The other profiles keep A8's: A15 §6.3 and the independent replay plan one
+        // instance per check.
+        let instance_bound = if sources == Sources::CircleRecursive {
+            let positions = raw_members.iter().fold(0u64, |n, member| {
+                n.saturating_add(1u64.checked_shl(u32::from(member.m)).unwrap_or(u64::MAX))
+            });
+            check_bound(instance_bound, positions)
+        } else {
+            instance_bound
+        };
+        let cap = 1usize << instance_bound;
         let (base_name, t, entries) = match target {
             Target::Table(table) => {
                 let table = &relation.tables[table as usize];
@@ -955,7 +987,7 @@ fn build_a8_checks(
             } else {
                 base_name.clone()
             };
-            checks.push(check(
+            let mut instance = check(
                 id_base | idx,
                 source_base + idx,
                 name,
@@ -963,7 +995,9 @@ fn build_a8_checks(
                 t,
                 entries.clone(),
                 sources,
-            )?);
+            )?;
+            instance.instance = multi.then_some(inst_idx);
+            checks.push(instance);
         }
     }
     Ok(checks)
@@ -2232,6 +2266,25 @@ pub struct Forge {
     /// Route this witness column's first claim to the next real, equal-valued
     /// column in its group (RFC-0026 A18). Cannot combine with other mutations.
     pub column_claim: Option<ColumnId>,
+    /// Read public selector column `c` with its selected entry `j` cleared while proving,
+    /// so the prover leaves that position out of its lookup tree and of its selected
+    /// product (RFC-0008 A3, RFC-0026 §3.3; control NC-1342).
+    pub deselect: Option<(ColumnId, usize)>,
+}
+
+/// The relation a forging prover reads its public columns from: `relation` with the
+/// selected entry `deselect` of a public selector column cleared (controls only). The plan
+/// and the absorbed relation digest stay `relation`'s.
+#[cfg(feature = "controls")]
+fn deselected(relation: &Relation, deselect: Option<(ColumnId, usize)>) -> Result<Relation, Error> {
+    let mut read = relation.clone();
+    if let Some((c, j)) = deselect {
+        match read.columns.get_mut(c.0 as usize).map(|c| &mut c.kind) {
+            Some(Kind::Public(v)) if v.get(j) == Some(&1) => v[j] = 0,
+            _ => return Err(Error::Unsupported),
+        }
+    }
+    Ok(read)
 }
 
 /// [`prove`] as a malicious prover: the plan and the absorbed relation digest are
@@ -2247,7 +2300,11 @@ pub fn prove_forged(
 ) -> Result<Proof, Error> {
     let mut plan = plan(relation, sources)?;
     if let Some(c) = forge.column_claim {
-        if forge.table.is_some() || forge.public.is_some() || forge.witness.is_some() {
+        if forge.table.is_some()
+            || forge.public.is_some()
+            || forge.witness.is_some()
+            || forge.deselect.is_some()
+        {
             return Err(Error::Unsupported);
         }
         let group = plan
@@ -2271,7 +2328,7 @@ pub fn prove_forged(
     if let Some(i) = forge.table {
         plan.checks.get_mut(i).ok_or(Error::Unsupported)?.shift = 1;
     }
-    let mut read = relation.clone();
+    let mut read = deselected(relation, forge.deselect)?;
     if let Some((c, j)) = forge.public {
         match read.columns.get_mut(c.0 as usize).map(|c| &mut c.kind) {
             Some(Kind::Public(v)) if j < v.len() => v[j] += 1,
@@ -3689,7 +3746,8 @@ where
 }
 
 /// [`prove_segmented`] together with stage timings and deterministic counters (RFC-0018 A2, RFC-0026 A27, RFC-0028 §2.4).
-pub fn prove_segmented_measured<F>(
+/// A caller that keeps its `Values`, to run the plain check beside this, lends them.
+pub fn prove_segmented_measured<F, V>(
     t: &mut Transcript<K>,
     relation: &Relation,
     segment_values: F,
@@ -3697,7 +3755,8 @@ pub fn prove_segmented_measured<F>(
     sources: Sources,
 ) -> Result<(ProofV2, Metrics), Error>
 where
-    F: FnMut(u32) -> Result<Values, Error>,
+    F: FnMut(u32) -> Result<V, Error>,
+    V: Borrow<Values>,
 {
     prove_segmented_impl(t, relation, segment_values, model, sources, None)
 }
@@ -3840,7 +3899,11 @@ pub fn prove_segmented_forged(
     let mut plan = plan_segmented(relation, sources)?;
     let plan_ns = plan_timer.elapsed_ns();
     if let Some(c) = forge.column_claim {
-        if forge.table.is_some() || forge.public.is_some() || forge.witness.is_some() {
+        if forge.table.is_some()
+            || forge.public.is_some()
+            || forge.witness.is_some()
+            || forge.deselect.is_some()
+        {
             return Err(Error::Unsupported);
         }
         let group = plan
@@ -3869,7 +3932,7 @@ pub fn prove_segmented_forged(
             .ok_or(Error::Unsupported)?
             .shift = 1;
     }
-    let mut read = relation.clone();
+    let mut read = deselected(relation, forge.deselect)?;
     if let Some((c, j)) = forge.public {
         match read.columns.get_mut(c.0 as usize).map(|c| &mut c.kind) {
             Some(Kind::Public(v)) if j < v.len() => v[j] += 1,
@@ -3923,7 +3986,7 @@ pub fn prove_segmented_forged(
     .map(|(p, _)| p)
 }
 
-fn prove_segmented_impl<F>(
+fn prove_segmented_impl<F, V>(
     t: &mut Transcript<K>,
     relation: &Relation,
     segment_values: F,
@@ -3932,7 +3995,8 @@ fn prove_segmented_impl<F>(
     forge_virtual: Option<(ColumnId, usize, Option<usize>)>,
 ) -> Result<(ProofV2, Metrics), Error>
 where
-    F: FnMut(u32) -> Result<Values, Error>,
+    F: FnMut(u32) -> Result<V, Error>,
+    V: Borrow<Values>,
 {
     let plan_timer = Stopwatch::start();
     let plan = plan_segmented(relation, sources)?;
@@ -3950,7 +4014,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn prove_segmented_with_plan<F>(
+fn prove_segmented_with_plan<F, V>(
     t: &mut Transcript<K>,
     relation: &Relation,
     plan: &SegmentedPlan,
@@ -3961,7 +4025,8 @@ fn prove_segmented_with_plan<F>(
     round_values: Option<&Values>,
 ) -> Result<(ProofV2, Metrics), Error>
 where
-    F: FnMut(u32) -> Result<Values, Error>,
+    F: FnMut(u32) -> Result<V, Error>,
+    V: Borrow<Values>,
 {
     if let Some((col_id, idx, comp)) = forge_virtual {
         let col = relation
@@ -4056,10 +4121,11 @@ where
     let mut prev: Option<(usize, PreparedSource<'static, K>, VerifiedCertificate<K>)> = None;
 
     for (s, seg) in plan.segments.iter().enumerate() {
-        let values = segment_values(seg.segment)?;
+        let owner = segment_values(seg.segment)?;
+        let values: &Values = owner.borrow();
         let resolved = ResolvedColumns::for_segment(
             relation,
-            &values,
+            values,
             &seg.virtuals,
             forge_virtual.map(|(col_id, idx, _)| (col_id, idx)),
         )?;
@@ -4102,12 +4168,7 @@ where
         // Step 2.1 + 2.2: commit segment `s`'s witness stack (owned) alongside multiplicity counts.
         let commit_msg_timer = Stopwatch::start();
         let committed_message = match &seg.stack {
-            Some(stack) => Some(segment_stack_message(
-                &seg.groups,
-                stack,
-                relation,
-                &values,
-            )?),
+            Some(stack) => Some(segment_stack_message(&seg.groups, stack, relation, values)?),
             None => None,
         };
         let commit_msg_ns = commit_msg_timer.elapsed_ns();
@@ -4590,7 +4651,7 @@ where
         }
         metrics.reductions_ns = metrics.reductions_ns.saturating_add(v_timer.elapsed_ns());
         drop(resolved);
-        drop(values);
+        drop(owner);
 
         // Step 2.5: all claims on segment `s - 1` are now complete; batch, open, and drop it.
         let openings_timer = Stopwatch::start();

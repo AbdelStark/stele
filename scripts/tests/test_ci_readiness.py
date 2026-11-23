@@ -19,7 +19,8 @@ class ReadinessTests(unittest.TestCase):
             needs = {'plan': {'result': 'success', 'outputs': scope},
                      'native': {'result': 'success'},
                      'native-union': {'result': 'success'}}
-            for job, name in (('table-parity', 'tables'), ('research', 'research'), ('gpu-parity', 'gpu')):
+            for job, name in (('table-parity', 'tables'), ('simd-neon', 'tables'), ('research', 'research'),
+                              ('gpu-parity', 'gpu')):
                 needs[job] = {'result': 'success' if scope[name] == 'true' else 'skipped'}
             self.assertTrue(result.accepts(needs))
             for job in needs:
@@ -44,7 +45,7 @@ class ReadinessTests(unittest.TestCase):
         text = (ROOT / '.github/workflows/ci.yml').read_text()
         self.assertIn('ready_for_review, converted_to_draft', text)
         self.assertIn("if: github.event_name != 'pull_request' || github.event.pull_request.draft == false", text)
-        self.assertIn('needs: [plan, native, native-union, table-parity, research, gpu-parity]', text)
+        self.assertIn('needs: [plan, native, native-union, table-parity, simd-neon, research, gpu-parity]', text)
         self.assertIn('NEEDS: ${{ toJSON(needs) }}', text)
         self.assertIn('run: python3 scripts/ci_result.py', text)
         shards = re.search(r'^        shard: \[([^]]+)\]', text, re.M)
@@ -96,6 +97,13 @@ class ReadinessTests(unittest.TestCase):
             self.assertIn('key: ' + role + '-${{ runner.os }}', body)
             self.assertIn('restore-keys: ' + role + '-${{ runner.os }}', body)
         self.assertIn('STELE_REQUIRE_SIMD: avx2', jobs['native'])
+        # E20-03 slice 1 review (F2): NEON and AVX-512 are executed, each where the host has it.
+        for name, backends in (('simd-neon', 'neon'), ('gpu-parity', 'avx2,avx512')):
+            self.assertIn('STELE_REQUIRE_SIMD: ' + backends + '\n'
+                          '        run: cargo test -p stele-simd --release --locked -- --nocapture', jobs[name])
+            self.assertEqual(jobs[name].count('if:'), 1, 'only the job is conditional, no step is')
+        self.assertIn('run: cargo test -p stele-sumcheck -p stele-lookup -p stele-code --all-features --locked\n',
+                      jobs['simd-neon'])
         self.assertEqual(jobs['native'].count('if:'), 1)
         self.assertIn("- if: steps.cargo-deny.outputs.cache-hit != 'true'\n"
                       '        run: cargo install cargo-deny --version 0.20.2 --locked', jobs['native'])

@@ -677,7 +677,7 @@ pub fn prove(
     committed: &Committed<'_>,
     statement: &Statement,
 ) -> Result<Vec<u8>, Error> {
-    prove_inner(public, executor, weights, committed, statement, None).map(|(proof, _)| proof)
+    prove_inner(public, executor, weights, committed, statement, None, true).map(|(proof, _)| proof)
 }
 
 /// [`prove`] together with in-process stage timings and deterministic counters
@@ -689,7 +689,7 @@ pub fn prove_measured(
     committed: &Committed<'_>,
     statement: &Statement,
 ) -> Result<(Vec<u8>, Report), Error> {
-    prove_inner(public, executor, weights, committed, statement, None)
+    prove_inner(public, executor, weights, committed, statement, None, true)
 }
 
 /// A prover-side tamper for negative controls (RFC-0026 §9): it edits the prover's
@@ -707,7 +707,40 @@ pub fn prove_tampered(
     statement: &Statement,
     hook: Hook<'_>,
 ) -> Result<Vec<u8>, Error> {
-    prove_inner(public, executor, weights, committed, statement, Some(hook)).map(|(proof, _)| proof)
+    prove_inner(
+        public,
+        executor,
+        weights,
+        committed,
+        statement,
+        Some(hook),
+        false,
+    )
+    .map(|(proof, _)| proof)
+}
+
+/// Tests of the plain check as the gate (RFC-0026 §3.7): [`prove`] with `hook` applied to
+/// the prover's relation and values and with the plain checker running beside the engine,
+/// as [`prove`] runs it. The hook stands for a faulty executor. The result is `Check`
+/// whatever the engine does with the false witness, an error of its own included.
+pub fn prove_false_witness(
+    public: &Public,
+    executor: &mut Executor<'_>,
+    weights: &Weights,
+    committed: &Committed<'_>,
+    statement: &Statement,
+    hook: Hook<'_>,
+) -> Result<Vec<u8>, Error> {
+    prove_inner(
+        public,
+        executor,
+        weights,
+        committed,
+        statement,
+        Some(hook),
+        true,
+    )
+    .map(|(proof, _)| proof)
 }
 
 fn prove_inner(
@@ -717,16 +750,48 @@ fn prove_inner(
     committed: &Committed<'_>,
     statement: &Statement,
     hook: Option<Hook<'_>>,
+    checked: bool,
 ) -> Result<(Vec<u8>, Report), Error> {
     let witness_capture_timer = relation::Stopwatch::start();
     let capture = executor
         .capture(&statement.tokens)
         .map_err(|_| Error::Witness)?;
     let capture_ns = witness_capture_timer.elapsed_ns();
-    let (proof, mut report) =
-        prove_inner_captured(public, &capture, weights, committed, statement, hook)?;
+    let (proof, mut report) = prove_inner_captured(
+        public, &capture, weights, committed, statement, hook, checked,
+    )?;
     report.witness_ns = report.witness_ns.saturating_add(capture_ns);
     Ok((proof, report))
+}
+
+/// The plain check as the gate of [`parallel::gated`] (RFC-0026 §3.7, E16-23): it runs
+/// beside the engine and decides, so a false witness ends in `Check` whatever the engine
+/// does with it. `ns` receives its own time.
+fn plain_gate(
+    checked: bool,
+    relation: &Relation,
+    values: &Values,
+    ns: &mut u64,
+) -> Result<(), Error> {
+    let mut laps = parallel::Laps::start();
+    let timer = relation::Stopwatch::start();
+    let result = if checked {
+        check(relation, values).map_err(Error::Check)
+    } else {
+        Ok(())
+    };
+    *ns = timer.elapsed_ns();
+    laps.lap("dev/plain_check (beside the engine)");
+    result
+}
+
+/// The values of an unsegmented relation's one segment, lent to the engine.
+fn single_segment(segment: u32, values: &Values) -> Result<&Values, relation::Error> {
+    if segment == 0 {
+        Ok(values)
+    } else {
+        Err(relation::Error::Unsupported)
+    }
 }
 
 fn prove_inner_captured(
@@ -736,13 +801,13 @@ fn prove_inner_captured(
     committed: &Committed<'_>,
     statement: &Statement,
     hook: Option<Hook<'_>>,
+    checked: bool,
 ) -> Result<(Vec<u8>, Report), Error> {
     // E16-22: stage timing, off unless STELE_STAGE_TIMES.
     let mut laps = parallel::Laps::start();
     let witness_timer = relation::Stopwatch::start();
     let d = decode(public)?;
     let mut layout = layout(&d, public, statement)?;
-    let checked = hook.is_none();
     let input = public_input(public, &d.cqis_id, statement);
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
 
@@ -806,24 +871,17 @@ fn prove_inner_captured(
             hook(&mut layout.relation, &mut values);
         }
         let mut plain_check_ns = 0u64;
-        if checked {
-            let check_timer = relation::Stopwatch::start();
-            check(&layout.relation, &values).map_err(Error::Check)?;
-            plain_check_ns = check_timer.elapsed_ns();
-        }
-        let mut single = Some(values);
-        let (proof, engine) = relation::prove_recursive_measured(
-            &mut t,
-            &layout.relation,
-            |seg| {
-                if seg == 0 {
-                    single.take().ok_or(relation::Error::Unsupported)
-                } else {
-                    Err(relation::Error::Unsupported)
-                }
+        let (proof, engine) = parallel::gated(
+            || plain_gate(checked, &layout.relation, &values, &mut plain_check_ns),
+            || {
+                relation::prove_recursive_measured(
+                    &mut t,
+                    &layout.relation,
+                    |seg| single_segment(seg, &values),
+                    rec_model,
+                )
             },
-            rec_model,
-        )
+        )?
         .map_err(Error::Engine)?;
         let digest = statement_digest(&input, &relation::digest(&layout.relation));
         let report = Report {
@@ -902,25 +960,18 @@ fn prove_inner_captured(
     }
     if layout.relation.has_virtual() {
         let mut plain_check_ns = 0u64;
-        if checked {
-            let check_timer = relation::Stopwatch::start();
-            check(&layout.relation, &values).map_err(Error::Check)?;
-            plain_check_ns = check_timer.elapsed_ns();
-        }
-        let mut single = Some(values);
-        let (proof, engine) = relation::prove_segmented_measured(
-            &mut t,
-            &layout.relation,
-            |seg| {
-                if seg == 0 {
-                    single.take().ok_or(relation::Error::Unsupported)
-                } else {
-                    Err(relation::Error::Unsupported)
-                }
+        let (proof, engine) = parallel::gated(
+            || plain_gate(checked, &layout.relation, &values, &mut plain_check_ns),
+            || {
+                relation::prove_segmented_measured(
+                    &mut t,
+                    &layout.relation,
+                    |seg| single_segment(seg, &values),
+                    &model,
+                    public.sources,
+                )
             },
-            &model,
-            public.sources,
-        )
+        )?
         .map_err(Error::Engine)?;
         let digest = statement_digest(&input, &relation::digest(&layout.relation));
         let report = Report {
@@ -935,18 +986,7 @@ fn prove_inner_captured(
     // with `Check` even if the engine errs or panics on it (E16-23).
     let mut plain_check_ns = 0u64;
     let (proof, engine) = parallel::gated(
-        || {
-            let mut laps = parallel::Laps::start();
-            let check_timer = relation::Stopwatch::start();
-            let result = if checked {
-                check(&layout.relation, &values).map_err(Error::Check)
-            } else {
-                Ok(())
-            };
-            plain_check_ns = check_timer.elapsed_ns();
-            laps.lap("dev/plain_check (beside the engine)");
-            result
-        },
+        || plain_gate(checked, &layout.relation, &values, &mut plain_check_ns),
         || relation::prove_measured(&mut t, &layout.relation, &values, &model, public.sources),
     )?
     .map_err(Error::Engine)?;
@@ -1322,46 +1362,11 @@ fn prove_window_sources_measured(
     let witness_pre_timer = relation::Stopwatch::start();
     let mut executor =
         Executor::new(&m, &p, &s, artifact, &id, 1 << 36).map_err(|_| Error::Witness)?;
-    // The last generated position's logits, kept so `next` needs no second forward pass.
-    let mut last_logits = None;
-    if statement.tokens.len() < length {
-        let whole = statement.end as usize == statement.tokens.len();
-        let (mut cache, mut logits) = (None, Vec::new());
-        for i in 0..length {
-            if i == statement.tokens.len() {
-                let max = logits.iter().max().ok_or(Error::Witness)?;
-                let y = logits.iter().position(|v| v == max).ok_or(Error::Witness)?;
-                statement.tokens.push(y as u32);
-            }
-            let (step, next) = executor
-                .step(statement.tokens[i], cache.as_ref())
-                .map_err(|_| Error::Witness)?;
-            logits = step.logits().to_vec();
-            cache = Some(next);
-        }
-        if whole {
-            statement.end = length as u32;
-        }
-        last_logits = Some(logits);
-    }
-    if statement.next.is_none() && statement.end as usize == statement.tokens.len() {
-        let last = match last_logits {
-            Some(logits) => logits,
-            None => executor
-                .full(&statement.tokens)
-                .map_err(|_| Error::Witness)?
-                .logits()
-                .last()
-                .ok_or(Error::Witness)?
-                .clone(),
-        };
-        let max = last.iter().max().ok_or(Error::Witness)?;
-        statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
-    }
     if let Some(window) = zk {
         if segment_layers > 0 {
             return Err(Error::StatementMismatch);
         }
+        complete_statement(&mut executor, &mut statement, length)?;
         let weights = Weights::from_artifact_sources(&m, artifact, sources)?;
         laps.lap("witness/decode_extend_weights");
         // E12-27: the 1-D records are committed weights; the public input names
@@ -1420,20 +1425,33 @@ fn prove_window_sources_measured(
         };
         return Ok((public, statement, proof, Report::default()));
     }
-    // Capture before dropping the executor so its weight buffers never overlap
-    // with `Weights::stacked` and `Committed::prepared` (task E18-06).
-    let capture = executor
-        .capture(&statement.tokens)
-        .map_err(|_| Error::Witness)?;
-    drop(executor);
-    let witness_pre_ns = witness_pre_timer.elapsed_ns();
     // E17-01: model commitment (Artifact weight decode + PCS commit) timed in process.
     let model_commit_timer = relation::Stopwatch::start();
     let weights = Weights::from_artifact_sources(&m, artifact, sources)?;
     laps.lap("witness/decode_extend_weights");
-    let committed = Committed::new(&weights)?;
-    let model_commitment_ns = model_commit_timer.elapsed_ns();
-    laps.lap("dev/model_sources");
+    // The model commitment reads the weights and nothing of the executor, so it runs
+    // beside the executor's passes, which are serial. The executor reads the Artifact in
+    // place: no second copy of the weights is alive with `Weights::stacked` and
+    // `Committed::prepared` (task E18-06).
+    let ((capture, witness_pre_ns), (committed, model_commitment_ns)) = parallel::join(
+        || {
+            let capture =
+                complete_statement(&mut executor, &mut statement, length).and_then(|()| {
+                    executor
+                        .capture(&statement.tokens)
+                        .map_err(|_| Error::Witness)
+                });
+            (capture, witness_pre_timer.elapsed_ns())
+        },
+        || {
+            let committed = Committed::new(&weights);
+            (committed, model_commit_timer.elapsed_ns())
+        },
+    );
+    let capture = capture?;
+    drop(executor);
+    let committed = committed?;
+    laps.lap("witness/executor_passes (beside dev/model_sources)");
     let public = Public {
         model: model.to_vec(),
         scales: scales.to_vec(),
@@ -1443,11 +1461,58 @@ fn prove_window_sources_measured(
         sources: weights.sources,
         segment_layers,
     };
-    let (proof, mut report) =
-        prove_inner_captured(&public, &capture, &weights, &committed, &statement, None)?;
+    let (proof, mut report) = prove_inner_captured(
+        &public, &capture, &weights, &committed, &statement, None, true,
+    )?;
     report.model_commitment_ns = model_commitment_ns;
     report.witness_ns = report.witness_ns.saturating_add(witness_pre_ns);
     Ok((public, statement, proof, report))
+}
+
+/// Complete `statement` to `length` tokens with the greedy continuation, and give it its
+/// next token when it ends at its last token (RFC-0026 §1.1).
+fn complete_statement(
+    executor: &mut Executor<'_>,
+    statement: &mut Statement,
+    length: usize,
+) -> Result<(), Error> {
+    // The last generated position's logits, kept so `next` needs no second forward pass.
+    let mut last_logits = None;
+    if statement.tokens.len() < length {
+        let whole = statement.end as usize == statement.tokens.len();
+        let (mut cache, mut logits) = (None, Vec::new());
+        for i in 0..length {
+            if i == statement.tokens.len() {
+                let max = logits.iter().max().ok_or(Error::Witness)?;
+                let y = logits.iter().position(|v| v == max).ok_or(Error::Witness)?;
+                statement.tokens.push(y as u32);
+            }
+            let (step, next) = executor
+                .step(statement.tokens[i], cache.as_ref())
+                .map_err(|_| Error::Witness)?;
+            logits = step.logits().to_vec();
+            cache = Some(next);
+        }
+        if whole {
+            statement.end = length as u32;
+        }
+        last_logits = Some(logits);
+    }
+    if statement.next.is_none() && statement.end as usize == statement.tokens.len() {
+        let last = match last_logits {
+            Some(logits) => logits,
+            None => executor
+                .full(&statement.tokens)
+                .map_err(|_| Error::Witness)?
+                .logits()
+                .last()
+                .ok_or(Error::Witness)?
+                .clone(),
+        };
+        let max = last.iter().max().ok_or(Error::Witness)?;
+        statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
+    }
+    Ok(())
 }
 
 /// The Artifact identity the executor expects: BLAKE3 of its canonical bytes.

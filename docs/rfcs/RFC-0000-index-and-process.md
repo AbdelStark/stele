@@ -45,13 +45,13 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0017 | Architecture coverage: GQA, MoE, MLA, windows, sampling | Accepted (A3); A1, A2 superseded by A3 |
 | 0018 | Benchmarks, targets, cost-model protocol | Accepted (A1, A2) |
 | 0019 | Research agenda | Research |
-| 0020 | Monorepo and crate architecture | Accepted (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14) |
+| 0020 | Monorepo and crate architecture | Accepted (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) |
 | 0021 | Canonical nonlinear functions, tables and representations | Accepted (A3); A1, A2 superseded by A3 |
 | 0022 | Closed static arithmetic records | Accepted |
 | 0023 | Integer Requant with a fixed advice cut | Accepted (A1) |
 | 0024 | Centered signed-int8 matmul and Requant | Accepted |
 | 0025 | Canonical full-model CQIS and checkpoint conversion | Accepted (A1, A2, A3) |
-| 0026 | Development-profile end-to-end prefill proof | Accepted (A1, A2, A3, A4, A5, A6, A8, A10, A11, A12, A13, A14, A15 including erratum E1, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27, A28, A29; A9 conditional); A7 superseded by A11/A12 and RFC-0029 (ADR-153) |
+| 0026 | Development-profile end-to-end prefill proof | Accepted (A1, A2, A3, A4, A5, A6, A8, A10, A11, A12, A13, A14, A15 including erratum E1, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27, A28, A29, A30; A9 conditional); A7 superseded by A11/A12 and RFC-0029 (ADR-153) |
 | 0027 | Build program: tiers, ladder, lanes and milestones | Accepted |
 | 0028 | Relation IR v2: the commit rule, virtual columns and segments | Accepted (development tier) |
 | 0029 | Commitment scheme v3: interleaved circle Reed–Solomon with a recursive opening | Accepted (development tier, ADR-152; A1, ADR-154) |

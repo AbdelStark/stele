@@ -135,3 +135,211 @@ fn rejects_invalid_lazy_limb_in_every_position() {
         [0; 16]
     );
 }
+
+fn element(state: &mut u64, edge: bool) -> stele_field::QM31 {
+    use stele_field::{CM31, M31, QM31};
+    const EDGES: [u32; 4] = [0, 1, P - 1, P - 2];
+    let mut limb = || {
+        let raw = next(state);
+        M31::from_canonical(if edge {
+            EDGES[(raw & 3) as usize]
+        } else {
+            raw % P
+        })
+        .expect("canonical")
+    };
+    QM31(CM31(limb(), limb()), CM31(limb(), limb()))
+}
+
+#[test]
+fn matches_reference_qm31_fold_on_seeded_and_edge_tables() {
+    let backends = backends();
+    let mut seed = 0x5354_454c_4500_0020;
+    // 1000 seeded tables: every length across a vector boundary, with edge limbs and
+    // edge challenges in a quarter of them.
+    for case in 0..1000usize {
+        let n = case % 41;
+        let edge = case % 4 == 0;
+        let lo: Vec<_> = (0..n).map(|_| element(&mut seed, edge)).collect();
+        let hi: Vec<_> = (0..n).map(|_| element(&mut seed, edge)).collect();
+        let c = element(&mut seed, case % 8 == 0);
+        let mut expected = lo.clone();
+        crate::fold_reference(&mut expected, &hi, c);
+        for backend in &backends {
+            let mut folded = lo.clone();
+            backend.fold(&mut folded, &hi, c).expect("available");
+            assert_eq!(folded, expected, "{backend:?} case {case}");
+        }
+        let mut folded = lo.clone();
+        crate::fold(&mut folded, &hi, c);
+        assert_eq!(folded, expected, "detected backend, case {case}");
+    }
+    // A longer low half than high half folds the common prefix only.
+    let lo: Vec<_> = (0..9).map(|_| element(&mut seed, false)).collect();
+    let hi: Vec<_> = (0..5).map(|_| element(&mut seed, false)).collect();
+    let c = element(&mut seed, false);
+    let mut expected = lo.clone();
+    crate::fold_reference(&mut expected, &hi, c);
+    for backend in &backends {
+        let mut folded = lo.clone();
+        backend.fold(&mut folded, &hi, c).expect("available");
+        assert_eq!(folded, expected);
+        assert_eq!(folded[5..], lo[5..]);
+    }
+    for backend in [Backend::Neon, Backend::Avx2, Backend::Avx512] {
+        if !backend.available() {
+            assert!(backend.fold(&mut [], &[], c).is_err());
+        }
+    }
+}
+
+#[test]
+fn matches_reference_qm31_layer_round_on_seeded_and_edge_tables() {
+    let backends = backends();
+    let mut seed = 0x5354_454c_4500_0021;
+    // 1000 seeded layers: halves across a vector boundary, sub-ranges that start and end
+    // off a vector boundary, edge limbs and an edge γ in a quarter of them.
+    for case in 0..1000usize {
+        let half = case % 23;
+        let edge = case % 4 == 0;
+        let tables: Vec<Vec<_>> = (0..4)
+            .map(|_| (0..2 * half).map(|_| element(&mut seed, edge)).collect())
+            .collect();
+        let e: Vec<_> = (0..half).map(|_| element(&mut seed, edge)).collect();
+        let gamma = element(&mut seed, case % 8 == 0);
+        let start = if half == 0 { 0 } else { case / 23 % (half + 1) };
+        let end = start + (case / 7 % (half - start + 1));
+        let view = [
+            &tables[0][..],
+            &tables[1][..],
+            &tables[2][..],
+            &tables[3][..],
+        ];
+        let expected = crate::layer_round_reference(view, &e, gamma, start..end);
+        for backend in &backends {
+            assert_eq!(
+                backend
+                    .layer_round(view, &e, gamma, start..end)
+                    .expect("available"),
+                expected,
+                "{backend:?} case {case}"
+            );
+        }
+        assert_eq!(crate::layer_round(view, &e, gamma, start..end), expected);
+    }
+    let zero = element(&mut seed, false);
+    for backend in [Backend::Neon, Backend::Avx2, Backend::Avx512] {
+        if !backend.available() {
+            assert!(backend
+                .layer_round([&[], &[], &[], &[]], &[], zero, 0..0)
+                .is_err());
+        }
+    }
+}
+
+#[test]
+fn matches_reference_m31_butterflies_on_seeded_and_edge_rows() {
+    use stele_field::M31;
+    let backends = backends();
+    let mut seed = 0x5354_454c_4500_0022;
+    const EDGES: [u32; 4] = [0, 1, P - 1, P - 2];
+    // 1000 seeded levels: every length across a vector boundary, edge limbs in a quarter.
+    for case in 0..1000usize {
+        let n = case % 67;
+        let mut limbs = |edge: bool| -> Vec<M31> {
+            (0..n)
+                .map(|_| {
+                    let raw = next(&mut seed);
+                    let limb = if edge {
+                        EDGES[(raw & 3) as usize]
+                    } else {
+                        raw % P
+                    };
+                    M31::from_canonical(limb).expect("canonical")
+                })
+                .collect()
+        };
+        let (low, high, twiddles) = (
+            limbs(case % 4 == 0),
+            limbs(case % 4 == 0),
+            limbs(case % 8 == 0),
+        );
+        let (mut expected_low, mut expected_high) = (low.clone(), high.clone());
+        crate::butterflies_reference(&mut expected_low, &mut expected_high, &twiddles);
+        for backend in &backends {
+            let (mut l, mut h) = (low.clone(), high.clone());
+            backend
+                .butterflies(&mut l, &mut h, &twiddles)
+                .expect("available");
+            assert_eq!(
+                (l, h),
+                (expected_low.clone(), expected_high.clone()),
+                "{backend:?} case {case}"
+            );
+        }
+        let (mut l, mut h) = (low.clone(), high.clone());
+        crate::butterflies(&mut l, &mut h, &twiddles);
+        assert_eq!((l, h), (expected_low, expected_high));
+    }
+}
+
+#[test]
+fn matches_reference_qm31_products_on_seeded_and_edge_slices() {
+    let backends = backends();
+    let mut seed = 0x5354_454c_4500_0023;
+    for case in 0..1000usize {
+        let n = case % 41;
+        let edge = case % 4 == 0;
+        let a: Vec<_> = (0..n).map(|_| element(&mut seed, edge)).collect();
+        let b: Vec<_> = (0..n).map(|_| element(&mut seed, case % 8 == 0)).collect();
+        let mut expected = a.clone();
+        crate::mul_assign_reference(&mut expected, &b);
+        for backend in &backends {
+            let mut product = a.clone();
+            backend.mul_assign(&mut product, &b).expect("available");
+            assert_eq!(product, expected, "{backend:?} case {case}");
+        }
+        let mut product = a.clone();
+        crate::mul_assign(&mut product, &b);
+        assert_eq!(product, expected);
+    }
+}
+
+#[test]
+fn matches_reference_int8_dot_on_seeded_and_edge_bytes() {
+    let backends = backends();
+    let mut seed = 0x5354_454c_4500_0024;
+    const EDGES: [u8; 6] = [0x80, 0x81, 0x7f, 0x00, 0x01, 0xff];
+    // 1000 seeded rows: every length across both vector widths, edge bytes in a quarter.
+    for case in 0..1000usize {
+        let n = case % 131;
+        let mut bytes = |edge: bool| -> Vec<u8> {
+            (0..n)
+                .map(|_| {
+                    let raw = next(&mut seed);
+                    if edge {
+                        EDGES[(raw % 6) as usize]
+                    } else {
+                        raw as u8
+                    }
+                })
+                .collect()
+        };
+        let x: Vec<i8> = bytes(case % 4 == 0).into_iter().map(|b| b as i8).collect();
+        let w = bytes(case % 8 == 0);
+        let expected = crate::dot_i8_reference(&x, &w);
+        for backend in &backends {
+            assert_eq!(
+                backend.dot_i8(&x, &w).expect("available"),
+                expected,
+                "{backend:?} case {case}"
+            );
+        }
+        assert_eq!(crate::dot_i8(&x, &w), expected);
+    }
+    // The extreme row: every product is (-128)·(-128), 2^16 of them, exactly 2^30.
+    let (x, w) = (vec![-128i8; 1 << 16], vec![0x80u8; 1 << 16]);
+    for backend in &backends {
+        assert_eq!(backend.dot_i8(&x, &w).expect("available"), 1 << 30);
+    }
+}

@@ -15,7 +15,7 @@ use crate::lookup::{functionals, phase};
 use alloc::vec::Vec;
 use stele_field::{Field, Serialize, M31};
 use stele_hash::{AbsorbLabel, ChallengeLabel, Transcript};
-use stele_ir::relation::{Indexer, Relation};
+use stele_ir::relation::{Indexer, Ref, Relation};
 use stele_lookup::fraction::{self, BaseLeaves, LeafDescriptor, SelectedProduct};
 use stele_pcs::{verify_opening, Functional, PreparedSource, Source, VerifiedCertificate};
 use stele_sumcheck::parallel::{for_each_chunk, join, sum_ranges};
@@ -45,7 +45,7 @@ fn statement(check: &Check) -> Vec<u8> {
 
 /// The concatenated selector in the base field M31: each member's public selector (or ones)
 /// on its block (offset by `block_index << m` under RFC-0026 A8), zero on the padding.
-fn sigma_base(check: &Check, relation: &Relation) -> Vec<M31> {
+pub(super) fn sigma_base(check: &Check, relation: &Relation) -> Vec<M31> {
     let mut out = alloc::vec![M31::ZERO; 1 << check.m];
     for member in &check.members {
         let block_base = member.block_index << member.m;
@@ -65,6 +65,79 @@ fn sigma_base(check: &Check, relation: &Relation) -> Vec<M31> {
         });
     }
     out
+}
+
+/// The multilinear extension of [`sigma_base`] at `z` (MSB-first), from the members alone
+/// (RFC-0008 A3, RFC-0026 §3.3): a member's block weighs `eq(z_high, block)`, an absent
+/// selector is one on the block, and a public selector is summed over the local domain bits
+/// its `Ref` reads. The verifier's form: it builds no vector of the check's `2^m` points.
+pub(super) fn sigma_at(check: &Check, relation: &Relation, z: &[K]) -> Result<K, fraction::Error> {
+    // The selected product asks at its own points of `m` coordinates, so no plan reaches
+    // this refusal; it stands for a caller outside the engine.
+    if z.len() != usize::from(check.m) {
+        return Err(fraction::Error::SourceShape);
+    }
+    let (zero, one) = (K::from_i64(0), K::from_i64(1));
+    let mut sum = zero;
+    for member in &check.members {
+        let local = match &member.selector {
+            None => one,
+            Some(r) => match &relation.columns[r.column.0 as usize].kind {
+                stele_ir::relation::Kind::Public(v) => {
+                    public_selector_at(r, v, member, &z[usize::from(check.m - member.m)..])?
+                }
+                // `Relation::validate` admits a public selector only (RFC-0026 §3.6 item
+                // 1); another kind reads as unselected here, as in `sigma_base`.
+                _ => zero,
+            },
+        };
+        sum = sum + block_weight(check, member, z) * local;
+    }
+    Ok(sum)
+}
+
+/// `Σ_x v[r.index(block | x)] · eq(low, x)` over a member's `2^m` local points `x`: the sum
+/// over the local bits `r` reads, because the weights of the other bits sum to one. An
+/// entry other than 0 or 1 is `Selector`, as it is for the vector.
+fn public_selector_at(
+    r: &Ref,
+    v: &[i64],
+    member: &super::Member,
+    low: &[K],
+) -> Result<K, fraction::Error> {
+    let m = usize::from(member.m);
+    let mut read: Vec<u8> = r
+        .vars
+        .iter()
+        .copied()
+        .filter(|&var| Ref::fixed(var).is_none() && usize::from(var) < m)
+        .collect();
+    read.sort_unstable();
+    // `Relation::validate` refuses a `Ref` that names a bit twice; the dedup restates it.
+    read.dedup();
+    // Entry `u` of the eq table has bit `t` of `u` at local bit `read[t]`, whose
+    // coordinate is `low[m - 1 - read[t]]`.
+    let coordinates: Vec<K> = read
+        .iter()
+        .rev()
+        .map(|&bit| low[m - 1 - usize::from(bit)])
+        .collect();
+    let weights = stele_poly::eq_table(&coordinates).map_err(|_| fraction::Error::Capacity)?;
+    let block = (member.block_index << member.m) as u64;
+    let mut sum = K::from_i64(0);
+    for (u, weight) in weights.iter().enumerate() {
+        let x = read
+            .iter()
+            .enumerate()
+            .fold(block, |x, (t, &bit)| x | ((((u >> t) & 1) as u64) << bit));
+        let entry = M31::from_i64(v[r.index(x)]);
+        if entry == M31::ONE {
+            sum = sum + *weight;
+        } else if entry != M31::ZERO {
+            return Err(fraction::Error::Selector);
+        }
+    }
+    Ok(sum)
 }
 
 /// Concatenated base-field tuple column `i`: on each member block,
@@ -596,11 +669,11 @@ pub(super) fn verify(
     check_table(check, &p, &table)?;
     let ids: Vec<u64> = (0..check.c).map(|i| check.tuple_id(i)).collect();
     let leaf = LeafDescriptor::new(&p.left, &ids).map_err(FRACTION)?;
-    let sigma = sigma_base(check, relation);
+    let sigma = |z: &[K]| sigma_at(check, relation, z);
     let leaf_proof = leaf
         .decode(reader.take(leaf.proof_size().map_err(FRACTION)?)?)
         .map_err(FRACTION)?;
-    let selected = SelectedProduct::new_base(leaf, &lookup, &sigma, p.alpha, p.beta)
+    let selected = SelectedProduct::new_evaluated(leaf, &lookup, &sigma, p.alpha, p.beta)
         .map_err(FRACTION)?
         .verify(&leaf_proof, t)
         .map_err(FRACTION)?;
@@ -771,11 +844,11 @@ pub(super) fn verify_for_stack(
     check_table(check, &p, &table)?;
     let ids: Vec<u64> = (0..check.c).map(|i| check.tuple_id(i)).collect();
     let leaf = LeafDescriptor::new(&p.left, &ids).map_err(FRACTION)?;
-    let sigma = sigma_base(check, relation);
+    let sigma = |z: &[K]| sigma_at(check, relation, z);
     let leaf_proof = leaf
         .decode(reader.take(leaf.proof_size().map_err(FRACTION)?)?)
         .map_err(FRACTION)?;
-    let selected = SelectedProduct::new_base(leaf, &lookup, &sigma, p.alpha, p.beta)
+    let selected = SelectedProduct::new_evaluated(leaf, &lookup, &sigma, p.alpha, p.beta)
         .map_err(FRACTION)?
         .verify(&leaf_proof, t)
         .map_err(FRACTION)?;

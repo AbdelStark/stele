@@ -3,7 +3,9 @@ use crate::{Field, Inverse, Serialize};
 use core::ops::{Add, Mul, Neg, Sub};
 
 /// An element of F_p, p = 2^31 - 1. The private limb is always in `[0, p)`.
+/// `repr(transparent)`: a slice of elements is a slice of limbs (RFC-0003 §6 kernels).
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct M31(u32);
 
 impl M31 {
@@ -100,6 +102,10 @@ impl Field for M31 {
     #[inline]
     fn mul_m31(self, x: M31) -> Self {
         self * x
+    }
+
+    fn m31_slice_mut(values: &mut [Self]) -> Option<&mut [M31]> {
+        Some(values)
     }
 }
 

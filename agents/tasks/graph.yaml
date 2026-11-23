@@ -4259,6 +4259,41 @@ tasks:
   - a virtual contraction is materialised as one integer dot product over two contiguous typed rows; sums that may leave i64 keep the checked wide loop
   - a reference test compares the kernel with the definition on typed, permuted and fixed-bit operands
   - pinned L0 and L1 proof digests unchanged; L2a prove time before and after in ledgers (shared with E20-23)
+- id: E18-11
+  epic: E18
+  title: The plain check beside the engine for relations with virtual columns
+  depends:
+  - E18-05
+  rfc:
+  - RFC-0026 §3.7
+  - RFC-0028 §2.4
+  skill: performance-engineer
+  crate: stele-reductions+stele-prover
+  lane: P
+  status: done
+  agent: claude
+  branch: task/E18-11-check-beside-engine
+  acceptance:
+  - for an unsegmented relation the plain check runs beside the segmented and the recursive engine and decides; a false witness ends in Check under the default sources and under the joined recursion
+  - the checker holds a computed column in 32-bit entries when every entry fits and in its checked form otherwise; both read back as the definition's values
+  - public and proof bytes unchanged on L0, L1 and L2a; L2a prove time and peak RSS before and after in ledgers
+- id: E18-12
+  epic: E18
+  title: The model commitment beside the executor's serial passes
+  depends:
+  - E18-06
+  rfc:
+  - RFC-0026 §1.1
+  - RFC-0018 A2
+  skill: performance-engineer
+  crate: stele-prover
+  lane: P
+  status: done
+  agent: claude
+  branch: task/E20-26-check-instance-bound
+  acceptance:
+  - prove-dev commits the model beside the generation, next-token and capture passes of the executor; the executor reads the Artifact in place, so no second copy of the weights is alive
+  - public and proof bytes unchanged; L2a prove time before and after in ledgers, and the ledger note names the stages that overlap
 - id: E19-01
   epic: E19
   title: Parameter script and size model; RFC-0029 accepted for the development tier
@@ -4490,6 +4525,63 @@ tasks:
   - a zerocheck and a claim batch keep eq(point, .) factored through the first round, so neither builds a dense extension table of the full domain before its first fold
   - a matmul operand with a non-shared free bit is read from base storage in round 0
   - pinned L0 and L1 proof hashes unchanged; peak RSS and prove time on L2a before and after in ledgers
+- id: E20-25
+  epic: E20
+  title: The verifier evaluates a lookup selector from the members, without the domain vector
+  depends:
+  - E20-02
+  rfc:
+  - RFC-0008 A3
+  - RFC-0026 §3.3
+  - RFC-0026 A8
+  skill: verifier-engineer
+  crate: stele-lookup+stele-reductions
+  lane: E
+  status: done
+  agent: claude
+  branch: task/E18-11-check-beside-engine
+  acceptance:
+  - the verifier of a lookup check computes the selector's multilinear extension from the members (block weight, absent selector, public selector summed over the domain bits its reference reads) and builds no vector of the check's domain
+  - a reference test compares it with the extension of the selector vector on random relations with absent, natural, permuted and narrower selectors under every instance bound 1..=6; a selector entry other than 0 or 1 is refused as before
+  - the selected product accepts and rejects the same proofs from the extension as from the entries
+  - proof bytes unchanged; verify time and verifier peak RSS on L2a before and after in ledgers
+- id: E20-26
+  epic: E20
+  title: Under profile byte 6 a lookup check above 2^25 positions has its own instance bound (RFC-0026 A30)
+  depends:
+  - E20-02
+  rfc:
+  - RFC-0026 A30
+  - RFC-0026 A8
+  - RFC-0008 A5
+  skill: sumcheck-prover-engineer
+  crate: stele-reductions
+  lane: E
+  status: done
+  agent: claude
+  branch: task/E20-26-check-instance-bound
+  acceptance:
+  - RFC-0026 A30 is Accepted at the development tier with an independent review and an ADR; the recursive planner of profile byte 6 gives each check the bound min(B, max(25, m - 2)), and the plans of the other profile bytes keep one bound (A8, A15 §6.3)
+  - a proof whose checks hold at most 2^25 positions keeps its bytes - the pinned L0 and L1 digests reproduce; a plan with the instance sizes of L2a's largest check has three instances, and the joined recursion proves and rejects tampers of cut members under small plan bounds
+  - L2a proves and verifies with the split check, one changed member value of each lookup instance is rejected, and the proof stays within 4 MB; prove time, lookup stage time, peak RSS and proof bytes before and after in ledgers
+- id: E20-27
+  epic: E20
+  title: A folded table releases the half it no longer uses; a layer's eq suffix is halved on the pool
+  depends:
+  - E20-23
+  rfc:
+  - RFC-0006 A1
+  - RFC-0008 A3
+  skill: performance-engineer
+  crate: stele-sumcheck+stele-lookup
+  lane: E
+  status: done
+  agent: claude
+  branch: task/E20-26-check-instance-bound
+  acceptance:
+  - a fold gives back the allocation of the half it no longer uses once that is a megabyte, and the claim batch folds its coefficients before it makes its folded table
+  - the eq suffix of a fraction-tree layer is halved on the pool; the sums are the same field elements
+  - public and proof bytes unchanged on L0, L1 and L2a; L2a prove time and peak RSS before and after in ledgers
 - id: E20-03
   epic: E20
   title: Backend trait with CPU reference and SIMD
@@ -4502,11 +4594,16 @@ tasks:
   skill: performance-engineer
   crate: stele-kernels+stele-simd
   lane: E
-  status: ready
+  status: in_progress
+  agent: claude
+  branch: task/E20-03-simd-kernels
   acceptance:
   - operations - dense round, sumcheck fold, small-value partial evaluation (bucketed for int4 and int8), tree level, row encode, Merkle level - behind one trait, each with a scalar reference
   - SIMD equals scalar on 1000 seeded inputs per operation including edge values
   - the engine calls the trait; pinned proof hashes unchanged
+  - 'slice 1 (branch task/E20-03-simd-kernels): QM31 fold, fraction-tree layer round (also used by the base-leaf round), element-wise QM31 product for the all-extension dense round, base-field transform butterflies, and the exact int8 dot product of the reference forward (RFC-0020 A16), each a stele-simd function with a scalar reference and a 1000-case seeded parity test; AVX2 and AVX-512 (and NEON for the butterflies). Not yet behind one trait; small-value partial evaluation, tree level and Merkle level have no kernel'
+  - 'open from the slice 1 review (F2): a call site follows the host backend, so the pinned proof digests run through one kernel set per host; once the trait exists, run them once per available backend'
+  - 'open from the slice 1 review (F8): stele-simd is a std crate (runtime feature detection) under the no_std crates stele-code, stele-poly and stele-cqis; a bare-metal verifier build needs it without std'
 - id: E20-04
   epic: E20
   title: CUDA backend skeleton and parity harness
@@ -5014,6 +5111,23 @@ tasks:
   - RFC-0030 (Draft) uses c·(N + t) − 1 for the pair round and caps c = 2 checks at N + t ≤ 2^23 (≤ 2^22 positions with a 2^16-row table)
   - the cap is asserted at its boundaries for c = 1 and c = 2 (study.py --check); no plan validator enforces it yet (E21-04)
   - study.py --check asserts the grind receipts and that LU range_8 is the worst Policy 1 round
+- id: E21-11
+  epic: E21
+  title: The CLI asks glibc for transparent huge pages
+  depends: []
+  rfc:
+  - RFC-0018 A2
+  - RFC-0027 §3
+  skill: performance-engineer
+  crate: stele-cli+bench
+  lane: V
+  status: done
+  agent: claude
+  branch: task/E20-26-check-instance-bound
+  acceptance:
+  - on Linux with glibc the stele CLI replaces itself once with GLIBC_TUNABLES=glibc.malloc.hugetlb=1 when the variable is unset; a set variable is kept and a failed exec changes nothing
+  - the CLI tests pass on Linux; public and proof bytes unchanged
+  - L2a prove and verify time on the reference class with and without the variable preset, in ledgers; the ledger note states the default
 - id: E21-09
   epic: E21
   title: Promote the lean protocol to standard
@@ -5225,6 +5339,23 @@ tasks:
   acceptance:
   - the registry digest is unchanged with and without std; no_std builds run the blocks in turn
   - verify time on L2a before and after in the E20-23 ledgers
+- id: E22-12
+  epic: E22
+  title: A block of the executor's point cache for each table descriptor
+  depends:
+  - E22-11
+  rfc:
+  - RFC-0021 §3
+  - RFC-0025 §2.5
+  skill: performance-engineer
+  crate: stele-cqis
+  lane: N
+  status: done
+  agent: claude
+  branch: task/E20-26-check-instance-bound
+  acceptance:
+  - descriptors that read the same inputs do not evict each other's certified points - up to four descriptors own a block of 65536 slots each; a hit still needs the full descriptor and input
+  - executor outputs, public and proof bytes unchanged on L0, L1 and L2a; the witness stage time before and after in ledgers
 - id: E23-01
   epic: E23
   title: Zero-knowledge construction decision; RFC-0013 A3 accepted for the development tier

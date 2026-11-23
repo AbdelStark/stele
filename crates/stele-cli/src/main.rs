@@ -662,7 +662,31 @@ fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> 
     Ok("YES".into())
 }
 
+/// On Linux with glibc, ask malloc for transparent huge pages (`glibc.malloc.hugetlb=1`,
+/// ADR-159). The tunable is read when a process starts, so the CLI replaces itself once
+/// with the variable set. Its tables are gigabytes: on 4 KiB pages their page faults and
+/// unmaps make the threads wait on one another. A `GLIBC_TUNABLES` the user set is kept,
+/// and a failed exec leaves the run as it is. No value the CLI computes depends on it.
+/// The replacement carries a marker of its own, so it is never replaced again, even
+/// where the loader drops `GLIBC_TUNABLES` (`stele_cli::replaces_itself`).
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+fn huge_pages() {
+    use std::os::unix::process::CommandExt;
+    if !stele_cli::replaces_itself(
+        std::env::var_os("GLIBC_TUNABLES").is_some(),
+        std::env::var_os(stele_cli::HUGE_PAGES_MARKER).is_some(),
+    ) {
+        return;
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        // `exec` returns only when it failed.
+        let _ = stele_cli::replacement(exe, std::env::args_os()).exec();
+    }
+}
+
 fn main() -> ExitCode {
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    huge_pages();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let rest = args.get(1..).unwrap_or_default();
     let zk = rest.iter().any(|a| a == "--zk");

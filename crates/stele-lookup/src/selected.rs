@@ -23,16 +23,21 @@ pub struct LeafReduction<K> {
     /// Actual leaf A1 record, numerator 3m over the indicated field.
     pub sc: ScRecord,
 }
+/// A selector's multilinear extension at a point (see [`SelectedProduct::new_evaluated`]).
+pub type SelectorAt<'a, K> = &'a (dyn Fn(&[K]) -> Result<K, Error> + Sync);
 #[derive(Clone, Copy)]
 enum Selector<'a, K> {
     Ext(&'a [K]),
     Base(&'a [M31]),
+    /// A verifier's form: `m` and `σ~`, without the `2^m` entries.
+    Evaluated(u32, SelectorAt<'a, K>),
 }
 impl<K> Selector<'_, K> {
     fn len(&self) -> usize {
         match self {
             Self::Ext(s) => s.len(),
             Self::Base(s) => s.len(),
+            Self::Evaluated(m, _) => 1 << m,
         }
     }
 }
@@ -302,6 +307,38 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
             beta,
         })
     }
+    /// The verifier's variant of [`Self::new_base`] (RFC-0008 A3): the selector is given by
+    /// its multilinear extension `sigma`, so no vector of the `2^m` entries is built. The
+    /// caller's `sigma` must be the extension of a 0/1 vector of `2^m` entries, and answer
+    /// `Error::Selector` for another entry, as the constructors over entries do. Proving
+    /// from this form is refused: a prover holds the entries.
+    pub fn new_evaluated(
+        descriptor: LeafDescriptor<'a, K>,
+        original: &'a Reduction<K>,
+        sigma: SelectorAt<'a, K>,
+        alpha: K,
+        beta: K,
+    ) -> Result<Self, Error> {
+        // A plan builds `original` from this descriptor's own tree, so the shapes differ
+        // only for a caller that pairs two checks; the engine never does.
+        if original.point.len() != descriptor.tree.m as usize
+            || original.claims.map(|c| c.0) != descriptor.tree.leaves
+        {
+            return Err(Error::SourceShape);
+        }
+        let values = original.claims.map(|c| c.1);
+        if values[0] != sigma(&original.point)? {
+            return Err(Error::SelectorMismatch);
+        }
+        Ok(Self {
+            descriptor,
+            point: &original.point,
+            values,
+            sigma: Selector::Evaluated(descriptor.tree.m, sigma),
+            alpha,
+            beta,
+        })
+    }
     fn sources(&self, xs: &[Vec<K>]) -> Result<(), Error> {
         if xs.len() != self.descriptor.sources.len()
             || xs.iter().any(|x| x.len() != self.sigma.len())
@@ -375,6 +412,7 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
         let sigma_at = match self.sigma {
             Selector::Ext(s) => mle(s, &point)?,
             Selector::Base(s) => mle_base(s, &point)?,
+            Selector::Evaluated(_, at) => at(&point)?,
         };
         if finals[1] != sigma_at {
             return Err(Error::SelectorMismatch);
@@ -477,6 +515,7 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
                 out.extend(s.iter().map(|&v| one.mul_m31(v)));
                 out
             }
+            Selector::Evaluated(..) => return Err(Error::SourceShape),
         };
         tables.push(sigma_ext);
         for x in xs {

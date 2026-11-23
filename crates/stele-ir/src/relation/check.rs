@@ -36,14 +36,39 @@ fn first_item<T: Sync>(
 /// (RFC-0028 §2.1) are computed from their definitions over `Z` (`None` on `i128` overflow).
 enum ColData<'a> {
     Borrowed(ColumnSlice<'a>),
+    /// A computed column whose every entry is an `i32`. A valid witness's virtual columns
+    /// are below `p` (RFC-0028 A1); the checked form is 32 bytes an entry.
+    Narrow(Vec<i32>),
     Computed(Vec<Option<i128>>),
 }
 
 impl<'a> ColData<'a> {
+    /// A computed column, narrow when every entry fits.
+    fn computed(values: Vec<Option<i128>>) -> Self {
+        let mut narrow = Vec::with_capacity(values.len());
+        for value in &values {
+            match value.and_then(|v| i32::try_from(v).ok()) {
+                Some(v) => narrow.push(v),
+                None => return ColData::Computed(values),
+            }
+        }
+        ColData::Narrow(narrow)
+    }
+
+    /// The entries as a typed slice, for the columns that have one.
+    fn slice(&self) -> Option<ColumnSlice<'_>> {
+        match self {
+            ColData::Borrowed(s) => Some(*s),
+            ColData::Narrow(v) => Some(ColumnSlice::I32(v)),
+            ColData::Computed(_) => None,
+        }
+    }
+
     #[inline]
     fn len(&self) -> usize {
         match self {
             ColData::Borrowed(s) => s.len(),
+            ColData::Narrow(v) => v.len(),
             ColData::Computed(v) => v.len(),
         }
     }
@@ -52,6 +77,7 @@ impl<'a> ColData<'a> {
     fn get(&self, idx: usize) -> Option<i128> {
         match self {
             ColData::Borrowed(s) => Some(s.at(idx) as i128),
+            ColData::Narrow(v) => Some(i128::from(v[idx])),
             ColData::Computed(v) => v[idx],
         }
     }
@@ -134,9 +160,9 @@ fn eval_virtual(
         } => {
             let (lc, rc) = (col(lhs.column), col(rhs.column));
             // Typed operands: one exact dot product per entry (`contract`); sums that may
-            // leave `i64`, and computed operands, keep the checked loop below.
-            if let (ColData::Borrowed(l), ColData::Borrowed(r)) = (lc, rc) {
-                if let Some(out) = super::contract(*free, *summed, (lhs, *l), (rhs, *r)) {
+            // leave `i64`, and operands in the checked form, keep the checked loop below.
+            if let (Some(l), Some(r)) = (lc.slice(), rc.slice()) {
+                if let Some(out) = super::contract(*free, *summed, (lhs, l), (rhs, r)) {
                     if out.len() == n {
                         return out.into_iter().map(|v| Some(i128::from(v))).collect();
                     }
@@ -245,7 +271,7 @@ pub fn eval_column(
         match &col.kind {
             Kind::Virtual(def) => {
                 let data = eval_virtual(col.log_len, def, &resolved, SUMMED_TABLE);
-                resolved[i] = Some(ColData::Computed(data));
+                resolved[i] = Some(ColData::computed(data));
             }
             _ => {
                 let slice = values.get(relation, cid).ok_or(Violation::Missing(cid))?;
@@ -255,6 +281,7 @@ pub fn eval_column(
     }
     match resolved[idx].take().ok_or(Violation::Missing(target))? {
         ColData::Borrowed(s) => Ok(s.to_vec()),
+        ColData::Narrow(v) => Ok(v.into_iter().map(i64::from).collect()),
         ColData::Computed(v) => v
             .into_iter()
             .map(|x| x.and_then(|n| i64::try_from(n).ok()))
@@ -365,7 +392,7 @@ fn check_inner(
             Kind::Virtual(def) => {
                 // RFC-0028 §2.1: compute from definition over earlier columns; ignore any supplied values.
                 let computed = eval_virtual(col_meta.log_len, def, &columns, summed_table);
-                columns.push(Some(ColData::Computed(computed)));
+                columns.push(Some(ColData::computed(computed)));
             }
             _ => {
                 let slice = values.get(relation, id).ok_or(Violation::Missing(id))?;

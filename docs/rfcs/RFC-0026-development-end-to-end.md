@@ -2830,3 +2830,64 @@ Task: E19-04. Decision: ADR-154.
    are drawn after the committed multiplicities. A segment without a witness stack has no
    opening section; a non-empty one is `ProofShape`.
 6. **Affected tasks.** E19-04, E18-09.
+
+### A30 — Under profile byte 6 a lookup check above `2^25` positions has its own instance bound
+
+Status: Accepted (development tier, RFC-0027 §2; task E20-26). Decision: ADR-158.
+Review: [instance bound of a check](../../agents/reviews/e20-26-check-instance-bound.md).
+Motivation: A8 splits a check only above `2^B = 2^30` positions. A check is padded to a
+power of two and the prover builds its fraction trees whole. The largest check of L2a
+(`range_8`, 74,202,368 positions) is padded to `2^27`, so 45% of its leaves are padding.
+On L2a under byte 6, with the rule against without it (ledgers `e20-26-*` against
+`e18-11-*`, 24-thread reference class): prove 26.39 s against 28.09 s, the lookup stage
+8.13 s against 9.70 s, prover peak RSS 8.9 GiB against 10.7 GiB.
+
+Replacement text, A8, sentence "The plan fixes an instance bound `B` (30 in the
+development profile).":
+
+> "The plan fixes an instance bound `B` (30 in the development profile). Under profile
+> byte 6 (A29) it also fixes a split floor `F = 25`, and a check has its own bound: with
+> `N = Σ 2^m_i` over the check's members in its segment (A27), before any cut, and
+> `m = ceil(log2 N)`, `B_c = min(B, max(F, m - 2))`. `B_c` takes the place of `B` in the
+> rest of this paragraph. Under every other profile byte `B_c = B`."
+
+Replacement text, A8, Control, sentence "At `B = 30` only a check above `2^30` positions
+splits, and no test builds one.":
+
+> "At `B = 30` a check splits above `2^30` positions, and under profile byte 6 above
+> `2^25` (A30). No test proves a check that large; two tests plan one."
+
+Scope: the rule is in the recursive plan of A29 only. The plain and segmented plans of
+bytes 0 to 5 keep A8's `B`: A15 §6.3 fixes one instance per check there, and the
+independent replay of `stele-verifier` derives its plan from that text. The dev-zk plan
+(A9) does not split.
+Soundness: no kind of round, no label and no binding is added, and no round's error
+grows, because every instance has `m_j <= m`. The number of rounds grows with the
+instance count. Each instance is an independent RFC-0008 A5 statement, as in A8, with
+its own `(β, α)` draw, its LU line of numerator `c·(2^m_j + t) - 1`, the lines of its
+`m_j`-bit and `k`-bit trees, its selected product, one claim in the batch of the
+multiplicity stack, and one prefix sumcheck when `t < 2^k`. On L2a the proof has 730
+more rounds (39,725 to 40,455) and two more LU lines, and the LU numerators of `range_8`
+fall from 134,217,983 to 75,498,237 in all (review record, item 5). `B_c` is a function
+of the relation alone, so the engine's verifier derives it. A proof split under another
+rule is rejected: under byte 6 the first instance whose statement differs fails a tree
+round (`RoundSumMismatch`).
+Cells, lookups, bytes: witness cells and lookup positions are unchanged. Each added
+instance has its own multiplicity vector of the table's size and its own pair of trees.
+A proof whose checks all hold at most `2^F` positions keeps its bytes; in a proof with
+a split check, the checks after it take later identifiers. A larger check has at most
+four instances up to `m = B + 2`, and A8's count above that. On L2a one check becomes
+three instances, no member is cut, and the proof grows from 3,927,613 to 3,971,461
+bytes. With `F = 24` two more checks split and the proof is 4,025,565 bytes (one arm64
+run, no ledger), above Gate M2's 4 MB: 25 is the lowest floor within it. Proof bytes on
+L2b and L3 shapes are not measured; the review record estimates 0.5 to 0.7 MB more from
+the section sizes. Task E20-09 owns the form whose bytes do not grow with the instance
+count.
+Controls: NC-1341 (A8), a member value moved across an instance boundary. It runs under
+`B = 2`, where `B_c = B`. No binding is added. The joined recursion proves cut members
+under plan bounds 1 to 6 and rejects four tampers of them
+(`rejects_tampers_of_split_checks_under_small_bounds`). The ledger job's control
+changes the last value of every lookup section of the proof. On L2a that is a member
+value in 20 of the 23 sections, the three of the split check among them, and a prefix
+sumcheck final in three. The `e20-26-*` ledgers were recorded before this control.
+Affected tasks: E20-26, E20-09. Promotion to `standard`: not granted (Workflow 10).

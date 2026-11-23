@@ -224,6 +224,50 @@ fn selected_parity<K: ChallengeField + Eq + core::fmt::Debug>() {
                     .expect("verify");
                 assert_eq!(verified, reference.1);
                 assert_eq!(t_v.challenge(ChallengeLabel::Sumcheck).expect("c"), next);
+                // The verifier given only the selector's extension decides the same. It
+                // refuses to prove, and rejects an extension that differs at the incoming
+                // point or only at the final one.
+                let at = |z: &[K]| {
+                    let weights = stele_poly::eq_table(z).map_err(|_| Error::Capacity)?;
+                    Ok(sigma_k
+                        .iter()
+                        .zip(&weights)
+                        .fold(K::from_i64(0), |sum, (s, w)| sum + *s * *w))
+                };
+                let mut t_e = Transcript::<K>::new(b"review/sel/t").expect("t");
+                let evaluated = SelectedProduct::new_evaluated(shape, &original, &at, alpha, beta)
+                    .expect("new_evaluated");
+                assert_eq!(
+                    evaluated.verify(&reference.0, &mut t_e).expect("verify"),
+                    reference.1
+                );
+                assert_eq!(t_e.challenge(ChallengeLabel::Sumcheck).expect("c"), next);
+                let mut t_p = Transcript::<K>::new(b"review/sel/t").expect("t");
+                assert_eq!(
+                    evaluated.prove_base(&xs, &mut t_p).err(),
+                    Some(Error::SourceShape)
+                );
+                let shifted = |z: &[K]| at(z).map(|v| v + one);
+                assert_eq!(
+                    SelectedProduct::new_evaluated(shape, &original, &shifted, alpha, beta).err(),
+                    Some(Error::SelectorMismatch)
+                );
+                let late = |z: &[K]| {
+                    at(z).map(|v| {
+                        if z == original.point.as_slice() {
+                            v
+                        } else {
+                            v + one
+                        }
+                    })
+                };
+                let mut t_l = Transcript::<K>::new(b"review/sel/t").expect("t");
+                let refused = SelectedProduct::new_evaluated(shape, &original, &late, alpha, beta)
+                    .expect("the incoming point agrees")
+                    .verify(&reference.0, &mut t_l)
+                    .err();
+                // Without a round the final point is the incoming one.
+                assert_eq!(refused, (m > 0).then_some(Error::SelectorMismatch));
                 cases += 1;
             }
         }
@@ -308,6 +352,158 @@ fn rejects_proofs_from_a_prebuilt_tree_of_other_leaves() {
                 assert!(d.verify_public(&proof, &leaves(&honest), &mut t_v).is_err());
                 let mut t_v = Transcript::<K>::new(b"review/mismatch/t").expect("t");
                 assert!(d.verify_public(&proof, &leaves(&other), &mut t_v).is_err());
+            }
+        }
+    }
+}
+
+/// Trees large enough for several leaf blocks and a partial one (E20-03 slice 1 review, F3).
+mod large_trees {
+    use stele_field::{Field, Serialize, M31, QM31};
+    use stele_hash::{ChallengeLabel, Transcript};
+    use stele_lookup::fraction::{BaseLeaves, Descriptor};
+
+    type K = QM31;
+
+    struct Rng(u64);
+    impl Rng {
+        fn next(&mut self) -> u64 {
+            self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
+            let mut z = self.0;
+            z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+            z ^ (z >> 31)
+        }
+        fn below(&mut self, n: u64) -> u64 {
+            self.next() % n
+        }
+        fn value(&mut self) -> M31 {
+            match self.below(8) {
+                0 => M31::ZERO,
+                1 => M31::from_i64(255),
+                2 => M31::from_i64(256),
+                3 => M31::from_i64(-1),
+                4 => M31::from_i64((self.next() >> 1) as i64),
+                _ => M31::from_i64(self.below(300) as i64),
+            }
+        }
+        fn sigma(&mut self, wild: bool) -> M31 {
+            match self.below(if wild { 6 } else { 2 }) {
+                0 => M31::ZERO,
+                1 => M31::ONE,
+                2 => M31::from_i64(2),
+                3 => M31::from_i64(-1),
+                _ => M31::from_i64((self.next() >> 1) as i64),
+            }
+        }
+    }
+
+    fn embed(v: M31) -> K {
+        K::from_i64(i64::from(v.as_u32()))
+    }
+
+    fn fnv(bytes: &[u8]) -> u64 {
+        bytes.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
+            (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3)
+        })
+    }
+
+    /// The base-leaf round copies leaves in blocks of 128 pairs and the pool splits a layer
+    /// into ranges: the partial blocks and the ranges off a vector boundary only appear in
+    /// larger trees and at thread counts that do not divide them, so these also run on three.
+    #[test]
+    fn matches_reference_large_trees_across_provers_and_on_three_threads() {
+        large_trees();
+        stele_sumcheck::parallel::with_threads(3, large_trees);
+    }
+
+    fn large_trees() {
+        let mut rng = Rng(0x5354_454c_4552_0201);
+        let mut ext = Transcript::<K>::new(b"review/e20-03/tree").expect("t");
+        let mut k = move || ext.challenge(ChallengeLabel::Sumcheck).expect("c");
+        let one = K::from_i64(1);
+        let mut all = Vec::new();
+        for m in [3u32, 8, 10, 11, 12, 13, 14] {
+            let len = 1usize << m;
+            // b = m: unit weights on every layer; b = 1: on the leaf layer only; b = 0: nowhere.
+            for b in [m, 1, 0] {
+                for wild in [false, true] {
+                    let theta: Vec<K> = (0..m - b).map(|_| k()).collect();
+                    let d = Descriptor::new(900 + u64::from(m), m, b, [10, 11], &theta).expect("d");
+                    let (alpha, beta) = (k(), k());
+                    let sigma: Vec<M31> = (0..len).map(|_| rng.sigma(wild)).collect();
+                    let xs: Vec<Vec<M31>> = (0..2)
+                        .map(|_| (0..len).map(|_| rng.value()).collect())
+                        .collect();
+                    for c in 1..=2usize {
+                        let leaves: Vec<[K; 2]> = (0..len)
+                            .map(|i| {
+                                let s = embed(sigma[i]);
+                                let row = xs[..c]
+                                    .iter()
+                                    .rev()
+                                    .fold(K::from_i64(0), |v, x| v * beta + embed(x[i]));
+                                [s, one - s + s * (alpha - row)]
+                            })
+                            .collect();
+                        let mut t_ref = Transcript::<K>::new(b"review/e20-03/t").expect("t");
+                        let reference = d.prove(&leaves, &mut t_ref).expect("dense prover");
+                        let next = t_ref.challenge(ChallengeLabel::Sumcheck).expect("c");
+                        let mut t_built = Transcript::<K>::new(b"review/e20-03/t").expect("t");
+                        let built = d.build_levels(&leaves).expect("levels");
+                        assert_eq!(
+                            d.prove_built(built, &mut t_built).expect("layer prover"),
+                            reference,
+                            "layer prover m={m} b={b} wild={wild} c={c}"
+                        );
+                        assert_eq!(
+                            t_built.challenge(ChallengeLabel::Sumcheck).expect("c"),
+                            next
+                        );
+                        let mut variants = vec![BaseLeaves::General {
+                            sigma: &sigma,
+                            xs: &xs[..c],
+                            alpha,
+                            beta,
+                        }];
+                        if c == 1 {
+                            for table_size in [16usize, 256, 300, 70_000] {
+                                variants.push(BaseLeaves::SmallDomain {
+                                    sigma: &sigma,
+                                    values: &xs[0],
+                                    alpha,
+                                    table_size,
+                                });
+                            }
+                        }
+                        for (v, base) in variants.into_iter().enumerate() {
+                            let mut t_opt = Transcript::<K>::new(b"review/e20-03/t").expect("t");
+                            let optimised = d.prove_base_leaves(base, &mut t_opt).expect("base");
+                            assert_eq!(
+                                optimised, reference,
+                                "base-leaf prover m={m} b={b} wild={wild} c={c} variant={v}"
+                            );
+                            assert_eq!(t_opt.challenge(ChallengeLabel::Sumcheck).expect("c"), next);
+                        }
+                        let mut t_v = Transcript::<K>::new(b"review/e20-03/t").expect("t");
+                        let closed = d
+                            .verify_public(&reference.0, &leaves, &mut t_v)
+                            .expect("verify");
+                        assert_eq!(closed, reference.1);
+                        // One changed round value is refused.
+                        if m >= 3 {
+                            let mut bad = reference.0.clone();
+                            let step = bad.steps.last_mut().expect("step");
+                            step.rounds[0][1] = step.rounds[0][1] + one;
+                            let mut t_bad = Transcript::<K>::new(b"review/e20-03/t").expect("t");
+                            assert!(d.verify_public(&bad, &leaves, &mut t_bad).is_err());
+                        }
+                        let bytes = reference.0.encode(&d).expect("bytes");
+                        let digest = fnv(&bytes);
+                        all.extend_from_slice(&digest.to_le_bytes());
+                        all.extend_from_slice(next.to_le_bytes().as_ref());
+                    }
+                }
             }
         }
     }

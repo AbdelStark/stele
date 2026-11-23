@@ -74,7 +74,7 @@ jobs:
       # E16-22: the plain checker's sequential (no `std`) path.
       - run: cargo test -p stele-ir --locked --offline
       - run: cargo check -p stele-sumcheck -p stele-lookup -p stele-cqis -p stele-reductions -p stele-code -p stele-pcs -p stele-verifier -p stele-ir --no-default-features --locked --offline
-      # shortcut: hosted AVX-512 varies; use a dedicated runner for mandatory coverage.
+      # Hosted AVX-512 varies: the dedicated node of `gpu-parity` requires it.
       - name: Native x86 SIMD parity
         env:
           STELE_REQUIRE_SIMD: avx2
@@ -138,6 +138,22 @@ jobs:
           name: table-parity-binary
       - run: chmod +x table_mle_parity
       - run: ./table_mle_parity --shard ${{ matrix.shard }}
+  # RFC-0003 §6, INV-3: the x86 runners execute AVX2; arm64 executes the NEON kernels.
+  simd-neon:
+    needs: plan
+    if: needs.plan.outputs.tables == 'true'
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+      - name: Native arm64 SIMD parity
+        env:
+          STELE_REQUIRE_SIMD: neon
+        run: cargo test -p stele-simd --release --locked -- --nocapture
+      - name: Kernel call sites on arm64
+        run: cargo test -p stele-sumcheck -p stele-lookup -p stele-code --all-features --locked
   research:
     needs: plan
     if: needs.plan.outputs.research == 'true'
@@ -167,8 +183,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: scripts/gates/parity.sh
+      - name: Native AVX-512 SIMD parity
+        env:
+          STELE_REQUIRE_SIMD: avx2,avx512
+        run: cargo test -p stele-simd --release --locked -- --nocapture
   gates:
-    needs: [plan, native, native-union, table-parity, research, gpu-parity]
+    needs: [plan, native, native-union, table-parity, simd-neon, research, gpu-parity]
     if: always()
     runs-on: ubuntu-latest
     steps:

@@ -4863,3 +4863,126 @@ Consequences:
   with 2^11 and with 2^13 was slower on L2a, mostly in the reductions stage; it is a
   probe, not a ledger.
 
+## ADR-157 — Host kernels with scalar references; `stele-cqis` may import the int8 dot kernel (RFC-0020 A16, task E20-03)
+
+Context: on the 24-thread reference class the L2a prover's time is field multiplications
+in the lookup, reduction and opening stages and int8 dot products in the reference
+forward. RFC-0014 §1 makes the CPU and SIMD prover the reference for CUDA and requires
+byte identity (INV-3). `deny.toml` (RFC-0020 §2) lets only
+`stele-code` and `stele-poly` import `stele-simd`.
+
+Decision:
+- **Kernels are functions of `stele-simd` with a scalar reference each.** A kernel
+  `k` has `k_reference`; every backend returns the reference's limbs. A seeded
+  1000-case parity test with edge values pins that, and the tests of the independent
+  review (`agents/reviews/e20-03-host-kernels-slice-1.md`) compare each kernel with
+  arithmetic written from the definition and exercise the bounds of each safe entry. The sumcheck and lookup provers
+  reach the kernels through `stele_poly::kernels`, the edge RFC-0020 already allows.
+- **Layout.** `M31` is `repr(transparent)` and the tower types `repr(C)`, so a slice of
+  field elements is a slice of canonical `u32` limbs. Kernels write only canonical limbs.
+- **Accept RFC-0020 A16 at the development tier:** `stele-cqis` may import
+  `stele_simd::dot_i8` for the reference forward's exact int8 dot products.
+- **No NEON kernel for QM31 products**: one product per 64-bit lane gives no gain over
+  the scalar multiplier. NEON has the base-field butterflies.
+- **Call sites in other lanes (RFC-0027 §5).** "The engine calls the trait" needs the
+  kernels called from `stele-code` and through the downcast hooks of `stele-hash`
+  (lane C) and from `stele-cqis` (lane N); review F2 needs the CI change (lane B). The
+  stack sits on pull request 482, which is open on `stele-code/src/lib.rs`,
+  `stele-cqis/Cargo.toml` and `stele-cqis/src/execution/data.rs`, and merges after it;
+  no other change is open on those files. The one independent review covers them.
+
+Consequences:
+- Proof and public bytes are unchanged: the pinned L0 and L1 digests and the L2a digests
+  reproduce on an AVX-512 host and on arm64.
+- CI executes each backend on a host that has it (review F2): AVX2 on the hosted x86
+  runners, NEON on a hosted arm64 runner (job `simd-neon`), AVX-512 on the dedicated
+  node (job `gpu-parity`, now also selected by a change under `crates/stele-simd`).
+  A call site follows its host's backend; running the pinned digests once per
+  backend waits for the trait and stays an open item of E20-03.
+- The single trait of E20-03's first acceptance line is not built; the task stays in
+  progress.
+
+## ADR-158 — Accept RFC-0026 A30: under profile byte 6 a lookup check above `2^25` positions has its own instance bound (task E20-26)
+
+Context: A8 splits a lookup check only above `2^30` positions. A check is padded to a
+power of two and the prover builds its fraction trees whole. L2a's largest check holds
+74,202,368 positions and was padded to `2^27`: 45% of its leaves were padding, and its
+trees were the prover's peak memory. Gate M2 caps the L2a proof at 4 MB and peak RSS at
+4 GB.
+
+Decision:
+- **Accept A30 at the development tier** (RFC-0027 §2). Under profile byte 6 a check of
+  `N` positions, `m = ceil(log2 N)`, takes the bound `B_c = min(B, max(F, m - 2))` with
+  the split floor `F = 25`. A check of at most `2^25` positions is unchanged; a larger
+  one has at most four instances up to `m = B + 2`.
+- **Byte 6 only.** The independent review found that the rule on every profile would
+  change byte-5 plans, which A15 §6.3 fixes at one instance per check and the
+  independent replay of `stele-verifier` derives by itself. Bytes 0 to 5 keep A8's `B`.
+- **The floor is set by L2a's proof budget.** At `F = 25` the L2a proof is 3,971,461
+  bytes, 28,539 below Gate M2's 4 MB; at `F = 24` it is 4,025,565. A change of the L2a
+  relation that moves a check across `2^25` positions, or adds an instance, moves the
+  proof size, and `F` is then decided again by an amendment: every proof with a check
+  above the floor changes with it.
+- **Alternatives.** `max(F, m - 1)` halves the added bytes and leaves the largest
+  instance at `2^26`; it was probed and not recorded in a ledger. A tree builder that
+  skips an all-padding suffix would remove the padding with no new byte; it would not
+  lower the largest real tree and is not built. The form whose bytes do not grow with
+  the instance count is task `E20-09`.
+- **Lanes (RFC-0027 §5).** The task is in lane E and edits the relation engine, which
+  lane P owns; its branch sits on the branch of E18-11 and E20-25. One independent
+  review covers it (`agents/reviews/e20-26-check-instance-bound.md`, two passes,
+  ACCEPT).
+
+Consequences:
+- On L2a under byte 6 one check becomes three instances. Ledgers `e20-26-*` against
+  `e18-11-*` on the reference class: prove 26.39 s against 28.09 s, and 21.84 s against
+  23.06 s with malloc on huge pages; peak RSS 8.9 GiB against 10.7 GiB; proof 3,971,461
+  bytes against 3,927,613.
+- The L2a proof under byte 6 has new bytes (SHA-256 `511a4e8b…4fa5`); its public input
+  is unchanged. The six pinned L0 and L1 digests reproduce.
+- Proof bytes on L2b and L3 shapes grow by an estimated 0.5 to 0.7 MB (review record);
+  they are not measured.
+- No security level or profile promotion is granted.
+
+## ADR-159 — The CLI asks glibc for transparent huge pages by re-executing itself once (task E21-11)
+
+Context: the prover's tables are gigabytes. With malloc on 4 KiB pages their page faults
+and unmaps make the pool's threads wait on one another. On the reference class L2a
+under byte 6 proves in 24.75 s, and in 20.67 s when `GLIBC_TUNABLES=glibc.malloc.hugetlb=1`
+asks malloc for transparent huge pages; verification falls from 1.26 s to 1.13 s
+(`bench/ledger/e20-27-dev-stories42m-t64-byte6-24t.json` against `-hugepages.json`). The
+reference node has transparent huge pages on `madvise`, and glibc reads the tunable only
+when a process starts.
+
+Decision:
+- **On Linux with glibc the `stele` CLI replaces itself once** with
+  `GLIBC_TUNABLES=glibc.malloc.hugetlb=1` when the variable is unset. A variable the
+  user set, to any value, is kept. A failed `exec` or an unknown executable path leaves
+  the run as it is. Other platforms are unchanged.
+- **The replacement carries its own marker**, `STELE_HUGE_PAGES_EXEC`, and a process
+  that sees it is never replaced (`stele_cli::replaces_itself`). The tunable alone is not
+  a safe guard: a loader in secure-execution mode (a set-user-ID, set-group-ID or
+  file-capability binary) drops `GLIBC_TUNABLES` from the replacement's environment, and
+  the CLI would then replace itself without end (review finding F3, read from the glibc
+  rules and not run). The marker is not a variable the loader removes.
+- **No value depends on it.** The tunable changes how malloc obtains memory, not what a
+  computation returns. The L2a proof and public input have the same SHA-256 with and
+  without it (the two `e20-27` L2a ledgers). The pinned L0 and L1 digests are produced
+  by the library and do not pass through the CLI.
+- **A ledger states its environment.** A record made with the default says so in its
+  note (`bench/dev_e2e.py`); a record made with the variable preset says which value in
+  its host context. Records made before this decision are not re-read under it.
+- **Alternatives.** Leaving the variable to the operator makes two runs of one commit
+  differ by an environment that no record names. A huge-page allocator inside the
+  process needs `unsafe` or a new dependency in a crate that forbids both. `madvise`
+  on the tables has the same objection.
+
+Consequences:
+- The default L2a prove time on the reference class is the huge-page figure (20.67 s at
+  `ea232178`); `GLIBC_TUNABLES=` with any other value reproduces the earlier one.
+- The process image is replaced before any argument is parsed, so a wrapper that counts
+  `exec` calls sees two on Linux. The program name (`argv[0]`) is kept.
+- Known edges, not handled: under an explicit loader (`ld.so stele …`) the path of the
+  running executable is the loader's, and the replacement runs the loader with the
+  CLI's arguments; and a failed `exec` leaves `SIGPIPE` at its default disposition.
+- No security level or profile promotion is granted.

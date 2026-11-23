@@ -32,6 +32,32 @@ macro_rules! kernels {
             }
             out
         }
+        /// One level of forward butterflies over base-field limbs:
+        /// `(low[j], high[j]) <- (low[j] + t, low[j] − t)` for `t = high[j]·twiddles[j]`,
+        /// on whole vectors. Returns the number of limbs done.
+        #[target_feature(enable=$feature)]
+        pub(crate) unsafe fn butterflies(
+            low: *mut u32,
+            high: *mut u32,
+            twiddles: *const u32,
+            n: usize,
+        ) -> usize {
+            let done = n / $width * $width;
+            let mut i = 0;
+            // SAFETY: RFC-0003 §6: the caller enables the feature and supplies `n` canonical
+            // limbs behind each pointer, `low` and `high` disjoint; each load and store
+            // covers one vector below `done <= n`.
+            unsafe {
+                while i < done {
+                    let a = load(low.add(i));
+                    let t = mul(load(high.add(i)), load(twiddles.add(i)));
+                    store(low.add(i), add(a, t));
+                    store(high.add(i), sub(a, t));
+                    i += $width;
+                }
+            }
+            done
+        }
         #[target_feature(enable=$feature)]
         pub(crate) unsafe fn qm31(
             op: crate::Op,

@@ -90,6 +90,13 @@ class ScopeTests(unittest.TestCase):
         for neighbor in (oracle+b'.extra',b'research/stacked-gkr/stage.py',b'research/stacked-gkr/check_stage.py'):
             self.assertEqual(scope.scopes([oracle,neighbor])['research_selection'],'all')
 
+    def test_matches_reference_dedicated_node_scope_for_simd_kernels(self):
+        # E20-03 slice 1 review (F2): only the dedicated node is sure to execute AVX-512.
+        self.assertEqual(scope.scopes([b'crates/stele-simd/src/x86.rs']),
+                         dict(gpu=True, tables=True, research=False, research_selection='none'))
+        self.assertFalse(scope.scopes([b'crates/stele-sumcheck/src/parallel.rs'])['gpu'])
+        self.assertTrue(scope.scopes([b'rust-toolchain.toml'])['gpu'])
+
     def test_matches_reference_git_changes(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

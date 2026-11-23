@@ -174,6 +174,38 @@ pub fn gate<E>(verified: Result<Ledger, E>) -> Result<Ledger, Refusal<E>> {
     }
 }
 
+/// The variable the CLI sets beside `GLIBC_TUNABLES` when it replaces itself (ADR-159).
+pub const HUGE_PAGES_MARKER: &str = "STELE_HUGE_PAGES_EXEC";
+
+/// Whether the CLI replaces itself once to ask glibc for transparent huge pages
+/// (ADR-159): only when the user set no `GLIBC_TUNABLES` and this process is not already
+/// the replacement. The marker decides the second half. A loader in secure-execution
+/// mode (a set-user-ID, set-group-ID or file-capability binary) drops `GLIBC_TUNABLES`
+/// from the replacement's environment, and with that variable alone the CLI would then
+/// replace itself without end.
+pub fn replaces_itself(tunables_set: bool, marker_set: bool) -> bool {
+    !tunables_set && !marker_set
+}
+
+/// The replacement of ADR-159: `exe` with the caller's name and arguments, and both
+/// `GLIBC_TUNABLES=glibc.malloc.hugetlb=1` and the marker in its environment.
+#[cfg(unix)]
+pub fn replacement(
+    exe: impl AsRef<std::ffi::OsStr>,
+    mut args: impl Iterator<Item = std::ffi::OsString>,
+) -> std::process::Command {
+    use std::os::unix::process::CommandExt;
+    let mut command = std::process::Command::new(exe);
+    if let Some(name) = args.next() {
+        command.arg0(name);
+    }
+    command
+        .args(args)
+        .env("GLIBC_TUNABLES", "glibc.malloc.hugetlb=1")
+        .env(HUGE_PAGES_MARKER, "1");
+    command
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -280,5 +312,37 @@ mod tests {
         );
         assert!(out.contains("floor\t2^-95.6\n"), "{out}");
         assert!(out.contains("verdict\tFAIL (C4)"), "{out}");
+    }
+
+    /// ADR-159: the CLI replaces itself only when the user set no `GLIBC_TUNABLES` and it
+    /// is not already the replacement. The second line is the loader of a secure-execution
+    /// binary dropping the variable from the replacement: the marker alone stops it.
+    #[test]
+    fn replaces_itself_once_and_never_under_a_user_variable() {
+        assert!(replaces_itself(false, false));
+        assert!(!replaces_itself(false, true));
+        assert!(!replaces_itself(true, false));
+        assert!(!replaces_itself(true, true));
+    }
+
+    /// ADR-159: the replacement keeps the program's arguments and carries both variables.
+    /// Without the marker a secure-execution binary would replace itself without end.
+    #[cfg(unix)]
+    #[test]
+    fn matches_reference_replacement_environment_and_arguments() {
+        let args = ["stele", "prove-dev", "--length", "64"].map(std::ffi::OsString::from);
+        let command = replacement("/opt/stele", args.into_iter());
+        assert_eq!(command.get_program(), "/opt/stele");
+        let got: Vec<_> = command.get_args().collect();
+        assert_eq!(got, ["prove-dev", "--length", "64"]);
+        let envs: Vec<_> = command.get_envs().collect();
+        let set = |name: &str, value: &str| {
+            envs.iter().any(|(k, v)| {
+                *k == std::ffi::OsStr::new(name) && *v == Some(std::ffi::OsStr::new(value))
+            })
+        };
+        assert!(set("GLIBC_TUNABLES", "glibc.malloc.hugetlb=1"));
+        assert!(set(HUGE_PAGES_MARKER, "1"));
+        assert_eq!(envs.len(), 2);
     }
 }

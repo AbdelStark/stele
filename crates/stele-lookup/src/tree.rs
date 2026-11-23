@@ -228,10 +228,14 @@ pub(super) fn halve_suffix<K: ChallengeField>(suffix: &mut Vec<K>) {
     let half = suffix.len() / 2;
     if half > 0 {
         let (low, high) = suffix.split_at_mut(half);
-        for (a, b) in low.iter_mut().zip(high.iter()) {
-            *a = *a + *b;
-        }
+        let high = &*high;
+        stele_sumcheck::parallel::for_each_chunk(low, |start, chunk| {
+            for (a, b) in chunk.iter_mut().zip(&high[start..]) {
+                *a = *a + *b;
+            }
+        });
         suffix.truncate(half);
+        stele_sumcheck::parallel::release(suffix);
     }
 }
 impl<'a, K: ChallengeField + Eq> Layer<'a, K> {
@@ -272,6 +276,21 @@ impl<'a, K: ChallengeField + Eq> Layer<'a, K> {
         };
         let mut sums = [K::from_i64(0); 3];
         stele_sumcheck::parallel::sum_ranges(half, &mut sums, |range, out| {
+            if unit {
+                // QM31 layers take the host's kernel: the sums of the loop below.
+                let kernel = stele_sumcheck::parallel::layer_round_kernel(
+                    [&p0[..], &q0[..], &p1[..], &q1[..]],
+                    &self.suffix,
+                    gamma,
+                    range.clone(),
+                );
+                if let Some(partial) = kernel {
+                    for (total, part) in out.iter_mut().zip(partial) {
+                        *total = *total + part;
+                    }
+                    return Ok(());
+                }
+            }
             for x in range {
                 let y = x + half;
                 let e = self.suffix[x];
@@ -507,6 +526,9 @@ struct BaseLeafSummand<'a, K: ChallengeField + Eq> {
     point: &'a mut Vec<K>,
 }
 
+/// Leaf pairs copied into tables per kernel call of the base-leaf round: 16 KiB of QM31.
+const LEAF_BLOCK: usize = 128;
+
 /// Whether `i` is [`layer`]'s polynomial `left·p0·q1·eq + right·p1·q0·eq + γ·q0·q1·eq`: a
 /// hand-written summand hard-codes this factor layout and reads only the coefficients.
 fn is_layer_instance<K: ChallengeField>(i: &Instance<K>) -> bool {
@@ -545,8 +567,49 @@ impl<K: ChallengeField + Eq> Summand<K> for BaseLeafSummand<'_, K> {
             left * q1.mul_m31(p0) + right * q0.mul_m31(p1) + gamma * (q0 * q1)
         };
         let q = |idx: usize| self.leaves.denom_at(self.denom, idx);
+        let one = K::from_i64(1);
+        // With unit weights the term is the layer's, `q1·(p0 + γ·q0) + p1·q0`, on the
+        // embedded selectors. Where the host has a kernel, blocks of leaves are copied
+        // into short tables for it: the same sums.
+        let blocks =
+            left == one && right == one && stele_sumcheck::parallel::kernels_available::<K>();
         let mut sums = [K::from_i64(0); 3];
         stele_sumcheck::parallel::sum_ranges(half, &mut sums, |range, out| {
+            if blocks {
+                let zero = K::from_i64(0);
+                let mut tables = [[zero; 2 * LEAF_BLOCK]; 4];
+                let mut start = range.start;
+                while start < range.end {
+                    let n = (range.end - start).min(LEAF_BLOCK);
+                    for j in 0..n {
+                        let (lo, hi) = (2 * (start + j), 2 * (start + j + half));
+                        // Lower half: the pair at `x`; upper half: the pair at `x + half`.
+                        for (at, leaf) in [(j, lo), (n + j, hi)] {
+                            tables[0][at] = one.mul_m31(sigma[leaf]);
+                            tables[1][at] = q(leaf);
+                            tables[2][at] = one.mul_m31(sigma[leaf + 1]);
+                            tables[3][at] = q(leaf + 1);
+                        }
+                    }
+                    let partial = stele_sumcheck::parallel::layer_round_kernel(
+                        [
+                            &tables[0][..2 * n],
+                            &tables[1][..2 * n],
+                            &tables[2][..2 * n],
+                            &tables[3][..2 * n],
+                        ],
+                        &suffix[start..start + n],
+                        gamma,
+                        0..n,
+                    )
+                    .ok_or(stele_sumcheck::Error::PublicShape)?;
+                    for (total, part) in out.iter_mut().zip(partial) {
+                        *total = *total + part;
+                    }
+                    start += n;
+                }
+                return Ok(());
+            }
             for col in range {
                 let (lo, hi) = (2 * col, 2 * (col + half));
                 let (p0a, p0b, p1a, p1b) = (sigma[lo], sigma[hi], sigma[lo + 1], sigma[hi + 1]);
@@ -813,17 +876,24 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         {
             return Err(Error::SourceShape);
         }
-        let root = tree.root;
+        let BuiltBaseTree {
+            levels,
+            denom,
+            root,
+        } = tree;
         let mut values = root;
         let mut point = Vec::new();
         let mut a = accounting(self)?;
         let mut steps = Vec::new();
         reserve(&mut steps, self.m as usize)?;
         bind(self, root, t)?;
-        // Upper levels `1..m` from prebuilt extension pairs.
-        for children in tree.levels.iter().skip(1) {
+        // Upper levels `1..m` from prebuilt extension pairs. A level is freed once its
+        // child tables are made: the levels are half the tree's memory.
+        for children in levels.into_iter().skip(1) {
             let i = layer(self, &point, values, t, &mut a)?;
-            let (step, next) = prove_layer(&i, split_children(children)?, &point, t)?;
+            let tables = split_children(&children)?;
+            drop(children);
+            let (step, next) = prove_layer(&i, tables, &point, t)?;
             a.layers.push(ScRecord {
                 id: i.id,
                 m: i.num_vars,
@@ -839,8 +909,8 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         if self.m >= 1 {
             let i = layer(self, &point, values, t, &mut a)?;
             let (step, next) = if self.m == 1 {
-                let [p0, q0] = leaves.leaf_at(&tree.denom, 0);
-                let [p1, q1] = leaves.leaf_at(&tree.denom, 1);
+                let [p0, q0] = leaves.leaf_at(&denom, 0);
+                let [p1, q1] = leaves.leaf_at(&denom, 1);
                 let tables = vec![vec![p0], vec![q0], vec![p1], vec![q1], vec![K::from_i64(1)]];
                 let (s, n, _) = prove_dense(&i, tables, t)?;
                 (s, n)
@@ -849,7 +919,7 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
                 reserve(&mut next, i.num_vars as usize)?;
                 let summand = BaseLeafSummand {
                     leaves,
-                    denom: &tree.denom,
+                    denom: &denom,
                     r: &point,
                     suffix: Some(stele_sumcheck::parallel::eq_table(&point[1..])?),
                     weights: [

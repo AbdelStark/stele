@@ -422,11 +422,19 @@ fn honest() -> (Case, Statement) {
 }
 
 /// E16-23: the plain checker runs beside the engine, and a false witness must still
-/// end in `Error::Check`, not in an engine error, a panic or a proof.
+/// end in `Error::Check`, not in an engine error, a panic or a proof. Under the default
+/// sources and under the joined recursion (RFC-0026 A29), whose engine is another one.
 #[test]
 fn rejects_false_witness_with_check() {
+    for sources in [Sources::CircleAll, Sources::CircleRecursive] {
+        rejects_false_witness_with_check_under(sources);
+    }
+}
+
+fn rejects_false_witness_with_check_under(sources: Sources) {
     let (case, statement) = honest();
-    let weights = Weights::from_artifact(&case.model, &case.artifact).expect("weights");
+    let weights =
+        Weights::from_artifact_sources(&case.model, &case.artifact, sources).expect("weights");
     let committed = Committed::new(&weights).expect("commitment");
     let public = case.public(&committed, &weights);
     let mut executor = case.executor(&case.artifact);
@@ -448,8 +456,64 @@ fn rejects_false_witness_with_check() {
         );
         assert!(
             matches!(result, Err(Error::Check(_))),
-            "{name}: {:?}",
+            "{sources:?} {name}: {:?}",
             result.err()
+        );
+    }
+}
+
+/// E18-11 review (F5): the check decides whatever the engine does. One witness value of
+/// the first norm changes, inside its width. The engine alone errs on it, with an error
+/// of its own and no proof; with the plain checker beside it the result is `Check`. A join
+/// that returned the engine's error first would fail the last assertion.
+#[test]
+fn rejects_false_witness_with_check_when_the_engine_errs() {
+    use stele_prover::development::{prove_false_witness, prove_tampered};
+    use stele_reductions::stele_ir::relation::{ColumnId, Relation, Values};
+    let (case, statement) = honest();
+    for sources in [Sources::CircleAll, Sources::CircleRecursive] {
+        let weights =
+            Weights::from_artifact_sources(&case.model, &case.artifact, sources).expect("weights");
+        let committed = Committed::new(&weights).expect("commitment");
+        let public = case.public(&committed, &weights);
+        // The one-hot of the norm's exponent: one more entry set to one.
+        let false_witness = |relation: &mut Relation, values: &mut Values| {
+            let id = relation
+                .columns
+                .iter()
+                .position(|c| c.name == "L0/norm1/h")
+                .map(|i| ColumnId(i as u32))
+                .expect("the norm's one-hot");
+            let mut entries = values.get(relation, id).expect("assigned").to_vec();
+            let j = entries.iter().position(|&v| v == 0).expect("a zero entry");
+            entries[j] = 1;
+            values.set(relation, id, entries).expect("inside the width");
+        };
+        let engine = prove_tampered(
+            &public,
+            &mut case.executor(&case.artifact),
+            &weights,
+            &committed,
+            &statement,
+            &mut { false_witness },
+        );
+        assert!(
+            matches!(engine, Err(Error::Engine(_))),
+            "{sources:?}: the engine alone answered {:?}",
+            engine.err()
+        );
+        let checked = prove_false_witness(
+            &public,
+            &mut case.executor(&case.artifact),
+            &weights,
+            &committed,
+            &statement,
+            &mut { false_witness },
+        );
+        assert!(
+            matches!(checked, Err(Error::Check(_))),
+            "{sources:?}: {:?}",
+            checked.err()
         );
     }
 }
@@ -733,6 +797,35 @@ fn rejects_tampers_on_a_supplied_proof() {
         rejects("gain", &gain, &statement),
         Error::Engine(_)
     ));
+    // RFC-0026 A8, A30: the last value of every lookup section, so the instances of a
+    // split check are among them. Under byte 6 a section ends with its member values, or
+    // with a prefix sumcheck when its table is not a power of two.
+    if let container::Decoded::V2(honest) = container::decode_any(&proof).expect("container") {
+        let clock = Instant::now();
+        let mut sections = 0;
+        for (s, segment) in honest.segments.iter().enumerate() {
+            for (j, section) in segment.lookups.iter().enumerate() {
+                let mut bad = honest.clone();
+                bad.segments[s].lookups[j][section.len() - 16] ^= 1;
+                let error = verify(&public, &statement, &bad.encode());
+                let reason = format!("{error:?}");
+                assert!(
+                    if public.sources == Sources::CircleRecursive {
+                        reason == "Err(Engine(MemberSumMismatch))"
+                            || reason == "Err(Engine(Sumcheck(FinalEvaluationMismatch)))"
+                    } else {
+                        matches!(error, Err(Error::Engine(_)))
+                    },
+                    "segment {s} lookup {j}: {reason}"
+                );
+                sections += 1;
+            }
+        }
+        eprintln!(
+            "last value of each lookup section: {sections} sections, each refused, in {} ms",
+            clock.elapsed().as_millis()
+        );
+    }
 }
 
 /// E16-18: time the model commitment alone (RFC-0026 §2.2), which `prove-dev` recomputes

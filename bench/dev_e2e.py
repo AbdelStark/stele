@@ -30,6 +30,7 @@ proof section bytes that `accepts_eight_layer_window` prints). They are merged i
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -266,6 +267,9 @@ def device_counters(stderr, verified, byte, driver, proof=None):
 
 
 def main():
+    # ADR-159: with the marker set the CLI does not ask for huge pages, and the note would be wrong.
+    if 'STELE_HUGE_PAGES_EXEC' in os.environ:
+        raise SystemExit('STELE_HUGE_PAGES_EXEC is set: the prove-dev run did not use the huge-page default')
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('run', type=Path)
     p.add_argument('out', type=Path)
@@ -380,7 +384,8 @@ def main():
         'no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight '
         'commitment, executor capture (witness), plain check and proof. '
         + (
-            'In-process stage timings (stage_times_ns, RFC-0018 A2) time model_commitment, witness, '
+            'In-process stage timings (stage_times_ns, RFC-0018 A2) time model_commitment (running beside '
+            'the executor passes of stage witness under std; the weight decode is counted in both), witness, '
             'plain_check (running beside the relation engine under std), plan, commitment (overlapping '
             'multiplicity counting in parallel::join), multiplicities, zerochecks, lookups, reductions '
             'and openings; witness_recompute_ns equals stage witness. '
@@ -389,6 +394,9 @@ def main():
             'present, is Artifact decode plus model commitment timed in a separate test process; it is '
             'part of prove_dev_wall. '
         )
+        + 'On Linux with glibc the CLI runs with GLIBC_TUNABLES=glibc.malloc.hugetlb=1 unless that variable '
+        'is already set (ADR-159); this harness refuses an environment that holds STELE_HUGE_PAGES_EXEC, '
+        'which would stop the CLI from setting it. '
         + 'Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware '
         'thread count available to the process. Peak RSS is the ' + timer + ' maximum resident set size. '
         'Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this '

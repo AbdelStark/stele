@@ -51,4 +51,9 @@ pub trait Field:
     fn mul_m31(self, x: M31) -> Self {
         self * Self::from_i64(i64::from(x.as_u32()))
     }
+    /// `values` as base-field elements when `Self` is M31, `None` for every other field:
+    /// the entry to kernels written for the base field (RFC-0003 §6, `stele-simd`).
+    fn m31_slice_mut(_values: &mut [Self]) -> Option<&mut [M31]> {
+        None
+    }
 }

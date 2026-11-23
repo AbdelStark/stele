@@ -163,6 +163,25 @@ pub fn map<T: Send>(len: usize, f: impl Fn(usize) -> T + Sync + Send) -> Vec<T> 
     (0..len).map(f).collect()
 }
 
+/// `f()` with this module's helpers running on a pool of `threads` threads. A split
+/// depends on the thread count and its results must not (RFC-0006 A1, INV-8), so a test
+/// of a split's boundaries pins the count with this. Without `std`, and if the pool
+/// cannot be built, it is `f()`.
+pub fn with_threads<R: Send>(threads: usize, f: impl FnOnce() -> R + Send) -> R {
+    #[cfg(feature = "std")]
+    {
+        match rayon::ThreadPoolBuilder::new().num_threads(threads).build() {
+            Ok(pool) => pool.install(f),
+            Err(_) => f(),
+        }
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        let _ = threads;
+        f()
+    }
+}
+
 /// `(a(), b())`, the two run concurrently on the pool.
 pub fn join<A: Send, B: Send>(
     a: impl FnOnce() -> A + Send,
@@ -245,6 +264,61 @@ pub fn eq_table_scaled<K: ChallengeField>(point: &[K], scale: K) -> Result<Vec<K
     Ok(out)
 }
 
+/// `a[j] *= b[j]`, through the host's kernel when the field is QM31 (RFC-0003 §6): the
+/// elements of the loop either way.
+pub fn mul_assign<K: ChallengeField>(a: &mut [K], b: &[K]) {
+    if let Some(b) = K::qm31_slice(b) {
+        if let Some(a) = K::qm31_slice_mut(a) {
+            stele_poly::kernels::mul_assign(a, b);
+            return;
+        }
+    }
+    for (x, y) in a.iter_mut().zip(b) {
+        *x = *x * *y;
+    }
+}
+
+/// Whether the kernel-backed helpers of this module run a host kernel for `K`
+/// (RFC-0003 §6), and not the reference loops: a caller that must copy its operands into
+/// tables or blocks first does so only then.
+pub fn kernels_available<K: ChallengeField>() -> bool {
+    K::from_qm31(stele_field::QM31::ZERO).is_some() && stele_poly::kernels::accelerated()
+}
+
+/// The three partial sums of a fraction-tree layer round with unit weights over `range`
+/// (`stele_simd::layer_round_reference`: `e[x]·t` for `t = q1·(p0 + γ·q0) + p1·q0` at `x`,
+/// at `x + half` and of their differences), from the host's kernel when the field is QM31
+/// (RFC-0003 §6, RFC-0008 A3). `None` otherwise: the caller runs its own loop.
+pub fn layer_round_kernel<K: ChallengeField>(
+    tables: [&[K]; 4],
+    suffix: &[K],
+    gamma: K,
+    range: core::ops::Range<usize>,
+) -> Option<[K; 3]> {
+    let tables = [
+        K::qm31_slice(tables[0])?,
+        K::qm31_slice(tables[1])?,
+        K::qm31_slice(tables[2])?,
+        K::qm31_slice(tables[3])?,
+    ];
+    let sums =
+        stele_poly::kernels::layer_round(tables, K::qm31_slice(suffix)?, gamma.qm31()?, range);
+    Some([
+        K::from_qm31(sums[0])?,
+        K::from_qm31(sums[1])?,
+        K::from_qm31(sums[2])?,
+    ])
+}
+
+/// Give back what a truncated table no longer uses, once that is a megabyte: without
+/// this a table of a large sumcheck holds its first size to the last round. Below a
+/// megabyte the allocator call costs more than it frees.
+pub fn release<T>(table: &mut Vec<T>) {
+    if (table.capacity() - table.len()) * core::mem::size_of::<T>() >= 1 << 20 {
+        table.shrink_to_fit();
+    }
+}
+
 /// Fix the leading coordinate: `t[j] += r·(t[j + half] − t[j])`, then halve.
 /// `table.len()` must be a power of two (a dense MLE table).
 pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
@@ -253,6 +327,13 @@ pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
     {
         let (low, high) = table.split_at_mut(half);
         let apply = |low: &mut [K], high: &[K]| {
+            // QM31 tables take the host's kernel: the limbs of this loop (stele-simd).
+            if let (Some(c), Some(high)) = (challenge.qm31(), K::qm31_slice(high)) {
+                if let Some(low) = K::qm31_slice_mut(low) {
+                    stele_poly::kernels::fold(low, high, c);
+                    return;
+                }
+            }
             for (a, b) in low.iter_mut().zip(high) {
                 *a = *a + challenge * (*b - *a);
             }
@@ -273,6 +354,7 @@ pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
         apply(low, high);
     }
     table.truncate(half);
+    release(table);
 }
 
 /// Fold a base-field M31 table into a half-sized extension-field table (RFC-0006 A5, E20-01):
