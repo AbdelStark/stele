@@ -4270,7 +4270,7 @@ tasks:
   skill: performance-engineer
   crate: stele-reductions+stele-prover
   lane: P
-  status: in_progress
+  status: done
   agent: claude
   branch: task/E18-11-check-beside-engine
   acceptance:
@@ -4288,7 +4288,7 @@ tasks:
   skill: performance-engineer
   crate: stele-prover
   lane: P
-  status: in_progress
+  status: done
   agent: claude
   branch: task/E20-26-check-instance-bound
   acceptance:
@@ -4537,7 +4537,7 @@ tasks:
   skill: verifier-engineer
   crate: stele-lookup+stele-reductions
   lane: E
-  status: in_progress
+  status: done
   agent: claude
   branch: task/E18-11-check-beside-engine
   acceptance:
@@ -4557,7 +4557,7 @@ tasks:
   skill: sumcheck-prover-engineer
   crate: stele-reductions
   lane: E
-  status: in_progress
+  status: done
   agent: claude
   branch: task/E20-26-check-instance-bound
   acceptance:
@@ -4575,7 +4575,7 @@ tasks:
   skill: performance-engineer
   crate: stele-sumcheck+stele-lookup
   lane: E
-  status: in_progress
+  status: done
   agent: claude
   branch: task/E20-26-check-instance-bound
   acceptance:
@@ -5121,7 +5121,7 @@ tasks:
   skill: performance-engineer
   crate: stele-cli+bench
   lane: V
-  status: in_progress
+  status: done
   agent: claude
   branch: task/E20-26-check-instance-bound
   acceptance:
@@ -5350,7 +5350,7 @@ tasks:
   skill: performance-engineer
   crate: stele-cqis
   lane: N
-  status: in_progress
+  status: done
   agent: claude
   branch: task/E20-26-check-instance-bound
   acceptance:
