@@ -173,6 +173,16 @@ fn declared<T>(id: Option<T>) -> Result<T, Error> {
 impl Layout {
     /// Declare the window's relation from plan data and the statement (RFC-0026 §8 step 2).
     pub fn declare(plan: &PlanData<'_>, statement: &Statement) -> Result<Self, Error> {
+        Self::declare_with(plan, statement, false)
+    }
+
+    /// [`Self::declare`]; with `passport` the model's passport carries the weight widths
+    /// and no range check reads a weight column (RFC-0026 A31, profile byte 7).
+    pub fn declare_with(
+        plan: &PlanData<'_>,
+        statement: &Statement,
+        passport: bool,
+    ) -> Result<Self, Error> {
         let model = plan.model;
         let shape = model.shape();
         if shape.family() != 1 {
@@ -181,7 +191,10 @@ impl Layout {
         let t = statement.tokens.len();
         let (d, f) = (usize::from(shape.width()), usize::from(shape.hidden()));
         let (heads, hw) = (shape.heads(), shape.head_width());
-        let mut relation = Relation::default();
+        let mut relation = Relation {
+            passport_weights: passport,
+            ..Relation::default()
+        };
         let mut weights = Vec::new();
 
         let token = plan.ordinal(Role::Token, None)?;

@@ -557,6 +557,9 @@ pub enum Sources {
     /// stacked multiplicity sources, and certified model sources joining one recursion
     /// per proof (profile byte 6, task E19-04).
     CircleRecursive,
+    /// A31: `CircleRecursive`, with the width of every weight column carried by the model's
+    /// passport and no weight range check in the proof (profile byte 7).
+    CirclePassport,
 }
 impl Sources {
     /// Stacked and model sources are A11's Circle rate-1/4 sources (A11, A12).
@@ -567,8 +570,15 @@ impl Sources {
     fn quarter_mu(self) -> bool {
         matches!(
             self,
-            Sources::CircleAll | Sources::CircleAllGrind | Sources::CircleRecursive
+            Sources::CircleAll
+                | Sources::CircleAllGrind
+                | Sources::CircleRecursive
+                | Sources::CirclePassport
         )
+    }
+    /// A29's source set, proved and verified by the joined recursion (`relation::recursive`).
+    pub fn recursive(self) -> bool {
+        matches!(self, Sources::CircleRecursive | Sources::CirclePassport)
     }
     /// The verifier's source of `(id, ell, code)` under this set's policy.
     pub fn source(self, id: u64, ell: u8, code: &[u8], root: [u8; 32]) -> Result<Source<K>, Error> {
@@ -914,7 +924,7 @@ fn build_a8_checks(
         // RFC-0026 A30: under profile byte 6 a check has its own bound, at most the plan's.
         // The other profiles keep A8's: A15 §6.3 and the independent replay plan one
         // instance per check.
-        let instance_bound = if sources == Sources::CircleRecursive {
+        let instance_bound = if sources.recursive() {
             let positions = raw_members.iter().fold(0u64, |n, member| {
                 n.saturating_add(1u64.checked_shl(u32::from(member.m)).unwrap_or(u64::MAX))
             });
@@ -1013,7 +1023,7 @@ fn plan_with_bound(
     instance_bound: u8,
 ) -> Result<Plan, Error> {
     // A29's source set has its own planner and verifier (`relation::recursive`).
-    if instance_bound == 0 || instance_bound > 30 || sources == Sources::CircleRecursive {
+    if instance_bound == 0 || instance_bound > 30 || sources.recursive() {
         return Err(Error::Unsupported);
     }
     relation.validate().map_err(Error::StatementMismatch)?;
@@ -3470,7 +3480,7 @@ fn plan_segmented_with_bound(
     instance_bound: u8,
 ) -> Result<SegmentedPlan, Error> {
     // A29's source set has its own planner and verifier (`relation::recursive`).
-    if sources == Sources::CircleRecursive {
+    if sources.recursive() {
         return Err(Error::Unsupported);
     }
     relation.validate().map_err(Error::StatementMismatch)?;

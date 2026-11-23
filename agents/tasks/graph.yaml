@@ -4312,6 +4312,26 @@ tasks:
   - the assignment of an unsegmented relation fills the weight columns, the embedding and each layer's outgoing residual stream first, then each layer and the finish as one task on the work pool; the parts are joined in layer order and a column assigned by two parts is refused
   - a norm module's carry chains read the module's input from the capture; a reference test compares the evaluation with held entries against the definition's
   - public and proof bytes unchanged on L0, L1 and L2a; the witness stage time on L2a before and after in ledgers
+- id: E18-14
+  epic: E18
+  title: Under profile byte 7 the model's passport carries the weight widths (RFC-0026 A31)
+  depends:
+  - E19-05
+  - E20-26
+  rfc:
+  - RFC-0026 A31
+  - RFC-0026 §2.2
+  - RFC-0011 §1
+  skill: protocol-architect
+  crate: stele-ir+stele-reductions+stele-prover+stele-cli
+  lane: P
+  status: in_progress
+  agent: claude
+  branch: task/E18-14-passport-weights
+  acceptance:
+  - RFC-0026 A31 is Accepted at the development tier with an independent review and an ADR; under profile byte 7 the relation declares no range check on a weight column and the verifier accepts only against a trusted model digest
+  - passport-dev recomputes the model digest from the Artifact; the library refuses a byte 7 proof without the comparison; NC-1342 (one changed weight code under the same passport) and NC-1343 (a byte 7 proof under the byte 6 input file) are rejected for the stated reasons
+  - the six pinned L0 and L1 digests of bytes 3, 5 and 6 reproduce and two are added for byte 7; lookup positions, prove time and proof bytes on L2a under byte 7 against byte 6 in ledgers
 - id: E19-01
   epic: E19
   title: Parameter script and size model; RFC-0029 accepted for the development tier
