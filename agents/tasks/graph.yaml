@@ -4294,6 +4294,24 @@ tasks:
   acceptance:
   - prove-dev commits the model beside the generation, next-token and capture passes of the executor; the executor reads the Artifact in place, so no second copy of the weights is alive
   - public and proof bytes unchanged; L2a prove time before and after in ledgers, and the ledger note names the stages that overlap
+- id: E18-13
+  epic: E18
+  title: Layers and the finish assigned beside each other on the work pool
+  depends:
+  - E18-11
+  rfc:
+  - RFC-0026 §3.8
+  - RFC-0028 §2.1
+  skill: performance-engineer
+  crate: stele-ir+stele-reductions+stele-prover
+  lane: P
+  status: in_progress
+  agent: claude
+  branch: task/E18-13-assign-on-pool
+  acceptance:
+  - the assignment of an unsegmented relation fills the weight columns, the embedding and each layer's outgoing residual stream first, then each layer and the finish as one task on the work pool; the parts are joined in layer order and a column assigned by two parts is refused
+  - a norm module's carry chains read the module's input from the capture; a reference test compares the evaluation with held entries against the definition's
+  - public and proof bytes unchanged on L0, L1 and L2a; the witness stage time on L2a before and after in ledgers
 - id: E19-01
   epic: E19
   title: Parameter script and size model; RFC-0029 accepted for the development tier
