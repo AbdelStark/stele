@@ -27,6 +27,8 @@ const GRIND_MAGIC: &[u8] = b"stele-dev-public-v4";
 const SEGMENTED_MAGIC: &[u8] = b"stele-dev-public-v5";
 /// RFC-0026 A29: unsegmented joined-recursion development input file (profile byte 6).
 const RECURSIVE_MAGIC: &[u8] = b"stele-dev-public-v6";
+/// RFC-0026 A31: the profile byte 6 file for passport-bound weights (profile byte 7).
+const PASSPORT_MAGIC: &[u8] = b"stele-dev-public-v7";
 /// The dev-zk profile's input file (RFC-0026 A9 profile byte 1): the same layout.
 const ZK_MAGIC: &[u8] = b"stele-dev-zk-public-v1";
 /// RFC-0013 A8's input file (profile byte 4): the same layout.
@@ -52,6 +54,7 @@ pub fn encode_profile(public: &Public, statement: &Statement, profile: u8) -> Ve
             Sources::CircleAll => super::CIRCLE_ALL_PROFILE,
             Sources::CircleAllGrind => super::GRIND_PROFILE,
             Sources::CircleRecursive => super::RECURSIVE_PROFILE,
+            Sources::CirclePassport => super::PASSPORT_PROFILE,
         };
         head.push(src_byte);
         head.extend_from_slice(&public.segment_layers.to_le_bytes());
@@ -63,6 +66,7 @@ pub fn encode_profile(public: &Public, statement: &Statement, profile: u8) -> Ve
             (0, Sources::CircleAll) => CIRCLE_ALL_MAGIC.to_vec(),
             (0, Sources::CircleAllGrind) => GRIND_MAGIC.to_vec(),
             (0, Sources::CircleRecursive) => RECURSIVE_MAGIC.to_vec(),
+            (0, Sources::CirclePassport) => PASSPORT_MAGIC.to_vec(),
             (super::zk::PROFILE_BALANCED, _) => ZK_BALANCED_MAGIC.to_vec(),
             _ => ZK_MAGIC.to_vec(),
         }
@@ -196,6 +200,7 @@ fn parse(bytes: &[u8]) -> Result<(Public, Statement, u8, &[u8]), Error> {
             super::CIRCLE_ALL_PROFILE => Sources::CircleAll,
             super::GRIND_PROFILE => Sources::CircleAllGrind,
             super::RECURSIVE_PROFILE => Sources::CircleRecursive,
+            super::PASSPORT_PROFILE => Sources::CirclePassport,
             _ => return Err(Error::StatementMismatch),
         };
         let sl = r.take(2)?;
@@ -221,6 +226,8 @@ fn parse(bytes: &[u8]) -> Result<(Public, Statement, u8, &[u8]), Error> {
             (0, GRIND_MAGIC, Sources::CircleAllGrind)
         } else if bytes.starts_with(RECURSIVE_MAGIC) {
             (0, RECURSIVE_MAGIC, Sources::CircleRecursive)
+        } else if bytes.starts_with(PASSPORT_MAGIC) {
+            (0, PASSPORT_MAGIC, Sources::CirclePassport)
         } else {
             (0, MAGIC, Sources::Expander)
         };

@@ -60,6 +60,9 @@ pub enum Error {
     Engine(relation::Error),
     /// The dev-zk claims prover or verifier rejected (RFC-0013 A5, RFC-0026 A9).
     Zk(stele_reductions::zk::Error),
+    /// RFC-0026 A31: a profile byte 7 input came without the trusted model digest of its
+    /// passport, or its model digest is another one.
+    Passport,
 }
 
 /// The proven window (RFC-0026 §1.1 items 3-4).
@@ -174,6 +177,9 @@ pub const CIRCLE_ALL_PROFILE: u8 = 3;
 pub const GRIND_PROFILE: u8 = 5;
 /// RFC-0026 A29 / RFC-0029: joined recursive openings (`Sources::CircleRecursive`).
 pub const RECURSIVE_PROFILE: u8 = 6;
+/// RFC-0026 A31: profile byte 6 with the weight widths carried by the model's passport
+/// (`Sources::CirclePassport`).
+pub const PASSPORT_PROFILE: u8 = 7;
 const STATEMENT_TAG: &[u8] = b"stele/v0.1/dev-e2e/statement";
 const SEGMENTED_INPUT_TAG: &[u8] = b"stele/v0.1/dev-e2e/segmented";
 
@@ -213,6 +219,7 @@ pub fn public_input(public: &Public, cqis_id: &[u8; 32], statement: &Statement) 
         Sources::CircleAll => out.push(CIRCLE_ALL_PROFILE),
         Sources::CircleAllGrind => out.push(GRIND_PROFILE),
         Sources::CircleRecursive => out.push(RECURSIVE_PROFILE),
+        Sources::CirclePassport => out.push(PASSPORT_PROFILE),
     }
     if public.segment_layers > 0 {
         out.extend_from_slice(SEGMENTED_INPUT_TAG);
@@ -275,7 +282,8 @@ fn layout_for(
         zk,
         segment_layers: public.segment_layers,
     };
-    let layout = Layout::declare(&plan, statement)?;
+    let passport = public.sources == Sources::CirclePassport;
+    let layout = Layout::declare_with(&plan, statement, passport)?;
     let roles = weight_roles(&d.model);
     let declared = plan::weight_columns(&layout.relation);
     let same =
@@ -286,11 +294,9 @@ fn layout_for(
             );
     let sources = match zk {
         true => 1,
-        false if public.sources == Sources::CircleRecursive => {
-            relation::recursive_model_layout(&layout.relation)
-                .map_err(Error::Engine)?
-                .len()
-        }
+        false if public.sources.recursive() => relation::recursive_model_layout(&layout.relation)
+            .map_err(Error::Engine)?
+            .len(),
         false => relation::model_layout(&layout.relation, public.sources)
             .map_err(Error::Engine)?
             .len(),
@@ -465,7 +471,7 @@ impl Weights {
             lengths.push(padded.trailing_zeros() as u8);
             matched.push(rec);
         }
-        let layouts = if sources == Sources::CircleRecursive {
+        let layouts = if sources.recursive() {
             WeightLayouts::Recursive(
                 relation::recursive_model_layout_for(&lengths).map_err(Error::Engine)?,
             )
@@ -776,7 +782,7 @@ fn prove_inner_captured(
     let input = public_input(public, &d.cqis_id, statement);
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
 
-    if public.sources == Sources::CircleRecursive {
+    if public.sources.recursive() {
         let CommittedKind::Recursive(rec_model) = &committed.kind else {
             return Err(Error::StatementMismatch);
         };
@@ -1005,17 +1011,77 @@ pub fn model_identity(public: &Public) -> Result<([u8; 32], [u8; 32]), Error> {
 
 const MODEL_TAG: &[u8] = b"stele/v0.1/dev-e2e/model";
 
-/// Verify one window (RFC-0026 §8, A26, A27) and return its ledger.
+/// Verify one window (RFC-0026 §8, A26, A27) and return its ledger. A profile byte 7
+/// input is refused: its weight widths rest on the model's passport, so it is verified
+/// with [`verify_passport`] only.
 pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Ledger, Error> {
+    if public.sources == Sources::CirclePassport {
+        return Err(Error::Passport);
+    }
+    verify_window(public, statement, proof)
+}
+
+/// Verify one window against the trusted model digest of its passport (RFC-0026 A31):
+/// `model` is the second value of [`model_identity`], which the verifier recomputed from
+/// the published Artifact with [`passport`] or took from someone it trusts to have done
+/// so. The comparison comes first; a model commitment other than the passport's is never
+/// verified. A proof of another profile byte is verified as [`verify`] does, with the same
+/// comparison.
+pub fn verify_passport(
+    public: &Public,
+    statement: &Statement,
+    proof: &[u8],
+    model: &[u8; 32],
+) -> Result<Ledger, Error> {
+    if model_identity(public)?.1 != *model {
+        return Err(Error::Passport);
+    }
+    verify_window(public, statement, proof)
+}
+
+/// The model commitment of a published Artifact under `profile` with its identity: the
+/// public model data, the `cqis_id` and the model digest a verifier trusts (RFC-0026 A31).
+/// This is the passport's issuance for open weights: the Artifact's codes lie within
+/// their widths by its format, and the digest names the roots of exactly those codes.
+pub fn passport(
+    model: &[u8],
+    preparation: &[u8],
+    scales: &[u8],
+    artifact: &[u8],
+    profile: u8,
+) -> Result<(Public, [u8; 32], [u8; 32]), Error> {
+    let sources = match profile {
+        CIRCLE_ALL_PROFILE => Sources::CircleAll,
+        GRIND_PROFILE => Sources::CircleAllGrind,
+        RECURSIVE_PROFILE => Sources::CircleRecursive,
+        PASSPORT_PROFILE => Sources::CirclePassport,
+        _ => return Err(Error::StatementMismatch),
+    };
+    let m = Model::decode(model).map_err(|_| Error::StatementMismatch)?;
+    let weights = Weights::from_artifact_sources(&m, artifact, sources)?;
+    let committed = Committed::new(&weights)?;
+    let public = Public {
+        model: model.to_vec(),
+        scales: scales.to_vec(),
+        preparation: preparation.to_vec(),
+        vectors: weights.vectors.clone(),
+        commitment: committed.commitment.clone(),
+        sources,
+        segment_layers: 0,
+    };
+    let (cqis_id, digest) = model_identity(&public)?;
+    Ok((public, cqis_id, digest))
+}
+
+fn verify_window(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Ledger, Error> {
     let decoded = container::decode_any(proof).map_err(Error::Container)?;
     let d = decode(public)?;
     if decoded.cqis_id() != d.cqis_id {
         return Err(Error::StatementMismatch);
     }
     let layout = layout(&d, public, statement)?;
-    let expected_v2 = public.segment_layers > 0
-        || layout.relation.has_virtual()
-        || public.sources == Sources::CircleRecursive;
+    let expected_v2 =
+        public.segment_layers > 0 || layout.relation.has_virtual() || public.sources.recursive();
     if expected_v2 != matches!(decoded, container::Decoded::V2(_)) {
         return Err(Error::StatementMismatch);
     }
@@ -1035,7 +1101,7 @@ pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Le
         .map(|(id, _, _)| layout.relation.columns[id.0 as usize].log_len)
         .collect();
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
-    if public.sources == Sources::CircleRecursive {
+    if public.sources.recursive() {
         let container::Decoded::V2(c) = decoded else {
             return Err(Error::StatementMismatch);
         };
@@ -1261,6 +1327,7 @@ pub fn prove_window_development_segmented_measured(
         CIRCLE_ALL_PROFILE => Sources::CircleAll,
         GRIND_PROFILE => Sources::CircleAllGrind,
         RECURSIVE_PROFILE => Sources::CircleRecursive,
+        PASSPORT_PROFILE => Sources::CirclePassport,
         _ => return Err(Error::StatementMismatch),
     };
     prove_window_sources_measured(

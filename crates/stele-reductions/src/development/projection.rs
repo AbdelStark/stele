@@ -1786,11 +1786,14 @@ impl Module for Projection {
             let id = b
                 .relation
                 .add_column(&name, Kind::Weight, self.weight_width(), lo + ld);
-            b.relation.ranges.push(Range {
-                name: alloc::format!("{name}/range"),
-                column: id,
-                width: self.weight_width(),
-            });
+            // A31: under a passport the model commitment carries this width.
+            if !b.relation.passport_weights {
+                b.relation.ranges.push(Range {
+                    name: alloc::format!("{name}/range"),
+                    column: id,
+                    width: self.weight_width(),
+                });
+            }
             id
         });
         let at = |c: ColumnId| r(c, 0..out);

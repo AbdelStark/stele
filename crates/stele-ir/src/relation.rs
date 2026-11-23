@@ -294,6 +294,11 @@ pub struct Relation {
     pub ranges: Vec<Range>,
     pub matmuls: Vec<Matmul>,
     pub composes: Vec<Compose>,
+    /// RFC-0026 A31: the model's passport carries the declared width of every weight
+    /// column, so no range check reads one. The verifier of such a relation accepts the
+    /// model commitment only when it equals a trusted value recomputed from the published
+    /// Artifact, whose codes lie within their widths by its format.
+    pub passport_weights: bool,
 }
 
 /// A static defect of a relation (RFC-0026 §3.6); no values are involved.
@@ -1621,7 +1626,9 @@ impl Relation {
             }
         }
         for (i, column) in self.columns.iter().enumerate() {
-            if matches!(column.kind, Kind::Public(_)) {
+            // A31: under a passport the weight columns are enforced like public ones.
+            let passport = self.passport_weights && column.kind == Kind::Weight;
+            if matches!(column.kind, Kind::Public(_)) || passport {
                 enforced.insert(ColumnId(i as u32));
             }
         }

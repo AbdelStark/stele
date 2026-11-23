@@ -7,6 +7,7 @@
 //!                 [--checked R..E] [--next Y] --public OUT --proof OUT
 //!                 [--zk --commitment FILE --secret FILE [--backend cpu|cuda]]
 //! stele verify-dev --public FILE --proof FILE [--expect-model HEX]
+//! stele passport-dev --model M --preparation P --scales S --artifact A [--dev-profile 7]
 //! stele plan-digest --public FILE --entry OUT
 //! stele verify-registered --public FILE --proof FILE --relation FILE --trusted-entry FILE
 //!                         [--expect-model HEX]
@@ -36,6 +37,10 @@
 //! so `--expect-model` pins a proof to it. The verdict is the last line: `YES`, or
 //! `NO: <reason>`. `prove-dev` ends with `PROOF WRITTEN`, which is not a verdict.
 //! Exit codes: 0 accepted or proof written, 1 rejected, 2 usage or I/O error.
+//! RFC-0026 A31: under `--dev-profile 7` no range check reads a weight: the widths rest
+//! on the model's passport. `passport-dev` recomputes the model commitment from the
+//! published Artifact and prints the model digest; `verify-dev` accepts a profile byte 7
+//! proof only with that digest as `--expect-model`.
 //! RFC-0026 A16: `prove-dev --dev-profile 5 --relation OUT` exports the untrusted
 //! declaration. `plan-digest` validates public model data and certificates without
 //! secret state. Pin its entry separately from the prover's files before using
@@ -46,16 +51,17 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use stele_prover::development::{
-    bundle, model_identity, prove_window_development_segmented_measured, prove_window_profile,
-    registry, verify, zk, Report, Statement,
+    bundle, model_identity, passport, prove_window_development_segmented_measured,
+    prove_window_profile, registry, verify, verify_passport, zk, Report, Statement,
 };
 
 const USAGE: &str = "usage: stele commit-model --zk --model M --preparation P --scales S \
 --artifact A --length T --proofs N --commitment OUT --secret OUT [--zk-profile 4|1] | \
 stele prove-dev --model M --preparation P --scales S --artifact A \
 --tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT \
-[--dev-profile 3|5|6 [--segment-layers N] [--relation OUT] | --zk --commitment FILE --secret FILE [--backend cpu|cuda]] | \
+[--dev-profile 3|5|6|7 [--segment-layers N] [--relation OUT] | --zk --commitment FILE --secret FILE [--backend cpu|cuda]] | \
 stele verify-dev --public FILE --proof FILE [--expect-model HEX] [--admit] | \
+stele passport-dev --model M --preparation P --scales S --artifact A [--dev-profile 3|5|6|7] | \
 stele plan-digest --public FILE --entry OUT | \
 stele verify-registered --public FILE --proof FILE --relation FILE --trusted-entry FILE \
 [--expect-model HEX]";
@@ -412,12 +418,8 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
         let [m, p, s, a] = read_files()?;
         // RFC-0026 A14: `--dev-profile 5` grinds each check's (β, α) round.
         // RFC-0026 A29: `--dev-profile 6` uses joined RFC-0029 recursive openings.
-        let profile = match o.get("dev-profile").copied().unwrap_or("3") {
-            "3" => 3,
-            "5" => 5,
-            "6" => 6,
-            _ => return Err(usage("--dev-profile is 3, 5 or 6")),
-        };
+        // RFC-0026 A31: `--dev-profile 7` is 6 with the weight widths on the passport.
+        let profile = development_profile(o, "3")?;
         let (public, statement, proof, report) = prove_window_development_segmented_measured(
             &m,
             &p,
@@ -560,6 +562,35 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     Ok("PROOF WRITTEN".into())
 }
 
+fn development_profile(o: &BTreeMap<&str, &str>, default: &str) -> Result<u8, Failure> {
+    match o.get("dev-profile").copied().unwrap_or(default) {
+        "3" => Ok(3),
+        "5" => Ok(5),
+        "6" => Ok(6),
+        "7" => Ok(7),
+        _ => Err(usage("--dev-profile is 3, 5, 6 or 7")),
+    }
+}
+
+/// RFC-0026 A31: the model commitment of the published Artifact and its digest, the
+/// trusted value `verify-dev --expect-model` takes. Whoever runs this issues the passport.
+fn passport_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
+    let profile = development_profile(o, "7")?;
+    let (public, cqis_id, model) = passport(
+        &read(get(o, "model")?)?,
+        &read(get(o, "preparation")?)?,
+        &read(get(o, "scales")?)?,
+        &read(get(o, "artifact")?)?,
+        profile,
+    )
+    .map_err(reject)?;
+    println!("profile development");
+    println!("sources {:?}", public.sources);
+    println!("cqis_id {}", hex(&cqis_id));
+    println!("model {}", hex(&model));
+    Ok("PASSPORT COMPUTED".into())
+}
+
 fn expected_model(o: &BTreeMap<&str, &str>) -> Result<Option<Vec<u8>>, Failure> {
     o.get("expect-model")
         .map(|h| {
@@ -633,9 +664,16 @@ fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> 
         }
     };
     identity(&cqis_id, &model, &statement);
-    if expected.is_some_and(|e| e != model) {
+    if expected.as_ref().is_some_and(|e| *e != model) {
         return Err(Failure::Reject("model differs from --expect-model".into()));
     }
+    // RFC-0026 A31: with a trusted digest the comparison is the verifier's own first step;
+    // without one a profile byte 7 proof is refused.
+    let development = || match expected.as_deref().map(<[u8; 32]>::try_from) {
+        Some(Ok(model)) => verify_passport(&public, &statement, &proof, &model),
+        Some(Err(_)) => Err(stele_prover::development::Error::Passport),
+        None => verify(&public, &statement, &proof),
+    };
     match &zk {
         Some((commitment, index)) => println!(
             "{}",
@@ -643,7 +681,7 @@ fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> 
         ),
         None if admit => {
             // E8-05f: RFC-0016 §2 steps 2-4; YES only if the replay and admission pass.
-            let ledger = match stele_cli::gate(verify(&public, &statement, &proof)) {
+            let ledger = match stele_cli::gate(development()) {
                 Ok(ledger) => ledger,
                 Err(stele_cli::Refusal::Verify(e)) => return Err(reject(e)),
                 Err(stele_cli::Refusal::Admission(v)) => {
@@ -654,7 +692,7 @@ fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> 
             println!("{}", stele_cli::admission_gated(&ledger));
         }
         None => {
-            let ledger = verify(&public, &statement, &proof).map_err(reject)?;
+            let ledger = development().map_err(reject)?;
             println!("{ledger}");
             println!("{}", stele_cli::admission(&ledger));
         }
@@ -719,6 +757,9 @@ fn main() -> ExitCode {
             let admit = rest.iter().any(|a| a == "--admit");
             let rest: Vec<String> = rest.iter().filter(|a| *a != "--admit").cloned().collect();
             options(&rest, &["public", "proof", "expect-model"]).and_then(|o| verify_dev(&o, admit))
+        }
+        Some("passport-dev") if !zk => {
+            options(&rest, &[&files[..], &["dev-profile"]].concat()).and_then(|o| passport_dev(&o))
         }
         Some("plan-digest") if !zk => {
             options(&rest, &["public", "entry"]).and_then(|o| plan_digest(&o))

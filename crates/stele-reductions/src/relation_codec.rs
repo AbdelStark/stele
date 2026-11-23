@@ -8,6 +8,8 @@ use stele_ir::relation::{Def, Kind, Ref, Relation, Width};
 
 const MAGIC: &[u8] = b"stele/v0.1/relation/encoding/v1";
 const MAGIC_V2: &[u8] = b"stele/v0.1/relation/encoding/v2";
+/// RFC-0026 A31: closes the encoding of a relation whose weight widths its passport carries.
+const PASSPORT_WEIGHTS: &[u8] = b"stele/v0.1/relation/passport-weights";
 
 fn u32_len(out: &mut Vec<u8>, len: usize) {
     out.extend_from_slice(&(len as u32).to_le_bytes());
@@ -175,6 +177,10 @@ pub fn encode(relation: &Relation) -> Vec<u8> {
             out.extend_from_slice(&limb.0.to_le_bytes());
             out.push(*shift);
         }
+    }
+    // Every other relation ends with its compositions, so its bytes are unchanged.
+    if relation.passport_weights {
+        out.extend_from_slice(PASSPORT_WEIGHTS);
     }
     out
 }

@@ -140,7 +140,10 @@ impl Module for Embedding {
         let bits = self.plan.code_bits;
         let code = Width::signed(bits);
         let weight = relation.add_column(&format!("{}/E", scope.name), Kind::Weight, code, lv + ld);
-        scope.range(relation, weight, code);
+        // A31: under a passport the model commitment carries this width.
+        if !relation.passport_weights {
+            scope.range(relation, weight, code);
+        }
         // RFC-0026 §3.6: a matmul domain has at most MAX_VARS bits, so rows are blocked.
         let lb = lt.min(self.limit - ld - lv);
         let size = 1usize << lb;
