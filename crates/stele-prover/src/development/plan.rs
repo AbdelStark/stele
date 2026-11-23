@@ -21,6 +21,7 @@ use stele_reductions::development::{
     Projection, ProjectionCapture, ProjectionPlan, RowConversion,
 };
 use stele_reductions::finish::{Finish, FinishCapture, FinishPlan};
+use stele_reductions::parallel;
 use stele_reductions::residual::{Residual, ResidualCapture};
 use stele_reductions::rope::Rope;
 use stele_reductions::silu::{GatedCapture, GatedConversion, GatedProduct};
@@ -796,13 +797,31 @@ impl Layout {
             .map_err(w("down_row"))?;
         m.down
             .assign(r, &projection(|b| &b.down_row, |b| &b.down, wi + 6), values)
-            .map_err(w("down"))?;
+            .map_err(w("down"))
+    }
+
+    /// Layer `l`'s outgoing residual stream, the one column the next layer (or the finish)
+    /// reads from `values`. It is filled from the capture alone, so [`Self::assign`] can
+    /// fill it before the layers and run them beside each other.
+    fn assign_residual(
+        &self,
+        l: usize,
+        capture: &Capture,
+        values: &mut Values,
+    ) -> Result<(), Error> {
+        let blocks = &capture.blocks[l];
+        let flat64 = |out: fn(&Block) -> &[i64]| -> Vec<i64> {
+            blocks.iter().flat_map(|b| out(b).iter().copied()).collect()
+        };
         let add = ResidualCapture {
             left: flat64(|b| &b.mid.quotient),
             right: flat64(|b| &b.down.output.quotient),
             output: flat64(|b| &b.residual.quotient),
         };
-        m.residual.assign(r, &add, values).map_err(w("residual"))
+        self.layers[l]
+            .residual
+            .assign(&self.relation, &add, values)
+            .map_err(|_| Error::Assign(String::from("residual")))
     }
 
     fn assign_finish(
@@ -837,19 +856,43 @@ impl Layout {
     }
 
     /// Fill every witness and weight column from the capture (RFC-0026 §3.8).
+    ///
+    /// A layer reads from `values` only the weights and the residual stream entering it,
+    /// and the finish only the stream leaving the last layer. Those columns are filled
+    /// first; then each layer and the finish is one task on the work pool, on a clone that
+    /// shares them. The parts are joined in layer order and the first error in that order
+    /// is returned, so neither the values nor the error depend on the schedule (INV-8).
     pub fn assign(&self, capture: &Capture, weights: &super::Weights) -> Result<Values, Error> {
         let r = &self.relation;
         let mut values = Values::new(r);
-        for (wi, (id, _, _)) in self.weights.iter().enumerate() {
-            let column = &r.columns[id.0 as usize];
-            let padded = weights.role_padded_i64(wi, column.log_len);
-            values.set(r, *id, padded).map_err(|_| Error::Witness)?;
-        }
+        let join = |values: &mut Values, parts: Vec<Result<Values, Error>>| {
+            parts
+                .into_iter()
+                .try_for_each(|part| values.absorb(part?).map_err(|_| Error::Witness))
+        };
+        let columns = parallel::map(self.weights.len(), |wi| {
+            let (id, _, _) = self.weights[wi];
+            let padded = weights.role_padded_i64(wi, r.columns[id.0 as usize].log_len);
+            let mut part = Values::new(r);
+            part.set(r, id, padded).map_err(|_| Error::Witness)?;
+            Ok(part)
+        });
+        join(&mut values, columns)?;
         self.assign_embedding(capture, weights, &mut values)?;
-        for l in 0..self.layers.len() {
-            self.assign_layer(l, capture, weights, &mut values)?;
+        let layers = self.layers.len();
+        for l in 0..layers {
+            self.assign_residual(l, capture, &mut values)?;
         }
-        self.assign_finish(capture, weights, &mut values)?;
+        let modules = parallel::map(layers + 1, |unit| {
+            let mut part = values.clone();
+            if unit < layers {
+                self.assign_layer(unit, capture, weights, &mut part)?;
+            } else {
+                self.assign_finish(capture, weights, &mut part)?;
+            }
+            Ok(part)
+        });
+        join(&mut values, modules)?;
         Ok(values)
     }
 
@@ -884,6 +927,7 @@ impl Layout {
         }
         for l in seg.layers.clone() {
             self.assign_layer(l, capture, weights, &mut values)?;
+            self.assign_residual(l, capture, &mut values)?;
         }
         if seg.has_finish {
             self.assign_finish(capture, weights, &mut values)?;

@@ -12,8 +12,8 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_ir::relation::{
-    eval_column, ColumnId, Def, Identity, Kind, Range, Ref, Relation, Term, Values, Violation,
-    Width,
+    eval_column_given, ColumnId, Def, Identity, Kind, Range, Ref, Relation, Term, Values,
+    Violation, Width,
 };
 
 pub mod attention;
@@ -393,6 +393,19 @@ impl Chain {
         values: &mut Values,
         skip: Option<usize>,
     ) -> Result<(), Violation> {
+        self.assign_given(relation, values, skip, &[])
+    }
+
+    /// [`Self::assign_around`] where the module already holds the entries of the columns
+    /// in `given` (its input, handed over by witness capture): they are read from there
+    /// and not evaluated from `values`.
+    pub(crate) fn assign_given(
+        &self,
+        relation: &Relation,
+        values: &mut Values,
+        skip: Option<usize>,
+        given: &[(ColumnId, &[i64])],
+    ) -> Result<(), Violation> {
         let size = 1usize << self.vars;
         let n = self.positions.len();
         // Resolve every referenced column once (supporting virtual columns, RFC-0028).
@@ -402,7 +415,7 @@ impl Chain {
             for t in terms {
                 for f in &t.factors {
                     if let alloc::collections::btree_map::Entry::Vacant(e) = cache.entry(f.column) {
-                        e.insert(eval_column(relation, values, f.column)?);
+                        e.insert(eval_column_given(relation, values, f.column, given)?);
                     }
                 }
             }

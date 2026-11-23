@@ -14,13 +14,14 @@
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::format;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
 mod check;
 mod contract;
 mod index;
-pub use check::{check, check_except, check_segment, eval_column};
+pub use check::{check, check_except, check_segment, eval_column, eval_column_given};
 pub use contract::contract;
 pub use index::Indexer;
 
@@ -582,9 +583,10 @@ impl<'a> IntoIterator for ColumnSlice<'a> {
 }
 
 /// Values of every witness and weight column, indexed by [`ColumnId`], stored at each
-/// column's declared width (RFC-0026 §2.1, E20-01).
+/// column's declared width (RFC-0026 §2.1, E20-01). A clone shares its columns, so a
+/// part assigned beside others can read what was assigned before it at no cost.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Values(Vec<Option<ColumnStorage>>);
+pub struct Values(Vec<Option<Arc<ColumnStorage>>>);
 
 impl Values {
     pub fn new(relation: &Relation) -> Self {
@@ -605,7 +607,7 @@ impl Values {
             return Err(Invalid::Column(id));
         }
         self.0.resize(relation.columns.len(), None);
-        self.0[id.0 as usize] = Some(ColumnStorage::pack(column.width, values));
+        self.0[id.0 as usize] = Some(Arc::new(ColumnStorage::pack(column.width, values)));
         Ok(())
     }
 
@@ -617,8 +619,28 @@ impl Values {
                 .0
                 .get(id.0 as usize)?
                 .as_ref()
-                .map(ColumnStorage::as_slice),
+                .map(|storage| storage.as_slice()),
         }
+    }
+
+    /// Move every column assigned in `other` into `self`. Callers assign disjoint column
+    /// sets beside each other, each on a clone of what was assigned before, and join them
+    /// with this. A column both hold by the same storage is that shared past; any other
+    /// column assigned in both is a caller bug, refused so that the order of the parts can
+    /// never choose a value.
+    pub fn absorb(&mut self, other: Values) -> Result<(), Invalid> {
+        if self.0.len() < other.0.len() {
+            self.0.resize(other.0.len(), None);
+        }
+        for (i, theirs) in other.0.into_iter().enumerate() {
+            let Some(theirs) = theirs else { continue };
+            match &self.0[i] {
+                None => self.0[i] = Some(theirs),
+                Some(ours) if Arc::ptr_eq(ours, &theirs) => {}
+                Some(_) => return Err(Invalid::Column(ColumnId(i as u32))),
+            }
+        }
+        Ok(())
     }
 
     /// Total element storage bytes held across all assigned columns in this container.

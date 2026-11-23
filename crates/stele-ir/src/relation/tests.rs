@@ -426,6 +426,49 @@ fn composed() -> (Relation, Values, ColumnId, ColumnId) {
 }
 
 #[test]
+fn accepts_values_joined_from_disjoint_parts_and_rejects_an_overlap() {
+    let (rel, whole, lo, wide) = composed();
+    let hi = ColumnId(lo.0 + 1);
+    let part = |ids: &[ColumnId]| {
+        let mut values = Values::new(&rel);
+        for &id in ids {
+            let column = whole.get(&rel, id).expect("assigned").to_vec();
+            values.set(&rel, id, column).expect("part");
+        }
+        values
+    };
+    // Joined in either order the parts are the whole assignment.
+    for order in [[&[lo][..], &[hi, wide][..]], [&[hi, wide][..], &[lo][..]]] {
+        let mut joined = Values::default();
+        for ids in order {
+            joined.absorb(part(ids)).expect("disjoint");
+        }
+        assert_eq!(joined, whole);
+        assert_eq!(check(&rel, &joined), Ok(()));
+    }
+    // Parts that start as clones of the same past share its columns and still join.
+    let past = part(&[lo]);
+    let (mut a, mut b) = (past.clone(), past.clone());
+    a.set(&rel, hi, whole.get(&rel, hi).expect("hi").to_vec())
+        .expect("a");
+    b.set(&rel, wide, whole.get(&rel, wide).expect("wide").to_vec())
+        .expect("b");
+    let mut joined = past;
+    joined.absorb(a).expect("shared past");
+    joined.absorb(b).expect("shared past");
+    assert_eq!(joined, whole);
+    // A column assigned in two parts is refused, even with equal entries, and the first
+    // value stays.
+    for entries in [vec![0, 0], whole.get(&rel, hi).expect("hi").to_vec()] {
+        let mut joined = part(&[lo, hi]);
+        let mut other = part(&[wide]);
+        other.set(&rel, hi, entries).expect("overlap");
+        assert_eq!(joined.absorb(other), Err(Invalid::Column(hi)));
+        assert_eq!(joined.get(&rel, hi), whole.get(&rel, hi));
+    }
+}
+
+#[test]
 fn accepts_composed_wide_column_and_rejects_tampered_limb() {
     let (rel, mut values, lo, _) = composed();
     assert_eq!(check(&rel, &values), Ok(()));
@@ -820,6 +863,75 @@ fn matches_reference_virtual_values_in_the_narrow_and_the_checked_form() {
         vals.set(&rel, y, ys.clone()).expect("set");
         let expected: Vec<i64> = accs.iter().zip(&ys).map(|(a, y)| a - 16 * y).collect();
         assert_eq!(eval_column(&rel, &vals, rem), Ok(expected));
+    }
+}
+
+/// A column whose entries the caller holds is read from there: its operands need not be
+/// assigned, a column defined from it follows the held entries, and with nothing held the
+/// evaluation is the definition's (the plain checker's path, which never takes `given`).
+#[test]
+fn matches_reference_column_evaluation_with_held_entries() {
+    let mut rel = Relation::default();
+    let g = Kind::Witness(rel.add_group("G/held/2", 2));
+    let acc = rel.add_column("acc", g.clone(), Width::signed(8), 2);
+    let y = rel.add_column("y", g, Width::signed(4), 2);
+    let rem = rel.add_virtual(
+        "rem",
+        Def::Linear {
+            constant: 0,
+            terms: vec![(1, Ref::identity(acc, 2)), (-16, Ref::identity(y, 2))],
+        },
+        2,
+    );
+    let twice = rel.add_virtual(
+        "twice",
+        Def::Linear {
+            constant: 1,
+            terms: vec![(2, Ref::identity(rem, 2))],
+        },
+        2,
+    );
+    let mut vals = Values::new(&rel);
+    vals.set(&rel, acc, vec![19, -13, 31, 0]).expect("set");
+    vals.set(&rel, y, vec![1, -1, 1, 0]).expect("set");
+    let honest = eval_column(&rel, &vals, rem).expect("rem");
+    assert_eq!(honest, vec![3, 3, 15, 0]);
+    let reference = eval_column(&rel, &vals, twice).expect("twice");
+    for target in [acc, rem, twice] {
+        assert_eq!(
+            eval_column_given(&rel, &vals, target, &[]),
+            eval_column(&rel, &vals, target)
+        );
+    }
+    // Held honest entries give the definition's values with no operand assigned.
+    let empty = Values::new(&rel);
+    assert_eq!(
+        eval_column(&rel, &empty, twice),
+        Err(Violation::Missing(acc))
+    );
+    assert_eq!(
+        eval_column_given(&rel, &empty, twice, &[(rem, &honest)]),
+        Ok(reference)
+    );
+    assert_eq!(
+        eval_column_given(&rel, &empty, rem, &[(rem, &honest)]),
+        Ok(honest.clone())
+    );
+    // The held entries are what is read, for a virtual and for a committed column.
+    assert_eq!(
+        eval_column_given(&rel, &vals, twice, &[(rem, &[0, 1, 2, 3])]),
+        Ok(vec![1, 3, 5, 7])
+    );
+    assert_eq!(
+        eval_column_given(&rel, &vals, rem, &[(y, &[0, 0, 0, 0])]),
+        Ok(vec![19, -13, 31, 0])
+    );
+    // Held entries of another length are refused, as an operand and as the target.
+    for target in [twice, rem] {
+        assert_eq!(
+            eval_column_given(&rel, &vals, target, &[(rem, &[0, 1])]),
+            Err(Violation::Missing(rem))
+        );
     }
 }
 

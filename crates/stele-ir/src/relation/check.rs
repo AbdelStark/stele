@@ -237,9 +237,36 @@ pub fn eval_column(
     values: &Values,
     target: ColumnId,
 ) -> Result<Vec<i64>, Violation> {
+    eval_column_given(relation, values, target, &[])
+}
+
+/// [`eval_column`] where the caller already holds the entries of the columns in `given`:
+/// each is read from there and its operands are not evaluated. A module that was handed
+/// its input by witness capture names it here, so filling its columns reads nothing that
+/// another module assigns. The plain checker never takes this path: it evaluates every
+/// column from its definition.
+pub fn eval_column_given(
+    relation: &Relation,
+    values: &Values,
+    target: ColumnId,
+    given: &[(ColumnId, &[i64])],
+) -> Result<Vec<i64>, Violation> {
     let idx = target.0 as usize;
     if idx >= relation.columns.len() {
         return Err(Violation::Missing(target));
+    }
+    // Held entries of another length than the column's are refused wherever they are read.
+    let held = |id: ColumnId| -> Option<Result<&[i64], Violation>> {
+        let (_, entries) = given.iter().find(|(g, _)| *g == id)?;
+        let len = 1usize << relation.columns[id.0 as usize].log_len;
+        Some(if entries.len() == len {
+            Ok(*entries)
+        } else {
+            Err(Violation::Missing(id))
+        })
+    };
+    if let Some(entries) = held(target) {
+        return entries.map(<[i64]>::to_vec);
     }
     if !matches!(relation.columns[idx].kind, Kind::Virtual(_)) {
         return values
@@ -251,7 +278,7 @@ pub fn eval_column(
     let mut needed = alloc::vec![false; idx + 1];
     needed[idx] = true;
     for i in (0..=idx).rev() {
-        if needed[i] {
+        if needed[i] && held(ColumnId(i as u32)).is_none() {
             if let Kind::Virtual(def) = &relation.columns[i].kind {
                 for op in def.operands() {
                     if (op.0 as usize) < i {
@@ -268,6 +295,10 @@ pub fn eval_column(
         }
         let cid = ColumnId(i as u32);
         let col = &relation.columns[i];
+        if let Some(entries) = held(cid) {
+            resolved[i] = Some(ColData::Borrowed(ColumnSlice::I64(entries?)));
+            continue;
+        }
         match &col.kind {
             Kind::Virtual(def) => {
                 let data = eval_virtual(col.log_len, def, &resolved, SUMMED_TABLE);

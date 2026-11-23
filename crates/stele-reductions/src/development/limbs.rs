@@ -10,9 +10,7 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-use stele_ir::relation::{
-    ColumnId, Compose, Range, Relation, Table, TableId, Term, Values, Violation, Width,
-};
+use stele_ir::relation::{ColumnId, Compose, Range, Relation, Table, TableId, Term, Width};
 
 pub(crate) use super::{log2_ceil, r as at, term};
 
@@ -195,13 +193,4 @@ impl Scope {
             positions,
         )
     }
-}
-
-/// Fill a chain's carries from its assigned terms (never rejects: `check` decides).
-pub(crate) fn assign_chain(
-    chain: &Chain,
-    relation: &Relation,
-    values: &mut Values,
-) -> Result<(), Violation> {
-    chain.assign_around(relation, values, None)
 }

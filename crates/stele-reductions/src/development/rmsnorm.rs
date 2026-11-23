@@ -48,7 +48,7 @@
 //! producer pins its padding (RFC-0026 §2.1). Step 1 counts exactly the `d` real
 //! features only under that obligation.
 
-use super::limbs::{assign_chain, at, bytes, log2_ceil, sign_table, term, Scope};
+use super::limbs::{at, bytes, log2_ceil, sign_table, term, Scope};
 use super::{bit_length, Builder, Chain, Unsupported};
 use alloc::format;
 use alloc::vec;
@@ -918,8 +918,12 @@ impl Module for RmsNorm {
             .collect();
         values.set(relation, c.output, y)?;
         set_limbs(relation, values, &c.z, &z, OUT_RADIX)?;
+        // The chains read the input from the capture and not through `values`: the input is
+        // a virtual column of the modules before this one, and reading it there would tie
+        // this module's assignment to theirs (the layers are assigned beside each other).
+        let input: Vec<i64> = x.iter().map(|&v| v as i64).collect();
         for chain in &c.chains {
-            assign_chain(chain, relation, values)?;
+            chain.assign_given(relation, values, None, &[(self.input, &input)])?;
         }
         Ok(())
     }
