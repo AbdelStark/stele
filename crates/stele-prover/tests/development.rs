@@ -2818,6 +2818,11 @@ fn accepts_passport_profile_7_only_against_the_trusted_model() {
         // Accepted against the trusted digest; refused without one and against another.
         verify_passport(&public, &statement, &proof, &trusted).expect("profile-7 verify");
         assert_eq!(
+            stele_prover::development::registry::publish(&public, &statement).err(),
+            Some(Error::StatementMismatch),
+            "the A16 registry publishes profile byte 5 only"
+        );
+        assert_eq!(
             verify(&public, &statement, &proof).err(),
             Some(Error::Passport)
         );
