@@ -202,4 +202,92 @@ Budget: one more GPU-hour.
 
 ## Results of the addendum
 
-Not run when this addendum was committed.
+Run at the addendum's commit `39caed7c` on the same H100 (job 7696, 36 minutes). The
+scores file now holds 242 scores, the first 115 unchanged; SHA-256
+`93b53a331f090406699ecce6b68e5d7b549dca793a9b1e07e2dffe6c62cb58a6`.
+
+A2, weights alone (`Δ`, top-1 agreement):
+
+| Weights | `Δ` | Agreement |
+|---|---|---|
+| `w8p2` (stage A) | +0.232 | 97.64% |
+| `w9p2` | +0.069 | 98.86% |
+| `w10p2` | +0.062 | 99.44% |
+| `w8m1` | +0.040 | 98.20% |
+| `w8m2` | +0.047 | 98.28% |
+| `w8m3` | +0.054 | 98.26% |
+
+B2, one site at a time, `Δ` at 7, 9 and 11 bits:
+
+| Site | `p2row` | `static` | `staticch` |
+|---|---|---|---|
+| `attn` | +1.655, +0.339, +0.025 | +6.559, +1.076, +0.312 | +0.343, −0.024, −0.001 |
+| `out` | +0.192, +0.006, −0.007 | +2.168, +0.245, +0.017 | +0.230, +0.128, +0.114 |
+| `mlp` | +0.212, +0.056, −0.002 | +7.902, +0.380, +0.009 | +0.128, +0.010, +0.004 |
+| `down` | +5.833, +0.514, +0.024 | +39453, +861, +99.0 | +10.26, +8.95, +8.77 |
+| `head` | +0.496, +0.030, +0.005 | +1.488, +0.109, +0.004 | +0.095, +0.017, +0.002 |
+
+B2, saturated elements on the scored windows, as a fraction of the converted elements
+(8, 10 and 12 bits agree to the first digit), and `staticch` with room, `Δ` at 8, 9 and
+10 bits:
+
+| Site | `static` saturated | `staticch` saturated | `staticchh1`: saturated; `Δ` | `staticchh2`: saturated; `Δ` |
+|---|---|---|---|---|
+| `attn` | 3 elements | 4.2e-6 | none; +0.375, +0.145, −0.031 | none; +1.938, +0.358, +0.129 |
+| `out` | 15 to 18 elements | 3.4e-5 | 3.3e-7; +0.089, +0.053, +0.022 | 11 to 13 elements; +0.426, +0.087, +0.066 |
+| `mlp` | none | 1.0e-5 | none; +0.149, +0.032, +0.001 | none; +0.637, +0.170, +0.046 |
+| `down` | 7 to 25 elements | 4.7e-5 | 6.3e-6; +4.706, +3.267, +3.090 | 1.0e-6; +6.183, +2.353, +1.186 |
+| `head` | none | 2.6e-5 | none; +0.084, +0.011, +0.015 | none; +0.259, +0.082, +0.010 |
+
+C2, every site together. The limit is +0.444 (the simulated baseline's +0.194 plus 0.25).
+"Norm-fed" is `attn`, `mlp` and `head`.
+
+| Weights | Norm-fed | `out` | `down` | `Δ` | Saturated | Verdict |
+|---|---|---|---|---|---|---|
+| `w10p2` | `p2row` 10 | `p2row` 10 | `p2row` 10 | +0.247 | — | passes |
+| `w9p2` | `p2row` 10 | `p2row` 10 | `p2row` 10 | +0.304 | — | passes |
+| `w8p2` (stage C) | `p2row` 10 | `p2row` 10 | `p2row` 10 | +0.352 | — | passes |
+| `w9p2` | `staticch` 10 | `p2row` 10 | `p2row` 12 | +0.397 | 6.6e-6 | below the limit, not admissible |
+| `w9p2` | `staticchh1` 9 | `p2row` 10 | `p2row` 12 | +0.579 | none | fails |
+| `w9p2` | `staticch` 8 | `static` 12 | `p2row` 12 | +0.585 | 5.3e-6 | fails |
+| `w9p2` | `staticch` 8 | `p2row` 10 | `p2row` 12 | +0.594 | 6.4e-6 | fails |
+| `w9p2` | `staticch` 8 | `p2row` 8 | `dyng128` 8 | +0.669 | 6.4e-6 | fails |
+| `w9p2` | `p2row` 10 | `p2row` 10 | `p2row` 9 | +0.730 | — | fails |
+| `w9p2` | `staticch` 8 | `p2row` 8 | `p2row` 10 | +0.776 | 6.4e-6 | fails |
+| `w8` | `staticch` 8 | `p2row` 8 | `p2row` 10 | +1.030 | 6.5e-6 | fails |
+| `w8m3` | `staticch` 8 | `p2row` 8 | `p2row` 10 | +1.049 | 6.5e-6 | fails |
+| `w9p2` | `staticchh1` 8 | `p2row` 8 | `p2row` 10 | +1.105 | none | fails |
+| `w9p2` | `staticch` 8 | `p2row` 8 | `p2row` 9 | +1.208 | 6.4e-6 | fails |
+| `w8m2` | `staticch` 8 | `p2row` 8 | `p2row` 10 | +1.332 | 6.4e-6 | fails |
+| `w8p2` | `staticch` 10 | `p2row` 10 | `p2row` 12 | +1.713 | 6.7e-6 | fails |
+| `w8p2` | `staticch` 8 | `p2row` 10 | `p2row` 12 | +1.992 | 6.4e-6 | fails |
+| `w8p2` | `staticch` 8 | `p2row` 8 | `p2row` 10 | +2.178 | 6.4e-6 | fails |
+
+Reading, by the addendum's rule:
+
+- **The recommendation of stage C stands**: `w8p2` with `p2row` at 10 bits on every site.
+  It is the cheapest admissible candidate that passes: int8 weights, one matmul per
+  projection at an input width of 4,096, and `down` (14,336) at the edge of that width.
+- **A static scale per feature is not admissible as calibrated**: on every site some
+  element of the scored windows saturates. One bit of room removes them on the norm-fed
+  sites and costs a bit of the code (`attn` +0.375 at 8 bits against +0.140).
+- **Static formats compound when combined.** With float-quality `w8` weights, `staticch`
+  at 8 bits on the norm-fed sites and `p2row` elsewhere scores +1.030; the single-site
+  costs sum to about +0.39. No static mix passes with or without room.
+- **`down` needs 10 bits at a row scale**: 9 bits moves the 9-bit-weight candidate from
+  +0.304 to +0.730.
+- **The weights' part can be bought back later**: a 9-bit or 10-bit code, or int8 with a
+  one-bit mantissa, brings the weights alone from +0.232 to +0.04 – +0.07, and the
+  combined candidate from +0.352 to +0.304 (`w9p2`) or +0.247 (`w10p2`). `w8m1` with
+  `p2row` at 10 bits was not scored.
+
+Limits of this screen. It is float32 with simulated formats, on 8 windows, with nearest
+rounding at every conversion and the outputs of a projection left in float32. It ranks
+candidates; it is not CQIS evidence.
+
+Still owed by this task: the recommended candidate on the exact executor, on the same 8
+windows and then on the full G7 protocol. The exact executors do not have the format yet;
+task E22-05 specifies and implements it, and this record closes with those runs.
+
+Budget used: 1.2 GPU-hours (jobs 7646, 7647, 7659 and 7696) of the 4 pre-registered across
+the two parts.
