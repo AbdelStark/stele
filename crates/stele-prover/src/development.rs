@@ -501,20 +501,31 @@ impl Weights {
                 roles[w].source = source_idx;
                 roles[w].offset = offset;
                 let stride = rec.lanes.next_power_of_two();
-                let target = &mut stacked[source_idx];
-                for i in 0..rec.elements {
-                    let v: i64 = match rec.bits {
+                let code = |i: usize| -> i64 {
+                    match rec.bits {
                         16 => i64::from(i16::from_le_bytes([rec.raw[2 * i], rec.raw[2 * i + 1]])),
                         8 => i64::from(rec.raw[i] as i8),
                         _ => {
                             let n = (rec.raw[i / 2] >> (4 * (i % 2))) & 15;
                             i64::from(n) - if n >= 8 { 16 } else { 0 }
                         }
-                    };
-                    let row = i / rec.lanes;
-                    let col = i % rec.lanes;
-                    target[offset + row * stride + col] = M31::from_i64(v);
-                }
+                    }
+                };
+                // The record's rows are one run of the padded source, written on the pool:
+                // every cell is a function of its own index, and padding stays zero.
+                let end = offset + rec.elements.div_ceil(rec.lanes) * stride;
+                let rows = stacked[source_idx]
+                    .get_mut(offset..end)
+                    .ok_or(Error::Witness)?;
+                parallel::for_each_chunk(rows, |start, chunk| {
+                    for (k, cell) in chunk.iter_mut().enumerate() {
+                        let (row, col) = ((start + k) / stride, (start + k) % stride);
+                        let i = row * rec.lanes + col;
+                        if col < rec.lanes && i < rec.elements {
+                            *cell = M31::from_i64(code(i));
+                        }
+                    }
+                });
             }
         }
         Ok(Self {
@@ -1400,12 +1411,17 @@ fn prove_window_sources_measured(
     // `Committed::prepared` (task E18-06).
     let ((capture, witness_pre_ns), (committed, model_commitment_ns)) = parallel::join(
         || {
-            let capture =
-                complete_statement(&mut executor, &mut statement, length).and_then(|()| {
-                    executor
-                        .capture(&statement.tokens)
-                        .map_err(|_| Error::Witness)
-                });
+            let capture = extend_statement(&mut executor, &mut statement, length).and_then(|_| {
+                let capture = executor
+                    .capture(&statement.tokens)
+                    .map_err(|_| Error::Witness)?;
+                // The capture is the forward pass over the whole window, so its last
+                // position gives `y`: no forward pass is run for `y` alone.
+                if statement.next.is_none() && statement.end as usize == statement.tokens.len() {
+                    statement.next = Some(capture.head.last().ok_or(Error::Witness)?.argmax);
+                }
+                Ok(capture)
+            });
             (capture, witness_pre_timer.elapsed_ns())
         },
         || {
@@ -1440,7 +1456,31 @@ fn complete_statement(
     statement: &mut Statement,
     length: usize,
 ) -> Result<(), Error> {
-    // The last generated position's logits, kept so `next` needs no second forward pass.
+    let last_logits = extend_statement(executor, statement, length)?;
+    if statement.next.is_none() && statement.end as usize == statement.tokens.len() {
+        let last = match last_logits {
+            Some(logits) => logits,
+            None => executor
+                .full(&statement.tokens)
+                .map_err(|_| Error::Witness)?
+                .logits()
+                .last()
+                .ok_or(Error::Witness)?
+                .clone(),
+        };
+        let max = last.iter().max().ok_or(Error::Witness)?;
+        statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
+    }
+    Ok(())
+}
+
+/// Extend `statement` to `length` tokens with the greedy continuation. Returns the logits
+/// of the last position when it generated any, so a caller needs no second pass for `y`.
+fn extend_statement(
+    executor: &mut Executor<'_>,
+    statement: &mut Statement,
+    length: usize,
+) -> Result<Option<Vec<i16>>, Error> {
     let mut last_logits = None;
     if statement.tokens.len() < length {
         let whole = statement.end as usize == statement.tokens.len();
@@ -1462,21 +1502,7 @@ fn complete_statement(
         }
         last_logits = Some(logits);
     }
-    if statement.next.is_none() && statement.end as usize == statement.tokens.len() {
-        let last = match last_logits {
-            Some(logits) => logits,
-            None => executor
-                .full(&statement.tokens)
-                .map_err(|_| Error::Witness)?
-                .logits()
-                .last()
-                .ok_or(Error::Witness)?
-                .clone(),
-        };
-        let max = last.iter().max().ok_or(Error::Witness)?;
-        statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
-    }
-    Ok(())
+    Ok(last_logits)
 }
 
 /// The Artifact identity the executor expects: BLAKE3 of its canonical bytes.

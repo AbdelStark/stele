@@ -2737,6 +2737,43 @@ fn accepts_segmented_one_layer_and_wide_gqa_windows() {
     );
 }
 
+/// A window given in full takes `y` from the last position of the capture, with no forward
+/// pass of its own: the statement, the public input and the proof are those of the window
+/// the prover extended itself, and `y` is the reference greedy choice.
+#[test]
+fn matches_reference_next_token_of_a_window_given_in_full() {
+    let case = load("one-layer");
+    let prove = |statement: Statement| {
+        stele_prover::development::prove_window_development_segmented_measured(
+            case.bytes[0],
+            case.bytes[2],
+            case.bytes[1],
+            &case.artifact,
+            statement,
+            16,
+            stele_prover::development::RECURSIVE_PROFILE,
+            0,
+        )
+        .expect("prove")
+    };
+    let (public, extended, proof, _) = prove(Statement {
+        tokens: vec![1],
+        start: 0,
+        end: 1,
+        next: None,
+    });
+    let reference = greedy(&mut case.executor(&case.artifact), 16);
+    assert_eq!(extended, reference);
+    let given = Statement {
+        next: None,
+        ..extended.clone()
+    };
+    let (public_given, statement_given, proof_given, _) = prove(given);
+    assert_eq!(statement_given, extended);
+    assert_eq!(public_given, public);
+    assert_eq!(proof_given, proof);
+}
+
 #[test]
 fn accepts_recursive_profile_6_unsegmented_and_segmented_and_rejects_tampers() {
     let case = load("one-layer");
